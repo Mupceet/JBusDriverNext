@@ -1,12 +1,9 @@
 package me.jbusdriver.ui.activity
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.text.TextUtils
 import android.view.MenuItem
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -224,51 +221,7 @@ class MainActivity : AppBaseActivity<MainContract.MainPresenter, MainContract.Ma
     override val layoutId = R.layout.activity_main
 
 
-    @SuppressLint("ResourceAsColor")
-    override fun <T> showContent(data: T?) {
-        if (data is UpdateBean) {
-            val bean = data as UpdateBean
-            if (viewContext.packageInfo?.versionCode ?: -1 < bean.versionCode) {
-                MaterialDialog(this).show {
-                    title(text = "更新(${bean.versionName})")
-                    message(text = bean.desc)
-                    neutralButton(text = "下次更新") {
-                        // ignored
-                    }
-                    positiveButton(text = "更新") {
-                        browse(bean.url)
-                    }
-                }.setOnDismissListener {
-                    showNotice(data)
-                }
-            }
-        }
-        if (data is NoticeBean) {
-            showNotice(data)
-        }
-    }
-
-    @SuppressLint("ResourceAsColor")
-    private fun showNotice(notice: Any?) {
-        val shared by lazy { getSharedPreferences("config", Context.MODE_PRIVATE) }
-        if (notice != null && notice is NoticeBean && !TextUtils.isEmpty(notice.content) && notice.id > 0 && shared.getInt(
-                NoticeIgnoreID,
-                -1
-            ) < notice.id
-        ) {
-            MaterialDialog(this).show {
-                title(text = "公告")
-                message(text = notice.content!!)
-                neutralButton(text = "忽略该提示") {
-                    shared.edit().putInt(NoticeIgnoreID, notice.id).apply()
-                }
-                positiveButton(text = "知道了")
-            }
-        }
-    }
-
     companion object {
-        const val NoticeIgnoreID = "notice_ignore_id"
         fun start(current: Activity) {
             current.startActivity(Intent(current, MainActivity::class.java))
         }

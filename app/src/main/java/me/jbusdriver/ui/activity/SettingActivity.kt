@@ -1,10 +1,15 @@
 package me.jbusdriver.ui.activity
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -50,6 +55,7 @@ class SettingActivity : BaseActivity() {
 
     private var pageModeHolder = AppConfiguration.pageMode
     private val menuOpValue by lazy { AppConfiguration.menuConfig.toMutableMap() }
+    private var pendingBackup = false
 
     private val backDir by lazy {
         val pathSuffix = File.separator + "collect" + File.separator + "backup" + File.separator
@@ -166,22 +172,49 @@ class SettingActivity : BaseActivity() {
         }
 
         tvCollectBackup.setOnClickListener {
-            val loading = MaterialDialog(viewContext).show { message(text = "正在备份...") }
-            Flowable.fromCallable { backDir }
-                .flatMap { file ->
-                    LinkService.queryAll().doOnNext { list ->
-                        File(file, "backup${System.currentTimeMillis()}.json").writeText(list.toJsonString())
-                    }
-                }.compose(SchedulersCompat.single())
-                .doAfterTerminate { loading.dismiss() }
-                .subscribeBy(onError = { toast("备份失败,请重新打开app") }, onNext = {
-                    toast("备份成功")
-                    loadBackUp()
-                })
-                .addTo(rxManager)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED
+            ) {
+                pendingBackup = true
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    REQUEST_STORAGE
+                )
+            } else {
+                doBackup()
+            }
         }
 
         loadBackUp()
+    }
+
+    private fun doBackup() {
+        val loading = MaterialDialog(viewContext).show { message(text = "正在备份...") }
+        Flowable.fromCallable { backDir }
+            .flatMap { file ->
+                LinkService.queryAll().doOnNext { list ->
+                    File(file, "backup${System.currentTimeMillis()}.json").writeText(list.toJsonString())
+                }
+            }.compose(SchedulersCompat.single())
+            .doAfterTerminate { loading.dismiss() }
+            .subscribeBy(onError = { toast("备份失败,请重新打开app") }, onNext = {
+                toast("备份成功")
+                loadBackUp()
+            })
+            .addTo(rxManager)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_STORAGE && pendingBackup) {
+            pendingBackup = false
+            if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                toast("存储权限未授予，将备份至应用内部存储")
+            }
+            doBackup()
+        }
     }
 
     private fun loadMagNetConfig() {
@@ -330,6 +363,7 @@ class SettingActivity : BaseActivity() {
     }
 
     companion object {
+        private const val REQUEST_STORAGE = 100
         fun start(context: Context) = context.startActivity(Intent(context, SettingActivity::class.java))
     }
 }

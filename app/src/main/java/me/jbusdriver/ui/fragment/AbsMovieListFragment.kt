@@ -16,8 +16,8 @@ import com.afollestad.materialdialogs.list.listItems
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.DrawableImageViewTarget
 import com.chad.library.adapter.base.BaseQuickAdapter
-import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
+import me.jbusdriver.base.SafeBaseQuickAdapter
 import me.jbusdriver.R
 import me.jbusdriver.base.dpToPx
 import me.jbusdriver.base.urlHost
@@ -75,7 +75,7 @@ abstract class AbsMovieListFragment : LinkableListFragment<Movie>() {
     }
 
     override val adapter: BaseQuickAdapter<Movie, in BaseViewHolder> by lazy {
-        object : BaseQuickAdapter<Movie, BaseViewHolder>(0, null), LoadMoreModule {
+        object : SafeBaseQuickAdapter<Movie>(0, null) {
 
             private val Movie.isInValid
                 inline get() = TextUtils.isEmpty(code) && TextUtils.isEmpty(link)

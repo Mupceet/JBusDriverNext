@@ -14,8 +14,8 @@ import com.afollestad.materialdialogs.list.listItemsSingleChoice
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.DrawableImageViewTarget
 import com.chad.library.adapter.base.BaseQuickAdapter
-import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
+import me.jbusdriver.base.SafeBaseQuickAdapter
 import me.jbusdriver.R
 import me.jbusdriver.base.common.AppBaseRecycleFragment
 import me.jbusdriver.base.toast
@@ -53,7 +53,7 @@ class MovieCollectFragment :
     }
 
     override val adapter: BaseQuickAdapter<CollectLinkWrapper<Movie>, in BaseViewHolder> by lazy {
-        object : BaseQuickAdapter<CollectLinkWrapper<Movie>, BaseViewHolder>(0, null), LoadMoreModule {
+        object : SafeBaseQuickAdapter<CollectLinkWrapper<Movie>>(0, null) {
 
             override fun convert(holder: BaseViewHolder, item: CollectLinkWrapper<Movie>) {
                 when (holder.itemViewType) {

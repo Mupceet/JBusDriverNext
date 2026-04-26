@@ -4,10 +4,9 @@ import android.graphics.drawable.GradientDrawable
 import android.widget.TextView
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.list.listItems
-import com.chad.library.adapter.base.BaseQuickAdapter
-import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import me.jbusdriver.R
+import me.jbusdriver.base.SafeBaseQuickAdapter
 import me.jbusdriver.mvp.bean.ILink
 import me.jbusdriver.mvp.bean.Genre
 import me.jbusdriver.mvp.bean.convertDBItem
@@ -20,7 +19,7 @@ import me.jbusdriver.ui.data.contextMenu.LinkMenu
 /**
  * Created by Administrator on 2017/7/30.
  */
-open class GenreAdapter : BaseQuickAdapter<Genre, BaseViewHolder>(R.layout.layout_genre_item, null), LoadMoreModule {
+open class GenreAdapter : SafeBaseQuickAdapter<Genre>(R.layout.layout_genre_item, null) {
 
 
     override fun convert(holder: BaseViewHolder, item: Genre) {

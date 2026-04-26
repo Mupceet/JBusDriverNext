@@ -1,14 +1,9 @@
 package me.jbusdriver.ui.activity
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import androidx.collection.ArrayMap
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.google.gson.JsonObject
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Observable
@@ -37,31 +32,7 @@ class SplashActivity : BaseActivity() {
     }
 
     private fun init() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                startLoadUrls()
-            } else {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    REQUEST_STORAGE
-                )
-            }
-        } else {
-            startLoadUrls()
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_STORAGE) {
-            if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                toast("存储权限未授予，备份功能将不可用")
-            }
-            startLoadUrls()
-        }
+        startLoadUrls()
     }
 
     private fun startLoadUrls() {
@@ -193,7 +164,6 @@ class SplashActivity : BaseActivity() {
     }
 
     companion object {
-        private const val REQUEST_STORAGE = 100
         fun start(context: Context) {
             context.startActivity(Intent(context, SplashActivity::class.java))
         }

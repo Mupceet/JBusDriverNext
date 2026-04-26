@@ -21,8 +21,8 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.BitmapImageViewTarget
 import com.bumptech.glide.request.transition.Transition
 import com.chad.library.adapter.base.BaseQuickAdapter
-import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
+import me.jbusdriver.base.SafeBaseQuickAdapter
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.kotlin.addTo
 import me.jbusdriver.R
@@ -62,7 +62,7 @@ class ActressCollectFragment :
     }
 
     override val adapter: BaseQuickAdapter<CollectLinkWrapper<ActressInfo>, in BaseViewHolder> by lazy {
-        object : BaseQuickAdapter<CollectLinkWrapper<ActressInfo>, BaseViewHolder>(0, null), LoadMoreModule {
+        object : SafeBaseQuickAdapter<CollectLinkWrapper<ActressInfo>>(0, null) {
             private val random = Random()
             private fun randomNum(number: Int) = Math.abs(random.nextInt() % number)
 
