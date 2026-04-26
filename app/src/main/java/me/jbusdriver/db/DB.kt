@@ -16,7 +16,7 @@ object DB {
             JBus,
             JBusDatabase::class.java,
             JBUS_DB_NAME
-        ).apply {
+        ).allowMainThreadQueries().apply {
             if (me.jbusdriver.BuildConfig.DEBUG) {
                 KLog.d("JBusDatabase debug mode enabled")
             }
@@ -33,7 +33,7 @@ object DB {
             context,
             CollectDatabase::class.java,
             COLLECT_DB_NAME
-        ).build()
+        ).allowMainThreadQueries().build()
     }
 
     val historyDao: me.jbusdriver.db.dao.HistoryDao by lazy { jBusDatabase.historyDao() }
