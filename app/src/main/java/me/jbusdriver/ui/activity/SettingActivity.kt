@@ -42,6 +42,9 @@ import me.jbusdriver.ui.data.AppConfiguration
 import me.jbusdriver.ui.task.LoadCollectService
 import java.io.File
 import java.util.concurrent.TimeUnit
+import me.jbusdriver.magnet.Configuration
+import me.jbusdriver.magnet.MagnetManager
+import com.afollestad.materialdialogs.list.listItemsMultiChoice
 
 class SettingActivity : BaseActivity() {
 
@@ -182,7 +185,27 @@ class SettingActivity : BaseActivity() {
     }
 
     private fun loadMagNetConfig() {
-        tvMagnetSource.text = "磁力源配置暂不可用"
+        val allKeys = MagnetManager.getLoaderKeys()
+        tvMagnetSource.text = "已选 ${Configuration.getConfigKeys().size} 个磁力源"
+        tvMagnetSource.setOnClickListener {
+            val currentSelected = Configuration.getConfigKeys()
+            val initialSelection = currentSelected
+                .mapNotNull { allKeys.indexOf(it).takeIf { i -> i >= 0 } }
+                .toIntArray()
+            MaterialDialog(this).show {
+                title(text = "选择磁力源")
+                listItemsMultiChoice(
+                    items = allKeys,
+                    initialSelection = initialSelection
+                ) { _: MaterialDialog, indices: IntArray, _: List<CharSequence> ->
+                    val selected = indices.map { allKeys[it] }
+                    Configuration.saveMagnetKeys(selected)
+                    tvMagnetSource.text = "已选 ${selected.size} 个磁力源"
+                }
+                positiveButton(text = "确定")
+                negativeButton(text = "取消")
+            }
+        }
     }
 
     private fun secondSpannableString(str: String): SpannableString {
