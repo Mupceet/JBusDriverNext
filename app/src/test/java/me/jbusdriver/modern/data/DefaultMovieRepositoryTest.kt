@@ -1,38 +1,53 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.test.runTest
+import me.jbusdriver.modern.data.model.MoviePageResult
+import me.jbusdriver.modern.data.model.PageInfo
+import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.ui.data.enums.DataSourceType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class DefaultMovieRepositoryTest {
+class FakeMovieRepositoryTest {
 
-    private val repository = DefaultMovieRepository()
+    // Tests the MovieRepository interface contract with a fake implementation
+    private val fakeMovies = listOf(
+        Movie("Test Movie 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1"),
+        Movie("Test Movie 2", "http://img2.jpg", "DEF-002", "2024-01-02", "http://link2")
+    )
+
+    private val repository = object : MovieRepository {
+        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
+            MoviePageResult(
+                pageInfo = PageInfo(page, page + 1, listOf(page, page + 1)),
+                movies = fakeMovies
+            )
+    }
 
     @Test
     fun loadPage_returnsMoviePageResult() = runTest {
         val result = repository.loadPage(DataSourceType.CENSORED, 1)
-        assertNotNull(result)
-        assertTrue("Page should have active page >= 0", result.pageInfo.activePage >= 0)
+        assertEquals(2, result.movies.size)
+        assertEquals(1, result.pageInfo.activePage)
+        assertEquals(2, result.pageInfo.nextPage)
     }
 
     @Test
-    fun loadPage_firstPage_returnsMovies() = runTest {
+    fun loadPage_firstPage_returnsMoviesWithRequiredFields() = runTest {
         val result = repository.loadPage(DataSourceType.CENSORED, 1)
-        assertTrue("First page should have movies", result.movies.isNotEmpty())
-        if (result.movies.isNotEmpty()) {
-            val movie = result.movies.first()
-            assertTrue("Movie should have a title", movie.title.isNotBlank())
-            assertTrue("Movie should have a code", movie.code.isNotBlank())
-            assertTrue("Movie should have a link", movie.link.isNotBlank())
-        }
+        assertTrue(result.movies.isNotEmpty())
+        val movie = result.movies.first()
+        assertTrue(movie.title.isNotBlank())
+        assertTrue(movie.code.isNotBlank())
+        assertTrue(movie.link.isNotBlank())
     }
 
     @Test
     fun loadPage_pageInfo_hasCorrectActivePage() = runTest {
         val result = repository.loadPage(DataSourceType.CENSORED, 1)
-        assertEquals("Active page should be 1", 1, result.pageInfo.activePage)
+        assertEquals(1, result.pageInfo.activePage)
+        assertTrue(result.pageInfo.hasNext)
     }
 }
