@@ -104,6 +104,9 @@ dependencies {
     implementation(libs.material.dialogs.files)
     implementation(libs.flexbox)
 
+    // Image Loading
+    implementation(libs.coil.compose)
+
     // Debug
     debugImplementation(libs.leakcanary)
 
