@@ -1,6 +1,8 @@
 package me.jbusdriver.mvp.presenter
 
+import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.schedulers.Schedulers
 import me.jbusdriver.base.*
 import me.jbusdriver.base.mvp.bean.PageInfo
 import me.jbusdriver.base.mvp.bean.ResultPageBean
@@ -76,14 +78,16 @@ abstract class LinkAbsPresenterImpl<T>(val linkData: ILink, private val isHistor
     }
 
     protected open fun addHistory(link: ILink) {
-        DB.historyDao.insert(
-            History(
-                dbType = link.DBtype,
-                createTime = System.currentTimeMillis(),
-                jsonStr = link.toJsonString(),
-                isAll = if (IsAll) 1 else 0
+        Completable.fromAction {
+            DB.historyDao.insert(
+                History(
+                    dbType = link.DBtype,
+                    createTime = System.currentTimeMillis(),
+                    jsonStr = link.toJsonString(),
+                    isAll = if (IsAll) 1 else 0
+                )
             )
-        )
+        }.subscribeOn(Schedulers.io()).subscribe({}, { e -> KLog.w("addHistory error: $e") })
     }
 
     override fun onRefresh() {
