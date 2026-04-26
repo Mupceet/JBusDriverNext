@@ -23,40 +23,10 @@ class HotRecommendPresenterImpl : AbstractRefreshLoadMorePresenterImpl<HotRecomm
     }
 
     override fun loadData4Page(page: Int) {
-/*
-        RecommendService.INSTANCE.recommends(page)
-                .map {
-                    val res = it.getAsJsonObject("result")
-                    val data = res.getAsJsonArray("data").mapNotNull {
-                        it.asString?.let {
-                            val bean = GSON.fromJson<RecommendRespBean>(String(Base64.decode(it, Base64.DEFAULT or Base64.URL_SAFE)))
-                            if (!Uri.parse(bean.key.url).isAbsolute) {
-                                val images = JAVBusService.defaultImageUrlHosts.flatMap { it.value }.map {
-                                    toastlet { c ->
-                                        Glide.with(c).load((it + bean.key.img).toGlideNoHostUrl).submit()
-                                    }
-                                    it + bean.key.img
-                                }.shuffled()
-                                bean.copy(key = bean.key.copy(img = images.firstOrNull()
-                                        ?: bean.key.img, url = JAVBusService.defaultFastUrl + bean.key.url))
-                            } else bean
-                        }
-                    }
-                    val max = res.getAsJsonPrimitive("pages").asInt
-                    lastPage = max
-                    return@map ResultPageBean(PageInfo(page), data)
-                }.doOnTerminate { mView?.dismissLoading() }.compose(SchedulersCompat.io()).subscribe(
-                        {
-                            mView?.showContents(it.data)
-                            mView?.loadMoreEnd()
-                            toasttoast("加载成功！")
-
-                        }, {
-                    it.printStackTrace()
-                }
-                ).addTo(rxManager)
-*/
-
+        mView?.showLoading()
+        mView?.showContents(emptyList<ILink>())
+        mView?.loadMoreEnd(false)
+        mView?.dismissLoading()
     }
 
     override fun onLoadMore() {
