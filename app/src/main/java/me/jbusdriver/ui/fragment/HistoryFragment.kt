@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bumptech.glide.Glide
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import me.jbusdriver.R
 import me.jbusdriver.base.common.AppBaseRecycleFragment
@@ -68,7 +69,7 @@ class HistoryFragment :
     }
 
     override val adapter: BaseQuickAdapter<History, in BaseViewHolder> by lazy {
-        object : BaseQuickAdapter<History, BaseViewHolder>(R.layout.layout_history_item) {
+        object : BaseQuickAdapter<History, BaseViewHolder>(R.layout.layout_history_item), LoadMoreModule {
 
             val linkCache by lazy { ArrayMap<Int, ILink>() }
             val format = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)

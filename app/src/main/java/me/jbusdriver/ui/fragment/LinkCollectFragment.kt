@@ -13,6 +13,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.list.listItems
 import com.afollestad.materialdialogs.list.listItemsSingleChoice
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import me.jbusdriver.R
 import me.jbusdriver.base.common.AppBaseRecycleFragment
@@ -47,7 +48,7 @@ class LinkCollectFragment :
     override val layoutManager: RecyclerView.LayoutManager by lazy { LinearLayoutManager(viewContext) }
 
     override val adapter: BaseQuickAdapter<CollectLinkWrapper<ILink>, in BaseViewHolder> by lazy {
-        object : BaseQuickAdapter<CollectLinkWrapper<ILink>, BaseViewHolder>(0, null) {
+        object : BaseQuickAdapter<CollectLinkWrapper<ILink>, BaseViewHolder>(0, null), LoadMoreModule {
 
             override fun convert(holder: BaseViewHolder, collect: CollectLinkWrapper<ILink>) {
                 when (holder.itemViewType) {

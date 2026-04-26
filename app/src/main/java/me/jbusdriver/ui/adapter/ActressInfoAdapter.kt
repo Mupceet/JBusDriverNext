@@ -8,6 +8,7 @@ import com.afollestad.materialdialogs.list.listItems
 import com.bumptech.glide.request.target.BitmapImageViewTarget
 import com.bumptech.glide.request.transition.Transition
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -26,7 +27,7 @@ import me.jbusdriver.ui.data.contextMenu.LinkMenu
 import java.util.*
 
 class ActressInfoAdapter(val rxManager: CompositeDisposable) :
-    BaseQuickAdapter<ActressInfo, BaseViewHolder>(R.layout.layout_actress_item, null) {
+    BaseQuickAdapter<ActressInfo, BaseViewHolder>(R.layout.layout_actress_item, null), LoadMoreModule {
 
 
     private val random = Random()

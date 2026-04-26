@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.afollestad.materialdialogs.MaterialDialog
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.chad.library.adapter.base.module.LoadMoreModule
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.kotlin.addTo
@@ -51,7 +52,7 @@ class MagnetListFragment : AppBaseRecycleFragment<MagnetListPresenter, MagnetLis
     }
 
     override val adapter: BaseQuickAdapter<Magnet, in BaseViewHolder> by lazy {
-        object : BaseQuickAdapter<Magnet, BaseViewHolder>(R.layout.comp_magnet_layout_magnet_item) {
+        object : BaseQuickAdapter<Magnet, BaseViewHolder>(R.layout.comp_magnet_layout_magnet_item), LoadMoreModule {
 
             override fun convert(holder: BaseViewHolder, item: Magnet) {
                 holder.setText(R.id.comp_magnet_tv_magnet_title, item.name)
