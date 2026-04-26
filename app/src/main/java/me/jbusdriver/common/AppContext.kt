@@ -15,7 +15,7 @@ import java.io.File
 lateinit var JBus: AppContext
 
 
-class AppContext : Application() {
+open class AppContext : Application() {
 
     val JBusServices by lazy { arrayMapof<String, JAVBusService>() }
     private val isDebug by lazy {
