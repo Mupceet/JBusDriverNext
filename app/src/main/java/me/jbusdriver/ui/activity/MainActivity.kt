@@ -111,7 +111,7 @@ class MainActivity : AppBaseActivity<MainContract.MainPresenter, MainContract.Ma
             }
 
             tvAppSetting.setOnClickListener {
-                SettingActivity.start(this@MainActivity)
+                me.jbusdriver.modern.ui.ModernMainActivity.start(this@MainActivity)
                 drawer.closeDrawer(GravityCompat.START)
             }
 
