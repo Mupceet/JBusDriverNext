@@ -146,7 +146,7 @@ class MovieDetailActivity :
             tvMagnet.paintFlags = tvMagnet.paintFlags or Paint.UNDERLINE_TEXT_FLAG
             setOnClickListener {
                 val code = movie?.code?.replace("-", " ") ?: url?.urlPath.orEmpty()
-                toast("Magnet search for: $code")
+                MagnetPagerListActivity.start(this@MovieDetailActivity, code, movie?.link.orEmpty())
             }
         })
         llMovieDetail.addView(actressHolder.view)
