@@ -1,0 +1,65 @@
+package me.jbusdriver.mvp.presenter
+
+import android.app.Activity
+import com.google.gson.JsonObject
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.kotlin.addTo
+import io.reactivex.rxjava3.kotlin.subscribeBy
+import me.jbusdriver.base.*
+import me.jbusdriver.base.common.C
+import me.jbusdriver.base.mvp.presenter.BasePresenterImpl
+import me.jbusdriver.common.KLog
+import me.jbusdriver.http.GitHub
+import me.jbusdriver.mvp.MainContract
+import me.jbusdriver.mvp.bean.NoticeBean
+import me.jbusdriver.mvp.bean.UpdateBean
+
+
+class MainPresenterImpl : BasePresenterImpl<MainContract.MainView>(), MainContract.MainPresenter {
+    override fun onFirstLoad() {
+        super.onFirstLoad()
+        fetchUpdate()
+    }
+
+    private fun fetchUpdate() {
+        Flowable.concat<JsonObject>(
+            CacheLoader.justLru(C.Cache.ANNOUNCE_VALUE).map { GSON.fromJson<JsonObject>(it) },
+            CacheLoader.justDisk(C.Cache.ANNOUNCE_VALUE).map { GSON.fromJson<JsonObject>(it) },
+            GitHub.INSTANCE.announce().addUserCase()
+                .map { GSON.fromJson<JsonObject>(it) }
+                .doOnNext {  CacheLoader.cacheDisk(C.Cache.ANNOUNCE_VALUE to it)}
+        )
+            .firstOrError()
+            .map {
+                Triple(
+                    GSON.fromJson(it.get("update"), UpdateBean::class.java),
+                    GSON.fromJson(it.get("notice"), NoticeBean::class.java),
+                    it.getAsJsonObject("plugins") ?: JsonObject()
+                )
+            }
+            .retry(1)
+            .toFlowable()
+            .compose(SchedulersCompat.io<Triple<UpdateBean, NoticeBean?, JsonObject>>())
+            .subscribeBy(onNext = {
+                mView?.showContent(it.first)
+                mView?.showContent(it.second)
+                if (it.third.size() > 0) {
+                    mView?.viewContext?.let { ctx ->
+                        //检查内部plugin是否需要更新级初始化
+                        // TODO: Direct method call instead of CC
+                        // Original: CC.obtainBuilder(C.Components.PluginManager)
+                        //     .setActionName("plugins.init")
+                        //     .addParam("plugins", it.third)
+                        //     .cancelOnDestroyWith(ctx as? Activity)
+                        //     .build()
+                        //     .callAsync()
+                    }
+
+                }
+            }, onError = {
+                KLog.w("fetchUpdate error ${it.message}")
+            })
+            .addTo(rxManager)
+    }
+
+}

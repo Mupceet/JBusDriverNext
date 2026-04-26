@@ -1,0 +1,61 @@
+package me.jbusdriver.ui.fragment
+
+import android.os.Bundle
+import android.view.View
+import androidx.collection.ArrayMap
+import androidx.fragment.app.Fragment
+import me.jbusdriver.base.CacheLoader
+import me.jbusdriver.base.GSON
+import me.jbusdriver.base.arrayMapof
+import me.jbusdriver.base.common.C
+import me.jbusdriver.base.fromJson
+import me.jbusdriver.base.ui.fragment.TabViewPagerFragment
+import me.jbusdriver.http.JAVBusService
+import me.jbusdriver.mvp.GenrePageContract
+import me.jbusdriver.R
+import me.jbusdriver.mvp.bean.Genre
+import me.jbusdriver.mvp.presenter.GenrePagePresenterImpl
+import me.jbusdriver.ui.data.enums.DataSourceType
+
+class GenrePagesFragment : TabViewPagerFragment<GenrePageContract.GenrePagePresenter, GenrePageContract.GenrePageView>(),
+    GenrePageContract.GenrePageView {
+
+    override val titleValues: MutableList<String> = mutableListOf()
+    override val fragmentValues: MutableList<List<Genre>> = mutableListOf()
+    private val fragmentsBak = mutableListOf<Fragment>()
+
+    override fun createPresenter() =
+        GenrePagePresenterImpl(arguments?.getString(C.BundleKey.Key_1) ?: error("no url for GenrePagesFragment"))
+
+    override val mTitles: List<String>
+        get() = titleValues
+
+    override val mFragments: List<Fragment>
+        get() = fragmentsBak
+
+    override fun initWidget(rootView: View) {
+        // Initialize views but defer setup until data is loaded
+        tabLayout = rootView.findViewById(R.id.tabLayout)
+        vpFragment = rootView.findViewById(R.id.vp_fragment)
+    }
+
+    override fun <T> showContent(data: T?) {
+        require(titleValues.size == fragmentValues.size)
+        fragmentValues.mapTo(fragmentsBak) {
+            GenreListFragment.newInstance(it)
+        }
+        initForViewPager()
+    }
+
+    companion object {
+        fun newInstance(type: DataSourceType) = GenrePagesFragment().apply {
+            val urls =
+                CacheLoader.acache.getAsString(C.Cache.BUS_URLS)?.let { GSON.fromJson<ArrayMap<String, String>>(it) }
+                    ?: arrayMapof()
+            val url = urls[type.key] ?: JAVBusService.defaultFastUrl + "/genre"
+            arguments = Bundle().apply {
+                putString(C.BundleKey.Key_1, url)
+            }
+        }
+    }
+}

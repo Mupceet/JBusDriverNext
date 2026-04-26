@@ -1,0 +1,48 @@
+package me.jbusdriver.ui.activity
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import androidx.appcompat.widget.Toolbar
+import io.reactivex.rxjava3.kotlin.addTo
+import io.reactivex.rxjava3.kotlin.subscribeBy
+import me.jbusdriver.R
+import me.jbusdriver.common.RxBus
+import me.jbusdriver.base.common.BaseActivity
+import me.jbusdriver.base.common.C
+import me.jbusdriver.mvp.bean.SearchWord
+import me.jbusdriver.ui.fragment.SearchResultPagesFragment
+
+class SearchResultActivity : BaseActivity() {
+
+    private val searchWord by lazy { intent.getStringExtra(C.BundleKey.Key_1) ?: error("must set search word") }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_search_result)
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        setTitle(searchWord)
+        //go to SearchResultPagesFragment
+        supportFragmentManager.beginTransaction().replace(R.id.fl_search_pages, SearchResultPagesFragment().apply {
+            arguments = Bundle().apply { putString(C.BundleKey.Key_1, searchWord) }
+        }).commit()
+
+        RxBus.toFlowable(SearchWord::class.java).subscribeBy {
+            setTitle(it.query)
+        }.addTo(rxManager)
+    }
+
+    private fun setTitle(title: String) {
+        supportActionBar?.title = "$title 的搜索结果"
+    }
+
+    companion object {
+        fun start(context: Context, searchWord: String) {
+            context.startActivity(Intent(context, SearchResultActivity::class.java).apply {
+                putExtra(C.BundleKey.Key_1, searchWord)
+            })
+        }
+    }
+}
