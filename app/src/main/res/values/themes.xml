@@ -9,7 +9,7 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
     </style>
 
-    <style name="Theme.JBus" parent="AppTheme" />
+    <style name="Theme.JBus" parent="Theme.JBus.NoActionBar" />
 
     <style name="Theme.JBus.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/white</item>
