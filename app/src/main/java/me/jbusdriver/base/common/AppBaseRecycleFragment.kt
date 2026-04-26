@@ -31,7 +31,7 @@ abstract class AppBaseRecycleFragment<P : BasePresenter.BaseRefreshLoadMorePrese
     }
 
     override fun initWidget(rootView: View) {
-        recycleView.layoutManager = layoutManager
+        recycleView.layoutManager = layoutManager.also { it.isItemPrefetchEnabled = false }
         recycleView.adapter = adapter
 
         swipeView?.setColorSchemeResources(R.color.colorPrimary, R.color.colorPrimaryDark, R.color.colorPrimaryLight)
