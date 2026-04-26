@@ -57,6 +57,9 @@ class SplashActivity : BaseActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_STORAGE) {
+            if (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                toast("存储权限未授予，备份功能将不可用")
+            }
             startLoadUrls()
         }
     }
