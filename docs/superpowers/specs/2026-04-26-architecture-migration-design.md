@@ -154,17 +154,17 @@ interface SettingsRepository {
 1. Hilt infrastructure (Application, NetworkModule, DatabaseModule, DataModule)
 2. Settings screen (ViewModel + Repository + Compose + Navigation)
 
-### Phase 2: Data Layer Screens
-3. History screen (simple list + Room DB, Repository → Flow pattern)
-4. Collection screen (My Collection — multi-DAO, validates database module)
+### Phase 2: Paginated Content Lists
+3. Movie list screen (Home — pagination, Jsoup parsing, caching)
+4. Actress list / Genre list (reuse pagination pattern from #5)
 
-### Phase 3: Paginated Content Lists
-5. Movie list screen (Home — pagination, Jsoup parsing, caching)
-6. Actress list / Genre list (reuse pagination pattern from #5)
+### Phase 3: Detail & Search
+5. Movie detail screen (complex layout, linked data, magnets)
+6. Search screen (cross-source search)
 
-### Phase 4: Detail & Search
-7. Movie detail screen (complex layout, linked data, magnets)
-8. Search screen (cross-source search)
+### Phase 4: Data Layer Screens
+7. History screen (simple list + Room DB, Repository → Flow pattern)
+8. Collection screen (My Collection — multi-DAO, validates database module)
 
 ### Phase 5: Navigation & Cleanup
 9. Replace DrawerLayout + fragment show/hide with Compose Navigation
