@@ -10,7 +10,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "me.jbusdriver"
+        applicationId = "me.jbus"
         minSdk = 28
         targetSdk = 36
         versionCode = 1
@@ -79,7 +79,7 @@ dependencies {
 
     // Image
     implementation(libs.glide)
-    ksp(libs.glide.compiler)
+    ksp(libs.glide.ksp)
     implementation(libs.glide.okhttp)
     implementation(libs.photoview)
     implementation(libs.materialprogressbar)
