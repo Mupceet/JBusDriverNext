@@ -1,5 +1,6 @@
 package me.jbusdriver.mvp.bean
 
+import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
 import org.jsoup.nodes.Document
 import java.util.Collections.emptyList
@@ -7,6 +8,7 @@ import java.util.Collections.emptyList
 /**
  * Created by Administrator on 2017/4/16.
  */
+@Immutable
 data class Movie(
     val title: String,
     val imageUrl: String,

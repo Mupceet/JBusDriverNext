@@ -11,7 +11,7 @@ import org.jsoup.nodes.Document
 fun parseMovieDetails(doc: Document): MovieDetail {
     val roeMovie = doc.select("[class=row movie]")
     val title = doc.select(".container h3").text()
-    val cover = roeMovie.select(".bigImage").attr("href")
+    val cover = roeMovie.select(".bigImage").attr("href").wrapImage()
 
     val headers = mutableListOf<Header>()
     val headersContainer = roeMovie.select(".info")
@@ -91,4 +91,8 @@ fun parseActressList(doc: Document): List<ActressInfo> {
     } ?: emptyList()
 }
 
-fun String.wrapImage() = if (this.startsWith("http")) this else JAVBusService.defaultFastUrl + this
+fun String.wrapImage() = when {
+    this.startsWith("http") -> this
+    this.startsWith("//") -> "https:$this"
+    else -> JAVBusService.defaultFastUrl + this
+}

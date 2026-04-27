@@ -1,5 +1,6 @@
 package me.jbusdriver.mvp.bean
 
+import androidx.compose.runtime.Immutable
 import me.jbusdriver.base.urlHost
 import java.io.Serializable
 
@@ -7,6 +8,7 @@ import java.io.Serializable
  * Created by Administrator on 2017/4/16.
  */
 
+@Immutable
 data class MovieDetail(
     val title: String,
     val content: String,
@@ -29,16 +31,19 @@ data class MovieDetail(
 interface IAttr : Serializable
 
 
+@Immutable
 data class Header(val name: String, val value: String, override val link: String) : ILink {
     @Transient
     override var categoryId: Int = LinkCategory.id ?: 10
 }
 
+@Immutable
 data class Genre(val name: String, override val link: String) : ILink {
     @Transient
     override var categoryId: Int = LinkCategory.id ?: 10
 }
 
+@Immutable
 data class ActressInfo(
     val name: String,
     val avatar: String,
@@ -54,6 +59,7 @@ data class ActressInfo(
 
 }
 
+@Immutable
 data class ImageSample(val title: String, val thumb: String, val image: String)
 
 data class ActressAttrs(val title: String, val imageUrl: String, val info: List<String>) : IAttr
