@@ -52,11 +52,6 @@ val CategoryGroups = listOf(
         SubCategory("女优", DataSourceType.UNCENSORED_ACTRESSES),
         SubCategory("类别", DataSourceType.UNCENSORED_GENRE),
     )),
-    CategoryGroup("欧美", listOf(
-        SubCategory("电影", DataSourceType.XYZ),
-        SubCategory("演员", DataSourceType.XYZ_ACTRESSES),
-        SubCategory("类别", DataSourceType.XYZ_GENRE),
-    )),
     CategoryGroup("高清", listOf(
         SubCategory("电影", DataSourceType.GENRE_HD),
     )),
