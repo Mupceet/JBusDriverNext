@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
@@ -45,7 +46,7 @@ fun ImageViewScreen(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .zoomable(rememberZoomableState())
+                    .zoomable(rememberZoomableState(zoomSpec=ZoomSpec(maxZoomFactor = 3f)))
             )
         }
 
