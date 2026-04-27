@@ -106,6 +106,7 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+    implementation(libs.telephoto.zoomable.image)
 
     // Debug
     debugImplementation(libs.leakcanary)
