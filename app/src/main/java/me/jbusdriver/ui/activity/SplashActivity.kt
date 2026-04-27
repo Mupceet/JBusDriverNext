@@ -46,7 +46,7 @@ class SplashActivity : BaseActivity() {
             .doFinally {
                 postMain {
                     toast("load url : ${JAVBusService.defaultFastUrl}")
-                    MainActivity.start(this)
+                    me.jbusdriver.modern.ui.ModernMainActivity.start(this)
                     finish()
                 }.addTo(rxManager)
             }
