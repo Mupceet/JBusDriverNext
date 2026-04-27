@@ -38,12 +38,11 @@ class MovieListViewModel @Inject constructor(
     private var dataSourceType: DataSourceType = DataSourceType.CENSORED
 
     fun setDataSourceType(type: DataSourceType) {
-        if (dataSourceType != type) {
-            dataSourceType = type
-            currentPage = 0
-            _uiState.value = MovieListUiState()
-            loadFirstPage()
-        }
+        if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) return
+        dataSourceType = type
+        currentPage = 0
+        _uiState.value = MovieListUiState()
+        loadFirstPage()
     }
 
     fun loadFirstPage() {

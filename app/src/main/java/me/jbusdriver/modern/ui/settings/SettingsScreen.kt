@@ -19,9 +19,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,56 +30,50 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import me.jbusdriver.ui.activity.SettingActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("设置") })
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "数据源",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        UrlSelector(
+            currentUrl = uiState.baseUrl,
+            availableUrls = uiState.availableUrls,
+            isUpdating = uiState.isUpdating,
+            onUrlSelected = { viewModel.updateUrl(it) }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        Text(
+            text = "其他设置",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Button(
+            onClick = {
+                context.startActivity(Intent(context, SettingActivity::class.java))
+            },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "数据源",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            UrlSelector(
-                currentUrl = uiState.baseUrl,
-                availableUrls = uiState.availableUrls,
-                isUpdating = uiState.isUpdating,
-                onUrlSelected = { viewModel.updateUrl(it) }
-            )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            Text(
-                text = "其他设置",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            Button(
-                onClick = {
-                    context.startActivity(Intent(context, SettingActivity::class.java))
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("更多设置（旧版）")
-            }
+            Text("更多设置（旧版）")
         }
     }
 }
