@@ -25,6 +25,7 @@ interface MovieRepository {
     suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean = false): MoviePageResult
     suspend fun loadActresses(type: DataSourceType, page: Int): Pair<List<ActressInfo>, PageInfo>
     suspend fun loadGenreCategories(type: DataSourceType): List<GenreCategory>
+    suspend fun loadPageByUrl(url: String, page: Int): MoviePageResult
 }
 
 @Singleton
@@ -59,7 +60,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
                 DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
                 else -> JAVBusService.defaultFastUrl + "/actresses"
             }
-        val url = if (page == 1) baseUrl else "$baseUrl/page/$page"
+        val url = if (page == 1) baseUrl else "$baseUrl/$page"
 
         val html = fetchHtml(url)
         val doc = Jsoup.parse(html)
@@ -89,6 +90,15 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         return titles.zip(genreLists).map { (title, genres) ->
             GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
         }
+    }
+
+    override suspend fun loadPageByUrl(url: String, page: Int): MoviePageResult {
+        val fullUrl = if (page == 1) url else "$url/$page"
+        val html = fetchHtml(fullUrl)
+        val doc = Jsoup.parse(html)
+        val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+        val movies = loadMovieFromDoc(doc)
+        return MoviePageResult(pageInfo, movies)
     }
 
     private suspend fun fetchHtml(url: String, showAll: Boolean = false): String {

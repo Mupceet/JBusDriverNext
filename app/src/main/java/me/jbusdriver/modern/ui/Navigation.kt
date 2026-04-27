@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
+import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import java.net.URLDecoder
 
 private const val ANIM_DURATION = 300
@@ -31,6 +32,12 @@ fun JBusNavigation(
             MainScreen(
                 onMovieClick = { movie ->
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
+                },
+                onActressClick = { actress ->
+                    navController.navigate(NavigationKeys.linkMovies(actress.link, actress.name))
+                },
+                onGenreClick = { genre ->
+                    navController.navigate(NavigationKeys.linkMovies(genre.link, genre.name))
                 }
             )
         }
@@ -64,6 +71,23 @@ fun JBusNavigation(
                 images = images,
                 startIndex = startIndex,
                 onBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = NavigationKeys.ROUTE_LINK_MOVIES,
+            arguments = listOf(
+                navArgument("linkUrl") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { backStackEntry ->
+            val linkUrl = URLDecoder.decode(backStackEntry.arguments?.getString("linkUrl") ?: "", "UTF-8")
+            val title = URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
+            LinkMovieListScreen(
+                linkUrl = linkUrl,
+                title = title,
+                onMovieClick = { movie ->
+                    navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
+                }
             )
         }
     }
