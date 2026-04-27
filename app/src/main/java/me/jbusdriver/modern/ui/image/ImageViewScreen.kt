@@ -2,7 +2,12 @@ package me.jbusdriver.modern.ui.image
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -50,20 +55,30 @@ fun ImageViewScreen(
             )
         }
 
-        TopAppBar(
-            title = {
-                Text(
-                    "${pagerState.currentPage + 1} / ${images.size}",
-                    color = Color.White
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .statusBarsPadding()
+        ) {
+            TopAppBar(
+                title = {
+                    Text(
+                        "${pagerState.currentPage + 1} / ${images.size}",
+                        color = Color.White
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    navigationIconContentColor = Color.White,
+                    titleContentColor = Color.White
                 )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+            )
+        }
     }
 }
