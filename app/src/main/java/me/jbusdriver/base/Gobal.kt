@@ -7,13 +7,14 @@ import androidx.collection.LruCache
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializer
 import java.io.File
+import java.lang.reflect.Modifier.STATIC
 import java.lang.reflect.Modifier.TRANSIENT
 import java.util.*
 
 private const val TAG = "Gobal"
 
 val GSON by lazy {
-    GsonBuilder().excludeFieldsWithModifiers(TRANSIENT)
+    GsonBuilder().excludeFieldsWithModifiers(TRANSIENT, STATIC)
         .registerTypeAdapter(Int::class.java, JsonDeserializer<Int> { json, _, _ ->
             if (json.isJsonNull || json.asString.isEmpty()) {
                 return@JsonDeserializer null

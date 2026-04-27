@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,7 +70,7 @@ fun MovieListScreen(
                 }
 
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    items(uiState.movies, key = { it.link }) { movie ->
+                    itemsIndexed(uiState.movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                         MovieItem(
                             movie = movie,
                             onClick = { onMovieClick(movie) }
