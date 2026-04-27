@@ -8,9 +8,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
-import me.jbusdriver.modern.ui.movielist.MovieListScreen
-import me.jbusdriver.modern.ui.search.SearchScreen
-import me.jbusdriver.modern.ui.settings.SettingsScreen
 import java.net.URLDecoder
 
 @Composable
@@ -19,10 +16,10 @@ fun JBusNavigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = NavigationKeys.ROUTE_MOVIE_LIST
+        startDestination = NavigationKeys.ROUTE_MAIN
     ) {
-        composable(NavigationKeys.ROUTE_MOVIE_LIST) {
-            MovieListScreen(
+        composable(NavigationKeys.ROUTE_MAIN) {
+            MainScreen(
                 onMovieClick = { movie ->
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
                 }
@@ -40,16 +37,6 @@ fun JBusNavigation(
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
                 }
             )
-        }
-        composable(NavigationKeys.ROUTE_SEARCH) {
-            SearchScreen(
-                onMovieClick = { movie ->
-                    navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
-                }
-            )
-        }
-        composable(NavigationKeys.ROUTE_SETTINGS) {
-            SettingsScreen()
         }
     }
 }
