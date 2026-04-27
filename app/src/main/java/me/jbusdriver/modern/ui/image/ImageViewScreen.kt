@@ -3,7 +3,6 @@ package me.jbusdriver.modern.ui.image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -27,13 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import coil.compose.AsyncImage
-import kotlin.math.abs
 import kotlin.math.hypot
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,6 +71,13 @@ fun ImageViewScreen(
     }
 }
 
+/**
+ * Zoom behavior matching MVP's PhotoView:
+ * - Pinch zooms from display center (offset stays 0,0 during zoom)
+ * - When zoomed in (scale > 1): single-finger drag pans image, all events consumed
+ * - When scale == 1: all events pass to pager for page swiping
+ * - Zoom out below 1f snaps back to 1f
+ */
 @Composable
 private fun ZoomableImage(imageUrl: String) {
     var scale by remember { mutableFloatStateOf(1f) }
@@ -81,8 +85,8 @@ private fun ZoomableImage(imageUrl: String) {
     var offsetY by remember { mutableFloatStateOf(0f) }
     var layoutSize by remember { mutableStateOf(IntSize.Zero) }
 
-    fun maxX() = (layoutSize.width * (scale - 1f)) / 2f
-    fun maxY() = (layoutSize.height * (scale - 1f)) / 2f
+    fun calcMaxX() = (layoutSize.width * (scale - 1f)) / 2f
+    fun calcMaxY() = (layoutSize.height * (scale - 1f)) / 2f
 
     AsyncImage(
         model = imageUrl,
@@ -97,91 +101,67 @@ private fun ZoomableImage(imageUrl: String) {
 
                     var prevPinchDist = 0f
                     var prevDragPos = Offset.Zero
-                    var isPinching = false
-                    var isDragging = false
+                    var wasZoomed = scale > 1.01f
 
                     do {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
+                        val event = awaitPointerEvent()
                         val pointers = event.changes.filter { it.pressed }
 
                         when {
                             pointers.size >= 2 -> {
-                                // --- Pinch to zoom ---
-                                isPinching = true
-                                isDragging = false
+                                // Pinch to zoom — consume all, zoom from center
                                 pointers.forEach { it.consume() }
+                                prevPinchDist // keep drag state reset
 
                                 val p0 = pointers[0].position
                                 val p1 = pointers[1].position
                                 val dist = hypot(p1.x - p0.x, p1.y - p0.y)
-                                val centroid = Offset((p0.x + p1.x) / 2f, (p0.y + p1.y) / 2f)
 
                                 if (prevPinchDist > 1f) {
-                                    val zoom = dist / prevPinchDist
-                                    val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                    val newScale = (scale * (dist / prevPinchDist)).coerceIn(1f, 5f)
+                                    // Keep center fixed: adjust offset so center stays at center
                                     val ratio = newScale / scale
-
-                                    // Keep centroid fixed: offset from center adjusted by scale ratio
-                                    val cx = centroid.x - layoutSize.width / 2f
-                                    val cy = centroid.y - layoutSize.height / 2f
-                                    offsetX = cx * (1f - ratio) + offsetX * ratio
-                                    offsetY = cy * (1f - ratio) + offsetY * ratio
-
+                                    offsetX *= ratio
+                                    offsetY *= ratio
                                     scale = newScale
-                                    offsetX = offsetX.coerceIn(-maxX(), maxX())
-                                    offsetY = offsetY.coerceIn(-maxY(), maxY())
-
-                                    if (scale <= 1.001f) {
-                                        scale = 1f; offsetX = 0f; offsetY = 0f
-                                    }
+                                    // Clamp after scaling
+                                    offsetX = offsetX.coerceIn(-calcMaxX(), calcMaxX())
+                                    offsetY = offsetY.coerceIn(-calcMaxY(), calcMaxY())
                                 }
                                 prevPinchDist = dist
+                                wasZoomed = true
                             }
 
-                            pointers.size == 1 && !isPinching -> {
+                            pointers.size == 1 -> {
                                 val change = pointers[0]
-
                                 if (scale > 1.01f) {
-                                    // --- Zoomed in: pan image, hand off to pager at edges ---
-                                    if (!isDragging) {
-                                        isDragging = true
+                                    // Zoomed in: pan image, consume ALL events
+                                    if (!wasZoomed && prevDragPos == Offset.Zero) {
                                         prevDragPos = change.position
-                                    } else {
-                                        val dx = change.position.x - prevDragPos.x
-                                        val dy = change.position.y - prevDragPos.y
-                                        prevDragPos = change.position
-
-                                        // Always pan vertically when zoomed in
-                                        offsetY = (offsetY + dy).coerceIn(-maxY(), maxY())
-
-                                        // Pan horizontally; check if at edge BEFORE this drag
-                                        val mx = maxX()
-                                        val atRightEdge = offsetX >= mx - 0.5f && dx > 0
-                                        val atLeftEdge = offsetX <= -mx + 0.5f && dx < 0
-
-                                        if (!atRightEdge && !atLeftEdge) {
-                                            offsetX = (offsetX + dx).coerceIn(-mx, mx)
-                                            change.consume()
-                                        } else {
-                                            // At edge: don't consume horizontal → pager handles swipe
-                                            offsetX = (offsetX + dx).coerceIn(-mx, mx)
-                                        }
+                                        wasZoomed = true
                                     }
+                                    val dx = change.position.x - prevDragPos.x
+                                    val dy = change.position.y - prevDragPos.y
+                                    prevDragPos = change.position
+                                    offsetX = (offsetX + dx).coerceIn(-calcMaxX(), calcMaxX())
+                                    offsetY = (offsetY + dy).coerceIn(-calcMaxY(), calcMaxY())
+                                    change.consume()
+                                } else {
+                                    // Not zoomed: pass to pager, reset state
+                                    wasZoomed = false
+                                    prevDragPos = Offset.Zero
                                 }
-                                // scale == 1: don't consume, pager handles everything
                             }
-
-                            else -> {
-                                isPinching = false
-                                isDragging = false
-                                prevPinchDist = 0f
-                                if (scale <= 1.01f) { scale = 1f; offsetX = 0f; offsetY = 0f }
-                            }
+                            // else: no active pointers, loop will end
                         }
                     } while (event.changes.any { it.pressed })
 
-                    // Gesture ended: snap to 1x if barely zoomed
-                    if (scale <= 1.01f) { scale = 1f; offsetX = 0f; offsetY = 0f }
+                    // Snap to 1x if close
+                    if (scale <= 1.01f) {
+                        scale = 1f; offsetX = 0f; offsetY = 0f
+                    }
+                    prevPinchDist = 0f
+                    prevDragPos = Offset.Zero
                 }
             }
             .graphicsLayer {
