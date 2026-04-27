@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
+import me.jbusdriver.mvp.bean.ActressInfo
 import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.ui.data.enums.SearchType
 import org.junit.After
@@ -42,7 +43,7 @@ class SearchViewModelTest {
         val repository = object : SearchRepository {
             override suspend fun searchMovies(type: SearchType, query: String, page: Int) =
                 MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
-            override suspend fun searchActresses(query: String, page: Int) =
+            override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
         val viewModel = SearchViewModel(repository)
@@ -61,7 +62,7 @@ class SearchViewModelTest {
         val repository = object : SearchRepository {
             override suspend fun searchMovies(type: SearchType, query: String, page: Int) =
                 throw RuntimeException("Search failed")
-            override suspend fun searchActresses(query: String, page: Int) =
+            override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
         val viewModel = SearchViewModel(repository)

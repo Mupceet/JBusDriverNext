@@ -3,6 +3,7 @@ package me.jbusdriver.modern.data
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.jbusdriver.base.CacheLoader
 import me.jbusdriver.base.GSON
+import me.jbusdriver.base.fromJson
 import me.jbusdriver.base.urlPath
 import me.jbusdriver.http.JAVBusService
 import me.jbusdriver.mvp.bean.MovieDetail

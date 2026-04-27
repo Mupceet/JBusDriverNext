@@ -47,7 +47,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         return pageInfo to actresses
     }
 
-    private fun fetchHtml(url: String): String = suspendCancellableCoroutine { cont ->
+    private suspend fun fetchHtml(url: String): String = suspendCancellableCoroutine { cont ->
         val disposable = JAVBusService.INSTANCE.get(url)
             .subscribe(
                 { html -> cont.resumeWith(Result.success(html)) },
