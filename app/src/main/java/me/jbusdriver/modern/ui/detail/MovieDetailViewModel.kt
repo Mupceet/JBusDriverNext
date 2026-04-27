@@ -8,16 +8,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.magnet.Magnet
+import me.jbusdriver.magnet.MagnetManager
 import me.jbusdriver.modern.data.MovieDetailRepository
+import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.toUiModel
+import org.json.JSONArray
 import javax.inject.Inject
 
 data class MovieDetailUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val movieDetail: MovieDetailUiModel? = null,
-    val error: String? = null
+    val error: String? = null,
+    val magnets: List<MagnetUiModel> = emptyList(),
+    val isLoadingMagnets: Boolean = false,
+    val magnetsError: String? = null,
+    val hasMoreMagnets: Boolean = true
 )
 
 @HiltViewModel
@@ -29,6 +37,8 @@ class MovieDetailViewModel @Inject constructor(
     val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
 
     private var currentUrl: String = ""
+    private var magnetPage: Int = 0
+    private var magnetKeyword: String = ""
 
     fun loadDetail(url: String) {
         if (_uiState.value.isLoading) return
@@ -54,6 +64,62 @@ class MovieDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, error = e.message) }
             }
+        }
+    }
+
+    fun loadMagnets() {
+        val detail = _uiState.value.movieDetail ?: return
+        val keyword = detail.headers.firstOrNull()?.value?.trim() ?: return
+        if (_uiState.value.isLoadingMagnets) return
+
+        magnetKeyword = keyword
+        magnetPage = 1
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
+            try {
+                val magnets = fetchMagnets(keyword, 1)
+                _uiState.update {
+                    it.copy(
+                        magnets = magnets,
+                        isLoadingMagnets = false,
+                        hasMoreMagnets = MagnetManager.hasNext("default")
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = e.message) }
+            }
+        }
+    }
+
+    fun loadMoreMagnets() {
+        if (_uiState.value.isLoadingMagnets || !_uiState.value.hasMoreMagnets) return
+        magnetPage++
+        viewModelScope.launch {
+            try {
+                val more = fetchMagnets(magnetKeyword, magnetPage)
+                _uiState.update {
+                    it.copy(
+                        magnets = it.magnets + more,
+                        hasMoreMagnets = MagnetManager.hasNext("default")
+                    )
+                }
+            } catch (e: Exception) {
+                magnetPage--
+            }
+        }
+    }
+
+    private fun fetchMagnets(keyword: String, page: Int): List<MagnetUiModel> {
+        val json = MagnetManager.getMagnets("default", keyword, page)
+        val arr = JSONArray(json)
+        return (0 until arr.length()).mapNotNull { i ->
+            val obj = arr.optJSONObject(i) ?: return@mapNotNull null
+            Magnet(
+                name = obj.optString("name", ""),
+                size = obj.optString("size", ""),
+                date = obj.optString("date", ""),
+                link = obj.optString("link", "")
+            ).toUiModel()
         }
     }
 

@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui
 
 import androidx.compose.runtime.Immutable
+import me.jbusdriver.magnet.Magnet
 import me.jbusdriver.mvp.bean.ActressInfo
 import me.jbusdriver.mvp.bean.Genre
 import me.jbusdriver.mvp.bean.Header
@@ -41,6 +42,9 @@ data class ActressUiModel(val name: String, val avatar: String, val link: String
 @Immutable
 data class ImageSampleUiModel(val title: String, val thumb: String, val image: String)
 
+@Immutable
+data class MagnetUiModel(val name: String, val size: String, val date: String, val link: String)
+
 fun Movie.toUiModel() = MovieUiModel(title, imageUrl, code, date, link)
 
 fun MovieDetail.toUiModel() = MovieDetailUiModel(
@@ -53,3 +57,7 @@ fun MovieDetail.toUiModel() = MovieDetailUiModel(
     imageSamples = imageSamples.map { ImageSampleUiModel(it.title, it.thumb, it.image) },
     relatedMovies = relatedMovies.map { it.toUiModel() }
 )
+
+fun Magnet.toUiModel() = MagnetUiModel(name, size, date, link)
+
+fun ActressInfo.toActressUiModel() = ActressUiModel(name, avatar, link)

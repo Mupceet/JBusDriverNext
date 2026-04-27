@@ -26,6 +26,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.jbusdriver.modern.ui.movielist.ActressListScreen
+import me.jbusdriver.modern.ui.movielist.GenreListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.settings.SettingsScreen
@@ -60,10 +62,22 @@ val CategoryGroups = listOf(
     )),
 )
 
+private val actressTypes = setOf(
+    DataSourceType.ACTRESSES,
+    DataSourceType.UNCENSORED_ACTRESSES
+)
+
+private val genreTypes = setOf(
+    DataSourceType.GENRE,
+    DataSourceType.UNCENSORED_GENRE
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    onMovieClick: (MovieUiModel) -> Unit
+    onMovieClick: (MovieUiModel) -> Unit,
+    onActressClick: (ActressUiModel) -> Unit = {},
+    onGenreClick: (GenreUiModel) -> Unit = {}
 ) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedCategoryIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -151,12 +165,25 @@ fun MainScreen(
                         }
                     }
 
-                    // Movie list
-                    MovieListScreen(
-                        dataSourceType = currentSubCategory.dataSourceType,
-                        onMovieClick = onMovieClick,
-                        modifier = Modifier.weight(1f)
-                    )
+                    // Route to correct screen based on data source type
+                    val dsType = currentSubCategory.dataSourceType
+                    when {
+                        dsType in actressTypes -> ActressListScreen(
+                            dataSourceType = dsType,
+                            onActressClick = onActressClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                        dsType in genreTypes -> GenreListScreen(
+                            dataSourceType = dsType,
+                            onGenreClick = onGenreClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                        else -> MovieListScreen(
+                            dataSourceType = dsType,
+                            onMovieClick = onMovieClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
             1 -> SearchScreen(
