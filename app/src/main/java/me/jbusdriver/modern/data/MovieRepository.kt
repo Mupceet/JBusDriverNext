@@ -54,12 +54,12 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     }
 
     override suspend fun loadActresses(type: DataSourceType, page: Int): Pair<List<ActressInfo>, PageInfo> {
-        val suffix = when (type) {
-            DataSourceType.UNCENSORED_ACTRESSES -> "/uncensored/actresses"
-            else -> "/actresses"
-        }
-        val baseUrl = urls?.get(type.key) ?: JAVBusService.defaultFastUrl
-        val url = if (page == 1) "$baseUrl$suffix" else "$baseUrl$suffix/page/$page"
+        val baseUrl = urls?.get(type.key)
+            ?: when (type) {
+                DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
+                else -> JAVBusService.defaultFastUrl + "/actresses"
+            }
+        val url = if (page == 1) baseUrl else "$baseUrl/page/$page"
 
         val html = fetchHtml(url)
         val doc = Jsoup.parse(html)
@@ -70,12 +70,12 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     }
 
     override suspend fun loadGenreCategories(type: DataSourceType): List<GenreCategory> {
-        val suffix = when (type) {
-            DataSourceType.UNCENSORED_GENRE -> "/uncensored/genre"
-            else -> "/genre"
-        }
-        val baseUrl = urls?.get(type.key) ?: JAVBusService.defaultFastUrl
-        val url = "$baseUrl$suffix"
+        val baseUrl = urls?.get(type.key)
+            ?: when (type) {
+                DataSourceType.UNCENSORED_GENRE -> JAVBusService.defaultFastUrl + "/uncensored/genre"
+                else -> JAVBusService.defaultFastUrl + "/genre"
+            }
+        val url = baseUrl
 
         val html = fetchHtml(url)
         val doc = Jsoup.parse(html)
