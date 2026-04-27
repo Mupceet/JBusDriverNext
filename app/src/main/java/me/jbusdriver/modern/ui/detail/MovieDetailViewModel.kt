@@ -9,13 +9,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieDetailRepository
-import me.jbusdriver.mvp.bean.MovieDetail
+import me.jbusdriver.modern.ui.MovieDetailUiModel
+import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
 data class MovieDetailUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val movieDetail: MovieDetail? = null,
+    val movieDetail: MovieDetailUiModel? = null,
     val error: String? = null
 )
 
@@ -36,7 +37,7 @@ class MovieDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val detail = repository.getMovieDetail(url)
-                _uiState.update { it.copy(movieDetail = detail, isLoading = false) }
+                _uiState.update { it.copy(movieDetail = detail.toUiModel(), isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
             }
@@ -49,7 +50,7 @@ class MovieDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val detail = repository.getMovieDetail(currentUrl)
-                _uiState.update { it.copy(movieDetail = detail, isRefreshing = false) }
+                _uiState.update { it.copy(movieDetail = detail.toUiModel(), isRefreshing = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, error = e.message) }
             }

@@ -31,13 +31,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.movielist.MovieItem
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.ui.data.enums.SearchType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    onMovieClick: (Movie) -> Unit = {},
+    onMovieClick: (MovieUiModel) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

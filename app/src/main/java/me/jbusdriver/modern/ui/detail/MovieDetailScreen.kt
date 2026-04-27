@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -43,20 +42,19 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import me.jbusdriver.mvp.bean.ActressInfo
-import me.jbusdriver.mvp.bean.Genre
-import me.jbusdriver.mvp.bean.Header
-import me.jbusdriver.mvp.bean.ImageSample
-import me.jbusdriver.mvp.bean.Movie
-import me.jbusdriver.mvp.bean.MovieDetail
+import me.jbusdriver.modern.ui.ActressUiModel
+import me.jbusdriver.modern.ui.GenreUiModel
+import me.jbusdriver.modern.ui.ImageSampleUiModel
+import me.jbusdriver.modern.ui.MovieDetailUiModel
+import me.jbusdriver.modern.ui.MovieUiModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieDetailScreen(
     movieUrl: String,
-    onMovieClick: (Movie) -> Unit = {},
-    onActressClick: (ActressInfo) -> Unit = {},
-    onGenreClick: (Genre) -> Unit = {},
+    onMovieClick: (MovieUiModel) -> Unit = {},
+    onActressClick: (ActressUiModel) -> Unit = {},
+    onGenreClick: (GenreUiModel) -> Unit = {},
     onImageClick: (List<String>, Int) -> Unit = { _, _ -> },
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
@@ -114,11 +112,11 @@ fun MovieDetailScreen(
 
 @Composable
 private fun DetailContent(
-    detail: MovieDetail,
+    detail: MovieDetailUiModel,
     padding: PaddingValues,
-    onMovieClick: (Movie) -> Unit,
-    onActressClick: (ActressInfo) -> Unit,
-    onGenreClick: (Genre) -> Unit,
+    onMovieClick: (MovieUiModel) -> Unit,
+    onActressClick: (ActressUiModel) -> Unit,
+    onGenreClick: (GenreUiModel) -> Unit,
     onImageClick: (List<String>, Int) -> Unit
 ) {
     Column(
@@ -202,8 +200,8 @@ private fun DetailContent(
         }
 
         // Actresses
-        if (detail.actress.isNotEmpty()) {
-            ActressSection(actresses = detail.actress, onActressClick = onActressClick)
+        if (detail.actresses.isNotEmpty()) {
+            ActressSection(actresses = detail.actresses, onActressClick = onActressClick)
         }
 
         // Related Movies
@@ -215,7 +213,7 @@ private fun DetailContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun GenreSection(genres: List<Genre>, onGenreClick: (Genre) -> Unit) {
+private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel) -> Unit) {
     Column {
         Text("类别", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
@@ -232,7 +230,7 @@ private fun GenreSection(genres: List<Genre>, onGenreClick: (Genre) -> Unit) {
 
 @Composable
 private fun ImageSampleSection(
-    samples: List<ImageSample>,
+    samples: List<ImageSampleUiModel>,
     onImageClick: (List<String>, Int) -> Unit
 ) {
     Column {
@@ -260,12 +258,13 @@ private fun ImageSampleSection(
 }
 
 @Composable
-private fun ActressSection(actresses: List<ActressInfo>, onActressClick: (ActressInfo) -> Unit) {
+private fun ActressSection(actresses: List<ActressUiModel>, onActressClick: (ActressUiModel) -> Unit) {
     Column {
         Text("演员", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(actresses) { actress ->
+            items(actresses.size) { index ->
+                val actress = actresses[index]
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { onActressClick(actress) }
@@ -293,12 +292,13 @@ private fun ActressSection(actresses: List<ActressInfo>, onActressClick: (Actres
 }
 
 @Composable
-private fun RelatedMovieSection(movies: List<Movie>, onMovieClick: (Movie) -> Unit) {
+private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (MovieUiModel) -> Unit) {
     Column {
         Text("推荐", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(movies) { movie ->
+            items(movies.size) { index ->
+                val movie = movies[index]
                 Column(
                     modifier = Modifier
                         .width(100.dp)

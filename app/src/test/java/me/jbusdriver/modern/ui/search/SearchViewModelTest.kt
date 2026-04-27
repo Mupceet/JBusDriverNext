@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
+import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.mvp.bean.ActressInfo
 import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.ui.data.enums.SearchType
@@ -27,6 +28,10 @@ class SearchViewModelTest {
     private val testMovies = listOf(
         Movie("Result 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1")
     )
+
+    private val testMovieUiModels = testMovies.map {
+        MovieUiModel(it.title, it.imageUrl, it.code, it.date, it.link)
+    }
 
     @Before
     fun setup() {
@@ -51,7 +56,7 @@ class SearchViewModelTest {
         viewModel.search("test")
         advanceUntilIdle()
 
-        assertEquals(testMovies, viewModel.uiState.value.results)
+        assertEquals(testMovieUiModels, viewModel.uiState.value.results)
         assertFalse(viewModel.uiState.value.isLoading)
         assertTrue(viewModel.uiState.value.hasMore)
         assertNull(viewModel.uiState.value.error)

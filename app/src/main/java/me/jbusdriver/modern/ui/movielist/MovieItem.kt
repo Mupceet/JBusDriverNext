@@ -22,12 +22,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.ui.MovieUiModel
 
 @Composable
 fun MovieItem(
-    movie: Movie,
-    onClick: (Movie) -> Unit,
+    movie: MovieUiModel,
+    onClick: (MovieUiModel) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -78,16 +78,6 @@ fun MovieItem(
                         text = movie.date,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-
-                if (!movie.tags.isNullOrEmpty()) {
-                    Text(
-                        text = movie.tags.take(3).joinToString(" "),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

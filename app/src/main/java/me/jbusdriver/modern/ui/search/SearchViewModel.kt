@@ -10,14 +10,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.model.hasNext
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.toUiModel
 import me.jbusdriver.ui.data.enums.SearchType
 import javax.inject.Inject
 
 data class SearchUiState(
     val query: String = "",
     val searchType: SearchType = SearchType.CENSORED,
-    val results: List<Movie> = emptyList(),
+    val results: List<MovieUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
@@ -43,7 +44,7 @@ class SearchViewModel @Inject constructor(
                 val result = repository.searchMovies(type, query, 1)
                 _uiState.update {
                     it.copy(
-                        results = result.movies,
+                        results = result.movies.map { it.toUiModel() },
                         isLoading = false,
                         hasMore = result.pageInfo.hasNext,
                         currentPage = result.pageInfo.activePage
@@ -66,7 +67,7 @@ class SearchViewModel @Inject constructor(
                 val result = repository.searchMovies(state.searchType, state.query, nextPage)
                 _uiState.update {
                     it.copy(
-                        results = it.results + result.movies,
+                        results = it.results + result.movies.map { m -> m.toUiModel() },
                         isLoadingMore = false,
                         hasMore = result.pageInfo.hasNext,
                         currentPage = result.pageInfo.activePage

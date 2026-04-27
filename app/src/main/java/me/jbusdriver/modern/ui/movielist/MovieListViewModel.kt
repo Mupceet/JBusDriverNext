@@ -11,12 +11,13 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.data.model.hasNext
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.toUiModel
 import me.jbusdriver.ui.data.enums.DataSourceType
 import javax.inject.Inject
 
 data class MovieListUiState(
-    val movies: List<Movie> = emptyList(),
+    val movies: List<MovieUiModel> = emptyList(),
     val pageInfo: PageInfo = PageInfo(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
@@ -54,7 +55,7 @@ class MovieListViewModel @Inject constructor(
                 val result = repository.loadPage(dataSourceType, 1)
                 _uiState.update {
                     it.copy(
-                        movies = result.movies,
+                        movies = result.movies.map { it.toUiModel() },
                         pageInfo = result.pageInfo,
                         isLoading = false,
                         hasMore = result.pageInfo.hasNext,
@@ -76,7 +77,7 @@ class MovieListViewModel @Inject constructor(
                 val result = repository.loadPage(dataSourceType, 1)
                 _uiState.update {
                     it.copy(
-                        movies = result.movies,
+                        movies = result.movies.map { it.toUiModel() },
                         pageInfo = result.pageInfo,
                         isRefreshing = false,
                         hasMore = result.pageInfo.hasNext
@@ -101,7 +102,7 @@ class MovieListViewModel @Inject constructor(
                 val result = repository.loadPage(dataSourceType, nextPage)
                 _uiState.update {
                     it.copy(
-                        movies = it.movies + result.movies,
+                        movies = it.movies + result.movies.map { m -> m.toUiModel() },
                         pageInfo = result.pageInfo,
                         isLoadingMore = false,
                         hasMore = result.pageInfo.hasNext

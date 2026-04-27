@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
+import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.ui.data.enums.DataSourceType
 import org.junit.After
@@ -38,6 +39,10 @@ class MovieListViewModelTest {
         Movie("Test Movie 2", "http://img2.jpg", "DEF-002", "2024-01-02", "http://link2")
     )
 
+    private val testMovieUiModels = testMovies.map {
+        MovieUiModel(it.title, it.imageUrl, it.code, it.date, it.link)
+    }
+
     private fun createViewModel(repository: MovieRepository): MovieListViewModel {
         return MovieListViewModel(repository)
     }
@@ -53,7 +58,7 @@ class MovieListViewModelTest {
         viewModel.loadFirstPage()
         advanceUntilIdle()
 
-        assertEquals(testMovies, viewModel.uiState.value.movies)
+        assertEquals(testMovieUiModels, viewModel.uiState.value.movies)
         assertEquals(1, viewModel.uiState.value.pageInfo.activePage)
         assertTrue(viewModel.uiState.value.hasMore)
         assertFalse(viewModel.uiState.value.isLoading)
@@ -65,6 +70,9 @@ class MovieListViewModelTest {
         val page2Movies = listOf(
             Movie("Movie 3", "http://img3.jpg", "GHI-003", "2024-01-03", "http://link3")
         )
+        val page2UiModels = page2Movies.map {
+            MovieUiModel(it.title, it.imageUrl, it.code, it.date, it.link)
+        }
         var callCount = 0
         val repository = object : MovieRepository {
             override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
@@ -83,7 +91,7 @@ class MovieListViewModelTest {
         advanceUntilIdle()
         assertEquals(2, callCount)
 
-        assertEquals(testMovies + page2Movies, viewModel.uiState.value.movies)
+        assertEquals(testMovieUiModels + page2UiModels, viewModel.uiState.value.movies)
         assertEquals(2, viewModel.uiState.value.pageInfo.activePage)
         assertTrue(viewModel.uiState.value.hasMore)
     }
@@ -119,7 +127,7 @@ class MovieListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, callCount)
-        assertEquals(testMovies, viewModel.uiState.value.movies)
+        assertEquals(testMovieUiModels, viewModel.uiState.value.movies)
         assertFalse(viewModel.uiState.value.isRefreshing)
     }
 
@@ -139,7 +147,7 @@ class MovieListViewModelTest {
         viewModel.loadMore()
         advanceUntilIdle()
 
-        assertEquals(testMovies, viewModel.uiState.value.movies)
+        assertEquals(testMovieUiModels, viewModel.uiState.value.movies)
         assertFalse(viewModel.uiState.value.isLoadingMore)
     }
 }

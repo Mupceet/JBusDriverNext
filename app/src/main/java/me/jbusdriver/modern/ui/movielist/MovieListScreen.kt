@@ -24,13 +24,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.ui.MovieUiModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieListScreen(
     title: String = "电影列表",
-    onMovieClick: (Movie) -> Unit = {},
+    onMovieClick: (MovieUiModel) -> Unit = {},
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
