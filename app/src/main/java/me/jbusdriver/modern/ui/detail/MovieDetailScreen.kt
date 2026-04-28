@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -81,6 +83,7 @@ fun MovieDetailScreen(
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showMagnetSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(movieUrl) {
@@ -98,6 +101,21 @@ fun MovieDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    if (detail != null) {
+                        IconButton(onClick = {
+                            viewModel.toggleCollect()
+                            val msg = if (!uiState.isCollected) "收藏成功" else "已取消收藏"
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(
+                                imageVector = if (uiState.isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = if (uiState.isCollected) "取消收藏" else "收藏",
+                                tint = if (uiState.isCollected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior
