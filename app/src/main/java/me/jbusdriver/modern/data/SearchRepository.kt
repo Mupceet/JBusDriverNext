@@ -1,6 +1,9 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.suspendCancellableCoroutine
+import me.jbusdriver.base.CacheLoader
+import me.jbusdriver.base.GSON
+import me.jbusdriver.base.fromJson
 import me.jbusdriver.http.JAVBusService
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
@@ -9,6 +12,7 @@ import me.jbusdriver.mvp.bean.loadMovieFromDoc
 import me.jbusdriver.mvp.bean.parseActressList
 import me.jbusdriver.ui.data.enums.SearchType
 import org.jsoup.Jsoup
+import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,28 +27,30 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
     override suspend fun searchMovies(type: SearchType, query: String, page: Int): MoviePageResult {
         val baseUrl = JAVBusService.defaultFastUrl
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
+        val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        val html = fetchHtml(url)
-        val doc = Jsoup.parse(html)
-
-        val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-        val movies = loadMovieFromDoc(doc)
-
-        return MoviePageResult(pageInfo, movies)
+        return lruCachedOrFetch(cacheKey) {
+            val html = fetchHtml(url)
+            val doc = Jsoup.parse(html)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+            val movies = loadMovieFromDoc(doc)
+            MoviePageResult(pageInfo, movies)
+        }
     }
 
     override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> {
         val baseUrl = JAVBusService.defaultFastUrl
         val type = SearchType.ACTRESS
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
+        val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        val html = fetchHtml(url)
-        val doc = Jsoup.parse(html)
-
-        val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-        val actresses = parseActressList(doc)
-
-        return pageInfo to actresses
+        return lruCachedOrFetch(cacheKey) {
+            val html = fetchHtml(url)
+            val doc = Jsoup.parse(html)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+            val actresses = parseActressList(doc)
+            pageInfo to actresses
+        }
     }
 
     private suspend fun fetchHtml(url: String): String = suspendCancellableCoroutine { cont ->
@@ -71,5 +77,15 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
             nextPage = next.split("/").lastOrNull()?.toIntOrNull() ?: 0,
             referPages = pages
         )
+    }
+
+    /** LRU-only cache for search results. Fresh data on next app launch. */
+    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, fetch: () -> T): T {
+        CacheLoader.lru.get(cacheKey)?.let {
+            GSON.fromJson<T>(it)?.let { return it }
+        }
+        val result = fetch()
+        CacheLoader.cacheLru(cacheKey to (result as Any))
+        return result
     }
 }

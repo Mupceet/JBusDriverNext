@@ -20,12 +20,19 @@ interface MovieDetailRepository {
 class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository {
 
     override suspend fun getMovieDetail(url: String): MovieDetail {
-        // Check disk cache first
         val cacheKey = url.urlPath
-        val cached = CacheLoader.acache.getAsString(cacheKey)
-        if (!cached.isNullOrBlank()) {
-            val cachedDetail = GSON.fromJson<MovieDetail>(cached)
-            if (cachedDetail != null) return cachedDetail
+
+        // Check LRU memory cache
+        CacheLoader.lru.get(cacheKey)?.let {
+            return GSON.fromJson<MovieDetail>(it) ?: error("Corrupt cache for $cacheKey")
+        }
+
+        // Check disk cache
+        CacheLoader.acache.getAsString(cacheKey)?.let {
+            GSON.fromJson<MovieDetail>(it)?.let { cached ->
+                CacheLoader.lru.put(cacheKey, GSON.toJson(cached))
+                return cached
+            }
         }
 
         // Fetch from network
@@ -41,8 +48,8 @@ class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository
         val doc = Jsoup.parse(html)
         val detail = parseMovieDetails(doc)
 
-        // Cache to disk
-        CacheLoader.cacheDisk(cacheKey to detail)
+        // Cache to LRU + disk
+        CacheLoader.cacheLruAndDisk(cacheKey to detail)
 
         return detail
     }
