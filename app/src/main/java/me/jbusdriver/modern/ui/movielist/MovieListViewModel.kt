@@ -13,7 +13,7 @@ import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.data.model.hasNext
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 import javax.inject.Inject
 
 data class MovieListUiState(

@@ -4,7 +4,7 @@ import me.jbusdriver.base.toJsonString
 import me.jbusdriver.base.urlPath
 import me.jbusdriver.db.entity.LinkItem
 import me.jbusdriver.http.JAVBusService
-import me.jbusdriver.ui.data.enums.SearchType
+import me.jbusdriver.modern.domain.model.SearchType
 
 /**
  * Created by Administrator on 2017/4/9.

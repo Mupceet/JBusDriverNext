@@ -1,0 +1,76 @@
+<h2>首页布局改造 — 最终设计</h2>
+<p class="subtitle">移除 ScrollableTabRow + FilterChip，改为 TopAppBar 标题触发 DropdownMenu</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">改造前 (Current)</div>
+    <div class="mockup-body" style="background:#1a1a2e;color:#e0e0e0;">
+      <div style="background:#16213e;padding:10px 16px;">
+        <span style="font-size:15px;font-weight:bold;">有碼</span>
+      </div>
+      <div style="background:#16213e;padding:0;display:flex;border-bottom:1px solid #333;">
+        <div style="padding:8px 16px;font-size:13px;border-bottom:2px solid #533483;color:#e0e0e0;">有碼</div>
+        <div style="padding:8px 16px;font-size:13px;color:#888;">無碼</div>
+        <div style="padding:8px 16px;font-size:13px;color:#888;">高清</div>
+        <div style="padding:8px 16px;font-size:13px;color:#888;">字幕</div>
+      </div>
+      <div style="padding:6px 16px;display:flex;gap:6px;border-bottom:1px solid #222;">
+        <div style="padding:4px 12px;border-radius:16px;background:#533483;color:white;font-size:12px;">电影</div>
+        <div style="padding:4px 12px;border-radius:16px;border:1px solid #533483;color:#aaa;font-size:12px;">女优</div>
+        <div style="padding:4px 12px;border-radius:16px;border:1px solid #533483;color:#aaa;font-size:12px;">类别</div>
+      </div>
+      <div style="padding:24px 16px;color:#666;font-size:12px;text-align:center;border:1px dashed #333;margin:8px;">
+        列表内容（被挤压，显示空间少）
+      </div>
+      <div style="background:#16213e;padding:8px;display:flex;justify-content:space-around;position:absolute;bottom:0;left:0;right:0;">
+        <div style="color:#533483;font-size:12px;text-align:center;">🏠 电影</div>
+        <div style="color:#888;font-size:12px;text-align:center;">🔍 搜索</div>
+        <div style="color:#888;font-size:12px;text-align:center;">⚙ 设置</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改造后 (New)</div>
+    <div class="mockup-body" style="background:#1a1a2e;color:#e0e0e0;">
+      <div style="background:#16213e;padding:10px 16px;display:flex;align-items:center;cursor:pointer;">
+        <span style="font-size:15px;font-weight:bold;">有码 · 电影</span>
+        <span style="margin-left:6px;color:#aaa;font-size:10px;">▼</span>
+      </div>
+      <div style="padding:40px 16px;color:#666;font-size:12px;text-align:center;">
+        列表内容（占据全部剩余空间）
+      </div>
+      <div style="background:#16213e;padding:8px;display:flex;justify-content:space-around;position:absolute;bottom:0;left:0;right:0;">
+        <div style="color:#533483;font-size:12px;text-align:center;">🏠 电影</div>
+        <div style="color:#888;font-size:12px;text-align:center;">🔍 搜索</div>
+        <div style="color:#888;font-size:12px;text-align:center;">⚙ 设置</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px;">改造要点</h3>
+<div class="section">
+  <h3>1. 移除的内容</h3>
+  <ul>
+    <li>ScrollableTabRow（有码/无码/高清/字幕标签栏）</li>
+    <li>FilterChip 行（电影/女优/类别筛选）</li>
+    <li>高清、字幕分类（替换为收藏）</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>2. 新增的交互</h3>
+  <ul>
+    <li>TopAppBar 标题显示当前分类（如 "有码 · 电影"）+ 下拉箭头</li>
+    <li>点击标题 → DropdownMenu 弹出 8 个选项，按主分类分组</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>3. 收藏分类</h3>
+  <ul>
+    <li>收藏电影列表：从本地数据库读取已收藏的 Movie</li>
+    <li>收藏演员列表：从本地数据库读取已收藏的 Actress</li>
+  </ul>
+</div>

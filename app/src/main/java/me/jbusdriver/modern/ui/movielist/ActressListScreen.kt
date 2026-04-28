@@ -28,7 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 
 @Composable
 fun ActressListScreen(

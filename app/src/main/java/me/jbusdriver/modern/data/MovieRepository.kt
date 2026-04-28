@@ -20,7 +20,7 @@ import me.jbusdriver.mvp.bean.Genre
 import me.jbusdriver.mvp.bean.loadMovieFromDoc
 import me.jbusdriver.mvp.bean.parseActressAttrs
 import me.jbusdriver.mvp.bean.parseActressList
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 import org.jsoup.Jsoup
 import javax.inject.Inject
 import javax.inject.Singleton

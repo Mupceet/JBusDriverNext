@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.GenreUiModel
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 
 data class GenreCategory(val title: String, val genres: List<GenreUiModel>)
 

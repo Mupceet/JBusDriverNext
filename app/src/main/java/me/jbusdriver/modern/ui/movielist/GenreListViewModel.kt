@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 import javax.inject.Inject
 
 @HiltViewModel

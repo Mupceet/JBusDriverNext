@@ -34,7 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.movielist.MovieItem
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.ui.data.enums.SearchType
+import me.jbusdriver.modern.domain.model.SearchType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

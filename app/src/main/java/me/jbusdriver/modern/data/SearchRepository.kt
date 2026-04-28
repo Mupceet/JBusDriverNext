@@ -10,7 +10,7 @@ import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.mvp.bean.ActressInfo
 import me.jbusdriver.mvp.bean.loadMovieFromDoc
 import me.jbusdriver.mvp.bean.parseActressList
-import me.jbusdriver.ui.data.enums.SearchType
+import me.jbusdriver.modern.domain.model.SearchType
 import org.jsoup.Jsoup
 import java.net.URLEncoder
 import javax.inject.Inject

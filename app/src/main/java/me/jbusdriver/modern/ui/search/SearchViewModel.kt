@@ -12,7 +12,7 @@ import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.model.hasNext
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.ui.data.enums.SearchType
+import me.jbusdriver.modern.domain.model.SearchType
 import javax.inject.Inject
 
 data class SearchUiState(

@@ -13,7 +13,7 @@ import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.data.model.hasNext
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 import javax.inject.Inject
 
 data class ActressListUiState(

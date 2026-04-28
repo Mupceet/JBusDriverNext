@@ -40,7 +40,7 @@ import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.settings.SettingsScreen
 import me.jbusdriver.mvp.bean.ActressDBType
 import me.jbusdriver.mvp.bean.MovieDBType
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.DataSourceType
 
 data class CategoryOption(
     val group: String,
