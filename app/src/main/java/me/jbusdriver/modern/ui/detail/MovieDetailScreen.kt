@@ -59,6 +59,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,6 +71,7 @@ import me.jbusdriver.modern.ui.ImageSampleUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.MagnetUiModel
+import me.jbusdriver.modern.ui.components.ActressAvatar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -349,18 +351,16 @@ private fun ActressSection(actresses: List<ActressUiModel>, onActressClick: (Act
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.clickable { onActressClick(actress) }
                 ) {
-                    AsyncImage(
-                        model = actress.avatar,
+                    ActressAvatar(
+                        avatarUrl = actress.avatar,
                         contentDescription = actress.name,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(32.dp)),
-                        contentScale = ContentScale.Crop
+                        size = 64.dp
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = actress.name,
                         style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.width(64.dp)

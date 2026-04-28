@@ -29,6 +29,7 @@ data class LinkMovieListUiState(
     val error: String? = null,
     val actressDetail: ActressDetailUiModel? = null,
     val isLoadingActress: Boolean = false,
+    val actressError: String? = null,
     val isCollected: Boolean = false
 )
 
@@ -52,8 +53,11 @@ class LinkMovieListViewModel @Inject constructor(
         listType = type
         currentPage = 0
         _uiState.value = LinkMovieListUiState()
+        if (type == "actress") {
+            _uiState.update { it.copy(isLoadingActress = true, actressError = null) }
+        }
         loadFirstPage()
-        if (type == "actress" && avatarUrl.isNotBlank()) {
+        if (type == "actress" && linkUrl.isNotBlank()) {
             loadActressDetail()
         }
     }

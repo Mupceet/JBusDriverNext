@@ -8,13 +8,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,14 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import me.jbusdriver.modern.ui.ActressUiModel
+import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.ui.data.enums.DataSourceType
 
 @Composable
@@ -86,13 +82,10 @@ fun ActressListScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable { onActressClick(actress) }
                     ) {
-                        AsyncImage(
-                            model = actress.avatar,
+                        ActressAvatar(
+                            avatarUrl = actress.avatar,
                             contentDescription = actress.name,
-                            modifier = Modifier
-                                .size(96.dp)
-                                .clip(RoundedCornerShape(48.dp)),
-                            contentScale = ContentScale.Crop
+                            size = 96.dp
                         )
                         Text(
                             text = actress.name,
