@@ -11,8 +11,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.jbusdriver.magnet.Magnet
 import me.jbusdriver.magnet.MagnetManager
+import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.ui.MagnetUiModel
+import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import org.json.JSONArray
@@ -26,12 +28,14 @@ data class MovieDetailUiState(
     val magnets: List<MagnetUiModel> = emptyList(),
     val isLoadingMagnets: Boolean = false,
     val magnetsError: String? = null,
-    val hasMoreMagnets: Boolean = true
+    val hasMoreMagnets: Boolean = true,
+    val isCollected: Boolean = false
 )
 
 @HiltViewModel
 class MovieDetailViewModel @Inject constructor(
-    private val repository: MovieDetailRepository
+    private val repository: MovieDetailRepository,
+    private val collectRepository: CollectRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -48,6 +52,16 @@ class MovieDetailViewModel @Inject constructor(
             try {
                 val detail = repository.getMovieDetail(url)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isLoading = false) }
+                    // Check collection state
+                    val movie = Movie(
+                        title = detail.title,
+                        imageUrl = detail.cover,
+                        code = detail.headers.firstOrNull()?.value ?: "",
+                        date = "",
+                        link = url
+                    )
+                    val collected = collectRepository.isMovieCollected(movie)
+                    _uiState.update { it.copy(isCollected = collected) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
             }
@@ -127,5 +141,21 @@ class MovieDetailViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun toggleCollect() {
+        val detail = _uiState.value.movieDetail ?: return
+        val url = currentUrl
+        viewModelScope.launch {
+            val movie = Movie(
+                title = detail.title,
+                imageUrl = detail.cover,
+                code = detail.headers.firstOrNull()?.value ?: "",
+                date = "",
+                link = url
+            )
+            val newState = collectRepository.toggleMovieCollect(movie)
+            _uiState.update { it.copy(isCollected = newState) }
+        }
     }
 }
