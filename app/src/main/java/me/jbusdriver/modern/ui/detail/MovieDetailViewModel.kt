@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.jbusdriver.magnet.Magnet
 import me.jbusdriver.magnet.MagnetManager
 import me.jbusdriver.modern.data.MovieDetailRepository
@@ -38,7 +39,6 @@ class MovieDetailViewModel @Inject constructor(
 
     private var currentUrl: String = ""
     private var magnetPage: Int = 0
-    private var magnetKeyword: String = ""
 
     fun loadDetail(url: String) {
         if (_uiState.value.isLoading) return
@@ -68,16 +68,15 @@ class MovieDetailViewModel @Inject constructor(
     }
 
     fun loadMagnets() {
-        val detail = _uiState.value.movieDetail ?: return
-        val keyword = detail.headers.firstOrNull()?.value?.trim() ?: return
         if (_uiState.value.isLoadingMagnets) return
-
-        magnetKeyword = keyword
+        val url = currentUrl.ifBlank { return }
         magnetPage = 1
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
             try {
-                val magnets = fetchMagnets(keyword, 1)
+                val magnets = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    fetchMagnets(url, 1)
+                }
                 _uiState.update {
                     it.copy(
                         magnets = magnets,
@@ -93,10 +92,13 @@ class MovieDetailViewModel @Inject constructor(
 
     fun loadMoreMagnets() {
         if (_uiState.value.isLoadingMagnets || !_uiState.value.hasMoreMagnets) return
+        val url = currentUrl.ifBlank { return }
         magnetPage++
         viewModelScope.launch {
             try {
-                val more = fetchMagnets(magnetKeyword, magnetPage)
+                val more = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    fetchMagnets(url, magnetPage)
+                }
                 _uiState.update {
                     it.copy(
                         magnets = it.magnets + more,

@@ -8,13 +8,16 @@ import me.jbusdriver.base.GSON
 import me.jbusdriver.base.common.C
 import me.jbusdriver.base.fromJson
 import me.jbusdriver.http.JAVBusService
+import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.ui.movielist.GenreCategory
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.mvp.bean.ActressInfo
+import me.jbusdriver.mvp.bean.ActressAttrs
 import me.jbusdriver.mvp.bean.Genre
 import me.jbusdriver.mvp.bean.loadMovieFromDoc
+import me.jbusdriver.mvp.bean.parseActressAttrs
 import me.jbusdriver.mvp.bean.parseActressList
 import me.jbusdriver.ui.data.enums.DataSourceType
 import org.jsoup.Jsoup
@@ -26,6 +29,7 @@ interface MovieRepository {
     suspend fun loadActresses(type: DataSourceType, page: Int): Pair<List<ActressInfo>, PageInfo>
     suspend fun loadGenreCategories(type: DataSourceType): List<GenreCategory>
     suspend fun loadPageByUrl(url: String, page: Int): MoviePageResult
+    suspend fun loadActressDetail(url: String): ActressDetail?
 }
 
 @Singleton
@@ -99,6 +103,13 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
         val movies = loadMovieFromDoc(doc)
         return MoviePageResult(pageInfo, movies)
+    }
+
+    override suspend fun loadActressDetail(url: String): ActressDetail? {
+        val html = fetchHtml(url)
+        val doc = Jsoup.parse(html)
+        val attrs = parseActressAttrs(doc)
+        return ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
     }
 
     private suspend fun fetchHtml(url: String, showAll: Boolean = false): String {

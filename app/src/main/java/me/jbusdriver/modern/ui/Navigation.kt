@@ -34,10 +34,14 @@ fun JBusNavigation(
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
                 },
                 onActressClick = { actress ->
-                    navController.navigate(NavigationKeys.linkMovies(actress.link, actress.name))
+                    navController.navigate(
+                        NavigationKeys.linkMovies(actress.link, actress.name, type = "actress", avatar = actress.avatar)
+                    )
                 },
                 onGenreClick = { genre ->
-                    navController.navigate(NavigationKeys.linkMovies(genre.link, genre.name))
+                    navController.navigate(
+                        NavigationKeys.linkMovies(genre.link, genre.name, type = "genre")
+                    )
                 }
             )
         }
@@ -54,6 +58,16 @@ fun JBusNavigation(
                 },
                 onImageClick = { images, startIndex ->
                     navController.navigate(NavigationKeys.imageViewer(images, startIndex))
+                },
+                onActressClick = { actress ->
+                    navController.navigate(
+                        NavigationKeys.linkMovies(actress.link, actress.name, type = "actress", avatar = actress.avatar)
+                    )
+                },
+                onGenreClick = { genre ->
+                    navController.navigate(
+                        NavigationKeys.linkMovies(genre.link, genre.name, type = "genre")
+                    )
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -77,17 +91,24 @@ fun JBusNavigation(
             route = NavigationKeys.ROUTE_LINK_MOVIES,
             arguments = listOf(
                 navArgument("linkUrl") { type = NavType.StringType },
-                navArgument("title") { type = NavType.StringType; defaultValue = "" }
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                navArgument("type") { type = NavType.StringType; defaultValue = "" },
+                navArgument("avatar") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val linkUrl = URLDecoder.decode(backStackEntry.arguments?.getString("linkUrl") ?: "", "UTF-8")
             val title = URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
+            val type = backStackEntry.arguments?.getString("type") ?: ""
+            val avatar = URLDecoder.decode(backStackEntry.arguments?.getString("avatar") ?: "", "UTF-8")
             LinkMovieListScreen(
                 linkUrl = linkUrl,
                 title = title,
+                type = type,
+                avatarUrl = avatar,
                 onMovieClick = { movie ->
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
-                }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
     }

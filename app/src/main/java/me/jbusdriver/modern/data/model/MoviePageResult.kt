@@ -15,3 +15,9 @@ data class MoviePageResult(
     val pageInfo: PageInfo,
     val movies: List<Movie>
 )
+
+data class ActressDetail(
+    val name: String,
+    val avatar: String,
+    val info: List<String>
+)

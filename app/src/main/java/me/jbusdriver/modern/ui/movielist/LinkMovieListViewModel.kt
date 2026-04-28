@@ -10,8 +10,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
@@ -22,7 +24,9 @@ data class LinkMovieListUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val actressDetail: ActressDetailUiModel? = null,
+    val isLoadingActress: Boolean = false
 )
 
 @HiltViewModel
@@ -36,13 +40,18 @@ class LinkMovieListViewModel @Inject constructor(
 
     private var currentPage = 0
     private var linkUrl: String = savedStateHandle.get<String>("linkUrl") ?: ""
+    private var listType: String = ""
 
-    fun setLink(url: String) {
+    fun setLink(url: String, type: String = "", avatarUrl: String = "") {
         if (linkUrl == url && _uiState.value.movies.isNotEmpty()) return
         linkUrl = url
+        listType = type
         currentPage = 0
         _uiState.value = LinkMovieListUiState()
         loadFirstPage()
+        if (type == "actress" && avatarUrl.isNotBlank()) {
+            loadActressDetail()
+        }
     }
 
     fun loadFirstPage() {
@@ -89,6 +98,27 @@ class LinkMovieListViewModel @Inject constructor(
             } catch (e: Exception) {
                 currentPage = state.pageInfo.activePage
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+            }
+        }
+    }
+
+    private fun loadActressDetail() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingActress = true) }
+            try {
+                val detail = repository.loadActressDetail(linkUrl)
+                if (detail != null) {
+                    _uiState.update {
+                        it.copy(
+                            actressDetail = ActressDetailUiModel(detail.name, detail.avatar, detail.info),
+                            isLoadingActress = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoadingActress = false) }
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isLoadingActress = false) }
             }
         }
     }

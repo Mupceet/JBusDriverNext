@@ -61,3 +61,10 @@ fun MovieDetail.toUiModel() = MovieDetailUiModel(
 fun Magnet.toUiModel() = MagnetUiModel(name, size, date, link)
 
 fun ActressInfo.toActressUiModel() = ActressUiModel(name, avatar, link)
+
+@Immutable
+data class ActressDetailUiModel(
+    val name: String,
+    val avatar: String,
+    val info: List<String>
+)

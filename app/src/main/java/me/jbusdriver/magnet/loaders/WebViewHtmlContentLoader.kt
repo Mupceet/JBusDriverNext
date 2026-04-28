@@ -6,7 +6,6 @@ import android.os.Looper
 import android.util.Log
 import android.webkit.*
 import android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-import me.jbusdriver.BuildConfig
 import me.jbusdriver.base.JBusManager
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -40,11 +39,7 @@ class WebViewHtmlContentLoader {
             webView.loadUrl(url)
 
         }
-        val time = if (BuildConfig.DEBUG) {
-            100000L
-        } else {
-            30L
-        }
+        val time = 30L
         return try {
             countDownLatch.await(time, TimeUnit.SECONDS)
             provider.htmlContent
@@ -64,10 +59,22 @@ class WebViewHtmlContentLoader {
     }
 
     companion object {
-        private const val JS = """
-  javascript: (function(){ var m  = document.querySelector("#magnet-table"); console.log(m && m.childElementCount > 1); if (m && m.childElementCount > 1) { javascript:window.html_content.getSource(m.outerHTML); } })()
+        private const val POLL_JS = """
+  javascript: (function(){
+    var attempts = 0;
+    var maxAttempts = 30;
+    function tryExtract() {
+      var m = document.querySelector("#magnet-table");
+      if (m && m.childElementCount > 1) {
+        window.html_content.getSource(m.outerHTML);
+      } else if (attempts < maxAttempts) {
+        attempts++;
+        setTimeout(tryExtract, 500);
+      }
+    }
+    tryExtract();
+  })()
 """
-
 
         val mainH = Handler(Looper.getMainLooper())
     }
@@ -93,8 +100,8 @@ class WebViewHtmlContentLoader {
             super.onProgressChanged(view, newProgress)
             Log.e(TAG, "onProgressChanged: $newProgress ... ")
             if (countDownLatch.count > 0 && newProgress >= 70) {
-                Log.e(TAG, "onProgressChanged: getSource $JS")
-                view?.loadUrl(JS)
+                Log.e(TAG, "onProgressChanged: getSource $POLL_JS")
+                view?.loadUrl(POLL_JS)
             }
         }
 
@@ -132,7 +139,7 @@ class WebViewHtmlContentLoader {
             Log.e(TAG, "onPageFinished: $view , $url")
             if (countDownLatch.count > 0) {
                 Log.e(TAG, "onProgressChanged: getSource")
-                view?.loadUrl(JS)
+                view?.loadUrl(POLL_JS)
             }
             super.onPageFinished(view, url)
         }
