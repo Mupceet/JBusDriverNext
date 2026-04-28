@@ -2,8 +2,10 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.db.DB
 import me.jbusdriver.db.entity.LinkItem
+import me.jbusdriver.mvp.bean.ActressDBType
 import me.jbusdriver.mvp.bean.ActressInfo
 import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.mvp.bean.MovieDBType
 import me.jbusdriver.mvp.bean.convertDBItem
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +19,9 @@ interface CollectRepository {
     suspend fun toggleMovieCollect(movie: Movie): Boolean
     suspend fun isActressCollected(actress: ActressInfo): Boolean
     suspend fun toggleActressCollect(actress: ActressInfo): Boolean
+
+    suspend fun getCollectedMovies(): List<Movie>
+    suspend fun getCollectedActresses(): List<ActressInfo>
 }
 
 @Singleton
@@ -68,6 +73,18 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
         } else {
             addCollect(item)
             true
+        }
+    }
+
+    override suspend fun getCollectedMovies(): List<Movie> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            DB.linkDao.listByType(MovieDBType).mapNotNull { it.getLinkValue() as? Movie }
+        }
+    }
+
+    override suspend fun getCollectedActresses(): List<ActressInfo> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            DB.linkDao.listByType(ActressDBType).mapNotNull { it.getLinkValue() as? ActressInfo }
         }
     }
 }
