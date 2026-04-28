@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.PageInfo
@@ -16,6 +17,7 @@ import me.jbusdriver.modern.data.model.hasNext
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
+import me.jbusdriver.mvp.bean.ActressInfo
 import javax.inject.Inject
 
 data class LinkMovieListUiState(
@@ -26,12 +28,14 @@ data class LinkMovieListUiState(
     val hasMore: Boolean = true,
     val error: String? = null,
     val actressDetail: ActressDetailUiModel? = null,
-    val isLoadingActress: Boolean = false
+    val isLoadingActress: Boolean = false,
+    val isCollected: Boolean = false
 )
 
 @HiltViewModel
 class LinkMovieListViewModel @Inject constructor(
     private val repository: MovieRepository,
+    private val collectRepository: CollectRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -114,12 +118,32 @@ class LinkMovieListViewModel @Inject constructor(
                             isLoadingActress = false
                         )
                     }
+                    val actress = ActressInfo(
+                        name = detail.name,
+                        avatar = detail.avatar,
+                        link = linkUrl
+                    )
+                    val collected = collectRepository.isActressCollected(actress)
+                    _uiState.update { it.copy(isCollected = collected) }
                 } else {
                     _uiState.update { it.copy(isLoadingActress = false) }
                 }
             } catch (_: Exception) {
                 _uiState.update { it.copy(isLoadingActress = false) }
             }
+        }
+    }
+
+    fun toggleActressCollect() {
+        val actressDetail = _uiState.value.actressDetail ?: return
+        viewModelScope.launch {
+            val actress = ActressInfo(
+                name = actressDetail.name,
+                avatar = actressDetail.avatar,
+                link = linkUrl
+            )
+            val newState = collectRepository.toggleActressCollect(actress)
+            _uiState.update { it.copy(isCollected = newState) }
         }
     }
 }
