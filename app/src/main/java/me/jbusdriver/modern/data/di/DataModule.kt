@@ -4,6 +4,8 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.DefaultCollectRepository
 import me.jbusdriver.modern.data.DefaultMovieDetailRepository
 import me.jbusdriver.modern.data.DefaultMovieRepository
 import me.jbusdriver.modern.data.DefaultSearchRepository
@@ -41,4 +43,10 @@ abstract class DataModule {
     abstract fun bindSearchRepository(
         impl: DefaultSearchRepository
     ): SearchRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCollectRepository(
+        impl: DefaultCollectRepository
+    ): CollectRepository
 }
