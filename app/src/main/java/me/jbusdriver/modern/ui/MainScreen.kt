@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -37,7 +36,6 @@ import me.jbusdriver.modern.ui.movielist.CollectionListScreen
 import me.jbusdriver.modern.ui.movielist.GenreListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
-import me.jbusdriver.modern.ui.settings.SettingsScreen
 import me.jbusdriver.modern.domain.model.ActressDBType
 import me.jbusdriver.modern.domain.model.MovieDBType
 import me.jbusdriver.modern.domain.model.DataSourceType
@@ -80,7 +78,6 @@ fun MainScreen(
     val topBarTitle = when (selectedTabIndex) {
         0 -> "${currentOption.group} · ${currentOption.name}"
         1 -> "搜索"
-        2 -> "设置"
         else -> ""
     }
 
@@ -139,8 +136,8 @@ fun MainScreen(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = "电影") },
-                    label = { Text("电影") },
+                    icon = { Icon(Icons.Default.Home, contentDescription = "首页") },
+                    label = { Text("首页") },
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 }
                 )
@@ -149,12 +146,6 @@ fun MainScreen(
                     label = { Text("搜索") },
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "设置") },
-                    label = { Text("设置") },
-                    selected = selectedTabIndex == 2,
-                    onClick = { selectedTabIndex = 2 }
                 )
             }
         }
@@ -194,9 +185,6 @@ fun MainScreen(
             }
             1 -> SearchScreen(
                 onMovieClick = onMovieClick,
-                modifier = Modifier.padding(padding)
-            )
-            2 -> SettingsScreen(
                 modifier = Modifier.padding(padding)
             )
         }

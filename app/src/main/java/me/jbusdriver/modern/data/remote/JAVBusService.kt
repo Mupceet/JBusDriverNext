@@ -21,7 +21,7 @@ interface JAVBusService {
 
 
     companion object {
-        var defaultFastUrl = "https://www.seedmm.life"
+        var defaultFastUrl = "https://www.javbus.com"
         var defaultXyzUrl = "https://www.javbus.one"
         val xyzHostDomains = mutableSetOf<String>().apply {
             this.add(".one")
