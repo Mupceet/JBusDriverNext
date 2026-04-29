@@ -238,13 +238,6 @@ private fun DetailContent(
             }
         }
 
-        // Genres
-        if (detail.genres.isNotEmpty()) {
-            item(key = "genres") {
-                GenreSection(genres = detail.genres, onGenreClick = onGenreClick)
-            }
-        }
-
         // Image Samples
         if (detail.imageSamples.isNotEmpty()) {
             item(key = "samples") {
@@ -259,6 +252,13 @@ private fun DetailContent(
         if (detail.actresses.isNotEmpty()) {
             item(key = "actresses") {
                 ActressSection(actresses = detail.actresses, onActressClick = onActressClick)
+            }
+        }
+
+        // Genres
+        if (detail.genres.isNotEmpty()) {
+            item(key = "genres") {
+                GenreSection(genres = detail.genres, onGenreClick = onGenreClick)
             }
         }
 
@@ -387,9 +387,9 @@ private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movie
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = movie.code,
+                        text = movie.code + " " + movie.title,
                         style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -412,40 +412,56 @@ private fun MagnetBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Text("磁力链接", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item {
+                Text("磁力链接", style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+            }
 
             when {
                 uiState.isLoadingMagnets && uiState.magnets.isEmpty() -> {
-                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                    item {
+                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
                 uiState.magnetsError != null && uiState.magnets.isEmpty() -> {
-                    Text(uiState.magnetsError, color = MaterialTheme.colorScheme.error)
+                    item {
+                        Text(uiState.magnetsError, color = MaterialTheme.colorScheme.error)
+                    }
                 }
                 uiState.magnets.isEmpty() -> {
-                    Text("暂无磁力链接", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    item {
+                        Text("暂无磁力链接", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
                 }
                 else -> {
-                    uiState.magnets.forEach { magnet ->
+                    items(uiState.magnets, key = { it.link }) { magnet ->
                         MagnetItem(magnet = magnet, context = context)
                         HorizontalDivider()
                     }
                     if (uiState.isLoadingMagnets) {
-                        CircularProgressIndicator(modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally))
+                        item {
+                            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        }
                     } else if (uiState.hasMoreMagnets) {
-                        Button(
-                            onClick = onLoadMore,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                        ) {
-                            Text("加载更多")
+                        item {
+                            Button(
+                                onClick = onLoadMore,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                            ) {
+                                Text("加载更多")
+                            }
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(32.dp))
+
+            item { Spacer(Modifier.height(32.dp)) }
         }
     }
 }

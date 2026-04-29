@@ -3,7 +3,8 @@ package me.jbusdriver.modern.ui.search
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,7 +38,7 @@ import me.jbusdriver.modern.ui.movielist.MovieItem
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.domain.model.SearchType
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     onMovieClick: (MovieUiModel) -> Unit = {},
@@ -67,7 +68,7 @@ fun SearchScreen(
             keyboardActions = KeyboardActions(onSearch = { doSearch() }),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 2.dp),
             trailingIcon = {
                 Text(
                     "搜索",
@@ -79,18 +80,18 @@ fun SearchScreen(
             }
         )
 
-        // Search type chips
-        Row(
+        // Search type chips - FlowRow wraps to next line if needed
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .padding(horizontal = 16.dp, vertical = 2.dp)
         ) {
             SearchType.entries.forEach { type ->
                 FilterChip(
                     selected = uiState.searchType == type,
                     onClick = { viewModel.setSearchType(type) },
                     label = { Text(type.title, style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.padding(end = 4.dp)
+                    modifier = Modifier.padding(end = 4.dp, bottom = 2.dp)
                 )
             }
         }

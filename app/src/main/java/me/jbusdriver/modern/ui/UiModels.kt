@@ -15,7 +15,8 @@ data class MovieUiModel(
     val imageUrl: String,
     val code: String,
     val date: String,
-    val link: String
+    val link: String,
+    val tags: List<String> = emptyList()
 )
 
 @Immutable
@@ -45,23 +46,26 @@ data class ImageSampleUiModel(val title: String, val thumb: String, val image: S
 @Immutable
 data class MagnetUiModel(val name: String, val size: String, val date: String, val link: String)
 
-fun Movie.toUiModel() = MovieUiModel(title, imageUrl, code, date, link)
+fun Movie.toUiModel() = MovieUiModel(title, imageUrl, code, date, link, tags.orEmpty())
 
-fun MovieDetail.toUiModel() = MovieDetailUiModel(
-    title = title,
-    content = content,
-    cover = cover,
-    headers = headers
-        .filter { it.name != "類別" && it.name != "識別碼" }
-        .map {
-            if (it.name == "描述") HeaderUiModel("描述", title)
-            else HeaderUiModel(it.name, it.value)
-        },
-    genres = genres.map { GenreUiModel(it.name, it.link) },
-    actresses = actress.map { ActressUiModel(it.name, it.avatar, it.link) },
-    imageSamples = imageSamples.map { ImageSampleUiModel(it.title, it.thumb, it.image) },
-    relatedMovies = relatedMovies.map { it.toUiModel() }
-)
+fun MovieDetail.toUiModel(): MovieDetailUiModel {
+    val code = headers.firstOrNull { it.name == "識別碼" }?.value.orEmpty()
+    return MovieDetailUiModel(
+        title = title,
+        content = content,
+        cover = cover,
+        headers = headers
+            .filter { it.name != "類別" }
+            .map {
+                if (it.name == "描述") HeaderUiModel("描述", title.removePrefix(code).trim())
+                else HeaderUiModel(it.name, it.value)
+            },
+        genres = genres.map { GenreUiModel(it.name, it.link) },
+        actresses = actress.map { ActressUiModel(it.name, it.avatar, it.link) },
+        imageSamples = imageSamples.map { ImageSampleUiModel(it.title, it.thumb, it.image) },
+        relatedMovies = relatedMovies.map { it.toUiModel() }
+    )
+}
 
 fun Magnet.toUiModel() = MagnetUiModel(name, size, date, link)
 

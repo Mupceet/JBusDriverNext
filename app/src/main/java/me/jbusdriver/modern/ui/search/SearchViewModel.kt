@@ -35,14 +35,15 @@ class SearchViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
-    fun search(query: String, type: SearchType = SearchType.CENSORED) {
+    fun search(query: String, type: SearchType? = null) {
         if (query.isBlank()) return
+        val searchType = type ?: _uiState.value.searchType
         viewModelScope.launch {
             _uiState.update {
-                it.copy(query = query, searchType = type, isLoading = true, error = null, results = emptyList(), currentPage = 1)
+                it.copy(query = query, searchType = searchType, isLoading = true, error = null, results = emptyList(), currentPage = 1)
             }
             try {
-                val result = repository.searchMovies(type, query, 1)
+                val result = repository.searchMovies(searchType, query, 1)
                 _uiState.update {
                     it.copy(
                         results = result.movies.map { it.toUiModel() },

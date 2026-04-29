@@ -24,28 +24,28 @@ fun ActressAvatar(
     size: Dp = 96.dp,
     modifier: Modifier = Modifier
 ) {
-    if (avatarUrl.isNotBlank()) {
-        AsyncImage(
-            model = avatarUrl,
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Person,
             contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-                .size(size)
-                .clip(CircleShape)
+            modifier = Modifier.size(size * 0.8f),
+            tint = MaterialTheme.colorScheme.outline
         )
-    } else {
-        Box(
-            modifier = modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Person,
+
+        if (avatarUrl.isNotBlank()) {
+            AsyncImage(
+                model = avatarUrl,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(size * 0.55f),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape)
             )
         }
     }
