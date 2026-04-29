@@ -20,6 +20,7 @@ data class SearchUiState(
     val searchType: SearchType = SearchType.CENSORED,
     val results: List<MovieUiModel> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
     val error: String? = null,
@@ -52,6 +53,27 @@ class SearchViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun refresh() {
+        val state = _uiState.value
+        if (state.isRefreshing || state.query.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
+            try {
+                val result = repository.searchMovies(state.searchType, state.query, 1, forceRefresh = true)
+                _uiState.update {
+                    it.copy(
+                        results = result.movies.map { m -> m.toUiModel() },
+                        isRefreshing = false,
+                        hasMore = result.pageInfo.hasNext,
+                        currentPage = result.pageInfo.activePage
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
             }
         }
     }

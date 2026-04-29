@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -112,30 +113,46 @@ fun SearchScreen(
                 }
             }
             else -> {
-                val listState = rememberLazyListState()
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { viewModel.refresh() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val listState = rememberLazyListState()
 
-                LaunchedEffect(listState, uiState.hasMore) {
-                    snapshotFlow {
-                        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        val totalItems = listState.layoutInfo.totalItemsCount
-                        lastVisible >= totalItems - 3
-                    }.collect { nearEnd ->
-                        if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
-                            viewModel.loadMore()
+                    LaunchedEffect(listState, uiState.hasMore) {
+                        snapshotFlow {
+                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            val totalItems = listState.layoutInfo.totalItemsCount
+                            lastVisible >= totalItems - 3
+                        }.collect { nearEnd ->
+                            if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
+                                viewModel.loadMore()
+                            }
                         }
                     }
-                }
 
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    itemsIndexed(uiState.results, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                        MovieItem(movie = movie, onClick = { onMovieClick(movie) })
-                    }
-                    if (uiState.isLoadingMore) {
-                        item {
-                            Box(
-                                Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) { CircularProgressIndicator() }
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        itemsIndexed(uiState.results, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                            MovieItem(movie = movie, onClick = { onMovieClick(movie) })
+                        }
+                        if (uiState.isLoadingMore) {
+                            item {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) { CircularProgressIndicator() }
+                            }
+                        }
+                        if (!uiState.hasMore && uiState.results.isNotEmpty()) {
+                            item {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("没有更多了", color = Color.Gray)
+                                }
+                            }
                         }
                     }
                 }

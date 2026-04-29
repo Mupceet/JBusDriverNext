@@ -24,6 +24,7 @@ data class LinkMovieListUiState(
     val movies: List<MovieUiModel> = emptyList(),
     val pageInfo: PageInfo = PageInfo(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
     val error: String? = null,
@@ -110,11 +111,35 @@ class LinkMovieListViewModel @Inject constructor(
         }
     }
 
-    private fun loadActressDetail() {
+    fun refresh() {
+        if (_uiState.value.isRefreshing || linkUrl.isBlank()) return
+        currentPage = 1
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
+            try {
+                val result = repository.loadPageByUrl(linkUrl, 1, forceRefresh = true)
+                _uiState.update {
+                    it.copy(
+                        movies = result.movies.map { m -> m.toUiModel() },
+                        pageInfo = result.pageInfo,
+                        isRefreshing = false,
+                        hasMore = result.pageInfo.hasNext
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
+            }
+        }
+        if (listType == "actress" && linkUrl.isNotBlank()) {
+            loadActressDetail(forceRefresh = true)
+        }
+    }
+
+    private fun loadActressDetail(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingActress = true) }
             try {
-                val detail = repository.loadActressDetail(linkUrl)
+                val detail = repository.loadActressDetail(linkUrl, forceRefresh = forceRefresh)
                 if (detail != null) {
                     _uiState.update {
                         it.copy(

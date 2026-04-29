@@ -14,8 +14,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +32,7 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.domain.model.DataSourceType
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActressListScreen(
     dataSourceType: DataSourceType,
@@ -43,63 +46,76 @@ fun ActressListScreen(
         viewModel.setDataSourceType(dataSourceType)
     }
 
-    when {
-        uiState.isLoading -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
-        uiState.error != null && uiState.actresses.isEmpty() -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
-            }
-        }
-        else -> {
-            val gridState = rememberLazyGridState()
-
-            LaunchedEffect(gridState, uiState.hasMore) {
-                snapshotFlow {
-                    val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                    val totalItems = gridState.layoutInfo.totalItemsCount
-                    lastVisible >= totalItems - 6
-                }.collect { nearEnd ->
-                    if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
-                        viewModel.loadMore()
-                    }
+    PullToRefreshBox(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = { viewModel.refresh() },
+        modifier = modifier.fillMaxSize()
+    ) {
+        when {
+            uiState.isLoading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
+            uiState.error != null && uiState.actresses.isEmpty() -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                }
+            }
+            else -> {
+                val gridState = rememberLazyGridState()
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                state = gridState,
-                modifier = modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                itemsIndexed(uiState.actresses, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { onActressClick(actress) }
-                    ) {
-                        ActressAvatar(
-                            avatarUrl = actress.avatar,
-                            contentDescription = actress.name,
-                            size = 96.dp
-                        )
-                        Text(
-                            text = actress.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                LaunchedEffect(gridState, uiState.hasMore) {
+                    snapshotFlow {
+                        val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        val totalItems = gridState.layoutInfo.totalItemsCount
+                        lastVisible >= totalItems - 6
+                    }.collect { nearEnd ->
+                        if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
+                            viewModel.loadMore()
+                        }
                     }
                 }
-                if (uiState.isLoadingMore) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    itemsIndexed(uiState.actresses, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { onActressClick(actress) }
+                        ) {
+                            ActressAvatar(
+                                avatarUrl = actress.avatar,
+                                contentDescription = actress.name,
+                                size = 96.dp
+                            )
+                            Text(
+                                text = actress.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                    if (uiState.isLoadingMore) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                    if (!uiState.hasMore && uiState.actresses.isNotEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                Text("没有更多了", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                            }
                         }
                     }
                 }

@@ -38,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -124,34 +125,40 @@ fun MovieDetailScreen(
             )
         }
     ) { padding ->
-        when {
-            uiState.isLoading -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            uiState.error != null -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { viewModel.loadDetail(movieUrl) }) { Text("重试") }
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
-            }
-            detail != null -> {
-                DetailContent(
-                    detail = detail,
-                    padding = padding,
-                    onMovieClick = onMovieClick,
-                    onActressClick = onActressClick,
-                    onGenreClick = onGenreClick,
-                    onImageClick = onImageClick,
-                    onMagnetClick = {
-                        showMagnetSheet = true
-                        viewModel.loadMagnets()
+                uiState.error != null -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.height(8.dp))
+                            Button(onClick = { viewModel.loadDetail(movieUrl) }) { Text("重试") }
+                        }
                     }
-                )
+                }
+                detail != null -> {
+                    DetailContent(
+                        detail = detail,
+                        padding = PaddingValues(),
+                        onMovieClick = onMovieClick,
+                        onActressClick = onActressClick,
+                        onGenreClick = onGenreClick,
+                        onImageClick = onImageClick,
+                        onMagnetClick = {
+                            showMagnetSheet = true
+                            viewModel.loadMagnets()
+                        }
+                    )
+                }
             }
         }
     }

@@ -12,6 +12,13 @@ import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import javax.inject.Inject
 
+data class GenreListUiState(
+    val genreCategories: List<GenreCategory> = emptyList(),
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val error: String? = null
+)
+
 @HiltViewModel
 class GenreListViewModel @Inject constructor(
     private val repository: MovieRepository
@@ -44,6 +51,24 @@ class GenreListViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+            }
+        }
+    }
+
+    fun refresh() {
+        if (_uiState.value.isRefreshing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
+            try {
+                val categories = repository.loadGenreCategories(dataSourceType, forceRefresh = true)
+                _uiState.update {
+                    it.copy(
+                        genreCategories = categories,
+                        isRefreshing = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
             }
         }
     }

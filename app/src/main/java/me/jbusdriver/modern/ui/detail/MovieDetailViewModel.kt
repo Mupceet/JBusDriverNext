@@ -73,7 +73,7 @@ class MovieDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                val detail = repository.getMovieDetail(currentUrl)
+                val detail = repository.getMovieDetail(currentUrl, forceRefresh = true)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isRefreshing = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, error = e.message) }

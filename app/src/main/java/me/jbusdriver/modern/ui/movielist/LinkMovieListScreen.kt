@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -108,74 +109,74 @@ fun LinkMovieListScreen(
             )
         }
     ) { padding ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            uiState.error != null && uiState.movies.isEmpty() -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
-                }
-            }
-            else -> {
-                val listState = rememberLazyListState()
-
-                LaunchedEffect(listState, uiState.hasMore) {
-                    snapshotFlow {
-                        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        val totalItems = listState.layoutInfo.totalItemsCount
-                        lastVisible >= totalItems - 3
-                    }.collect { nearEnd ->
-                        if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
-                            viewModel.loadMore()
-                        }
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
+                uiState.error != null && uiState.movies.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                else -> {
+                    val listState = rememberLazyListState()
 
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    // Actress detail header
-                    if (type == "actress") {
-                        val actress = uiState.actressDetail
-                        val actressError = uiState.actressError
-                        when {
-                            actress != null -> item(key = "actress_header") {
-                                ActressDetailCard(actress)
-                            }
-                            uiState.isLoadingActress -> item(key = "actress_header_loading") {
-                                ActressDetailLoadingPlaceholder()
-                            }
-                            actressError != null -> item(key = "actress_header_error") {
-                                ActressDetailErrorCard(actressError)
+                    LaunchedEffect(listState, uiState.hasMore) {
+                        snapshotFlow {
+                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            val totalItems = listState.layoutInfo.totalItemsCount
+                            lastVisible >= totalItems - 3
+                        }.collect { nearEnd ->
+                            if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
+                                viewModel.loadMore()
                             }
                         }
                     }
 
-                    itemsIndexed(
-                        uiState.movies,
-                        key = { index, movie -> "${index}_${movie.link}" }
-                    ) { _, movie ->
-                        MovieItem(movie = movie, onClick = { onMovieClick(movie) })
-                    }
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        // Actress detail header
+                        if (type == "actress") {
+                            val actress = uiState.actressDetail
+                            val actressError = uiState.actressError
+                            when {
+                                actress != null -> item(key = "actress_header") {
+                                    ActressDetailCard(actress)
+                                }
+                                uiState.isLoadingActress -> item(key = "actress_header_loading") {
+                                    ActressDetailLoadingPlaceholder()
+                                }
+                                actressError != null -> item(key = "actress_header_error") {
+                                    ActressDetailErrorCard(actressError)
+                                }
+                            }
+                        }
 
-                    if (uiState.isLoadingMore) {
-                        item {
-                            Box(
-                                Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
+                        itemsIndexed(
+                            uiState.movies,
+                            key = { index, movie -> "${index}_${movie.link}" }
+                        ) { _, movie ->
+                            MovieItem(movie = movie, onClick = { onMovieClick(movie) })
+                        }
+
+                        if (uiState.isLoadingMore) {
+                            item {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
                             }
                         }
                     }

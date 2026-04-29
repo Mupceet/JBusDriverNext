@@ -20,6 +20,7 @@ data class ActressListUiState(
     val actresses: List<ActressUiModel> = emptyList(),
     val pageInfo: PageInfo = PageInfo(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
     val error: String? = null
@@ -62,6 +63,27 @@ class ActressListViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+            }
+        }
+    }
+
+    fun refresh() {
+        if (_uiState.value.isRefreshing) return
+        currentPage = 1
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
+            try {
+                val result = repository.loadActresses(dataSourceType, 1, forceRefresh = true)
+                _uiState.update {
+                    it.copy(
+                        actresses = result.first.map { a -> a.toActressUiModel() },
+                        pageInfo = result.second,
+                        isRefreshing = false,
+                        hasMore = result.second.hasNext
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
             }
         }
     }

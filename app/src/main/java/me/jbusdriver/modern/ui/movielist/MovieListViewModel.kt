@@ -73,7 +73,7 @@ class MovieListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                val result = repository.loadPage(dataSourceType, 1)
+                val result = repository.loadPage(dataSourceType, 1, forceRefresh = true)
                 _uiState.update {
                     it.copy(
                         movies = result.movies.map { it.toUiModel() },

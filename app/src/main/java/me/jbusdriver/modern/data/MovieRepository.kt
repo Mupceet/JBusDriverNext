@@ -26,11 +26,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface MovieRepository {
-    suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean = false): MoviePageResult
-    suspend fun loadActresses(type: DataSourceType, page: Int): Pair<List<ActressInfo>, PageInfo>
-    suspend fun loadGenreCategories(type: DataSourceType): List<GenreCategory>
-    suspend fun loadPageByUrl(url: String, page: Int): MoviePageResult
-    suspend fun loadActressDetail(url: String): ActressDetail?
+    suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean = false, forceRefresh: Boolean = false): MoviePageResult
+    suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean = false): Pair<List<ActressInfo>, PageInfo>
+    suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean = false): List<GenreCategory>
+    suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean = false): MoviePageResult
+    suspend fun loadActressDetail(url: String, forceRefresh: Boolean = false): ActressDetail?
 }
 
 @Singleton
@@ -45,13 +45,14 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     override suspend fun loadPage(
         type: DataSourceType,
         page: Int,
-        showAll: Boolean
+        showAll: Boolean,
+        forceRefresh: Boolean
     ): MoviePageResult {
         val baseUrl = urls?.get(type.key) ?: JAVBusService.defaultFastUrl
         val url = if (page == 1) baseUrl else "$baseUrl${type.prefix}$page"
         val cacheKey = "${type.key}_${showAll}_$page"
 
-        return lruCachedOrFetch(cacheKey) {
+        return lruCachedOrFetch(cacheKey, forceRefresh) {
             val html = fetchHtml(url, showAll)
             val doc = Jsoup.parse(html)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
@@ -60,7 +61,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadActresses(type: DataSourceType, page: Int): Pair<List<ActressInfo>, PageInfo> {
+    override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean): Pair<List<ActressInfo>, PageInfo> {
         val baseUrl = urls?.get(type.key)
             ?: when (type) {
                 DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
@@ -69,7 +70,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val url = if (page == 1) baseUrl else "$baseUrl/$page"
         val cacheKey = "actresses_${type.key}_$page"
 
-        return lruCachedOrFetch(cacheKey) {
+        return lruCachedOrFetch(cacheKey, forceRefresh) {
             val html = fetchHtml(url)
             val doc = Jsoup.parse(html)
             val actresses = parseActressList(doc)
@@ -78,7 +79,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadGenreCategories(type: DataSourceType): List<GenreCategory> {
+    override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean): List<GenreCategory> {
         val baseUrl = urls?.get(type.key)
             ?: when (type) {
                 DataSourceType.UNCENSORED_GENRE -> JAVBusService.defaultFastUrl + "/uncensored/genre"
@@ -102,10 +103,10 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadPageByUrl(url: String, page: Int): MoviePageResult {
+    override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean): MoviePageResult {
         val cacheKey = "page_${url.urlPath}_$page"
 
-        return lruCachedOrFetch(cacheKey) {
+        return lruCachedOrFetch(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) url else "$url/$page"
             val html = fetchHtml(fullUrl)
             val doc = Jsoup.parse(html)
@@ -115,7 +116,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadActressDetail(url: String): ActressDetail? {
+    override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? {
         val cacheKey = "actress_${url.urlPath}"
 
         return persistentCachedOrFetch(cacheKey) {
@@ -143,9 +144,15 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     }
 
     /** LRU-only cache, for list data. Fresh data on next app launch. */
-    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, fetch: () -> T): T {
-        CacheLoader.lru.get(cacheKey)?.let {
-            GSON.fromJson<T>(it)?.let { return it }
+    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, fetch: () -> T): T =
+        lruCachedOrFetch(cacheKey, false, fetch)
+
+    /** LRU-only cache with optional force-refresh. */
+    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, forceRefresh: Boolean, fetch: () -> T): T {
+        if (!forceRefresh) {
+            CacheLoader.lru.get(cacheKey)?.let {
+                GSON.fromJson<T>(it)?.let { return it }
+            }
         }
         val result = fetch()
         CacheLoader.cacheLru(cacheKey to (result as Any))

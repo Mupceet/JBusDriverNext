@@ -17,19 +17,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface SearchRepository {
-    suspend fun searchMovies(type: SearchType, query: String, page: Int): MoviePageResult
+    suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean = false): MoviePageResult
     suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>>
 }
 
 @Singleton
 class DefaultSearchRepository @Inject constructor() : SearchRepository {
 
-    override suspend fun searchMovies(type: SearchType, query: String, page: Int): MoviePageResult {
+    override suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean): MoviePageResult {
         val baseUrl = JAVBusService.defaultFastUrl
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        return lruCachedOrFetch(cacheKey) {
+        return lruCachedOrFetch(cacheKey, forceRefresh) {
             val html = fetchHtml(url)
             val doc = Jsoup.parse(html)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
@@ -79,10 +79,12 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         )
     }
 
-    /** LRU-only cache for search results. Fresh data on next app launch. */
-    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, fetch: () -> T): T {
-        CacheLoader.lru.get(cacheKey)?.let {
-            GSON.fromJson<T>(it)?.let { return it }
+    /** LRU-only cache with optional force-refresh. */
+    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, forceRefresh: Boolean = false, fetch: () -> T): T {
+        if (!forceRefresh) {
+            CacheLoader.lru.get(cacheKey)?.let {
+                GSON.fromJson<T>(it)?.let { return it }
+            }
         }
         val result = fetch()
         CacheLoader.cacheLru(cacheKey to (result as Any))

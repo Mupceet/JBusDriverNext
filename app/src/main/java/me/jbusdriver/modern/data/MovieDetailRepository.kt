@@ -13,25 +13,27 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface MovieDetailRepository {
-    suspend fun getMovieDetail(url: String): MovieDetail
+    suspend fun getMovieDetail(url: String, forceRefresh: Boolean = false): MovieDetail
 }
 
 @Singleton
 class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository {
 
-    override suspend fun getMovieDetail(url: String): MovieDetail {
+    override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
         val cacheKey = url.urlPath
 
-        // Check LRU memory cache
-        CacheLoader.lru.get(cacheKey)?.let {
-            return GSON.fromJson<MovieDetail>(it) ?: error("Corrupt cache for $cacheKey")
-        }
+        if (!forceRefresh) {
+            // Check LRU memory cache
+            CacheLoader.lru.get(cacheKey)?.let {
+                return GSON.fromJson<MovieDetail>(it) ?: error("Corrupt cache for $cacheKey")
+            }
 
-        // Check disk cache
-        CacheLoader.acache.getAsString(cacheKey)?.let {
-            GSON.fromJson<MovieDetail>(it)?.let { cached ->
-                CacheLoader.lru.put(cacheKey, GSON.toJson(cached))
-                return cached
+            // Check disk cache
+            CacheLoader.acache.getAsString(cacheKey)?.let {
+                GSON.fromJson<MovieDetail>(it)?.let { cached ->
+                    CacheLoader.lru.put(cacheKey, GSON.toJson(cached))
+                    return cached
+                }
             }
         }
 
