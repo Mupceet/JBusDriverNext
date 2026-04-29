@@ -1,6 +1,6 @@
 package me.jbusdriver.modern.data.model
 
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.domain.model.Movie
 
 data class PageInfo(
     val activePage: Int = 0,

@@ -9,12 +9,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.jbusdriver.magnet.Magnet
-import me.jbusdriver.magnet.MagnetManager
+import me.jbusdriver.modern.data.magnet.Magnet
+import me.jbusdriver.modern.data.magnet.MagnetManager
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.ui.MagnetUiModel
-import me.jbusdriver.mvp.bean.Movie
+import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import org.json.JSONArray

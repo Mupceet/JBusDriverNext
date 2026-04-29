@@ -34,7 +34,8 @@
       "Bash(unzip -l zoomable-image-0.16.0.aar)",
       "Bash(unzip -p \"C:/Users/LGZ/.gradle/caches/modules-2/files-2.1/me.saket.telephoto/zoomable-image/0.16.0/ee601739c3090bde15fc3af2fee0494727698906/zoomable-image-0.16.0.aar\" classes.jar)",
       "Bash(unzip -p \"C:/Users/LGZ/.gradle/caches/modules-2/files-2.1/me.saket.telephoto/zoomable-android/0.16.0/2883de7793d34647c59b9a6d92c68adbaffc1d50/zoomable-release.aar\" classes.jar)",
-      "Bash(bash *)"
+      "Bash(bash *)",
+      "Bash(xargs sed *)"
     ]
   }
 }

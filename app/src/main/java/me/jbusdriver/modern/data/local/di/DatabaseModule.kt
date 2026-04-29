@@ -4,11 +4,11 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import me.jbusdriver.db.CollectDatabase
-import me.jbusdriver.db.JBusDatabase
-import me.jbusdriver.db.dao.CategoryDao
-import me.jbusdriver.db.dao.HistoryDao
-import me.jbusdriver.db.dao.LinkItemDao
+import me.jbusdriver.modern.data.db.CollectDatabase
+import me.jbusdriver.modern.data.db.JBusDatabase
+import me.jbusdriver.modern.data.db.dao.CategoryDao
+import me.jbusdriver.modern.data.db.dao.HistoryDao
+import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import javax.inject.Singleton
 
 @Module
@@ -17,11 +17,11 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideJBusDatabase(): JBusDatabase = me.jbusdriver.db.DB.jBusDatabase
+    fun provideJBusDatabase(): JBusDatabase = me.jbusdriver.modern.data.db.DB.jBusDatabase
 
     @Provides
     @Singleton
-    fun provideCollectDatabase(): CollectDatabase = me.jbusdriver.db.DB.collectDatabase
+    fun provideCollectDatabase(): CollectDatabase = me.jbusdriver.modern.data.db.DB.collectDatabase
 
     @Provides
     fun provideHistoryDao(db: JBusDatabase): HistoryDao = db.historyDao()

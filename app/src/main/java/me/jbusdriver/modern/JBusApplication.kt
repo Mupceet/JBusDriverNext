@@ -5,11 +5,11 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
-import me.jbusdriver.base.http.NetClient
-import me.jbusdriver.common.AppContext
-import me.jbusdriver.http.JAVBusService
+import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.AppContext
+import me.jbusdriver.modern.data.remote.JAVBusService
 import okhttp3.Interceptor
-import me.jbusdriver.common.JBus
+import me.jbusdriver.modern.JBus
 
 @HiltAndroidApp
 class JBusApplication : AppContext(), ImageLoaderFactory {

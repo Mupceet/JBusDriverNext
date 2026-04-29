@@ -1,13 +1,13 @@
 package me.jbusdriver.modern.ui
 
 import androidx.compose.runtime.Immutable
-import me.jbusdriver.magnet.Magnet
-import me.jbusdriver.mvp.bean.ActressInfo
-import me.jbusdriver.mvp.bean.Genre
-import me.jbusdriver.mvp.bean.Header
-import me.jbusdriver.mvp.bean.ImageSample
-import me.jbusdriver.mvp.bean.Movie
-import me.jbusdriver.mvp.bean.MovieDetail
+import me.jbusdriver.modern.data.magnet.Magnet
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.Genre
+import me.jbusdriver.modern.domain.model.Header
+import me.jbusdriver.modern.domain.model.ImageSample
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.MovieDetail
 
 @Immutable
 data class MovieUiModel(

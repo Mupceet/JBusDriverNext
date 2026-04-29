@@ -1,11 +1,11 @@
 package me.jbusdriver.modern.data
 
-import me.jbusdriver.base.CacheLoader
-import me.jbusdriver.base.GSON
-import me.jbusdriver.base.common.C
-import me.jbusdriver.base.fromJson
-import me.jbusdriver.common.JBus
-import me.jbusdriver.http.JAVBusService
+import me.jbusdriver.modern.core.CacheLoader
+import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.C
+import me.jbusdriver.modern.core.fromJson
+import me.jbusdriver.modern.JBus
+import me.jbusdriver.modern.data.remote.JAVBusService
 import javax.inject.Inject
 import javax.inject.Singleton
 

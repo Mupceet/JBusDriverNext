@@ -5,10 +5,10 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import me.jbusdriver.base.GSON
-import me.jbusdriver.base.http.NetClient
-import me.jbusdriver.common.JBus
-import me.jbusdriver.http.JAVBusService
+import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.JBus
+import me.jbusdriver.modern.data.remote.JAVBusService
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
 

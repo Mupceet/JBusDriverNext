@@ -13,8 +13,8 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.mvp.bean.ActressDBType
-import me.jbusdriver.mvp.bean.MovieDBType
+import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.domain.model.MovieDBType
 import javax.inject.Inject
 
 data class CollectionListUiState(

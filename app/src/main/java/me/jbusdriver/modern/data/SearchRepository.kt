@@ -1,15 +1,15 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.suspendCancellableCoroutine
-import me.jbusdriver.base.CacheLoader
-import me.jbusdriver.base.GSON
-import me.jbusdriver.base.fromJson
-import me.jbusdriver.http.JAVBusService
+import me.jbusdriver.modern.core.CacheLoader
+import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.fromJson
+import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.mvp.bean.ActressInfo
-import me.jbusdriver.mvp.bean.loadMovieFromDoc
-import me.jbusdriver.mvp.bean.parseActressList
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.loadMovieFromDoc
+import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.SearchType
 import org.jsoup.Jsoup
 import java.net.URLEncoder

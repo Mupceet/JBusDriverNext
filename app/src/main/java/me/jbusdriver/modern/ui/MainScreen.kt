@@ -38,8 +38,8 @@ import me.jbusdriver.modern.ui.movielist.GenreListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.settings.SettingsScreen
-import me.jbusdriver.mvp.bean.ActressDBType
-import me.jbusdriver.mvp.bean.MovieDBType
+import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.domain.model.MovieDBType
 import me.jbusdriver.modern.domain.model.DataSourceType
 
 data class CategoryOption(

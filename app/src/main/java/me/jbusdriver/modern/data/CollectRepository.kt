@@ -1,12 +1,12 @@
 package me.jbusdriver.modern.data
 
-import me.jbusdriver.db.DB
-import me.jbusdriver.db.entity.LinkItem
-import me.jbusdriver.mvp.bean.ActressDBType
-import me.jbusdriver.mvp.bean.ActressInfo
-import me.jbusdriver.mvp.bean.Movie
-import me.jbusdriver.mvp.bean.MovieDBType
-import me.jbusdriver.mvp.bean.convertDBItem
+import me.jbusdriver.modern.data.db.DB
+import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.MovieDBType
+import me.jbusdriver.modern.domain.model.convertDBItem
 import javax.inject.Inject
 import javax.inject.Singleton
 

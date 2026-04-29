@@ -17,7 +17,7 @@ import me.jbusdriver.modern.data.model.hasNext
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.mvp.bean.ActressInfo
+import me.jbusdriver.modern.domain.model.ActressInfo
 import javax.inject.Inject
 
 data class LinkMovieListUiState(
