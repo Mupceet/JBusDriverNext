@@ -51,7 +51,12 @@ fun MovieDetail.toUiModel() = MovieDetailUiModel(
     title = title,
     content = content,
     cover = cover,
-    headers = headers.map { HeaderUiModel(it.name, it.value) },
+    headers = headers
+        .filter { it.name != "類別" && it.name != "識別碼" }
+        .map {
+            if (it.name == "描述") HeaderUiModel("描述", title)
+            else HeaderUiModel(it.name, it.value)
+        },
     genres = genres.map { GenreUiModel(it.name, it.link) },
     actresses = actress.map { ActressUiModel(it.name, it.avatar, it.link) },
     imageSamples = imageSamples.map { ImageSampleUiModel(it.title, it.thumb, it.image) },

@@ -206,17 +206,16 @@ private fun DetailContent(
             )
         }
 
-        // Headers info (skip description — rendered separately below)
+        // Headers info
         item(key = "headers") {
-            val infoHeaders = detail.headers.filter { it.name != "描述" }
-            if (infoHeaders.isNotEmpty()) {
+            if (detail.headers.isNotEmpty()) {
                 Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        infoHeaders.forEach { header ->
+                        detail.headers.forEach { header ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                             ) {
@@ -236,20 +235,6 @@ private fun DetailContent(
                         }
                     }
                 }
-            }
-        }
-
-        // Description (from headers where name == "描述")
-        val descHeader = detail.headers.find { it.name == "描述" }
-        if (descHeader != null && descHeader.value.isNotBlank()) {
-            item(key = "description") {
-                Text(
-                    text = descHeader.value,
-                    style = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f).let {
-                        MaterialTheme.typography.bodyMedium.copy(color = it)
-                    },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
             }
         }
 
