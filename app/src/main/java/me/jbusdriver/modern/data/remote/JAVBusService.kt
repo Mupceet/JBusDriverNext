@@ -23,10 +23,8 @@ interface JAVBusService {
     companion object {
         var defaultFastUrl = "https://www.seedmm.life"
         var defaultXyzUrl = "https://www.javbus.one"
-        val xyzHostDomains by lazy {
-            mutableSetOf<String>().apply {
-                this.add(defaultXyzUrl.takeLast(defaultXyzUrl.lastIndexOf(".").coerceAtLeast(0)))
-            }
+        val xyzHostDomains = mutableSetOf<String>().apply {
+            this.add(".one")
         }
 
 

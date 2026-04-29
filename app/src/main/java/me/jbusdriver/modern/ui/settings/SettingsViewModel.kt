@@ -45,4 +45,15 @@ class SettingsViewModel @Inject constructor(
             )
         }
     }
+
+    fun refreshUrls() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUpdating = true)
+            repository.fetchAnnounce()
+            _uiState.value = SettingsUiState(
+                baseUrl = repository.getCurrentUrl(),
+                availableUrls = repository.getAvailableUrls()
+            )
+        }
+    }
 }

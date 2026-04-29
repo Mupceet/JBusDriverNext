@@ -50,7 +50,8 @@ fun SettingsScreen(
             currentUrl = uiState.baseUrl,
             availableUrls = uiState.availableUrls,
             isUpdating = uiState.isUpdating,
-            onUrlSelected = { viewModel.updateUrl(it) }
+            onUrlSelected = { viewModel.updateUrl(it) },
+            onRefreshUrls = { viewModel.refreshUrls() }
         )
     }
 }
@@ -61,7 +62,8 @@ private fun UrlSelector(
     currentUrl: String,
     availableUrls: List<String>,
     isUpdating: Boolean,
-    onUrlSelected: (String) -> Unit
+    onUrlSelected: (String) -> Unit,
+    onRefreshUrls: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
