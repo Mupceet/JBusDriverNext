@@ -24,69 +24,112 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew assemble
 ```
 
-The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `gradle/libs.versions.toml`. KSP is used for annotation processing (Room compiler, Glide compiler).
+The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `gradle/libs.versions.toml`. KSP is used for annotation processing (Room compiler).
 
 ## Architecture
 
-**MVP (Model-View-Presenter)** pattern with RxJava 3 for asynchronous operations.
+**MVVM with Jetpack Compose** and Hilt dependency injection. All code is in the `me.jbusdriver.modern` package.
 
-### Layer Structure
+### Package Structure
 
-- **View layer** (`ui/`): Activities and Fragments implement presenter-defined View interfaces. Base classes are in `base/common/`.
-- **Presenter layer** (`mvp/presenter/`): Each screen has a Contract interface in `mvp/Contract.kt` defining View and Presenter interfaces. Presenters handle lifecycle, pagination, and data flow via RxJava.
-- **Model layer**: HTML parsing with Jsoup (`base/mvp/model/`), Room databases for persistence, and Retrofit for network requests.
+```
+me.jbusdriver.modern/
+  JBusApplication.kt     - Hilt application entry point
+  AppContext.kt           - Base Application class (JBus context holder)
+  KLog.kt                - Logging utility
+  core/
+    Gobal.kt             - GSON instance, URL extensions, toast
+    BaseExtension.kt     - Gson helpers, SharedPreferences, Context extensions
+    CacheLoader.kt       - Two-tier cache (LruCache + disk ACache)
+    JBusManager.kt       - Activity lifecycle tracker, context provider
+    ACache.java          - Disk cache implementation
+    C.kt                 - Constants (cache durations, component names)
+    db/SDCardDatabaseContext.kt  - SD card database context
+    http/
+      NetClient.kt           - OkHttp/Retrofit client factory
+      LoggerInterceptor.java - HTTP logging interceptor
+  data/
+    db/
+      DB.kt, CollectDatabase.kt, JBusDatabase.kt
+      dao/     - CategoryDao, HistoryDao, LinkItemDao
+      entity/  - Category, History, LinkItem (Room entities)
+      service/ - CategoryService, LinkService
+    remote/
+      JAVBusService.kt  - Retrofit interface for HTML fetching
+      GitHub.kt          - Retrofit interface for announce JSON
+      di/NetworkModule.kt - Hilt network providers
+    magnet/
+      Magnet.kt, MagnetManager.kt, IMagnetLoader.kt, Configuration.kt
+      loaders/ - DefaultLoaderImpl, MagnetLoaders, WebViewHtmlContentLoader
+    CollectRepository.kt, MovieRepository.kt, MovieDetailRepository.kt
+    SearchRepository.kt, SettingsRepository.kt
+    di/DataModule.kt       - Hilt repository bindings
+    local/di/DatabaseModule.kt - Hilt database providers
+    model/MoviePageResult.kt
+  domain/model/
+    Movie.kt, MovieDetail.kt, ILink.kt, ICollectCategory.kt
+    Header, Genre, ActressInfo, ImageSample, ActressAttrs
+    Bean.kt (DB type constants, convertDBItem, PageLink, SearchLink)
+    BeanTransform.kt (HTML parsing: loadMovieFromDoc, parseMovieDetails, etc.)
+    Category.kt (default category defaults)
+    DataSourceType.kt, SearchType.kt
+  ui/
+    ModernMainActivity.kt  - Single Activity (Compose)
+    MainScreen.kt          - Top-level scaffold with category dropdown
+    Navigation.kt          - Compose Navigation graph
+    NavigationKeys.kt      - Route constants
+    UiModels.kt            - Shared UI state models
+    components/ActressAvatar.kt
+    detail/                - Movie detail screen + ViewModel
+    image/                 - Full-screen image viewer
+    movielist/             - Movie/actress/genre/collection list screens + ViewModels
+    search/                - Search screen + ViewModel
+    settings/              - Settings screen (URL selector) + ViewModel
+    theme/                 - Material3 theme (Color, Theme, Type)
+```
 
-### Key Base Classes
+### Key Patterns
 
-- `AppBaseActivity<P, V>` / `AppBaseFragment<P, V>`: Generic base that wires presenter lifecycle (onViewAttached → onStart → onResume → onPause → onStop → onViewDetached). Activities declare `layoutId` and `createPresenter()`.
-- `AbstractRefreshLoadMorePresenterImpl<V, T>`: Core pagination presenter that handles page loading, pull-to-refresh, load-more, error handling (404, timeout), and pagination state via `PageInfo`.
-- `AppBaseRecycleFragment`: Base fragment for list UIs with refresh/load-more support.
-
-### MVP Contract Pattern
-
-All screen contracts are defined in `mvp/Contract.kt`. Each contract has a `*View` interface (extending `BaseView`) and a `*Presenter` interface (extending `BasePresenter`). Presenters are implemented in `mvp/presenter/` with the `*Impl` naming convention (e.g., `MainPresenterImpl`).
-
-### Navigation
-
-`SplashActivity` → `MainActivity` (DrawerLayout + NavigationView). Menu items are driven by `MenuOp` enum which maps to dynamically created Fragments. Fragment switching uses show/hide transactions with tag-based lookup.
+- **Single Activity**: `ModernMainActivity` hosts all Compose UI via navigation
+- **Hilt DI**: ViewModels use `hiltViewModel()`, repositories are Hilt-provided
+- **Repository pattern**: Each screen has a ViewModel that delegates to a repository
+- **HTML parsing**: Jsoup parses fetched HTML into domain models (in BeanTransform.kt)
+- **Two-tier cache**: `CacheLoader` uses in-memory LruCache + disk ACache
 
 ## Data Flow
 
-1. **Network**: `JAVBusService` (Retrofit interface) fetches HTML pages. `NetClient` provides a configured OkHttp client with cookie management. Base URLs are switchable at runtime.
-2. **Parsing**: Jsoup `Document` objects are parsed in presenter `stringMap()` methods to extract domain beans.
-3. **Caching**: Two-tier `CacheLoader` — in-memory `LruCache` + disk `ACache`. First page loads check cache; subsequent pages go direct to network.
+1. **Network**: `JAVBusService` (Retrofit) fetches HTML pages via `NetClient`'s OkHttp. Base URLs switchable at runtime.
+2. **Parsing**: Jsoup `Document` → domain models via `loadMovieFromDoc()`, `parseMovieDetails()`, etc.
+3. **Caching**: `CacheLoader` — LruCache (memory) + ACache (disk).
 4. **Database**: Room with two databases:
    - `JBusDatabase`: history tracking
-   - `CollectDatabase`: categories and link items (stored on SD card for persistence across installs)
-5. **Events**: `RxBus` for inter-component communication (e.g., `MenuChangeEvent`, `CategoryChangeEvent`).
+   - `CollectDatabase`: categories and link items (SD card for persistence)
 
 ## Key Libraries
 
 | Purpose | Library |
 |---------|---------|
-| Async | RxJava 3 + RxAndroid + RxKotlin |
+| UI | Jetpack Compose + Material3 |
+| DI | Hilt |
+| Async | RxJava 3 + Kotlin Coroutines (migration in progress) |
 | Network | Retrofit 2.11 + OkHttp 4.12 |
 | HTML Parsing | Jsoup 1.18 |
 | Database | Room 2.7 (KSP) |
-| Image Loading | Glide 4.16 (KSP) |
-| List Adapters | BRVAH 3.0.14 |
-| Dialogs | Material Dialogs 3.3 |
+| Image Loading | Coil |
 | JSON | Gson 2.12 |
-| Debug | LeakCanary (debugOnly) |
+| Navigation | Compose Navigation |
 
 ## Project Configuration
 
-- **Package**: `me.jbusdriver`
+- **Package**: `me.jbusdriver.modern`
 - **Compile SDK / Target SDK**: 36
 - **Min SDK**: 28
 - **Java target**: 17
-- **ViewBinding + DataBinding**: enabled
-- **ProGuard**: enabled for release builds with custom rules in `app/proguard-rules.pro`
+- **ProGuard**: enabled for release builds
 - **Room schemas**: exported to `app/schemas/`
 
 ## Global State
 
-- `JBus` (top-level `lateinit var` in `common/AppContext.kt`): Application context reference used throughout the app.
-- `JBus.JBusServices`: Map of base URL → `JAVBusService` Retrofit instances, cleared on low memory.
+- `JBus` (top-level `lateinit var` in `AppContext.kt`): Application context reference.
+- `JBus.JBusServices`: Map of base URL → `JAVBusService` Retrofit instances.
 - `CacheLoader.lru` / `CacheLoader.acache`: Global caches.
-- `RxBus`: Event bus singleton in `common/RxBus.kt`.
