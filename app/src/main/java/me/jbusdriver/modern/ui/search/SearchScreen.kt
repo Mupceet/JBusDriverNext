@@ -19,11 +19,16 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -55,6 +60,7 @@ import me.jbusdriver.modern.domain.model.SearchType
 fun SearchScreen(
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
@@ -77,6 +83,15 @@ fun SearchScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("搜索") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                }
+            }
+        )
+
         // Search input
         OutlinedTextField(
             value = searchInput,
@@ -109,7 +124,6 @@ fun SearchScreen(
                 FilterChip(
                     selected = uiState.searchType == type,
                     onClick = {
-                        focusManager.clearFocus()
                         viewModel.setSearchType(type)
                     },
                     label = { Text(type.title, style = MaterialTheme.typography.labelSmall) }

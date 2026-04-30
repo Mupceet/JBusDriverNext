@@ -2,6 +2,7 @@ package me.jbusdriver.modern.ui
 
 object NavigationKeys {
     const val ROUTE_MAIN = "main"
+    const val ROUTE_SEARCH = "search"
     const val ROUTE_MOVIE_DETAIL = "movie_detail/{movieUrl}"
     const val ROUTE_IMAGE_VIEWER = "image_viewer/{images}?startIndex={startIndex}"
     const val ROUTE_LINK_MOVIES = "link_movies/{linkUrl}?title={title}&type={type}&avatar={avatar}"

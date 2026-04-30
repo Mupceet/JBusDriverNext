@@ -2,29 +2,22 @@ package me.jbusdriver.modern.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,7 +31,6 @@ import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.CollectionListScreen
 import me.jbusdriver.modern.ui.movielist.GenreListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
-import me.jbusdriver.modern.ui.search.SearchScreen
 
 data class CategoryOption(
     val group: String,
@@ -68,42 +60,23 @@ private val genreTypes = setOf(
 fun MainScreen(
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit = {},
-    onGenreClick: (GenreUiModel) -> Unit = {}
+    onGenreClick: (GenreUiModel) -> Unit = {},
+    onSearchClick: () -> Unit = {}
 ) {
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-
-    Scaffold(
-        topBar = { },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = "首页") },
-                    label = { Text("首页") },
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Search, contentDescription = "搜索") },
-                    label = { Text("搜索") },
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 }
-                )
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("JBus") },
+            actions = {
+                IconButton(onClick = onSearchClick) {
+                    Icon(Icons.Default.Search, contentDescription = "搜索")
+                }
             }
-        }
-    ) { padding ->
-        when (selectedTabIndex) {
-            0 -> CategoryPagerScreen(
-                onMovieClick = onMovieClick,
-                onActressClick = onActressClick,
-                onGenreClick = onGenreClick,
-                modifier = Modifier.padding(padding)
-            )
-            1 -> SearchScreen(
-                onMovieClick = onMovieClick,
-                onActressClick = onActressClick,
-                modifier = Modifier.padding(padding)
-            )
-        }
+        )
+        CategoryPagerScreen(
+            onMovieClick = onMovieClick,
+            onActressClick = onActressClick,
+            onGenreClick = onGenreClick
+        )
     }
 }
 

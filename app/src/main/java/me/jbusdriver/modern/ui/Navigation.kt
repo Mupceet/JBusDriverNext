@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
+import me.jbusdriver.modern.ui.search.SearchScreen
 import java.net.URLDecoder
 
 private const val ANIM_DURATION = 300
@@ -42,7 +43,23 @@ fun JBusNavigation(
                     navController.navigate(
                         NavigationKeys.linkMovies(genre.link, genre.name, type = "genre")
                     )
+                },
+                onSearchClick = {
+                    navController.navigate(NavigationKeys.ROUTE_SEARCH)
                 }
+            )
+        }
+        composable(NavigationKeys.ROUTE_SEARCH) {
+            SearchScreen(
+                onMovieClick = { movie ->
+                    navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
+                },
+                onActressClick = { actress ->
+                    navController.navigate(
+                        NavigationKeys.linkMovies(actress.link, actress.name, type = "actress", avatar = actress.avatar)
+                    )
+                },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(
