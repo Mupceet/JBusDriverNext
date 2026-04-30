@@ -34,9 +34,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +61,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val focusManager: FocusManager = LocalFocusManager.current
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
 
     // 当 ViewModel 的 query 变更时（如从其他页面返回），同步到本地输入状态
@@ -67,6 +72,7 @@ fun SearchScreen(
     }
 
     fun doSearch() {
+        focusManager.clearFocus()
         val query = searchInput.trim()
         if (query.isNotBlank()) {
             viewModel.search(query)
@@ -107,7 +113,10 @@ fun SearchScreen(
             SearchType.entries.forEach { type ->
                 FilterChip(
                     selected = uiState.searchType == type,
-                    onClick = { viewModel.setSearchType(type) },
+                    onClick = {
+                        focusManager.clearFocus()
+                        viewModel.setSearchType(type)
+                    },
                     label = { Text(type.title, style = MaterialTheme.typography.labelSmall) },
                     modifier = Modifier.padding(end = 4.dp, bottom = 2.dp)
                 )
@@ -117,20 +126,28 @@ fun SearchScreen(
         // Results
         val isActress = uiState.searchType == SearchType.ACTRESS
         val hasResults = if (isActress) uiState.actressResults.isNotEmpty() else uiState.results.isNotEmpty()
+        val dismissKeyboardModifier = Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent()
+                    focusManager.clearFocus()
+                }
+            }
+        }
 
         when {
             uiState.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().then(dismissKeyboardModifier), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
             uiState.error != null && !hasResults -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().then(dismissKeyboardModifier), contentAlignment = Alignment.Center) {
                     Text(uiState.error ?: "搜索失败", color = Color.Red)
                 }
             }
             !hasResults && uiState.query.isBlank() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().then(dismissKeyboardModifier), contentAlignment = Alignment.Center) {
                     Text("输入关键词开始搜索", color = Color.Gray)
                 }
             }
@@ -138,13 +155,15 @@ fun SearchScreen(
                 uiState = uiState,
                 onActressClick = onActressClick,
                 onLoadMore = { viewModel.loadMore() },
-                onRefresh = { viewModel.refresh() }
+                onRefresh = { viewModel.refresh() },
+                onFocusChange = { focusManager.clearFocus() }
             )
             else -> MovieResults(
                 uiState = uiState,
                 onMovieClick = onMovieClick,
                 onLoadMore = { viewModel.loadMore() },
-                onRefresh = { viewModel.refresh() }
+                onRefresh = { viewModel.refresh() },
+                onFocusChange = { focusManager.clearFocus() }
             )
         }
     }
@@ -156,12 +175,15 @@ private fun ActressResults(
     uiState: SearchUiState,
     onActressClick: (ActressUiModel) -> Unit,
     onLoadMore: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onFocusChange: () -> Unit = {}
 ) {
     PullToRefreshBox(
         isRefreshing = uiState.isRefreshing,
         onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+            detectDragGestures { _, _ -> onFocusChange() }
+        }
     ) {
         val gridState = rememberLazyGridState()
 
@@ -228,12 +250,15 @@ private fun MovieResults(
     uiState: SearchUiState,
     onMovieClick: (MovieUiModel) -> Unit,
     onLoadMore: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onFocusChange: () -> Unit = {}
 ) {
     PullToRefreshBox(
         isRefreshing = uiState.isRefreshing,
         onRefresh = onRefresh,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+            detectDragGestures { _, _ -> onFocusChange() }
+        }
     ) {
         val listState = rememberLazyListState()
 
