@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.model.PageInfo
@@ -48,7 +49,7 @@ class ActressListViewModel @Inject constructor(
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val result = repository.loadActresses(dataSourceType, 1)
@@ -70,7 +71,7 @@ class ActressListViewModel @Inject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         currentPage = 1
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val result = repository.loadActresses(dataSourceType, 1, forceRefresh = true)
@@ -95,7 +96,7 @@ class ActressListViewModel @Inject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = repository.loadActresses(dataSourceType, nextPage)

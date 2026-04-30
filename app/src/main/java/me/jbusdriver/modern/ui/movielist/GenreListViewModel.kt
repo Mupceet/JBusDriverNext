@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
@@ -38,7 +39,7 @@ class GenreListViewModel @Inject constructor(
 
     private fun loadGenres() {
         if (_uiState.value.isLoading) return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val categories = repository.loadGenreCategories(dataSourceType)
@@ -57,7 +58,7 @@ class GenreListViewModel @Inject constructor(
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val categories = repository.loadGenreCategories(dataSourceType, forceRefresh = true)

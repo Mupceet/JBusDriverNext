@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.ui.ActressUiModel
@@ -33,7 +34,7 @@ class CollectionListViewModel @Inject constructor(
     val uiState: StateFlow<CollectionListUiState> = _uiState.asStateFlow()
 
     fun loadCollection(dbType: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null, movies = emptyList(), actresses = emptyList()) }
             try {
                 if (dbType == MovieDBType) {
