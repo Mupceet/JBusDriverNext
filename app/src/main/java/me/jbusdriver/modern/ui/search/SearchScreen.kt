@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,7 +50,7 @@ import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.movielist.MovieItem
 import me.jbusdriver.modern.domain.model.SearchType
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onMovieClick: (MovieUiModel) -> Unit = {},
@@ -99,20 +100,19 @@ fun SearchScreen(
         )
 
         // Search type chips
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp)
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            SearchType.entries.forEach { type ->
+            items(SearchType.entries) { type ->
                 FilterChip(
                     selected = uiState.searchType == type,
                     onClick = {
                         focusManager.clearFocus()
                         viewModel.setSearchType(type)
                     },
-                    label = { Text(type.title, style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.padding(end = 4.dp, bottom = 2.dp)
+                    label = { Text(type.title, style = MaterialTheme.typography.labelSmall) }
                 )
             }
         }
