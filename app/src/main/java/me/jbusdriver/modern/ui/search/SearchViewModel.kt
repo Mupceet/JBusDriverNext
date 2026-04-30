@@ -160,9 +160,5 @@ class SearchViewModel @Inject constructor(
 
     fun setQuery(query: String) {
         _uiState.update { it.copy(query = query) }
-        // 如果 query 不为空，自动触发搜索
-        if (query.isNotBlank()) {
-            search(query, _uiState.value.searchType)
-        }
     }
 }
