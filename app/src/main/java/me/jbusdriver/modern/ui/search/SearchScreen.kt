@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.ui.search
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,8 +75,6 @@ fun SearchScreen(
         }
     }
 
-    val dismissKeyboard = { focusManager.clearFocus() }
-
     Column(modifier = modifier.fillMaxSize()) {
         // Search input
         OutlinedTextField(
@@ -102,7 +98,7 @@ fun SearchScreen(
             }
         )
 
-        // Search type chips - 点击时收起键盘
+        // Search type chips
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -112,7 +108,7 @@ fun SearchScreen(
                 FilterChip(
                     selected = uiState.searchType == type,
                     onClick = {
-                        dismissKeyboard()
+                        focusManager.clearFocus()
                         viewModel.setSearchType(type)
                     },
                     label = { Text(type.title, style = MaterialTheme.typography.labelSmall) },
@@ -121,35 +117,23 @@ fun SearchScreen(
             }
         }
 
-        // Results - 结果区域触摸/滑动收起键盘
+        // Results
         val isActress = uiState.searchType == SearchType.ACTRESS
         val hasResults = if (isActress) uiState.actressResults.isNotEmpty() else uiState.results.isNotEmpty()
-        val dismissModifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.changes.any { it.pressed }) {
-                            dismissKeyboard()
-                        }
-                    }
-                }
-            }
 
         when {
             uiState.isLoading -> {
-                Box(dismissModifier, contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             }
             uiState.error != null && !hasResults -> {
-                Box(dismissModifier, contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(uiState.error ?: "搜索失败", color = Color.Red)
                 }
             }
             !hasResults && uiState.query.isBlank() -> {
-                Box(dismissModifier, contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("输入关键词开始搜索", color = Color.Gray)
                 }
             }
@@ -157,15 +141,13 @@ fun SearchScreen(
                 uiState = uiState,
                 onActressClick = onActressClick,
                 onLoadMore = { viewModel.loadMore() },
-                onRefresh = { viewModel.refresh() },
-                onInteract = dismissKeyboard
+                onScroll = { focusManager.clearFocus() }
             )
             else -> MovieResults(
                 uiState = uiState,
                 onMovieClick = onMovieClick,
                 onLoadMore = { viewModel.loadMore() },
-                onRefresh = { viewModel.refresh() },
-                onInteract = dismissKeyboard
+                onScroll = { focusManager.clearFocus() }
             )
         }
     }
@@ -177,71 +159,76 @@ private fun ActressResults(
     uiState: SearchUiState,
     onActressClick: (ActressUiModel) -> Unit,
     onLoadMore: () -> Unit,
-    onRefresh: () -> Unit,
-    onInteract: () -> Unit = {}
+    onScroll: () -> Unit = {}
 ) {
-    PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
-        onRefresh = onRefresh,
+    val gridState = rememberLazyGridState()
+
+    LaunchedEffect(gridState) {
+        snapshotFlow { gridState.isScrollInProgress }
+            .collect { scrolling -> if (scrolling) onScroll() }
+    }
+
+    LaunchedEffect(gridState, uiState.hasMore) {
+        snapshotFlow {
+            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = gridState.layoutInfo.totalItemsCount
+            lastVisible >= totalItems - 6
+        }.collect { nearEnd ->
+            if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
+                onLoadMore()
+            }
+        }
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        state = gridState,
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectDragGestures { _, _ -> onInteract() }
-            }
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.pressed }) {
+                            onScroll()
+                        }
+                    }
+                }
+            },
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val gridState = rememberLazyGridState()
-
-        LaunchedEffect(gridState, uiState.hasMore) {
-            snapshotFlow {
-                val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                val totalItems = gridState.layoutInfo.totalItemsCount
-                lastVisible >= totalItems - 6
-            }.collect { nearEnd ->
-                if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
-                    onLoadMore()
+        itemsIndexed(uiState.actressResults, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clickable { onActressClick(actress) }
+            ) {
+                ActressAvatar(
+                    avatarUrl = actress.avatar,
+                    contentDescription = actress.name,
+                    size = 96.dp
+                )
+                Text(
+                    text = actress.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+        if (uiState.isLoadingMore) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
         }
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            state = gridState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            itemsIndexed(uiState.actressResults, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onActressClick(actress) }
-                ) {
-                    ActressAvatar(
-                        avatarUrl = actress.avatar,
-                        contentDescription = actress.name,
-                        size = 96.dp
-                    )
-                    Text(
-                        text = actress.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-            if (uiState.isLoadingMore) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
-            if (!uiState.hasMore && uiState.actressResults.isNotEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("没有更多了", color = Color.Gray)
-                    }
+        if (!uiState.hasMore && uiState.actressResults.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Text("没有更多了", color = Color.Gray)
                 }
             }
         }
@@ -254,52 +241,60 @@ private fun MovieResults(
     uiState: SearchUiState,
     onMovieClick: (MovieUiModel) -> Unit,
     onLoadMore: () -> Unit,
-    onRefresh: () -> Unit,
-    onInteract: () -> Unit = {}
+    onScroll: () -> Unit = {}
 ) {
-    PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
-        onRefresh = onRefresh,
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { scrolling -> if (scrolling) onScroll() }
+    }
+
+    LaunchedEffect(listState, uiState.hasMore) {
+        snapshotFlow {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = listState.layoutInfo.totalItemsCount
+            lastVisible >= totalItems - 3
+        }.collect { nearEnd ->
+            if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
+                onLoadMore()
+            }
+        }
+    }
+
+    LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectDragGestures { _, _ -> onInteract() }
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.pressed }) {
+                            onScroll()
+                        }
+                    }
+                }
             }
     ) {
-        val listState = rememberLazyListState()
-
-        LaunchedEffect(listState, uiState.hasMore) {
-            snapshotFlow {
-                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                val totalItems = listState.layoutInfo.totalItemsCount
-                lastVisible >= totalItems - 3
-            }.collect { nearEnd ->
-                if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
-                    onLoadMore()
-                }
+        itemsIndexed(uiState.results, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+            MovieItem(movie = movie, onClick = { onMovieClick(movie) })
+        }
+        if (uiState.isLoadingMore) {
+            item {
+                Box(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
             }
         }
-
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(uiState.results, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                MovieItem(movie = movie, onClick = { onMovieClick(movie) })
-            }
-            if (uiState.isLoadingMore) {
-                item {
-                    Box(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator() }
-                }
-            }
-            if (!uiState.hasMore && uiState.results.isNotEmpty()) {
-                item {
-                    Box(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("没有更多了", color = Color.Gray)
-                    }
+        if (!uiState.hasMore && uiState.results.isNotEmpty()) {
+            item {
+                Box(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("没有更多了", color = Color.Gray)
                 }
             }
         }
