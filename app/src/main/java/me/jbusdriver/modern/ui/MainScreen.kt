@@ -1,7 +1,9 @@
 package me.jbusdriver.modern.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -15,9 +17,9 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,21 +65,12 @@ fun MainScreen(
     onGenreClick: (GenreUiModel) -> Unit = {},
     onSearchClick: () -> Unit = {}
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("JBus") },
-            actions = {
-                IconButton(onClick = onSearchClick) {
-                    Icon(Icons.Default.Search, contentDescription = "搜索")
-                }
-            }
-        )
-        CategoryPagerScreen(
-            onMovieClick = onMovieClick,
-            onActressClick = onActressClick,
-            onGenreClick = onGenreClick
-        )
-    }
+    CategoryPagerScreen(
+        onMovieClick = onMovieClick,
+        onActressClick = onActressClick,
+        onGenreClick = onGenreClick,
+        onSearchClick = onSearchClick
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,39 +79,46 @@ private fun CategoryPagerScreen(
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit,
     onGenreClick: (GenreUiModel) -> Unit,
+    onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { CategoryOptions.size }
     val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
-        ScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            edgePadding = 8.dp,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage])
-                )
-            },
-            divider = {}
-        ) {
-            CategoryOptions.forEachIndexed { index, option ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                    text = {
-                        Text(
-                            "${option.group}·${option.name}",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (pagerState.currentPage == index)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            ScrollableTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                edgePadding = 8.dp,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage])
+                    )
+                },
+                divider = {},
+                modifier = Modifier.weight(1f)
+            ) {
+                CategoryOptions.forEachIndexed { index, option ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = {
+                            Text(
+                                "${option.group}·${option.name}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (pagerState.currentPage == index)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    )
+                }
+            }
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Default.Search, contentDescription = "搜索")
             }
         }
 

@@ -28,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -83,26 +82,21 @@ fun SearchScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("搜索") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                }
-            }
-        )
-
-        // Search input
+        // Search input with back button
         OutlinedTextField(
             value = searchInput,
             onValueChange = { searchInput = it },
-            label = { Text("搜索") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { doSearch() }),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            leadingIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                }
+            },
             trailingIcon = {
                 Text(
                     "搜索",
