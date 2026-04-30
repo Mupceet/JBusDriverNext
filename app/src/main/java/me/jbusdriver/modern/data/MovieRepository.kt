@@ -49,7 +49,12 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         forceRefresh: Boolean
     ): MoviePageResult {
         val baseUrl = urls?.get(type.key) ?: JAVBusService.defaultFastUrl
-        val url = if (page == 1) baseUrl else "$baseUrl${type.prefix}$page"
+        val basePath = when (type) {
+            DataSourceType.UNCENSORED -> "/uncensored"
+            DataSourceType.XYZ -> "/xyz"
+            else -> ""
+        }
+        val url = if (page == 1) "$baseUrl$basePath" else "$baseUrl$basePath${type.prefix}$page"
         val cacheKey = "${type.key}_${showAll}_$page"
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
