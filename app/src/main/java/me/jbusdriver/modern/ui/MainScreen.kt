@@ -1,44 +1,44 @@
 package me.jbusdriver.modern.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.MovieDBType
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.CollectionListScreen
 import me.jbusdriver.modern.ui.movielist.GenreListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
-import me.jbusdriver.modern.domain.model.ActressDBType
-import me.jbusdriver.modern.domain.model.MovieDBType
-import me.jbusdriver.modern.domain.model.DataSourceType
 
 data class CategoryOption(
     val group: String,
@@ -71,68 +71,9 @@ fun MainScreen(
     onGenreClick: (GenreUiModel) -> Unit = {}
 ) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-    var selectedOptionIndex by rememberSaveable { mutableIntStateOf(0) }
-    var showCategoryMenu by remember { mutableStateOf(false) }
-
-    val currentOption = CategoryOptions[selectedOptionIndex]
-    val topBarTitle = when (selectedTabIndex) {
-        0 -> "${currentOption.group} · ${currentOption.name}"
-        1 -> "搜索"
-        else -> ""
-    }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (selectedTabIndex == 0) {
-                        Box {
-                            Row(
-                                modifier = Modifier.clickable { showCategoryMenu = !showCategoryMenu },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    topBarTitle,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    " ▾",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showCategoryMenu,
-                                onDismissRequest = { showCategoryMenu = false }
-                            ) {
-                                CategoryOptions.forEachIndexed { index, option ->
-                                    if (index > 0 && option.group != CategoryOptions[index - 1].group) {
-                                        HorizontalDivider()
-                                    }
-                                    DropdownMenuItem(
-                                        text = {
-                                            val isSelected = index == selectedOptionIndex
-                                            Text(
-                                                "${option.group} · ${option.name}",
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        },
-                                        onClick = {
-                                            selectedOptionIndex = index
-                                            showCategoryMenu = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        Text(topBarTitle)
-                    }
-                }
-            )
-        },
+        topBar = { },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -151,42 +92,97 @@ fun MainScreen(
         }
     ) { padding ->
         when (selectedTabIndex) {
-            0 -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                ) {
-                    val dsType = currentOption.dataSourceType
-                    when {
-                        dsType != null && (dsType == DataSourceType.ACTRESSES || dsType == DataSourceType.UNCENSORED_ACTRESSES) -> ActressListScreen(
-                            dataSourceType = dsType,
-                            onActressClick = onActressClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                        dsType != null && dsType in genreTypes -> GenreListScreen(
-                            dataSourceType = dsType,
-                            onGenreClick = onGenreClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                        dsType != null -> MovieListScreen(
-                            dataSourceType = dsType,
-                            onMovieClick = onMovieClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                        else -> CollectionListScreen(
-                            dbType = currentOption.collectionDbType,
-                            onMovieClick = onMovieClick,
-                            onActressClick = onActressClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-            1 -> SearchScreen(
+            0 -> CategoryPagerScreen(
                 onMovieClick = onMovieClick,
+                onActressClick = onActressClick,
+                onGenreClick = onGenreClick,
                 modifier = Modifier.padding(padding)
             )
+            1 -> SearchScreen(
+                onMovieClick = onMovieClick,
+                onActressClick = onActressClick,
+                modifier = Modifier.padding(padding)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryPagerScreen(
+    onMovieClick: (MovieUiModel) -> Unit,
+    onActressClick: (ActressUiModel) -> Unit,
+    onGenreClick: (GenreUiModel) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val pagerState = rememberPagerState(initialPage = 0) { CategoryOptions.size }
+    val scope = rememberCoroutineScope()
+
+    Column(modifier = modifier.fillMaxSize()) {
+        ScrollableTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            edgePadding = 8.dp,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage])
+                )
+            },
+            divider = {}
+        ) {
+            CategoryOptions.forEachIndexed { index, option ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                    text = {
+                        Text(
+                            "${option.group}·${option.name}",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
+                            color = if (pagerState.currentPage == index)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                )
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val option = CategoryOptions[page]
+            val dsType = option.dataSourceType
+
+            when {
+                dsType != null && (dsType == DataSourceType.ACTRESSES || dsType == DataSourceType.UNCENSORED_ACTRESSES) ->
+                    ActressListScreen(
+                        dataSourceType = dsType,
+                        onActressClick = onActressClick,
+                        viewModel = hiltViewModel(key = "page_$page")
+                    )
+                dsType != null && dsType in genreTypes ->
+                    GenreListScreen(
+                        dataSourceType = dsType,
+                        onGenreClick = onGenreClick,
+                        viewModel = hiltViewModel(key = "page_$page")
+                    )
+                dsType != null ->
+                    MovieListScreen(
+                        dataSourceType = dsType,
+                        onMovieClick = onMovieClick,
+                        viewModel = hiltViewModel(key = "page_$page")
+                    )
+                else ->
+                    CollectionListScreen(
+                        dbType = option.collectionDbType,
+                        onMovieClick = onMovieClick,
+                        onActressClick = onActressClick,
+                        viewModel = hiltViewModel(key = "page_$page")
+                    )
+            }
         }
     }
 }

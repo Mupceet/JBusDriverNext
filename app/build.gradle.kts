@@ -129,6 +129,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons)
+    implementation(libs.compose.foundation)
     debugImplementation(libs.compose.ui.tooling)
 
     // Lifecycle + ViewModel + Navigation (Compose)
