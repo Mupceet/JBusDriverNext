@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,6 +90,7 @@ private fun CategoryPagerScreen(
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SecondaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,
+                containerColor = Color.Transparent,
                 edgePadding = 8.dp,
                 indicator = {
                     SecondaryIndicator(
