@@ -57,9 +57,17 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
+
+    // 当 ViewModel 的 query 变更时（如从其他页面返回），同步到本地输入状态
+    LaunchedEffect(uiState.query) {
+        if (uiState.query != searchInput) {
+            searchInput = uiState.query
+        }
+    }
 
     fun doSearch() {
-        val query = uiState.query.trim()
+        val query = searchInput.trim()
         if (query.isNotBlank()) {
             viewModel.search(query)
         }
@@ -70,8 +78,8 @@ fun SearchScreen(
     ) {
         // Search input
         OutlinedTextField(
-            value = uiState.query,
-            onValueChange = { viewModel.setQuery(it) },
+            value = searchInput,
+            onValueChange = { searchInput = it },
             label = { Text("搜索") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
