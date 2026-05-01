@@ -6,9 +6,10 @@ import androidx.collection.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
+import java.io.File
 
 /**
- * 职责：二级缓存管理器（内存 LRU + 磁盘 ACache）
+ * 职责：二级缓存管理器（内存 LRU + 磁盘 FileCache）
  *
  * 使用场景：Repository 层缓存网络请求结果，通过 [lruCached] 和 [persistentCached]
  * 两种策略实现临时缓存和持久缓存，业务方无需直接操作底层缓存实现。
@@ -23,9 +24,9 @@ object CacheLoader {
     @PublishedApi
     internal val lru: LruCache<String, String> by lazy { initMemCache() }
 
-    /** 磁盘缓存，应用重启后仍有效，支持过期时间 */
+    /** 磁盘缓存，应用重启后仍有效 */
     @PublishedApi
-    internal val acache: ACache by lazy { ACache.get(JBusManager.context) }
+    internal val fileCache: FileCache by lazy { FileCache(File(JBusManager.context.cacheDir, "ACache")) }
 
     /**
      * 根据设备可用内存初始化 LRU 内存缓存
@@ -102,7 +103,7 @@ object CacheLoader {
                 GSON.fromJson<T>(json)?.let { return it }
             }
             // 第二级：磁盘（命中后回填 LRU）
-            val diskJson = withContext(Dispatchers.IO) { acache.getAsString(key) }
+            val diskJson = withContext(Dispatchers.IO) { fileCache.get(key) }
             diskJson?.let { json ->
                 GSON.fromJson<T>(json)?.let { cached ->
                     lru.put(key, GSON.toJson(cached))
@@ -114,7 +115,7 @@ object CacheLoader {
         val result = fetch()
         val json = GSON.toJson(result)
         lru.put(key, json)
-        withContext(Dispatchers.IO) { acache.put(key, json) }
+        withContext(Dispatchers.IO) { fileCache.put(key, json) }
         return result
     }
 
@@ -128,7 +129,7 @@ object CacheLoader {
      * @param key 缓存键
      * @return 缓存字符串，不存在时返回 null
      */
-    suspend fun getString(key: String): String? = withContext(Dispatchers.IO) { acache.getAsString(key) }
+    suspend fun getString(key: String): String? = withContext(Dispatchers.IO) { fileCache.get(key) }
 
     // endregion
 }

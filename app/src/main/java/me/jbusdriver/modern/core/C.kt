@@ -1,7 +1,5 @@
 package me.jbusdriver.modern.core
 
-import me.jbusdriver.modern.core.ACache
-
 /**
  * 职责：全局常量定义，按功能分组
  *
@@ -12,12 +10,13 @@ object C {
     /**
      * 缓存相关常量
      *
-     * - DAY/WEEK: 缓存过期时间基准值
+     * - DAY/WEEK: 缓存过期时间基准值（秒）
      * - BUS_URLS: 可用站点 URL 列表的缓存 key
      */
     object Cache {
-        const val DAY = ACache.TIME_DAY
-        const val WEEK = ACache.TIME_DAY * 7
+        private const val SECONDS_PER_HOUR = 60 * 60
+        const val DAY = SECONDS_PER_HOUR * 24
+        const val WEEK = DAY * 7
         const val BUS_URLS = "bus_urls"
     }
 }
