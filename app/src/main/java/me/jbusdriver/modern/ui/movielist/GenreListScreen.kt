@@ -32,14 +32,17 @@ data class GenreCategory(val title: String, val genres: List<GenreUiModel>)
 @Composable
 fun GenreListScreen(
     dataSourceType: DataSourceType,
+    active: Boolean = true,
     onGenreClick: (GenreUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: GenreListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(dataSourceType) {
-        viewModel.setDataSourceType(dataSourceType)
+    LaunchedEffect(dataSourceType, active) {
+        if (active) {
+            viewModel.setDataSourceType(dataSourceType)
+        }
     }
 
     PullToRefreshBox(

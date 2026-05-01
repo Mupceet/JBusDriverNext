@@ -1,9 +1,12 @@
 package me.jbusdriver.modern.data
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
+import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
@@ -11,7 +14,9 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.SearchType
+import okhttp3.Request
 import org.jsoup.Jsoup
+import java.io.IOException
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,10 +36,12 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
             val html = fetchHtml(url)
-            val doc = Jsoup.parse(html)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc)
-            MoviePageResult(pageInfo, movies)
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+                val movies = loadMovieFromDoc(doc)
+                MoviePageResult(pageInfo, movies)
+            }
         }
     }
 
@@ -46,20 +53,36 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
 
         return lruCachedOrFetch(cacheKey) {
             val html = fetchHtml(url)
-            val doc = Jsoup.parse(html)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val actresses = parseActressList(doc)
-            pageInfo to actresses
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+                val actresses = parseActressList(doc)
+                pageInfo to actresses
+            }
         }
     }
 
     private suspend fun fetchHtml(url: String): String = suspendCancellableCoroutine { cont ->
-        val disposable = JAVBusService.INSTANCE.get(url)
-            .subscribe(
-                { html -> cont.resumeWith(Result.success(html)) },
-                { error -> cont.resumeWith(Result.failure(error)) }
-            )
-        cont.invokeOnCancellation { disposable.dispose() }
+        val request = Request.Builder().url(url).build()
+        val call = NetClient.apiClient.newCall(request)
+        cont.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                cont.resumeWith(Result.failure(e))
+            }
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                try {
+                    val body = response.body?.string() ?: ""
+                    if (body.isNotBlank()) {
+                        cont.resumeWith(Result.success(body))
+                    } else {
+                        cont.resumeWith(Result.failure(IllegalStateException("Empty response")))
+                    }
+                } catch (e: Exception) {
+                    cont.resumeWith(Result.failure(e))
+                }
+            }
+        })
     }
 
     private fun parsePageInfo(doc: org.jsoup.nodes.Document): PageInfo? {

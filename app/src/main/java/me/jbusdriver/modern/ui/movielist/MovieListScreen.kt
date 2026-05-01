@@ -28,14 +28,17 @@ import me.jbusdriver.modern.domain.model.DataSourceType
 @Composable
 fun MovieListScreen(
     dataSourceType: DataSourceType = DataSourceType.CENSORED,
+    active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(dataSourceType) {
-        viewModel.setDataSourceType(dataSourceType)
+    LaunchedEffect(dataSourceType, active) {
+        if (active) {
+            viewModel.setDataSourceType(dataSourceType)
+        }
     }
 
     PullToRefreshBox(

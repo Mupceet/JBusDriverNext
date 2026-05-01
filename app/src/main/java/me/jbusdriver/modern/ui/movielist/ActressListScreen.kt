@@ -36,14 +36,17 @@ import me.jbusdriver.modern.domain.model.DataSourceType
 @Composable
 fun ActressListScreen(
     dataSourceType: DataSourceType,
+    active: Boolean = true,
     onActressClick: (ActressUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ActressListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(dataSourceType) {
-        viewModel.setDataSourceType(dataSourceType)
+    LaunchedEffect(dataSourceType, active) {
+        if (active) {
+            viewModel.setDataSourceType(dataSourceType)
+        }
     }
 
     PullToRefreshBox(
@@ -65,13 +68,13 @@ fun ActressListScreen(
             else -> {
                 val gridState = rememberLazyGridState()
 
-                LaunchedEffect(gridState, uiState.hasMore) {
+                LaunchedEffect(gridState) {
                     snapshotFlow {
                         val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                         val totalItems = gridState.layoutInfo.totalItemsCount
                         lastVisible >= totalItems - 6
                     }.collect { nearEnd ->
-                        if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
+                        if (nearEnd) {
                             viewModel.loadMore()
                         }
                     }
@@ -85,7 +88,7 @@ fun ActressListScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(uiState.actresses, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
+                    itemsIndexed(uiState.actresses, key = { _, actress -> actress.link }) { _, actress ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.clickable { onActressClick(actress) }

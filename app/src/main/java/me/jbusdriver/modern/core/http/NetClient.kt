@@ -46,6 +46,8 @@ object NetClient {
     }
     val RxJavaCallAdapterFactory: CallAdapter.Factory = RxJava3CallAdapterFactory.create()
 
+    val apiClient: OkHttpClient by lazy { okHttpClient }
+
     private val strConv = object : Converter.Factory() {
 
         override fun requestBodyConverter(

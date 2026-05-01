@@ -45,10 +45,10 @@ data class CategoryOption(
 val CategoryOptions = listOf(
     CategoryOption("有码", "电影", DataSourceType.CENSORED),
     CategoryOption("有码", "演员", DataSourceType.ACTRESSES),
-    CategoryOption("有码", "类别", DataSourceType.GENRE),
+//    CategoryOption("有码", "类别", DataSourceType.GENRE),
     CategoryOption("无码", "电影", DataSourceType.UNCENSORED),
     CategoryOption("无码", "演员", DataSourceType.UNCENSORED_ACTRESSES),
-    CategoryOption("无码", "类别", DataSourceType.UNCENSORED_GENRE),
+//    CategoryOption("无码", "类别", DataSourceType.UNCENSORED_GENRE),
     CategoryOption("收藏", "电影", collectionDbType = MovieDBType),
     CategoryOption("收藏", "演员", collectionDbType = ActressDBType),
 )
@@ -126,27 +126,32 @@ private fun CategoryPagerScreen(
 
         HorizontalPager(
             state = pagerState,
+            beyondViewportPageCount = 2,
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val option = CategoryOptions[page]
             val dsType = option.dataSourceType
+            val active = pagerState.settledPage == page
 
             when {
                 dsType != null && (dsType == DataSourceType.ACTRESSES || dsType == DataSourceType.UNCENSORED_ACTRESSES) ->
                     ActressListScreen(
                         dataSourceType = dsType,
+                        active = active,
                         onActressClick = onActressClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
                 dsType != null && dsType in genreTypes ->
                     GenreListScreen(
                         dataSourceType = dsType,
+                        active = false,
                         onGenreClick = onGenreClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
                 dsType != null ->
                     MovieListScreen(
                         dataSourceType = dsType,
+                        active = active,
                         onMovieClick = onMovieClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )

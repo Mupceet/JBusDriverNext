@@ -39,6 +39,7 @@ import me.jbusdriver.modern.domain.model.MovieDBType
 @Composable
 fun CollectionListScreen(
     dbType: Int,
+    active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -46,8 +47,10 @@ fun CollectionListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(dbType) {
-        viewModel.loadCollection(dbType)
+    LaunchedEffect(dbType, active) {
+        if (active) {
+            viewModel.loadCollection(dbType)
+        }
     }
 
     when {

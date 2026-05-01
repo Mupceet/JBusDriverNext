@@ -2,12 +2,15 @@
 package me.jbusdriver.modern.data
 
 import androidx.collection.ArrayMap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.C
 import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.urlPath
+import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.MoviePageResult
@@ -21,7 +24,9 @@ import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressAttrs
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.DataSourceType
+import okhttp3.Request
 import org.jsoup.Jsoup
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,10 +64,12 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
             val html = fetchHtml(url, showAll)
-            val doc = Jsoup.parse(html)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc)
-            MoviePageResult(pageInfo, movies)
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+                val movies = loadMovieFromDoc(doc)
+                MoviePageResult(pageInfo, movies)
+            }
         }
     }
 
@@ -77,10 +84,12 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
             val html = fetchHtml(url)
-            val doc = Jsoup.parse(html)
-            val actresses = parseActressList(doc)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = if (actresses.size >= 20) page + 1 else page)
-            actresses to pageInfo
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                val actresses = parseActressList(doc)
+                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = if (actresses.size >= 20) page + 1 else page)
+                actresses to pageInfo
+            }
         }
     }
 
@@ -94,16 +103,18 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
         return persistentCachedOrFetch(cacheKey) {
             val html = fetchHtml(baseUrl)
-            val doc = Jsoup.parse(html)
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
 
-            val genreBoxes = doc.select(".genre-box")
-            val titles = genreBoxes.prev().map { it.text() }
-            val genreLists = genreBoxes.map { box ->
-                box.select("a").map { Genre(it.text(), it.attr("href")) }
-            }
+                val genreBoxes = doc.select(".genre-box")
+                val titles = genreBoxes.prev().map { it.text() }
+                val genreLists = genreBoxes.map { box ->
+                    box.select("a").map { Genre(it.text(), it.attr("href")) }
+                }
 
-            titles.zip(genreLists).map { (title, genres) ->
-                GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
+                titles.zip(genreLists).map { (title, genres) ->
+                    GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
+                }
             }
         }
     }
@@ -114,10 +125,12 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         return lruCachedOrFetch(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) url else "$url/$page"
             val html = fetchHtml(fullUrl)
-            val doc = Jsoup.parse(html)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc)
-            MoviePageResult(pageInfo, movies)
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+                val movies = loadMovieFromDoc(doc)
+                MoviePageResult(pageInfo, movies)
+            }
         }
     }
 
@@ -126,9 +139,11 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
         return persistentCachedOrFetch(cacheKey) {
             val html = fetchHtml(url)
-            val doc = Jsoup.parse(html)
-            val attrs = parseActressAttrs(doc)
-            ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                val attrs = parseActressAttrs(doc)
+                ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
+            }
         }
     }
 
@@ -166,18 +181,29 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
     private suspend fun fetchHtml(url: String, showAll: Boolean = false): String {
         return suspendCancellableCoroutine { cont ->
-            val service = JAVBusService.INSTANCE
-            val disposable = service.get(url, if (showAll) "all" else "")
-                .subscribe({ html ->
-                    if (html.isNotBlank()) {
-                        cont.resumeWith(Result.success(html))
-                    } else {
-                        cont.resumeWith(Result.failure(IllegalStateException("Empty response")))
+            val request = Request.Builder()
+                .url(url)
+                .header("existmag", if (showAll) "all" else "")
+                .build()
+            val call = NetClient.apiClient.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    cont.resumeWith(Result.failure(e))
+                }
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    try {
+                        val body = response.body?.string() ?: ""
+                        if (body.isNotBlank()) {
+                            cont.resumeWith(Result.success(body))
+                        } else {
+                            cont.resumeWith(Result.failure(IllegalStateException("Empty response")))
+                        }
+                    } catch (e: Exception) {
+                        cont.resumeWith(Result.failure(e))
                     }
-                }, { error ->
-                    cont.resumeWith(Result.failure(error))
-                })
-            cont.invokeOnCancellation { disposable.dispose() }
+                }
+            })
         }
     }
 
