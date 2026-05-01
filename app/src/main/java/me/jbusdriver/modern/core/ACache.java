@@ -1,6 +1,15 @@
 package me.jbusdriver.modern.core;
 
 /**
+ * Android 磁盘缓存实现，支持 String/JSON/Bitmap/Serializable 等多种数据类型。
+ *
+ * 使用场景：CacheLoader 的二级缓存（磁盘层），用于持久化缓存数据，应用重启后仍有效。
+ * 通过时间戳机制支持缓存过期自动清理。
+ *
+ * 线程：内部使用 ConcurrentHashMap 保证线程安全。文件 I/O 操作应避免在主线程执行。
+ *
+ * 来源：基于 Michael Yang 杨福海的 ACache 开源库（Apache 2.0）
+ *
  * Copyright (c) 2012-2013, Michael Yang 杨福海 (www.yangfuhai.com).
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

@@ -28,6 +28,18 @@ import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
+/**
+ * 全屏图片查看器。
+ *
+ * 职责：提供全屏黑底图片浏览体验，支持水平滑动切换图片和双指缩放，
+ * 顶部叠加半透明的页码指示器和返回按钮。
+ *
+ * 使用场景：在用户点击影片封面或截图预览时导航至此页面，用于查看大图。
+ *
+ * @param images 图片 URL 列表
+ * @param startIndex 初始显示的图片索引，默认为 0
+ * @param onBack 返回上一页的回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageViewScreen(

@@ -1,5 +1,14 @@
 package me.jbusdriver.modern.core.http;
 
+/**
+ * OkHttp 日志拦截器，打印 HTTP 请求和响应的详细信息
+ *
+ * 使用场景：仅在 DEBUG 构建中通过 NetClient 添加，用于开发阶段调试网络请求。
+ * 发布版本不包含此拦截器。
+ *
+ * 线程：由 OkHttp 调度器调用，通常在后台线程
+ */
+
 import android.text.TextUtils;
 import android.util.Log;
 

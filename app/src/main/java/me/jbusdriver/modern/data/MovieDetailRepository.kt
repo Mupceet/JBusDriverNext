@@ -17,10 +17,42 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * 影片详情数据仓库接口，定义获取影片详情的异步方法。
+ *
+ * 职责：作为影片详情数据的获取入口，屏蔽底层缓存和网络请求细节。
+ *
+ * 使用场景：影片详情 ViewModel 通过此接口获取指定影片的完整详情信息。
+ *
+ * 线程：方法为 suspend 函数，应在协程中调用；内部网络请求在 IO 调度器执行，
+ * HTML 解析在 [Dispatchers.Default] 执行。
+ */
 interface MovieDetailRepository {
+    /**
+     * 获取指定 URL 的影片详情。
+     *
+     * 优先从 LRU 内存缓存和磁盘缓存中读取，缓存未命中或 [forceRefresh] 为 true 时
+     * 从网络获取 HTML 并解析。
+     *
+     * @param url 影片详情页 URL
+     * @param forceRefresh 是否强制刷新缓存
+     * @return 影片详情数据
+     */
     suspend fun getMovieDetail(url: String, forceRefresh: Boolean = false): MovieDetail
 }
 
+/**
+ * [MovieDetailRepository] 的默认实现，使用两级缓存（LRU + 磁盘）+ 网络请求。
+ *
+ * 职责：组合 LRU 内存缓存、磁盘缓存、OkHttp 网络请求和 Jsoup HTML 解析，
+ * 为影片详情页提供透明缓存的数据访问。详情数据使用持久缓存策略（LRU + 磁盘），
+ * 应用重启后仍可命中缓存。
+ *
+ * 使用场景：由 [DataModule] 通过 Hilt 绑定为 [MovieDetailRepository] 的单例实现。
+ *
+ * 线程：网络请求通过 [suspendCancellableCoroutine] 将 OkHttp 异步回调转为协程挂起，
+ * HTML 解析在 [Dispatchers.Default] 执行，确保不阻塞主线程。
+ */
 @Singleton
 class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository {
 

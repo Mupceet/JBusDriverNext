@@ -28,6 +28,19 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import me.jbusdriver.modern.ui.MovieUiModel
 
+/**
+ * 影片列表中的单个影片条目卡片。
+ *
+ * 职责：以卡片形式展示影片的封面缩略图、标题、标签、编号和日期，
+ * 整个卡片可点击触发跳转到影片详情页。
+ *
+ * 使用场景：被 [MovieListScreen]、[CollectionListScreen]、[LinkMovieListScreen] 和 [SearchScreen]
+ * 中的影片列表使用，作为 LazyColumn 的单个条目项。
+ *
+ * @param movie 影片的 UI 数据模型
+ * @param onClick 点击卡片时的回调
+ * @param modifier 应用于卡片外层的 Modifier
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MovieItem(

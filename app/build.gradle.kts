@@ -67,14 +67,8 @@ dependencies {
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.androidx.coordinatorlayout)
 
-    // RxJava
-    implementation(libs.rxjava3)
-    implementation(libs.rxandroid)
-    implementation(libs.rxkotlin)
-
     // Network
     implementation(libs.retrofit)
-    implementation(libs.retrofit.rxjava3)
     implementation(libs.retrofit.scalars)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp)
@@ -91,7 +85,6 @@ dependencies {
     // Database
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
-    implementation(libs.room.rxjava3)
 
     // Parse
     implementation(libs.jsoup)

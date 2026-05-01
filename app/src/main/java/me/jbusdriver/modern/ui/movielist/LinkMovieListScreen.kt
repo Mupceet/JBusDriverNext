@@ -51,6 +51,23 @@ import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
 
+/**
+ * 关联链接影片列表页面。
+ *
+ * 职责：展示某个演员或类别关联的影片列表。当 [type] 为 "actress" 时，顶部会展示演员详情卡片
+ * （头像、名称和附加信息），并提供收藏/取消收藏演员的功能。支持下拉刷新和自动加载更多。
+ *
+ * 使用场景：作为 Navigation 图中的一个目标页面，在用户点击演员头像或类别标签时导航至此。
+ * 页面标题根据 [type] 和 [title] 自动生成（如 "演员: XXX" 或 "类别: XXX"）。
+ *
+ * @param linkUrl 关联链接的 URL，用于加载对应的影片列表
+ * @param title 页面标题，用于 TopAppBar 展示
+ * @param type 链接类型，"actress" 表示演员，"genre" 表示类别，其他值显示原始标题
+ * @param avatarUrl 演员头像 URL，仅在演员类型时使用
+ * @param onMovieClick 点击影片条目时的回调
+ * @param onBack 返回上一页的回调
+ * @param viewModel 关联影片列表的 ViewModel，由 Hilt 自动注入
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LinkMovieListScreen(
@@ -186,6 +203,17 @@ fun LinkMovieListScreen(
     }
 }
 
+/**
+ * 演员详情卡片。
+ *
+ * 职责：在 Surface 卡片中展示演员的头像、名称和附加信息。
+ * 当有附加信息时采用左右布局（头像+名称在左，信息在右）；
+ * 无附加信息时居中展示头像和名称。
+ *
+ * 使用场景：作为 [LinkMovieListScreen] 中演员类型页面的顶部 header 卡片。
+ *
+ * @param actress 演员详情数据模型
+ */
 @Composable
 private fun ActressDetailCard(actress: ActressDetailUiModel) {
     Surface(
@@ -259,6 +287,14 @@ private fun ActressDetailCard(actress: ActressDetailUiModel) {
     }
 }
 
+/**
+ * 演员详情加载中的占位卡片。
+ *
+ * 职责：在演员详情数据加载期间，展示与 [ActressDetailCard] 相同布局的骨架占位符，
+ * 包含圆形头像占位和文本行占位。
+ *
+ * 使用场景：作为 [LinkMovieListScreen] 中演员类型页面的顶部 header，当演员详情正在加载时显示。
+ */
 @Composable
 private fun ActressDetailLoadingPlaceholder() {
     Surface(
@@ -306,6 +342,15 @@ private fun ActressDetailLoadingPlaceholder() {
     }
 }
 
+/**
+ * 演员详情加载失败的错误提示卡片。
+ *
+ * 职责：以错误容器样式的 Surface 展示演员详情加载失败时的错误信息。
+ *
+ * 使用场景：作为 [LinkMovieListScreen] 中演员类型页面的顶部 header，当演员详情加载失败时显示。
+ *
+ * @param error 错误信息文本
+ */
 @Composable
 private fun ActressDetailErrorCard(error: String) {
     Surface(

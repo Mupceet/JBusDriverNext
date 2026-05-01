@@ -1,3 +1,16 @@
+/**
+ * 职责：Compose Navigation 路由图定义
+ *
+ * 使用场景：JBusNavigation() 在 ModernMainActivity 中作为根 Composable 调用，
+ * 管理所有页面的导航关系和转场动画
+ *
+ * 路由结构：
+ * main → 电影/演员/收藏 Tab 页面
+ * search → 搜索页
+ * movie_detail/{movieUrl} → 电影详情页
+ * image_viewer/{images} → 全屏图片查看器
+ * link_movies/{linkUrl} → 演员作品/类别电影列表页
+ */
 package me.jbusdriver.modern.ui
 
 import androidx.compose.animation.AnimatedContentTransitionScope

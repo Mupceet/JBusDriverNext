@@ -55,6 +55,21 @@ import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.movielist.MovieItem
 import me.jbusdriver.modern.domain.model.SearchType
 
+/**
+ * 搜索页面。
+ *
+ * 职责：提供搜索输入框和搜索类型选择（影片/演员/编号等），根据搜索类型切换展示
+ * 影片列表结果或演员网格结果。支持键盘搜索动作、滚动时自动收起键盘、
+ * 自动加载更多以及空状态/错误状态提示。
+ *
+ * 使用场景：作为 Navigation 图中的一个目标页面，用户通过主页搜索入口导航至此。
+ *
+ * @param onMovieClick 点击影片条目时的回调
+ * @param onActressClick 点击演员条目时的回调
+ * @param onBack 返回上一页的回调
+ * @param modifier 应用于根布局的 Modifier
+ * @param viewModel 搜索页面的 ViewModel，由 Hilt 自动注入
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -163,6 +178,18 @@ fun SearchScreen(
     }
 }
 
+/**
+ * 搜索结果中的演员网格列表。
+ *
+ * 职责：以三列网格展示演员搜索结果，支持自动加载更多和触摸/滚动时收起键盘。
+ *
+ * 使用场景：由 [SearchScreen] 在搜索类型为演员时调用，作为搜索结果区域。
+ *
+ * @param uiState 搜索页面的 UI 状态
+ * @param onActressClick 点击演员条目时的回调
+ * @param onLoadMore 加载更多结果的回调
+ * @param onScroll 滚动或触摸时的回调，用于收起键盘
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActressResults(
@@ -245,6 +272,19 @@ private fun ActressResults(
     }
 }
 
+/**
+ * 搜索结果中的影片列表。
+ *
+ * 职责：以 LazyColumn 列表展示影片搜索结果，使用 [MovieItem] 作为条目组件，
+ * 支持自动加载更多和触摸/滚动时收起键盘。
+ *
+ * 使用场景：由 [SearchScreen] 在搜索类型为影片/编号等非演员类型时调用，作为搜索结果区域。
+ *
+ * @param uiState 搜索页面的 UI 状态
+ * @param onMovieClick 点击影片条目时的回调
+ * @param onLoadMore 加载更多结果的回调
+ * @param onScroll 滚动或触摸时的回调，用于收起键盘
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MovieResults(

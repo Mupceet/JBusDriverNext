@@ -24,6 +24,21 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.domain.model.DataSourceType
 
+/**
+ * 影片列表页面。
+ *
+ * 职责：以垂直滚动列表展示影片数据，支持下拉刷新和自动加载更多（滚动到底部触发）。
+ * 根据 [DataSourceType] 加载不同分类的影片数据。
+ *
+ * 使用场景：作为主页 Tab 内容区域使用，根据用户选择的数据源类型（有码/无码/欧美等）展示对应影片列表。
+ * 通常嵌入到 [MainScreen] 的 Tab 页中，通过 [active] 参数控制是否激活数据加载。
+ *
+ * @param dataSourceType 数据源类型，决定加载哪个分类的影片
+ * @param active 当前页面是否处于激活（可见）状态，仅在激活时加载数据
+ * @param onMovieClick 点击影片条目时的回调
+ * @param modifier 应用于根布局的 Modifier
+ * @param viewModel 影片列表的 ViewModel，由 Hilt 自动注入
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieListScreen(

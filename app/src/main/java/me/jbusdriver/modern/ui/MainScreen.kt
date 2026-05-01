@@ -1,3 +1,15 @@
+/**
+ * 职责：主界面 — Tab 页面 + HorizontalPager 组合
+ *
+ * 使用场景：作为 Navigation 起始页，包含有码/无码/收藏三个分组的 Tab 切换
+ *
+ * Tab 结构：
+ * - 有码·电影 / 有码·演员
+ * - 无码·电影 / 无码·演员
+ * - 收藏·电影 / 收藏·演员
+ *
+ * 每个 Tab 对应一个独立的 ViewModel（通过 hiltViewModel(key) 隔离状态）
+ */
 package me.jbusdriver.modern.ui
 
 import androidx.compose.foundation.layout.Column
@@ -137,21 +149,18 @@ private fun CategoryPagerScreen(
                 dsType != null && (dsType == DataSourceType.ACTRESSES || dsType == DataSourceType.UNCENSORED_ACTRESSES) ->
                     ActressListScreen(
                         dataSourceType = dsType,
-                        active = active,
                         onActressClick = onActressClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
                 dsType != null && dsType in genreTypes ->
                     GenreListScreen(
                         dataSourceType = dsType,
-                        active = false,
                         onGenreClick = onGenreClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
                 dsType != null ->
                     MovieListScreen(
                         dataSourceType = dsType,
-                        active = active,
                         onMovieClick = onMovieClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )

@@ -74,6 +74,22 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
 
+/**
+ * 影片详情页面的顶层可组合函数。
+ *
+ * 职责：展示影片的完整详情信息，包括封面、基本信息、截图、演员、类别、推荐影片以及磁力链接，
+ * 并提供收藏/取消收藏功能。支持下拉刷新和错误重试。
+ *
+ * 使用场景：作为 Navigation 图中的一个目标页面，在用户点击影片列表或搜索结果中的影片时导航至此。
+ *
+ * @param movieUrl 影片详情页的 URL，用于从远程加载详情数据
+ * @param onMovieClick 点击推荐影片时的回调
+ * @param onActressClick 点击演员头像时的回调
+ * @param onGenreClick 点击类别标签时的回调
+ * @param onImageClick 点击图片时的回调，参数为图片 URL 列表和当前点击的索引
+ * @param onBack 返回上一页的回调
+ * @param viewModel 影片详情页的 ViewModel，由 Hilt 自动注入
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieDetailScreen(
@@ -172,6 +188,21 @@ fun MovieDetailScreen(
     }
 }
 
+/**
+ * 影片详情页的内容区域。
+ *
+ * 职责：以 LazyColumn 形式垂直排列影片的封面、基本信息、截图预览、演员列表、类别标签、推荐影片和磁力链接按钮。
+ *
+ * 使用场景：由 [MovieDetailScreen] 在数据加载成功后调用，作为详情页面的主体内容。
+ *
+ * @param detail 影片详情数据模型
+ * @param padding 外部传入的内边距，通常来自 Scaffold
+ * @param onMovieClick 点击推荐影片时的回调
+ * @param onActressClick 点击演员头像时的回调
+ * @param onGenreClick 点击类别标签时的回调
+ * @param onImageClick 点击图片（封面或截图）时的回调
+ * @param onMagnetClick 点击"查看磁力链接"按钮时的回调
+ */
 @Composable
 private fun DetailContent(
     detail: MovieDetailUiModel,
@@ -285,6 +316,16 @@ private fun DetailContent(
     }
 }
 
+/**
+ * 影片类别标签区域。
+ *
+ * 职责：以 FlowRow 形式展示影片所属的所有类别标签，每个标签可点击跳转。
+ *
+ * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联类别时显示。
+ *
+ * @param genres 类别列表
+ * @param onGenreClick 点击单个类别标签时的回调
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel) -> Unit) {
@@ -302,6 +343,16 @@ private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel
     }
 }
 
+/**
+ * 影片截图预览区域。
+ *
+ * 职责：以水平滚动列表展示影片的截图缩略图，点击任意截图可进入全屏图片查看器。
+ *
+ * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联截图时显示。
+ *
+ * @param samples 截图列表，包含缩略图和大图的 URL
+ * @param onImageClick 点击截图时的回调，参数为所有大图 URL 列表和当前点击的索引
+ */
 @Composable
 private fun ImageSampleSection(
     samples: List<ImageSampleUiModel>,
@@ -331,6 +382,16 @@ private fun ImageSampleSection(
     }
 }
 
+/**
+ * 演员头像列表区域。
+ *
+ * 职责：以水平滚动列表展示影片关联的演员头像和名称，点击可跳转到演员详情。
+ *
+ * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联演员时显示。
+ *
+ * @param actresses 演员列表
+ * @param onActressClick 点击演员时的回调
+ */
 @Composable
 private fun ActressSection(actresses: List<ActressUiModel>, onActressClick: (ActressUiModel) -> Unit) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -363,6 +424,16 @@ private fun ActressSection(actresses: List<ActressUiModel>, onActressClick: (Act
     }
 }
 
+/**
+ * 推荐影片区域。
+ *
+ * 职责：以水平滚动列表展示与当前影片相关的推荐影片，包含封面和标题。
+ *
+ * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联推荐影片时显示。
+ *
+ * @param movies 推荐影片列表
+ * @param onMovieClick 点击推荐影片时的回调
+ */
 @Composable
 private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (MovieUiModel) -> Unit) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -398,6 +469,18 @@ private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movie
     }
 }
 
+/**
+ * 磁力链接底部弹窗。
+ *
+ * 职责：以 ModalBottomSheet 展示影片的磁力链接列表，支持分页加载更多。
+ * 点击磁力链接项会将链接复制到剪贴板。
+ *
+ * 使用场景：在 [MovieDetailScreen] 中点击"查看磁力链接"按钮后弹出。
+ *
+ * @param uiState 影片详情页的 UI 状态，包含磁力链接数据和加载状态
+ * @param onLoadMore 加载更多磁力链接的回调
+ * @param onDismiss 关闭弹窗的回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MagnetBottomSheet(
@@ -466,6 +549,16 @@ private fun MagnetBottomSheet(
     }
 }
 
+/**
+ * 单条磁力链接的可组合项。
+ *
+ * 职责：展示磁力链接的名称、大小和日期信息，点击时将链接复制到系统剪贴板。
+ *
+ * 使用场景：作为 [MagnetBottomSheet] 中磁力链接列表的单个条目。
+ *
+ * @param magnet 磁力链接数据模型
+ * @param context Android Context，用于获取 ClipboardManager 服务
+ */
 @Composable
 private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
     Column(
