@@ -3,8 +3,6 @@ package me.jbusdriver.modern.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
-import me.jbusdriver.modern.core.GSON
-import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.domain.model.MovieDetail
@@ -55,32 +53,12 @@ class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository
     override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
         val cacheKey = url.urlPath
 
-        if (!forceRefresh) {
-            // Check LRU memory cache
-            CacheLoader.lru.get(cacheKey)?.let {
-                return GSON.fromJson<MovieDetail>(it) ?: error("Corrupt cache for $cacheKey")
-            }
-
-            // Check disk cache
-            CacheLoader.acache.getAsString(cacheKey)?.let {
-                GSON.fromJson<MovieDetail>(it)?.let { cached ->
-                    CacheLoader.lru.put(cacheKey, GSON.toJson(cached))
-                    return cached
-                }
+        return CacheLoader.persistentCached(cacheKey, forceRefresh) {
+            val html = NetClient.fetchHtml(url)
+            withContext(Dispatchers.Default) {
+                val doc = Jsoup.parse(html)
+                parseMovieDetails(doc)
             }
         }
-
-        // Fetch from network
-        val html = NetClient.fetchHtml(url)
-
-        val detail = withContext(Dispatchers.Default) {
-            val doc = Jsoup.parse(html)
-            parseMovieDetails(doc)
-        }
-
-        // Cache to LRU + disk
-        CacheLoader.cacheLruAndDisk(cacheKey to detail)
-
-        return detail
     }
 }

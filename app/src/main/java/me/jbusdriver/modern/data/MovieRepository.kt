@@ -104,7 +104,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
     /** 从磁盘缓存中读取的可切换 URL 配置映射表。 */
     private val urls: ArrayMap<String, String>? by lazy {
-        CacheLoader.acache.getAsString(C.Cache.BUS_URLS)?.let {
+        CacheLoader.getString(C.Cache.BUS_URLS)?.let {
             GSON.fromJson<ArrayMap<String, String>>(it)
         }
     }
@@ -124,7 +124,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val url = if (page == 1) "$baseUrl$basePath" else "$baseUrl$basePath${type.prefix}$page"
         val cacheKey = "${type.key}_${showAll}_$page"
 
-        return lruCachedOrFetch(cacheKey, forceRefresh) {
+        return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val html = NetClient.fetchHtml(url, showAll)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
@@ -144,7 +144,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val url = if (page == 1) baseUrl else "$baseUrl/$page"
         val cacheKey = "actresses_${type.key}_$page"
 
-        return lruCachedOrFetch(cacheKey, forceRefresh) {
+        return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
@@ -163,7 +163,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
             }
         val cacheKey = "genres_${type.key}"
 
-        return persistentCachedOrFetch(cacheKey) {
+        return CacheLoader.persistentCached(cacheKey) {
             val html = NetClient.fetchHtml(baseUrl)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
@@ -184,7 +184,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean): MoviePageResult {
         val cacheKey = "page_${url.urlPath}_$page"
 
-        return lruCachedOrFetch(cacheKey, forceRefresh) {
+        return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) url else "$url/$page"
             val html = NetClient.fetchHtml(fullUrl)
             withContext(Dispatchers.Default) {
@@ -199,7 +199,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? {
         val cacheKey = "actress_${url.urlPath}"
 
-        return persistentCachedOrFetch(cacheKey) {
+        return CacheLoader.persistentCached(cacheKey) {
             val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
@@ -207,38 +207,6 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
                 ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
             }
         }
-    }
-
-    /** LRU + disk cache, for static data (details, genres). Survives app restarts. */
-    private inline fun <reified T> persistentCachedOrFetch(cacheKey: String, fetch: () -> T): T {
-        CacheLoader.lru.get(cacheKey)?.let {
-            GSON.fromJson<T>(it)?.let { return it }
-        }
-        CacheLoader.acache.getAsString(cacheKey)?.let {
-            GSON.fromJson<T>(it)?.let { cached ->
-                CacheLoader.lru.put(cacheKey, GSON.toJson(cached))
-                return cached
-            }
-        }
-        val result = fetch()
-        CacheLoader.cacheLruAndDisk(cacheKey to (result as Any))
-        return result
-    }
-
-    /** LRU-only cache, for list data. Fresh data on next app launch. */
-    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, fetch: () -> T): T =
-        lruCachedOrFetch(cacheKey, false, fetch)
-
-    /** LRU-only cache with optional force-refresh. */
-    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, forceRefresh: Boolean, fetch: () -> T): T {
-        if (!forceRefresh) {
-            CacheLoader.lru.get(cacheKey)?.let {
-                GSON.fromJson<T>(it)?.let { return it }
-            }
-        }
-        val result = fetch()
-        CacheLoader.cacheLru(cacheKey to (result as Any))
-        return result
     }
 
     /**

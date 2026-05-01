@@ -10,6 +10,7 @@ import java.io.File
 import java.lang.reflect.Modifier.STATIC
 import java.lang.reflect.Modifier.TRANSIENT
 import java.util.*
+import androidx.core.net.toUri
 
 private const val TAG = "Global"
 
@@ -115,8 +116,8 @@ val String.urlHost: String
  * 使用场景：CacheLoader 的缓存 key 生成、Repository 的 cacheKey 拼接
  */
 val String.urlPath: String
-    get() = (urlCache.get(this) ?: let {
-        val uri = Uri.parse(this)
+    get() = (urlCache[this] ?: let {
+        val uri = this.toUri()
         urlCache.put(this, uri)
         uri
-    })?.path ?: ""
+    }).path ?: ""

@@ -3,8 +3,6 @@ package me.jbusdriver.modern.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
-import me.jbusdriver.modern.core.GSON
-import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.MoviePageResult
@@ -69,7 +67,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        return lruCachedOrFetch(cacheKey, forceRefresh) {
+        return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
@@ -86,7 +84,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        return lruCachedOrFetch(cacheKey) {
+        return CacheLoader.lruCached(cacheKey) {
             val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
@@ -120,15 +118,4 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         )
     }
 
-    /** LRU-only cache with optional force-refresh. */
-    private inline fun <reified T> lruCachedOrFetch(cacheKey: String, forceRefresh: Boolean = false, fetch: () -> T): T {
-        if (!forceRefresh) {
-            CacheLoader.lru.get(cacheKey)?.let {
-                GSON.fromJson<T>(it)?.let { return it }
-            }
-        }
-        val result = fetch()
-        CacheLoader.cacheLru(cacheKey to (result as Any))
-        return result
-    }
 }
