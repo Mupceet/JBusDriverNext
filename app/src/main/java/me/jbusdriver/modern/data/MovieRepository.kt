@@ -102,12 +102,14 @@ interface MovieRepository {
 @Singleton
 class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
-    /** 从磁盘缓存中读取的可切换 URL 配置映射表。 */
-    private val urls: ArrayMap<String, String>? by lazy {
+    /**
+     * 从磁盘缓存读取可切换 URL 配置映射表。
+     * 每次调用都从缓存读取，保证切换 URL 后立即生效。
+     */
+    private suspend fun loadUrls(): ArrayMap<String, String>? =
         CacheLoader.getString(C.Cache.BUS_URLS)?.let {
             GSON.fromJson<ArrayMap<String, String>>(it)
         }
-    }
 
     override suspend fun loadPage(
         type: DataSourceType,
@@ -115,6 +117,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
+        val urls = loadUrls()
         val baseUrl = urls?.get(type.key) ?: JAVBusService.defaultFastUrl
         val basePath = when (type) {
             DataSourceType.UNCENSORED -> "/uncensored"
@@ -136,6 +139,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     }
 
     override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean): Pair<List<ActressInfo>, PageInfo> {
+        val urls = loadUrls()
         val baseUrl = urls?.get(type.key)
             ?: when (type) {
                 DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
@@ -156,6 +160,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     }
 
     override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean): List<GenreCategory> {
+        val urls = loadUrls()
         val baseUrl = urls?.get(type.key)
             ?: when (type) {
                 DataSourceType.UNCENSORED_GENRE -> JAVBusService.defaultFastUrl + "/uncensored/genre"

@@ -3,6 +3,8 @@ package me.jbusdriver.modern.core
 import android.app.Activity
 import android.app.ActivityManager
 import androidx.collection.LruCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
 
 /**
@@ -85,19 +87,23 @@ object CacheLoader {
      * 查找顺序：LRU → 磁盘（命中后回填 LRU）→ [fetch] → 写入 LRU + 磁盘
      * 适用于详情、类别等静态数据，应用重启后仍可命中缓存。
      *
+     * 磁盘读写自动切换到 [Dispatchers.IO]，调用方无需关心线程。
+     *
      * @param T 缓存数据类型
      * @param key 缓存键
+     * @param forceRefresh true 时跳过缓存直接获取
      * @param fetch 缓存未命中时的数据获取逻辑
      * @return 缓存或新获取的数据
      */
-    inline fun <reified T> persistentCached(key: String, forceRefresh: Boolean = false, fetch: () -> T): T {
+    suspend inline fun <reified T> persistentCached(key: String, forceRefresh: Boolean = false, crossinline fetch: suspend () -> T): T {
         if (!forceRefresh) {
-            // 第一级：LRU 内存
+            // 第一级：LRU 内存（无磁盘 I/O）
             lru.get(key)?.let { json ->
                 GSON.fromJson<T>(json)?.let { return it }
             }
             // 第二级：磁盘（命中后回填 LRU）
-            acache.getAsString(key)?.let { json ->
+            val diskJson = withContext(Dispatchers.IO) { acache.getAsString(key) }
+            diskJson?.let { json ->
                 GSON.fromJson<T>(json)?.let { cached ->
                     lru.put(key, GSON.toJson(cached))
                     return cached
@@ -108,7 +114,7 @@ object CacheLoader {
         val result = fetch()
         val json = GSON.toJson(result)
         lru.put(key, json)
-        acache.put(key, json)
+        withContext(Dispatchers.IO) { acache.put(key, json) }
         return result
     }
 
@@ -117,29 +123,12 @@ object CacheLoader {
      *
      * 使用场景：读取配置型数据（如 BUS_URLS），不涉及类型化反序列化
      *
+     * 磁盘读取自动切换到 [Dispatchers.IO]，调用方无需关心线程。
+     *
      * @param key 缓存键
      * @return 缓存字符串，不存在时返回 null
      */
-    fun getString(key: String): String? = acache.getAsString(key)
+    suspend fun getString(key: String): String? = withContext(Dispatchers.IO) { acache.getAsString(key) }
 
     // endregion
-
-    /**
-     * 按关键词模糊删除缓存（内存 + 磁盘同时清除）
-     *
-     * @param keys 要匹配的关键词
-     * @param isRegex true 时用正则匹配，false 时用 contains 匹配
-     */
-    fun removeLike(vararg keys: String, isRegex: Boolean = false) {
-        val cacheCopyKeys = lru.snapshot().keys.toList()
-        keys.forEach { removeKey ->
-            val matches: (String) -> Boolean =
-                { s -> if (isRegex) s.contains(removeKey.toRegex()) else s.contains(removeKey) }
-            cacheCopyKeys.filter(matches).forEach {
-                KLog.i("removeLike : $it")
-                lru.remove(it)
-                acache.remove(it)
-            }
-        }
-    }
 }
