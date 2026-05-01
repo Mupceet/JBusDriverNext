@@ -2,8 +2,6 @@ package me.jbusdriver.modern.domain.model
 
 import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
-import org.jsoup.nodes.Document
-import java.util.Collections.emptyList
 
 /**
  * 影片数据模型，表示列表页中的单个影片条目。
@@ -36,37 +34,6 @@ data class Movie(
     /** 所属收藏分类 ID，默认关联 [MovieCategory] */
     @Transient
     override var categoryId: Int = MovieCategory.id ?: 1
-}
-
-/**
- * 从 Jsoup [Document] 中解析影片列表。
- *
- * 职责：解析列表页 HTML，提取所有影片条目为 [Movie] 对象列表。
- *
- * 使用场景：首页、类别页、搜索结果页等列表页的 HTML 响应解析。
- *
- * Jsoup 选择器说明：
- * - `.movie-box`：定位页面中每个影片卡片容器（`<a class="movie-box">`）
- * - `img`（在 `.movie-box` 内）：封面图片，`title` 属性为影片标题，`src` 属性为图片 URL
- * - `date`（在 `.movie-box` 内）：`<date>` 标签，第一个为番号，第二个为发行日期
- * - `href`（在 `.movie-box` 上）：影片详情页链接
- * - `.item-tag`：标签容器，其子元素的文本为各标签名称
- *
- * @param str 列表页的 Jsoup Document 对象
- * @return 解析得到的影片列表
- */
-fun loadMovieFromDoc(str: Document): List<Movie> {
-    return str.select(".movie-box").mapIndexed { _, element ->
-        Movie(
-            title = element.select("img").attr("title"),
-            imageUrl = element.select("img").attr("src").wrapImage(),
-            code = element.select("date").first().text(),
-            date = element.select("date").getOrNull(1)?.text() ?: "",
-            link = element.attr("href"),
-            tags = element.select(".item-tag").firstOrNull()?.children()?.map { it.text() }
-                ?: emptyList()
-        )
-    }
 }
 
 /**

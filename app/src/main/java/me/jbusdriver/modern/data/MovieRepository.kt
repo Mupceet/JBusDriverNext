@@ -17,11 +17,11 @@ import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.ui.movielist.GenreCategory
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.domain.model.ActressInfo
-import me.jbusdriver.modern.domain.model.ActressAttrs
-import me.jbusdriver.modern.domain.model.Genre
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressAttrs
 import me.jbusdriver.modern.domain.model.parseActressList
+import me.jbusdriver.modern.domain.model.parseGenreCategories
+import me.jbusdriver.modern.domain.model.parsePageInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import org.jsoup.Jsoup
 import javax.inject.Inject
@@ -172,14 +172,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
             val html = NetClient.fetchHtml(baseUrl)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
-
-                val genreBoxes = doc.select(".genre-box")
-                val titles = genreBoxes.prev().map { it.text() }
-                val genreLists = genreBoxes.map { box ->
-                    box.select("a").map { Genre(it.text(), it.attr("href")) }
-                }
-
-                titles.zip(genreLists).map { (title, genres) ->
+                parseGenreCategories(doc).map { (title, genres) ->
                     GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
                 }
             }
@@ -212,28 +205,5 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
                 ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
             }
         }
-    }
-
-    /**
-     * 从 HTML 文档的分页组件解析当前页、下一页和可用页码信息。
-     *
-     * @param doc Jsoup 解析后的 HTML 文档
-     * @return 分页信息，无分页组件时返回 null
-     */
-    private fun parsePageInfo(doc: org.jsoup.nodes.Document): PageInfo? {
-        val current = doc.select(".pagination .active > a").attr("href")
-        if (current.isNullOrEmpty()) return null
-
-        val next = doc.select(".pagination .active ~ li > a").let {
-            if (it.isEmpty()) current else it.attr("href")
-        }
-        val pages = doc.select(".pagination a:not([id])")
-            .mapNotNull { it.attr("href").split("/").lastOrNull()?.toIntOrNull() }
-
-        return PageInfo(
-            activePage = current.split("/").lastOrNull()?.toIntOrNull() ?: 0,
-            nextPage = next.split("/").lastOrNull()?.toIntOrNull() ?: 0,
-            referPages = pages
-        )
     }
 }

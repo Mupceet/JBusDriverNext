@@ -10,6 +10,7 @@ import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressList
+import me.jbusdriver.modern.domain.model.parsePageInfo
 import me.jbusdriver.modern.domain.model.SearchType
 import org.jsoup.Jsoup
 import java.net.URLEncoder
@@ -94,28 +95,4 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
             }
         }
     }
-
-    /**
-     * 从 HTML 文档的分页组件解析当前页、下一页和可用页码信息。
-     *
-     * @param doc Jsoup 解析后的 HTML 文档
-     * @return 分页信息，无分页组件时返回 null
-     */
-    private fun parsePageInfo(doc: org.jsoup.nodes.Document): PageInfo? {
-        val current = doc.select(".pagination .active > a").attr("href")
-        if (current.isNullOrEmpty()) return null
-
-        val next = doc.select(".pagination .active ~ li > a").let {
-            if (it.isEmpty()) current else it.attr("href")
-        }
-        val pages = doc.select(".pagination a:not([id])")
-            .mapNotNull { it.attr("href").split("/").lastOrNull()?.toIntOrNull() }
-
-        return PageInfo(
-            activePage = current.split("/").lastOrNull()?.toIntOrNull() ?: 0,
-            nextPage = next.split("/").lastOrNull()?.toIntOrNull() ?: 0,
-            referPages = pages
-        )
-    }
-
 }
