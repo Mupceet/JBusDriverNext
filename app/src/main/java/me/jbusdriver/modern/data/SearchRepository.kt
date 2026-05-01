@@ -1,7 +1,5 @@
 package me.jbusdriver.modern.data
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.remote.JAVBusService
@@ -12,7 +10,6 @@ import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.parsePageInfo
 import me.jbusdriver.modern.domain.model.SearchType
-import org.jsoup.Jsoup
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -69,13 +66,10 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val html = NetClient.fetchHtml(url)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-                val movies = loadMovieFromDoc(doc)
-                MoviePageResult(pageInfo, movies)
-            }
+            val doc = NetClient.fetchDocument(url)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+            val movies = loadMovieFromDoc(doc)
+            MoviePageResult(pageInfo, movies)
         }
     }
 
@@ -86,13 +80,10 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
 
         return CacheLoader.lruCached(cacheKey) {
-            val html = NetClient.fetchHtml(url)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-                val actresses = parseActressList(doc)
-                pageInfo to actresses
-            }
+            val doc = NetClient.fetchDocument(url)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+            val actresses = parseActressList(doc)
+            pageInfo to actresses
         }
     }
 }

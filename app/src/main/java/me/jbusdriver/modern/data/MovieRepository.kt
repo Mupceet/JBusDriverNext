@@ -2,8 +2,6 @@
 package me.jbusdriver.modern.data
 
 import androidx.collection.ArrayMap
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.C
@@ -23,7 +21,6 @@ import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.parseGenreCategories
 import me.jbusdriver.modern.domain.model.parsePageInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
-import org.jsoup.Jsoup
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -128,13 +125,10 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "${type.key}_${showAll}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val html = NetClient.fetchHtml(url, showAll)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-                val movies = loadMovieFromDoc(doc)
-                MoviePageResult(pageInfo, movies)
-            }
+            val doc = NetClient.fetchDocument(url, showAll)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+            val movies = loadMovieFromDoc(doc)
+            MoviePageResult(pageInfo, movies)
         }
     }
 
@@ -149,13 +143,10 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "actresses_${type.key}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val html = NetClient.fetchHtml(url)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                val actresses = parseActressList(doc)
-                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = if (actresses.size >= 20) page + 1 else page)
-                actresses to pageInfo
-            }
+            val doc = NetClient.fetchDocument(url)
+            val actresses = parseActressList(doc)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = if (actresses.size >= 20) page + 1 else page)
+            actresses to pageInfo
         }
     }
 
@@ -169,12 +160,9 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "genres_${type.key}"
 
         return CacheLoader.persistentCached(cacheKey) {
-            val html = NetClient.fetchHtml(baseUrl)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                parseGenreCategories(doc).map { (title, genres) ->
-                    GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
-                }
+            val doc = NetClient.fetchDocument(baseUrl)
+            parseGenreCategories(doc).map { (title, genres) ->
+                GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
             }
         }
     }
@@ -184,13 +172,10 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) url else "$url/$page"
-            val html = NetClient.fetchHtml(fullUrl)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-                val movies = loadMovieFromDoc(doc)
-                MoviePageResult(pageInfo, movies)
-            }
+            val doc = NetClient.fetchDocument(fullUrl)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
+            val movies = loadMovieFromDoc(doc)
+            MoviePageResult(pageInfo, movies)
         }
     }
 
@@ -198,12 +183,9 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "actress_${url.urlPath}"
 
         return CacheLoader.persistentCached(cacheKey) {
-            val html = NetClient.fetchHtml(url)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                val attrs = parseActressAttrs(doc)
-                ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
-            }
+            val doc = NetClient.fetchDocument(url)
+            val attrs = parseActressAttrs(doc)
+            ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
         }
     }
 }

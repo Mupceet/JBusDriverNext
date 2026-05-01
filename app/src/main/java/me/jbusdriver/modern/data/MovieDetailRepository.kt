@@ -1,13 +1,10 @@
 package me.jbusdriver.modern.data
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.domain.model.MovieDetail
 import me.jbusdriver.modern.domain.model.parseMovieDetails
-import org.jsoup.Jsoup
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,11 +51,8 @@ class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository
         val cacheKey = url.urlPath
 
         return CacheLoader.persistentCached(cacheKey, forceRefresh) {
-            val html = NetClient.fetchHtml(url)
-            withContext(Dispatchers.Default) {
-                val doc = Jsoup.parse(html)
-                parseMovieDetails(doc)
-            }
+            val doc = NetClient.fetchDocument(url)
+            parseMovieDetails(doc)
         }
     }
 }

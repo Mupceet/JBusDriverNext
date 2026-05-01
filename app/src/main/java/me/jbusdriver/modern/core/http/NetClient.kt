@@ -10,7 +10,11 @@ import me.jbusdriver.modern.core.GSON
 import okhttp3.*
 import retrofit2.Converter
 import retrofit2.Retrofit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.io.IOException
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
@@ -195,4 +199,19 @@ object NetClient {
                 }
             })
         }
+
+    /**
+     * 获取 URL 的 HTML 并解析为 Jsoup Document
+     *
+     * 封装 fetchHtml + withContext(Default) + Jsoup.parse 三步流程，
+     * 确保网络请求在 IO 线程、HTML 解析在 Default 线程执行。
+     *
+     * @param url 目标页面完整 URL
+     * @param showAll true 时请求头添加 existmag=all
+     * @return 解析好的 Jsoup Document，可直接用于 CSS 选择器查询
+     */
+    suspend fun fetchDocument(url: String, showAll: Boolean = false): Document {
+        val html = fetchHtml(url, showAll)
+        return withContext(Dispatchers.Default) { Jsoup.parse(html) }
+    }
 }
