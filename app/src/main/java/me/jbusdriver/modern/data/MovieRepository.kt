@@ -3,14 +3,13 @@ package me.jbusdriver.modern.data
 
 import androidx.collection.ArrayMap
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.C
 import me.jbusdriver.modern.core.fromJson
-import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.MoviePageResult
@@ -24,9 +23,7 @@ import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressAttrs
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.DataSourceType
-import okhttp3.Request
 import org.jsoup.Jsoup
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -128,7 +125,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "${type.key}_${showAll}_$page"
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
-            val html = fetchHtml(url, showAll)
+            val html = NetClient.fetchHtml(url, showAll)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
                 val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
@@ -148,7 +145,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "actresses_${type.key}_$page"
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
-            val html = fetchHtml(url)
+            val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
                 val actresses = parseActressList(doc)
@@ -167,7 +164,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "genres_${type.key}"
 
         return persistentCachedOrFetch(cacheKey) {
-            val html = fetchHtml(baseUrl)
+            val html = NetClient.fetchHtml(baseUrl)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
 
@@ -189,7 +186,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) url else "$url/$page"
-            val html = fetchHtml(fullUrl)
+            val html = NetClient.fetchHtml(fullUrl)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
                 val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
@@ -203,7 +200,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val cacheKey = "actress_${url.urlPath}"
 
         return persistentCachedOrFetch(cacheKey) {
-            val html = fetchHtml(url)
+            val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
                 val attrs = parseActressAttrs(doc)
@@ -242,41 +239,6 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val result = fetch()
         CacheLoader.cacheLru(cacheKey to (result as Any))
         return result
-    }
-
-    /**
-     * 通过 OkHttp 异步请求获取 HTML 字符串，支持协程取消。
-     *
-     * @param url 目标 URL
-     * @param showAll 是否在请求头中设置 existmag=all 以获取全部影片
-     * @return HTML 字符串
-     */
-    private suspend fun fetchHtml(url: String, showAll: Boolean = false): String {
-        return suspendCancellableCoroutine { cont ->
-            val request = Request.Builder()
-                .url(url)
-                .header("existmag", if (showAll) "all" else "")
-                .build()
-            val call = NetClient.apiClient.newCall(request)
-            cont.invokeOnCancellation { call.cancel() }
-            call.enqueue(object : okhttp3.Callback {
-                override fun onFailure(call: okhttp3.Call, e: IOException) {
-                    cont.resumeWith(Result.failure(e))
-                }
-                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                    try {
-                        val body = response.body?.string() ?: ""
-                        if (body.isNotBlank()) {
-                            cont.resumeWith(Result.success(body))
-                        } else {
-                            cont.resumeWith(Result.failure(IllegalStateException("Empty response")))
-                        }
-                    } catch (e: Exception) {
-                        cont.resumeWith(Result.failure(e))
-                    }
-                }
-            })
-        }
     }
 
     /**

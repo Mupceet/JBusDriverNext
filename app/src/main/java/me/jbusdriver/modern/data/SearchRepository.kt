@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.GSON
@@ -14,9 +13,7 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.SearchType
-import okhttp3.Request
 import org.jsoup.Jsoup
-import java.io.IOException
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,7 +70,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
         return lruCachedOrFetch(cacheKey, forceRefresh) {
-            val html = fetchHtml(url)
+            val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
                 val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
@@ -90,7 +87,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
 
         return lruCachedOrFetch(cacheKey) {
-            val html = fetchHtml(url)
+            val html = NetClient.fetchHtml(url)
             withContext(Dispatchers.Default) {
                 val doc = Jsoup.parse(html)
                 val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
@@ -98,35 +95,6 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
                 pageInfo to actresses
             }
         }
-    }
-
-    /**
-     * 通过 OkHttp 异步请求获取 HTML 字符串，支持协程取消。
-     *
-     * @param url 目标 URL
-     * @return HTML 字符串
-     */
-    private suspend fun fetchHtml(url: String): String = suspendCancellableCoroutine { cont ->
-        val request = Request.Builder().url(url).build()
-        val call = NetClient.apiClient.newCall(request)
-        cont.invokeOnCancellation { call.cancel() }
-        call.enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
-                cont.resumeWith(Result.failure(e))
-            }
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                try {
-                    val body = response.body?.string() ?: ""
-                    if (body.isNotBlank()) {
-                        cont.resumeWith(Result.success(body))
-                    } else {
-                        cont.resumeWith(Result.failure(IllegalStateException("Empty response")))
-                    }
-                } catch (e: Exception) {
-                    cont.resumeWith(Result.failure(e))
-                }
-            }
-        })
     }
 
     /**

@@ -10,6 +10,8 @@ import me.jbusdriver.modern.core.GSON
 import okhttp3.*
 import retrofit2.Converter
 import retrofit2.Retrofit
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.IOException
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
@@ -153,4 +155,44 @@ object NetClient {
     } catch (e: Exception) {
         false
     }
+
+    /**
+     * 使用 OkHttp 异步请求获取 URL 的 HTML 内容
+     *
+     * 通过 suspendCancellableCoroutine 将 OkHttp 的 Callback 转为协程挂起，
+     * 协程取消时自动取消底层 OkHttp Call
+     *
+     * @param url 目标页面完整 URL
+     * @param showAll true 时请求头添加 existmag=all，否则默认 existmag=mag
+     * @return HTML 字符串
+     * @throws IOException 网络请求失败
+     * @throws IllegalStateException 响应体为空
+     */
+    suspend fun fetchHtml(url: String, showAll: Boolean = false): String =
+        suspendCancellableCoroutine { cont ->
+            val request = Request.Builder()
+                .url(url)
+                .header("existmag", if (showAll) "all" else "")
+                .build()
+            val call = apiClient.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    cont.resumeWith(Result.failure(e))
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    try {
+                        val body = response.body?.string() ?: ""
+                        if (body.isNotBlank()) {
+                            cont.resumeWith(Result.success(body))
+                        } else {
+                            cont.resumeWith(Result.failure(IllegalStateException("Empty response for $url")))
+                        }
+                    } catch (e: Exception) {
+                        cont.resumeWith(Result.failure(e))
+                    }
+                }
+            })
+        }
 }
