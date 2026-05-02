@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -49,10 +48,10 @@ fun MovieItem(
     modifier: Modifier = Modifier
 ) {
     Card(
+        onClick = { onClick(movie) },
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable { onClick(movie) },
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
