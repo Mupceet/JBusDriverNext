@@ -16,16 +16,22 @@ package me.jbusdriver.modern.domain.model
 enum class SearchType(val title: String, val urlPathFormater: String) {
     /** 有码影片搜索 */
     CENSORED("有碼影片", "/search/%s"),
+
     /** 无码影片搜索 */
     UNCENSORED("無碼影片", "/uncensored/search/%s"),
+
     /** 女优搜索，路径不同于普通搜索 */
     ACTRESS("女優", "/searchstar/%s"),
+
     /** 导演搜索，URL 附加 `DBtype=2` 参数 */
     DIRECTOR("導演", "/search/%s&DBtype=2"),
+
     /** 制作商搜索，URL 附加 `DBtype=3` 参数 */
     MAKER("製作商", "/search/%s&DBtype=3"),
+
     /** 发行商搜索，URL 附加 `DBtype=4` 参数 */
     PUBLISHER("發行商", "/search/%s&DBtype=4"),
+
     /** 系列搜索，URL 附加 `DBtype=5` 参数 */
     SERIES("系列", "/search/%s&DBtype=5")
 }

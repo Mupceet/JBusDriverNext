@@ -3,19 +3,19 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.domain.model.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.modern.domain.model.ActressDBType
-import me.jbusdriver.modern.domain.model.MovieDBType
 import javax.inject.Inject
 
 /**
@@ -53,6 +53,7 @@ class CollectionListViewModel @Inject constructor(
 
     /** 内部可变的 UI 状态 */
     private val _uiState = MutableStateFlow(CollectionListUiState())
+
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<CollectionListUiState> = _uiState.asStateFlow()
 
@@ -65,13 +66,21 @@ class CollectionListViewModel @Inject constructor(
      */
     fun loadCollection(dbType: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null, movies = emptyList(), actresses = emptyList()) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    movies = emptyList(),
+                    actresses = emptyList()
+                )
+            }
             try {
                 if (dbType == MovieDBType) {
                     val movies = collectRepository.getCollectedMovies().map { it.toUiModel() }
                     _uiState.update { it.copy(movies = movies, isLoading = false) }
                 } else {
-                    val actresses = collectRepository.getCollectedActresses().map { it.toActressUiModel() }
+                    val actresses =
+                        collectRepository.getCollectedActresses().map { it.toActressUiModel() }
                     _uiState.update { it.copy(actresses = actresses, isLoading = false) }
                 }
             } catch (e: Exception) {

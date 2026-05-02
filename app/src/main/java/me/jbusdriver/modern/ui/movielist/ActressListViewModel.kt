@@ -3,18 +3,18 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
-import me.jbusdriver.modern.domain.model.DataSourceType
 import javax.inject.Inject
 
 /**
@@ -58,11 +58,13 @@ class ActressListViewModel @Inject constructor(
 
     /** 内部可变的 UI 状态 */
     private val _uiState = MutableStateFlow(ActressListUiState())
+
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<ActressListUiState> = _uiState.asStateFlow()
 
     /** 当前已加载到的页码 */
     private var currentPage = 0
+
     /** 当前的数据源类型（默认为女优分类） */
     private var dataSourceType: DataSourceType = DataSourceType.ACTRESSES
 

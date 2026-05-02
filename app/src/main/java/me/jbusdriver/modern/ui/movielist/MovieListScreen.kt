@@ -21,8 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.ui.MovieUiModel
 
 /**
  * 影片列表页面。
@@ -67,17 +67,20 @@ fun MovieListScreen(
                     CircularProgressIndicator()
                 }
             }
+
             uiState.error != null && uiState.movies.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(text = uiState.error ?: "加载失败", color = Color.Red)
                 }
             }
+
             else -> {
                 val listState = rememberLazyListState()
 
                 LaunchedEffect(listState, uiState.hasMore) {
                     snapshotFlow {
-                        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        val lastVisible =
+                            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                         val totalItems = listState.layoutInfo.totalItemsCount
                         lastVisible >= totalItems - 3
                     }.collect { nearEnd ->
@@ -88,7 +91,9 @@ fun MovieListScreen(
                 }
 
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                    itemsIndexed(uiState.movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                    itemsIndexed(
+                        uiState.movies,
+                        key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                         MovieItem(
                             movie = movie,
                             onClick = { onMovieClick(movie) }

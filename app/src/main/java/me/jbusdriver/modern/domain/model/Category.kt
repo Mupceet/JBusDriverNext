@@ -53,4 +53,10 @@ val LinkCategory = Category("默认链接分类", -1, "10/", Int.MAX_VALUE).appl
  * 使用场景：在 [ILink.convertDBItem] 中，当数据项未指定分类时，
  *           根据 DB 类型从该映射表中查找默认分类。
  */
-val AllFirstParentDBCategoryGroup by lazy { arrayMapof(1 to MovieCategory, 2 to ActressCategory, 10 to LinkCategory) }
+val AllFirstParentDBCategoryGroup by lazy {
+    arrayMapof(
+        1 to MovieCategory,
+        2 to ActressCategory,
+        10 to LinkCategory
+    )
+}

@@ -175,5 +175,10 @@ fun MovieDetail.checkUrl(host: String): MovieDetail {
             it.copy(link = it.link.replace(it.link.urlHost, host))
         }
     } else return this
-    return this.copy(headers = nHeader, genres = nGenres, actress = nActress, relatedMovies = nRelatedMovies)
+    return this.copy(
+        headers = nHeader,
+        genres = nGenres,
+        actress = nActress,
+        relatedMovies = nRelatedMovies
+    )
 }

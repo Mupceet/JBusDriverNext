@@ -2,15 +2,14 @@ package me.jbusdriver.modern.core
 
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.collection.LruCache
+import androidx.core.net.toUri
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializer
 import java.io.File
 import java.lang.reflect.Modifier.STATIC
 import java.lang.reflect.Modifier.TRANSIENT
-import java.util.*
-import androidx.core.net.toUri
+import java.util.Date
 
 private const val TAG = "Global"
 
@@ -37,31 +36,12 @@ val GSON by lazy {
                 return@JsonDeserializer null
             }
         }).registerTypeAdapter(Date::class.java, JsonDeserializer { json, _, _ ->
-        try {
-            return@JsonDeserializer Date(json.asJsonPrimitive.asString)
-        } catch (e: Exception) {
-            return@JsonDeserializer Date()
-        }
-    }).serializeNulls().create()
-}
-
-/** 复用 Toast 实例，避免连续 toast 时队列堆积 */
-private val TOAST: Toast by lazy { Toast.makeText(JBusManager.context.applicationContext, "", Toast.LENGTH_LONG) }
-
-/**
- * 显示 Toast 消息
- *
- * 自动切换到主线程显示，可在任意线程调用
- *
- * @param str 消息内容
- * @param duration 显示时长，默认 LENGTH_LONG
- */
-fun toast(str: String, duration: Int = Toast.LENGTH_LONG) {
-    postMain {
-        TOAST.setText(str)
-        TOAST.duration = duration
-        TOAST.show()
-    }
+            try {
+                return@JsonDeserializer Date(json.asJsonPrimitive.asString)
+            } catch (e: Exception) {
+                return@JsonDeserializer Date()
+            }
+        }).serializeNulls().create()
 }
 
 /**

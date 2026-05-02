@@ -30,7 +30,8 @@ abstract class SDCardDatabaseContext(base: Context) : ContextWrapper(base) {
      * 首次运行时，自动将内部存储的旧数据库文件迁移到 SD 卡。
      */
     override fun getDatabasePath(name: String): File? {
-        val sdExist = android.os.Environment.MEDIA_MOUNTED == android.os.Environment.getExternalStorageState()
+        val sdExist =
+            android.os.Environment.MEDIA_MOUNTED == android.os.Environment.getExternalStorageState()
         val parentDir = if (!sdExist) {
             KLog.e("SD卡不存在，请加载SD卡")
             filesDir.absolutePath
@@ -75,15 +76,27 @@ abstract class SDCardDatabaseContext(base: Context) : ContextWrapper(base) {
         }
     }
 
-    override fun openOrCreateDatabase(name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?): SQLiteDatabase {
+    override fun openOrCreateDatabase(
+        name: String,
+        mode: Int,
+        factory: SQLiteDatabase.CursorFactory?
+    ): SQLiteDatabase {
         val dbPath = getDatabasePath(name) ?: return super.openOrCreateDatabase(name, mode, factory)
         return SQLiteDatabase.openOrCreateDatabase(dbPath.absolutePath, null)
     }
 
     override fun openOrCreateDatabase(
-        name: String, mode: Int, factory: SQLiteDatabase.CursorFactory?, errorHandler: DatabaseErrorHandler?
+        name: String,
+        mode: Int,
+        factory: SQLiteDatabase.CursorFactory?,
+        errorHandler: DatabaseErrorHandler?
     ): SQLiteDatabase {
-        val dbPath = getDatabasePath(name) ?: return super.openOrCreateDatabase(name, mode, factory, errorHandler)
+        val dbPath = getDatabasePath(name) ?: return super.openOrCreateDatabase(
+            name,
+            mode,
+            factory,
+            errorHandler
+        )
         return SQLiteDatabase.openOrCreateDatabase(dbPath.absolutePath, null)
     }
 }

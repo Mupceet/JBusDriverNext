@@ -28,9 +28,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
-import me.jbusdriver.modern.domain.model.DataSourceType
 
 /**
  * 演员列表页面。
@@ -75,17 +75,20 @@ fun ActressListScreen(
                     CircularProgressIndicator()
                 }
             }
+
             uiState.error != null && uiState.actresses.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
                 }
             }
+
             else -> {
                 val gridState = rememberLazyGridState()
 
                 LaunchedEffect(gridState) {
                     snapshotFlow {
-                        val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        val lastVisible =
+                            gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                         val totalItems = gridState.layoutInfo.totalItemsCount
                         lastVisible >= totalItems - 6
                     }.collect { nearEnd ->
@@ -103,7 +106,9 @@ fun ActressListScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(uiState.actresses, key = { _, actress -> actress.link }) { _, actress ->
+                    itemsIndexed(
+                        uiState.actresses,
+                        key = { _, actress -> actress.link }) { _, actress ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.clickable { onActressClick(actress) }
@@ -124,15 +129,28 @@ fun ActressListScreen(
                     }
                     if (uiState.isLoadingMore) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 CircularProgressIndicator()
                             }
                         }
                     }
                     if (!uiState.hasMore && uiState.actresses.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                Text("没有更多了", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "没有更多了",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
                             }
                         }
                     }

@@ -14,7 +14,8 @@ object NavigationKeys {
     const val ROUTE_LINK_MOVIES = "link_movies/{linkUrl}?title={title}&type={type}&avatar={avatar}"
 
     /** 构建电影详情页路由 URL，自动编码 movieUrl 参数 */
-    fun movieDetailUrl(movieUrl: String) = "movie_detail/${java.net.URLEncoder.encode(movieUrl, "UTF-8")}"
+    fun movieDetailUrl(movieUrl: String) =
+        "movie_detail/${java.net.URLEncoder.encode(movieUrl, "UTF-8")}"
 
     /**
      * 构建图片查看器路由 URL

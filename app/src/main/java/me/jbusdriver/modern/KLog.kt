@@ -52,9 +52,23 @@ object KLog {
  * 线程：无限制
  */
 class TagLogger(private val tag: String) {
-    fun d(msg: String) { Log.d(tag, msg) }
-    fun i(msg: String) { Log.i(tag, msg) }
-    fun w(msg: String) { Log.w(tag, msg) }
-    fun e(msg: String) { Log.e(tag, msg) }
-    fun e(msg: String, tr: Throwable) { Log.e(tag, msg, tr) }
+    fun d(msg: String) {
+        Log.d(tag, msg)
+    }
+
+    fun i(msg: String) {
+        Log.i(tag, msg)
+    }
+
+    fun w(msg: String) {
+        Log.w(tag, msg)
+    }
+
+    fun e(msg: String) {
+        Log.e(tag, msg)
+    }
+
+    fun e(msg: String, tr: Throwable) {
+        Log.e(tag, msg, tr)
+    }
 }

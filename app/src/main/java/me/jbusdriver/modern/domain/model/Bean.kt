@@ -4,7 +4,6 @@ import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.remote.JAVBusService
-import me.jbusdriver.modern.domain.model.SearchType
 
 /**
  * 列表项展开类型：分组头部。
@@ -35,7 +34,7 @@ val ILink.des: String
         is Header -> "$name $value"
         is Genre -> "类别 $name"
         is ActressInfo -> "演员 $name"
-        is me.jbusdriver.modern.domain.model.Movie -> "$code $title"
+        is Movie -> "$code $title"
         is SearchLink -> "搜索 ${type.title} $query"
         is PageLink -> "$title 第 $page 页"
         else -> error(" $this has no matched class for des")

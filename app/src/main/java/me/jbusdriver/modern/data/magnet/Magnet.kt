@@ -14,7 +14,8 @@ import me.jbusdriver.modern.domain.model.LinkCategory
  *
  * 线程：纯数据类，无线程限制。
  */
-data class Magnet(val name: String, val size: String, val date: String, override val link: String) : ILink {
+data class Magnet(val name: String, val size: String, val date: String, override val link: String) :
+    ILink {
     /**
      * 所属分类 ID，默认取 [LinkCategory] 当前选中的分类，若无则回退到 10。
      * 标记为 @Transient 以排除在 Gson 序列化之外。

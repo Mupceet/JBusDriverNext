@@ -10,9 +10,10 @@ import org.jsoup.Jsoup
  * 设置 User-Agent、Accept-Encoding、Accept-Language 等，
  * 并启用重定向跟随以处理目标站点的 302 跳转。
  */
-fun Connection.initHeaders(): Connection = this.userAgent(IMagnetLoader.USER_AGENT).followRedirects(true)
-    .header("Accept-Encoding", "gzip, deflate, sdch")
-    .header("Accept-Language", "zh-CN,zh;q=0.8")
+fun Connection.initHeaders(): Connection =
+    this.userAgent(IMagnetLoader.USER_AGENT).followRedirects(true)
+        .header("Accept-Encoding", "gzip, deflate, sdch")
+        .header("Accept-Language", "zh-CN,zh;q=0.8")
 
 /**
  * 磁力链接加载器接口，定义从磁力搜索站点获取磁力链接的通用契约。

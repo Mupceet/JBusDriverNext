@@ -21,6 +21,7 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
 abstract class CollectDatabase : RoomDatabase() {
     /** 提供分类表的增删改查操作。 */
     abstract fun categoryDao(): CategoryDao
+
     /** 提供收藏条目表的增删改查操作。 */
     abstract fun linkItemDao(): LinkItemDao
 }

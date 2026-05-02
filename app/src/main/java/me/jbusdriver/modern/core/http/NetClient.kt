@@ -3,18 +3,26 @@ package me.jbusdriver.modern.core.http
 import android.content.Context
 import android.net.ConnectivityManager
 import android.text.TextUtils
-import android.util.Log
 import com.google.gson.JsonObject
-import me.jbusdriver.BuildConfig
-import me.jbusdriver.modern.core.GSON
-import okhttp3.*
-import retrofit2.Converter
-import retrofit2.Retrofit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import me.jbusdriver.BuildConfig
+import me.jbusdriver.modern.core.GSON
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.HttpUrl
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import retrofit2.Converter
+import retrofit2.Retrofit
 import java.io.IOException
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
@@ -47,11 +55,13 @@ object NetClient {
             var request = chain.request()
             val builder = request.newBuilder().header("User-Agent", USER_AGENT)
             val sb = buildString {
-                append(if (!TextUtils.isEmpty(request.header("existmag"))) {
-                    "existmag=all"
-                } else {
-                    "existmag=mag"
-                })
+                append(
+                    if (!TextUtils.isEmpty(request.header("existmag"))) {
+                        "existmag=all"
+                    } else {
+                        "existmag=mag"
+                    }
+                )
                 append(";")
                 append("bus_auth=4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO")
             }

@@ -9,12 +9,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.jbusdriver.modern.data.magnet.Magnet
-import me.jbusdriver.modern.data.magnet.MagnetManager
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
-import me.jbusdriver.modern.ui.MagnetUiModel
+import me.jbusdriver.modern.data.magnet.Magnet
+import me.jbusdriver.modern.data.magnet.MagnetManager
 import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import org.json.JSONArray
@@ -69,11 +69,13 @@ class MovieDetailViewModel @Inject constructor(
 
     /** 内部可变的 UI 状态 */
     private val _uiState = MutableStateFlow(MovieDetailUiState())
+
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
 
     /** 当前正在查看的电影页面 URL */
     private var currentUrl: String = ""
+
     /** 磁力链接的当前分页页码 */
     private var magnetPage: Int = 0
 
@@ -92,16 +94,16 @@ class MovieDetailViewModel @Inject constructor(
             try {
                 val detail = repository.getMovieDetail(url)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isLoading = false) }
-                    // Check collection state
-                    val movie = Movie(
-                        title = detail.title,
-                        imageUrl = detail.cover,
-                        code = detail.headers.firstOrNull()?.value ?: "",
-                        date = "",
-                        link = url
-                    )
-                    val collected = collectRepository.isMovieCollected(movie)
-                    _uiState.update { it.copy(isCollected = collected) }
+                // Check collection state
+                val movie = Movie(
+                    title = detail.title,
+                    imageUrl = detail.cover,
+                    code = detail.headers.firstOrNull()?.value ?: "",
+                    date = "",
+                    link = url
+                )
+                val collected = collectRepository.isMovieCollected(movie)
+                _uiState.update { it.copy(isCollected = collected) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
             }

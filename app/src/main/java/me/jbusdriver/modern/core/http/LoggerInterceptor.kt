@@ -45,7 +45,10 @@ class LoggerInterceptor(
                     if (ct.isText()) {
                         Log.e(tag, "requestBody's content : ${bodyToString(request)}")
                     } else {
-                        Log.e(tag, "requestBody's content :  maybe [file part] , too large too print , ignored!")
+                        Log.e(
+                            tag,
+                            "requestBody's content :  maybe [file part] , too large too print , ignored!"
+                        )
                     }
                 }
             }
@@ -74,7 +77,10 @@ class LoggerInterceptor(
                                 .body(ResponseBody.create(ct, resp))
                                 .build()
                         } else {
-                            Log.e(tag, "responseBody's content :  maybe [file part] , too large too print , ignored!")
+                            Log.e(
+                                tag,
+                                "responseBody's content :  maybe [file part] , too large too print , ignored!"
+                            )
                         }
                     }
                 }

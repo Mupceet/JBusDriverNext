@@ -31,10 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import me.jbusdriver.modern.ui.ActressUiModel
-import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.domain.model.ActressDBType
 import me.jbusdriver.modern.domain.model.MovieDBType
+import me.jbusdriver.modern.ui.ActressUiModel
+import me.jbusdriver.modern.ui.MovieUiModel
 
 /**
  * 收藏列表页面。
@@ -75,11 +75,13 @@ fun CollectionListScreen(
                 CircularProgressIndicator()
             }
         }
+
         uiState.error != null -> {
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
             }
         }
+
         dbType == MovieDBType -> {
             if (uiState.movies.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -87,12 +89,15 @@ fun CollectionListScreen(
                 }
             } else {
                 LazyColumn(modifier = modifier.fillMaxSize()) {
-                    itemsIndexed(uiState.movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                    itemsIndexed(
+                        uiState.movies,
+                        key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                         MovieItem(movie = movie, onClick = { onMovieClick(movie) })
                     }
                 }
             }
         }
+
         dbType == ActressDBType -> {
             if (uiState.actresses.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -106,7 +111,9 @@ fun CollectionListScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(uiState.actresses, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
+                    itemsIndexed(
+                        uiState.actresses,
+                        key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
                         ActressGridItem(actress = actress, onClick = { onActressClick(actress) })
                     }
                 }

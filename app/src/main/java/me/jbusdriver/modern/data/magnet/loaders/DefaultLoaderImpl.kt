@@ -2,8 +2,8 @@ package me.jbusdriver.modern.data.magnet.loaders
 
 import android.annotation.SuppressLint
 import android.os.Looper
-import me.jbusdriver.modern.KLog
 import android.webkit.URLUtil
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.magnet.IMagnetLoader
 import org.json.JSONObject
 import org.jsoup.Jsoup

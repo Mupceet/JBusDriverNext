@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -24,13 +25,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -98,7 +98,11 @@ private fun CategoryPagerScreen(
     val pagerState = rememberPagerState(initialPage = 0) { CategoryOptions.size }
     val scope = rememberCoroutineScope()
 
-    Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SecondaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,
@@ -106,7 +110,10 @@ private fun CategoryPagerScreen(
                 edgePadding = 8.dp,
                 indicator = {
                     SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(pagerState.currentPage, matchContentSize = false)
+                        modifier = Modifier.tabIndicatorOffset(
+                            pagerState.currentPage,
+                            matchContentSize = false
+                        )
                     )
                 },
                 divider = {},
@@ -143,7 +150,7 @@ private fun CategoryPagerScreen(
         ) { page ->
             val option = CategoryOptions[page]
             val dsType = option.dataSourceType
-            val active = pagerState.settledPage == page
+            pagerState.settledPage == page
 
             when {
                 dsType != null && (dsType == DataSourceType.ACTRESSES || dsType == DataSourceType.UNCENSORED_ACTRESSES) ->
@@ -152,18 +159,21 @@ private fun CategoryPagerScreen(
                         onActressClick = onActressClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
+
                 dsType != null && dsType in genreTypes ->
                     GenreListScreen(
                         dataSourceType = dsType,
                         onGenreClick = onGenreClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
+
                 dsType != null ->
                     MovieListScreen(
                         dataSourceType = dsType,
                         onMovieClick = onMovieClick,
                         viewModel = hiltViewModel(key = "page_$page")
                     )
+
                 else ->
                     CollectionListScreen(
                         dbType = option.collectionDbType,

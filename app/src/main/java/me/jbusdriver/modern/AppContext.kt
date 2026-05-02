@@ -1,7 +1,6 @@
 package me.jbusdriver.modern
 
 import android.app.Application
-import android.content.Context
 import android.os.Environment
 import android.util.Log
 import me.jbusdriver.BuildConfig

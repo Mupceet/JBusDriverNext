@@ -2,9 +2,11 @@ package me.jbusdriver.modern.data.db
 
 import android.annotation.SuppressLint
 import androidx.room.Room
-import me.jbusdriver.modern.core.db.SDCardDatabaseContext
 import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.db.SDCardDatabaseContext
+import me.jbusdriver.modern.data.db.DB.collectDatabase
+import me.jbusdriver.modern.data.db.DB.jBusDatabase
 import java.io.File
 
 /**
@@ -56,8 +58,10 @@ object DB {
 
     /** 历史记录 DAO，代理到 [jBusDatabase]。 */
     val historyDao: me.jbusdriver.modern.data.db.dao.HistoryDao by lazy { jBusDatabase.historyDao() }
+
     /** 分类 DAO，代理到 [collectDatabase]。 */
     val categoryDao: me.jbusdriver.modern.data.db.dao.CategoryDao by lazy { collectDatabase.categoryDao() }
+
     /** 收藏条目 DAO，代理到 [collectDatabase]。 */
     val linkDao: me.jbusdriver.modern.data.db.dao.LinkItemDao by lazy { collectDatabase.linkItemDao() }
 }

@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.modern.domain.model.SearchType
 import javax.inject.Inject
 
 /**
@@ -67,6 +67,7 @@ class SearchViewModel @Inject constructor(
 
     /** 内部可变的 UI 状态 */
     private val _uiState = MutableStateFlow(SearchUiState())
+
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
@@ -87,7 +88,13 @@ class SearchViewModel @Inject constructor(
         val searchType = type ?: _uiState.value.searchType
         viewModelScope.launch {
             _uiState.update {
-                it.copy(query = query, searchType = searchType, isLoading = true, error = null, currentPage = 1)
+                it.copy(
+                    query = query,
+                    searchType = searchType,
+                    isLoading = true,
+                    error = null,
+                    currentPage = 1
+                )
             }
             try {
                 if (searchType == SearchType.ACTRESS) {
@@ -141,7 +148,12 @@ class SearchViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    val result = repository.searchMovies(state.searchType, state.query, 1, forceRefresh = true)
+                    val result = repository.searchMovies(
+                        state.searchType,
+                        state.query,
+                        1,
+                        forceRefresh = true
+                    )
                     _uiState.update {
                         it.copy(
                             results = result.movies.map { m -> m.toUiModel() },

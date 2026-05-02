@@ -4,9 +4,17 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.webkit.*
+import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import me.jbusdriver.modern.core.JBusManager
+import me.jbusdriver.modern.data.magnet.loaders.WebViewHtmlContentLoader.Companion.POLL_JS
+import me.jbusdriver.modern.data.magnet.loaders.WebViewHtmlContentLoader.Companion.mainH
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -205,7 +213,7 @@ class WebViewHtmlContentLoader {
             request: WebResourceRequest?
         ): WebResourceResponse? {
             Log.e(TAG, "shouldInterceptRequest ${request?.url}")
-            if (request?.url?.path?.contains("jpg|png|gif".toRegex() )== true) {
+            if (request?.url?.path?.contains("jpg|png|gif".toRegex()) == true) {
                 Log.e(TAG, "shouldInterceptRequest NONE")
                 return null
             }

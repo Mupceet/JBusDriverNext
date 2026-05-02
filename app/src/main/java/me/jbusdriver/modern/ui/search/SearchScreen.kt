@@ -4,24 +4,26 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -39,8 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -49,11 +49,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.movielist.MovieItem
-import me.jbusdriver.modern.domain.model.SearchType
 
 /**
  * 搜索页面。
@@ -97,7 +97,11 @@ fun SearchScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
         // Search input with back button
         OutlinedTextField(
             value = searchInput,
@@ -144,7 +148,8 @@ fun SearchScreen(
 
         // Results
         val isActress = uiState.searchType == SearchType.ACTRESS
-        val hasResults = if (isActress) uiState.actressResults.isNotEmpty() else uiState.results.isNotEmpty()
+        val hasResults =
+            if (isActress) uiState.actressResults.isNotEmpty() else uiState.results.isNotEmpty()
 
         when {
             uiState.isLoading -> {
@@ -152,22 +157,26 @@ fun SearchScreen(
                     CircularProgressIndicator()
                 }
             }
+
             uiState.error != null && !hasResults -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(uiState.error ?: "搜索失败", color = Color.Red)
                 }
             }
+
             !hasResults && uiState.query.isBlank() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("输入关键词开始搜索", color = Color.Gray)
                 }
             }
+
             isActress -> ActressResults(
                 uiState = uiState,
                 onActressClick = onActressClick,
                 onLoadMore = { viewModel.loadMore() },
                 onScroll = { focusManager.clearFocus() }
             )
+
             else -> MovieResults(
                 uiState = uiState,
                 onMovieClick = onMovieClick,
@@ -236,7 +245,9 @@ private fun ActressResults(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(uiState.actressResults, key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
+        itemsIndexed(
+            uiState.actressResults,
+            key = { index, actress -> "${index}_${actress.link}" }) { _, actress ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable { onActressClick(actress) }
@@ -257,14 +268,22 @@ private fun ActressResults(
         }
         if (uiState.isLoadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp), contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
         }
         if (!uiState.hasMore && uiState.actressResults.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp), contentAlignment = Alignment.Center
+                ) {
                     Text("没有更多了", color = Color.Gray)
                 }
             }
@@ -327,13 +346,17 @@ private fun MovieResults(
                 }
             }
     ) {
-        itemsIndexed(uiState.results, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+        itemsIndexed(
+            uiState.results,
+            key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
             MovieItem(movie = movie, onClick = { onMovieClick(movie) })
         }
         if (uiState.isLoadingMore) {
             item {
                 Box(
-                    Modifier.fillMaxWidth().padding(16.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator() }
             }
@@ -341,7 +364,9 @@ private fun MovieResults(
         if (!uiState.hasMore && uiState.results.isNotEmpty()) {
             item {
                 Box(
-                    Modifier.fillMaxWidth().padding(16.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("没有更多了", color = Color.Gray)

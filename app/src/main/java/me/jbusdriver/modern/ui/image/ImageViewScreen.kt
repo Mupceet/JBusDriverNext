@@ -3,10 +3,7 @@ package me.jbusdriver.modern.ui.image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -52,7 +49,11 @@ fun ImageViewScreen(
         pageCount = { images.size }
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
@@ -63,7 +64,7 @@ fun ImageViewScreen(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .zoomable(rememberZoomableState(zoomSpec=ZoomSpec(maxZoomFactor = 3f)))
+                    .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f)))
             )
         }
 
@@ -82,7 +83,11 @@ fun ImageViewScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回",
+                            tint = Color.White
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

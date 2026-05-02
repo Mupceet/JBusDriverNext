@@ -37,10 +37,30 @@ fun JBusNavigation(
     NavHost(
         navController = navController,
         startDestination = NavigationKeys.ROUTE_MAIN,
-        enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(ANIM_DURATION)) },
-        exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(ANIM_DURATION)) },
-        popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(ANIM_DURATION)) },
-        popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(ANIM_DURATION)) }
+        enterTransition = {
+            slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start,
+                tween(ANIM_DURATION)
+            )
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start,
+                tween(ANIM_DURATION)
+            )
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.End,
+                tween(ANIM_DURATION)
+            )
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.End,
+                tween(ANIM_DURATION)
+            )
+        }
     ) {
         composable(NavigationKeys.ROUTE_MAIN) {
             MainScreen(
@@ -49,7 +69,12 @@ fun JBusNavigation(
                 },
                 onActressClick = { actress ->
                     navController.navigate(
-                        NavigationKeys.linkMovies(actress.link, actress.name, type = "actress", avatar = actress.avatar)
+                        NavigationKeys.linkMovies(
+                            actress.link,
+                            actress.name,
+                            type = "actress",
+                            avatar = actress.avatar
+                        )
                     )
                 },
                 onGenreClick = { genre ->
@@ -69,7 +94,12 @@ fun JBusNavigation(
                 },
                 onActressClick = { actress ->
                     navController.navigate(
-                        NavigationKeys.linkMovies(actress.link, actress.name, type = "actress", avatar = actress.avatar)
+                        NavigationKeys.linkMovies(
+                            actress.link,
+                            actress.name,
+                            type = "actress",
+                            avatar = actress.avatar
+                        )
                     )
                 },
                 onBack = { navController.popBackStack() }
@@ -91,7 +121,12 @@ fun JBusNavigation(
                 },
                 onActressClick = { actress ->
                     navController.navigate(
-                        NavigationKeys.linkMovies(actress.link, actress.name, type = "actress", avatar = actress.avatar)
+                        NavigationKeys.linkMovies(
+                            actress.link,
+                            actress.name,
+                            type = "actress",
+                            avatar = actress.avatar
+                        )
                     )
                 },
                 onGenreClick = { genre ->
@@ -126,10 +161,13 @@ fun JBusNavigation(
                 navArgument("avatar") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
-            val linkUrl = URLDecoder.decode(backStackEntry.arguments?.getString("linkUrl") ?: "", "UTF-8")
-            val title = URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
+            val linkUrl =
+                URLDecoder.decode(backStackEntry.arguments?.getString("linkUrl") ?: "", "UTF-8")
+            val title =
+                URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
             val type = backStackEntry.arguments?.getString("type") ?: ""
-            val avatar = URLDecoder.decode(backStackEntry.arguments?.getString("avatar") ?: "", "UTF-8")
+            val avatar =
+                URLDecoder.decode(backStackEntry.arguments?.getString("avatar") ?: "", "UTF-8")
             LinkMovieListScreen(
                 linkUrl = linkUrl,
                 title = title,

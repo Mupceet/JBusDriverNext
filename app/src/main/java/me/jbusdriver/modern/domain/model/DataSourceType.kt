@@ -18,27 +18,34 @@ package me.jbusdriver.modern.domain.model
 enum class DataSourceType(val key: String, val prefix: String = "/") {
     /** 有码影片列表 */
     CENSORED("有碼", "/page/"),
+
     /** 有码类别列表（无分页路径） */
     GENRE("有碼類別"),
+
     /** 有码女优列表 */
     ACTRESSES("有碼女優"),
 
     /** 无码影片列表 */
     UNCENSORED("無碼", "/page/"),
+
     /** 无码类别列表 */
     UNCENSORED_GENRE("無碼類別"),
+
     /** 无码女优列表 */
     UNCENSORED_ACTRESSES("無碼女優"),
 
     /** 欧美影片列表 */
     XYZ("歐美", "/page/"),
+
     /** 欧美类别列表 */
     XYZ_GENRE("xyz/genre"),
+
     /** 欧美女优列表 */
     XYZ_ACTRESSES("xyz/actresses"),
 
     /** 高清分类标签 */
     GENRE_HD("高清"),
+
     /** 字幕分类标签 */
     Sub("字幕");
 }

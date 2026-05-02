@@ -23,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.ui.GenreUiModel
 
 /**
  * 类别分组数据类，用于将类别按分组标题归类展示。
@@ -77,11 +77,13 @@ fun GenreListScreen(
                     CircularProgressIndicator()
                 }
             }
+
             uiState.error != null && uiState.genreCategories.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
                 }
             }
+
             else -> {
                 Column(
                     modifier = Modifier
@@ -103,7 +105,12 @@ fun GenreListScreen(
                             category.genres.forEach { genre ->
                                 AssistChip(
                                     onClick = { onGenreClick(genre) },
-                                    label = { Text(genre.name, style = MaterialTheme.typography.labelSmall) }
+                                    label = {
+                                        Text(
+                                            genre.name,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
                                 )
                             }
                         }

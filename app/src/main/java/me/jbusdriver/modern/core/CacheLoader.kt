@@ -6,6 +6,8 @@ import androidx.collection.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.CacheLoader.lruCached
+import me.jbusdriver.modern.core.CacheLoader.persistentCached
 import java.io.File
 
 /**
@@ -26,7 +28,14 @@ object CacheLoader {
 
     /** 磁盘缓存，应用重启后仍有效 */
     @PublishedApi
-    internal val fileCache: FileCache by lazy { FileCache(File(JBusManager.context.cacheDir, "ACache")) }
+    internal val fileCache: FileCache by lazy {
+        FileCache(
+            File(
+                JBusManager.context.cacheDir,
+                "ACache"
+            )
+        )
+    }
 
     /**
      * 根据设备可用内存初始化 LRU 内存缓存
@@ -36,18 +45,24 @@ object CacheLoader {
      */
     private fun initMemCache(): LruCache<String, String> {
         val memoryInfo = ActivityManager.MemoryInfo()
-        val myActivityManager = JBusManager.context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+        val myActivityManager =
+            JBusManager.context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
         myActivityManager.getMemoryInfo(memoryInfo)
         val memSize = memoryInfo.availMem.formatFileSize()
         KLog.t(TAG).d("max availMem = $memSize")
         if (memoryInfo.lowMemory) {
             KLog.w("可能的内存不足")
-            toast("当前可用内存:$memSize,请注意释放内存")
         }
-        val cacheSize = if (memoryInfo.availMem > 32 * 1024 * 1024) 4 * 1024 * 1024 else 2 * 1024 * 1024
+        val cacheSize =
+            if (memoryInfo.availMem > 32 * 1024 * 1024) 4 * 1024 * 1024 else 2 * 1024 * 1024
         KLog.t(TAG).d("max cacheSize = ${cacheSize.toLong().formatFileSize()}")
         return object : LruCache<String, String>(cacheSize) {
-            override fun entryRemoved(evicted: Boolean, key: String, oldValue: String, newValue: String?) {
+            override fun entryRemoved(
+                evicted: Boolean,
+                key: String,
+                oldValue: String,
+                newValue: String?
+            ) {
                 KLog.i("entryRemoved : evicted = $evicted , key = $key")
             }
 
@@ -71,7 +86,11 @@ object CacheLoader {
      * @param fetch 缓存未命中时的数据获取逻辑
      * @return 缓存或新获取的数据
      */
-    inline fun <reified T> lruCached(key: String, forceRefresh: Boolean = false, fetch: () -> T): T {
+    inline fun <reified T> lruCached(
+        key: String,
+        forceRefresh: Boolean = false,
+        fetch: () -> T
+    ): T {
         if (!forceRefresh) {
             lru.get(key)?.let { json ->
                 GSON.fromJson<T>(json)?.let { return it }
@@ -96,7 +115,11 @@ object CacheLoader {
      * @param fetch 缓存未命中时的数据获取逻辑
      * @return 缓存或新获取的数据
      */
-    suspend inline fun <reified T> persistentCached(key: String, forceRefresh: Boolean = false, crossinline fetch: suspend () -> T): T {
+    suspend inline fun <reified T> persistentCached(
+        key: String,
+        forceRefresh: Boolean = false,
+        crossinline fetch: suspend () -> T
+    ): T {
         if (!forceRefresh) {
             // 第一级：LRU 内存（无磁盘 I/O）
             lru.get(key)?.let { json ->

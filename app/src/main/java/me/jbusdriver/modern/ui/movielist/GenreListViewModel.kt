@@ -3,11 +3,11 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
@@ -48,6 +48,7 @@ class GenreListViewModel @Inject constructor(
 
     /** 内部可变的 UI 状态 */
     private val _uiState = MutableStateFlow(GenreListUiState())
+
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<GenreListUiState> = _uiState.asStateFlow()
 

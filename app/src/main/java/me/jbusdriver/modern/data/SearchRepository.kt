@@ -2,14 +2,14 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
+import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.parsePageInfo
-import me.jbusdriver.modern.domain.model.SearchType
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,7 +34,12 @@ interface SearchRepository {
      * @param forceRefresh 是否强制刷新缓存
      * @return 包含分页信息和影片列表的结果
      */
-    suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean = false): MoviePageResult
+    suspend fun searchMovies(
+        type: SearchType,
+        query: String,
+        page: Int,
+        forceRefresh: Boolean = false
+    ): MoviePageResult
 
     /**
      * 搜索演员。
@@ -60,7 +65,12 @@ interface SearchRepository {
 @Singleton
 class DefaultSearchRepository @Inject constructor() : SearchRepository {
 
-    override suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean): MoviePageResult {
+    override suspend fun searchMovies(
+        type: SearchType,
+        query: String,
+        page: Int,
+        forceRefresh: Boolean
+    ): MoviePageResult {
         val baseUrl = JAVBusService.defaultFastUrl
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
@@ -73,7 +83,10 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         }
     }
 
-    override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> {
+    override suspend fun searchActresses(
+        query: String,
+        page: Int
+    ): Pair<PageInfo, List<ActressInfo>> {
         val baseUrl = JAVBusService.defaultFastUrl
         val type = SearchType.ACTRESS
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"

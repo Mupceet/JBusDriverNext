@@ -5,7 +5,19 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
-import me.jbusdriver.modern.domain.model.*
+import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.Genre
+import me.jbusdriver.modern.domain.model.GenreDBType
+import me.jbusdriver.modern.domain.model.Header
+import me.jbusdriver.modern.domain.model.HeaderDBType
+import me.jbusdriver.modern.domain.model.ILink
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.MovieDBType
+import me.jbusdriver.modern.domain.model.PageLink
+import me.jbusdriver.modern.domain.model.PageLinkDBType
+import me.jbusdriver.modern.domain.model.SearchLink
+import me.jbusdriver.modern.domain.model.SearchLinkDBType
 
 /**
  * 浏览历史的 Room 实体，对应 `t_history` 表。

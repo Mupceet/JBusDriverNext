@@ -11,13 +11,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
-import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.PageInfo
 import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.modern.domain.model.ActressInfo
 import javax.inject.Inject
 
 /**
@@ -75,13 +74,16 @@ class LinkMovieListViewModel @Inject constructor(
 
     /** 内部可变的 UI 状态 */
     private val _uiState = MutableStateFlow(LinkMovieListUiState())
+
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<LinkMovieListUiState> = _uiState.asStateFlow()
 
     /** 当前已加载到的页码 */
     private var currentPage = 0
+
     /** 当前加载的链接 URL，优先从 SavedStateHandle 获取 */
     private var linkUrl: String = savedStateHandle.get<String>("linkUrl") ?: ""
+
     /** 列表类型，如 "actress" 表示女优关联影片 */
     private var listType: String = ""
 
@@ -212,7 +214,11 @@ class LinkMovieListViewModel @Inject constructor(
                 if (detail != null) {
                     _uiState.update {
                         it.copy(
-                            actressDetail = ActressDetailUiModel(detail.name, detail.avatar, detail.info),
+                            actressDetail = ActressDetailUiModel(
+                                detail.name,
+                                detail.avatar,
+                                detail.info
+                            ),
                             isLoadingActress = false
                         )
                     }

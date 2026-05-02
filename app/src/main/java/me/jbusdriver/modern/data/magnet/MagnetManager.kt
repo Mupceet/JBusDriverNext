@@ -1,5 +1,7 @@
 package me.jbusdriver.modern.data.magnet
 
+import me.jbusdriver.modern.data.magnet.MagnetManager.fetchMagLink
+import me.jbusdriver.modern.data.magnet.MagnetManager.getMagnets
 import me.jbusdriver.modern.data.magnet.loaders.MagnetLoaders
 import org.json.JSONArray
 import org.json.JSONObject

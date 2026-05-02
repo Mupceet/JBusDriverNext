@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.data.magnet.loaders
 
 import me.jbusdriver.modern.data.magnet.IMagnetLoader
+import me.jbusdriver.modern.data.magnet.loaders.MagnetLoaders.Loaders
 
 /**
  * 磁力加载器注册表，维护所有可用的磁力搜索站点实现。

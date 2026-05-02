@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.movielist
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +19,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -31,8 +31,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,7 +129,9 @@ fun LinkMovieListScreen(
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
-            modifier = Modifier.fillMaxSize().padding(padding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
             when {
                 uiState.isLoading -> {
@@ -137,17 +139,20 @@ fun LinkMovieListScreen(
                         CircularProgressIndicator()
                     }
                 }
+
                 uiState.error != null && uiState.movies.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
                     }
                 }
+
                 else -> {
                     val listState = rememberLazyListState()
 
                     LaunchedEffect(listState, uiState.hasMore) {
                         snapshotFlow {
-                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            val lastVisible =
+                                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                             val totalItems = listState.layoutInfo.totalItemsCount
                             lastVisible >= totalItems - 3
                         }.collect { nearEnd ->
@@ -170,9 +175,11 @@ fun LinkMovieListScreen(
                                 actress != null -> item(key = "actress_header") {
                                     ActressDetailCard(actress)
                                 }
+
                                 uiState.isLoadingActress -> item(key = "actress_header_loading") {
                                     ActressDetailLoadingPlaceholder()
                                 }
+
                                 actressError != null -> item(key = "actress_header_error") {
                                     ActressDetailErrorCard(actressError)
                                 }
@@ -189,7 +196,9 @@ fun LinkMovieListScreen(
                         if (uiState.isLoadingMore) {
                             item {
                                 Box(
-                                    Modifier.fillMaxWidth().padding(16.dp),
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     CircularProgressIndicator()

@@ -1,8 +1,8 @@
 package me.jbusdriver.modern.data.remote
 
+import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.JBus
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Url

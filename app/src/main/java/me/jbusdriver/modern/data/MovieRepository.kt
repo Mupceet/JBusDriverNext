@@ -1,26 +1,21 @@
-
 package me.jbusdriver.modern.data
 
-import androidx.collection.ArrayMap
 import me.jbusdriver.modern.core.CacheLoader
-import me.jbusdriver.modern.core.GSON
-import me.jbusdriver.modern.core.C
-import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.urlPath
-import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.data.model.ActressDetail
 import me.jbusdriver.modern.data.model.MoviePageResult
 import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.ui.movielist.GenreCategory
-import me.jbusdriver.modern.ui.GenreUiModel
+import me.jbusdriver.modern.data.remote.JAVBusService
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
 import me.jbusdriver.modern.domain.model.parseActressAttrs
 import me.jbusdriver.modern.domain.model.parseActressList
 import me.jbusdriver.modern.domain.model.parseGenreCategories
 import me.jbusdriver.modern.domain.model.parsePageInfo
-import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.ui.GenreUiModel
+import me.jbusdriver.modern.ui.movielist.GenreCategory
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -44,7 +39,12 @@ interface MovieRepository {
      * @param forceRefresh 是否强制刷新缓存
      * @return 包含分页信息和影片列表的结果
      */
-    suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean = false, forceRefresh: Boolean = false): MoviePageResult
+    suspend fun loadPage(
+        type: DataSourceType,
+        page: Int,
+        showAll: Boolean = false,
+        forceRefresh: Boolean = false
+    ): MoviePageResult
 
     /**
      * 按数据源类型分页加载演员列表。
@@ -54,7 +54,11 @@ interface MovieRepository {
      * @param forceRefresh 是否强制刷新缓存
      * @return 演员列表与分页信息的配对
      */
-    suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean = false): Pair<List<ActressInfo>, PageInfo>
+    suspend fun loadActresses(
+        type: DataSourceType,
+        page: Int,
+        forceRefresh: Boolean = false
+    ): Pair<List<ActressInfo>, PageInfo>
 
     /**
      * 加载类型分类列表（如"热门标签"、"题材"等分组）。
@@ -63,7 +67,10 @@ interface MovieRepository {
      * @param forceRefresh 是否强制刷新缓存
      * @return 类型分组列表
      */
-    suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean = false): List<GenreCategory>
+    suspend fun loadGenreCategories(
+        type: DataSourceType,
+        forceRefresh: Boolean = false
+    ): List<GenreCategory>
 
     /**
      * 通过完整 URL 分页加载影片列表（用于分类筛选、类型点击等场景）。
@@ -73,7 +80,11 @@ interface MovieRepository {
      * @param forceRefresh 是否强制刷新缓存
      * @return 包含分页信息和影片列表的结果
      */
-    suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean = false): MoviePageResult
+    suspend fun loadPageByUrl(
+        url: String,
+        page: Int,
+        forceRefresh: Boolean = false
+    ): MoviePageResult
 
     /**
      * 加载演员详情。
@@ -99,23 +110,13 @@ interface MovieRepository {
 @Singleton
 class DefaultMovieRepository @Inject constructor() : MovieRepository {
 
-    /**
-     * 从磁盘缓存读取可切换 URL 配置映射表。
-     * 每次调用都从缓存读取，保证切换 URL 后立即生效。
-     */
-    private suspend fun loadUrls(): ArrayMap<String, String>? =
-        CacheLoader.getString(C.Cache.BUS_URLS)?.let {
-            GSON.fromJson<ArrayMap<String, String>>(it)
-        }
-
     override suspend fun loadPage(
         type: DataSourceType,
         page: Int,
         showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val urls = loadUrls()
-        val baseUrl = urls?.get(type.key) ?: JAVBusService.defaultFastUrl
+        val baseUrl = JAVBusService.defaultFastUrl
         val basePath = when (type) {
             DataSourceType.UNCENSORED -> "/uncensored"
             DataSourceType.XYZ -> "/xyz"
@@ -132,31 +133,37 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean): Pair<List<ActressInfo>, PageInfo> {
-        val urls = loadUrls()
-        val baseUrl = urls?.get(type.key)
-            ?: when (type) {
-                DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
-                else -> JAVBusService.defaultFastUrl + "/actresses"
-            }
+    override suspend fun loadActresses(
+        type: DataSourceType,
+        page: Int,
+        forceRefresh: Boolean
+    ): Pair<List<ActressInfo>, PageInfo> {
+        val baseUrl = when (type) {
+            DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
+            else -> JAVBusService.defaultFastUrl + "/actresses"
+        }
         val url = if (page == 1) baseUrl else "$baseUrl/$page"
         val cacheKey = "actresses_${type.key}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val doc = NetClient.fetchDocument(url)
             val actresses = parseActressList(doc)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = if (actresses.size >= 20) page + 1 else page)
+            val pageInfo = parsePageInfo(doc) ?: PageInfo(
+                activePage = page,
+                nextPage = if (actresses.size >= 20) page + 1 else page
+            )
             actresses to pageInfo
         }
     }
 
-    override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean): List<GenreCategory> {
-        val urls = loadUrls()
-        val baseUrl = urls?.get(type.key)
-            ?: when (type) {
-                DataSourceType.UNCENSORED_GENRE -> JAVBusService.defaultFastUrl + "/uncensored/genre"
-                else -> JAVBusService.defaultFastUrl + "/genre"
-            }
+    override suspend fun loadGenreCategories(
+        type: DataSourceType,
+        forceRefresh: Boolean
+    ): List<GenreCategory> {
+        val baseUrl = when (type) {
+            DataSourceType.UNCENSORED_GENRE -> JAVBusService.defaultFastUrl + "/uncensored/genre"
+            else -> JAVBusService.defaultFastUrl + "/genre"
+        }
         val cacheKey = "genres_${type.key}"
 
         return CacheLoader.persistentCached(cacheKey) {
@@ -167,7 +174,11 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean): MoviePageResult {
+    override suspend fun loadPageByUrl(
+        url: String,
+        page: Int,
+        forceRefresh: Boolean
+    ): MoviePageResult {
         val cacheKey = "page_${url.urlPath}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
@@ -179,7 +190,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         }
     }
 
-    override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? {
+    override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail {
         val cacheKey = "actress_${url.urlPath}"
 
         return CacheLoader.persistentCached(cacheKey) {
