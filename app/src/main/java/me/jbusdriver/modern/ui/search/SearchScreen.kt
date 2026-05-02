@@ -41,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
@@ -160,13 +159,13 @@ fun SearchScreen(
 
             uiState.error != null && !hasResults -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.error ?: "搜索失败", color = Color.Red)
+                    Text(uiState.error ?: "搜索失败", color = MaterialTheme.colorScheme.error)
                 }
             }
 
             !hasResults && uiState.query.isBlank() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("输入关键词开始搜索", color = Color.Gray)
+                    Text("输入关键词开始搜索", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -260,6 +259,7 @@ private fun ActressResults(
                 Text(
                     text = actress.name,
                     style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp)
@@ -284,7 +284,7 @@ private fun ActressResults(
                         .fillMaxWidth()
                         .padding(16.dp), contentAlignment = Alignment.Center
                 ) {
-                    Text("没有更多了", color = Color.Gray)
+                    Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -369,7 +369,7 @@ private fun MovieResults(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("没有更多了", color = Color.Gray)
+                    Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
