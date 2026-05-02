@@ -17,6 +17,9 @@ const val MB = KB * 1024
 const val GB = MB * 1024
 const val TB = GB * 1024
 
+inline val Int.MB: Int
+    get() = this * 1024 * 1024
+
 /**
  * 将字节数格式化为人类可读的文件大小字符串
  *

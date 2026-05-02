@@ -6,6 +6,7 @@ import java.io.File
  * 极简磁盘缓存，仅支持 String 键值对的读写删除。
  *
  * 职责：作为 CacheLoader 的磁盘持久层，将缓存值以文件形式存储在应用缓存目录。
+ * 写入时自动淘汰旧文件，保证总大小不超过 [maxSizeBytes]。
  *
  * 使用场景：CacheLoader.persistentCached 和 getString 的磁盘读写。
  *
@@ -13,12 +14,18 @@ import java.io.File
  * withContext(Dispatchers.IO) 保证）。
  *
  * @param cacheDir 缓存文件存放目录
+ * @param maxSizeBytes 磁盘缓存上限，默认 50MB
  */
-class FileCache(private val cacheDir: File) {
+class FileCache(
+    private val cacheDir: File,
+    private val maxSizeBytes: Long = 50 * 1024 * 1024
+) {
 
     /** 将 [value] 写入以 [key] 的 hashCode 命名的文件。 */
     fun put(key: String, value: String) {
+        cacheDir.mkdirs()
         file(key).writeText(value)
+        trim()
     }
 
     /** 读取 [key] 对应的文件内容，文件不存在时返回 null。 */
@@ -33,4 +40,19 @@ class FileCache(private val cacheDir: File) {
     }
 
     private fun file(key: String): File = File(cacheDir, key.hashCode().toString())
+
+    /** 超过上限时按最后修改时间删除最旧的文件，回退到 75% 容量。 */
+    private fun trim() {
+        val files = cacheDir.listFiles()?.asList() ?: return
+        val totalSize = files.sumOf { it.length() }
+        if (totalSize <= maxSizeBytes) return
+
+        val targetSize = (maxSizeBytes * 0.75).toLong()
+        var currentSize = totalSize
+        for (f in files.sortedBy { it.lastModified() }) {
+            if (currentSize <= targetSize) break
+            currentSize -= f.length()
+            f.delete()
+        }
+    }
 }

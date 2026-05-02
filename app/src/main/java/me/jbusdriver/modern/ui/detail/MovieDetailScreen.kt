@@ -275,14 +275,14 @@ private fun DetailContent(
                                 ) {
                                     Text(
                                         text = header.name,
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.width(80.dp)
                                     )
                                     Text(
                                         text = header.value,
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelLarge,
                                         color = if (header.link.isNotBlank())
                                             MaterialTheme.colorScheme.primary
                                         else

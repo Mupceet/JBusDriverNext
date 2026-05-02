@@ -3,7 +3,9 @@ package me.jbusdriver.modern.core
 import android.app.Activity
 import android.app.ActivityManager
 import androidx.collection.LruCache
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.CacheLoader.lruCached
@@ -33,7 +35,7 @@ object CacheLoader {
             File(
                 JBusManager.context.cacheDir,
                 "ACache"
-            )
+            ), 300.MB.toLong()
         )
     }
 
@@ -54,7 +56,7 @@ object CacheLoader {
             KLog.w("可能的内存不足")
         }
         val cacheSize =
-            if (memoryInfo.availMem > 32 * 1024 * 1024) 4 * 1024 * 1024 else 2 * 1024 * 1024
+            if (memoryInfo.availMem > 32.MB) 4.MB else 2.MB
         KLog.t(TAG).d("max cacheSize = ${cacheSize.toLong().formatFileSize()}")
         return object : LruCache<String, String>(cacheSize) {
             override fun entryRemoved(
@@ -138,7 +140,7 @@ object CacheLoader {
         val result = fetch()
         val json = GSON.toJson(result)
         lru.put(key, json)
-        withContext(Dispatchers.IO) { fileCache.put(key, json) }
+        CoroutineScope(Dispatchers.IO).launch { fileCache.put(key, json) }
         return result
     }
 
