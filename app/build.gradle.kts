@@ -24,6 +24,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -44,8 +45,6 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true
-        dataBinding = true
         buildConfig = true
         compose = true
     }
@@ -58,26 +57,11 @@ android {
 dependencies {
     // AndroidX
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.material)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.recyclerview)
-    implementation(libs.androidx.cardview)
-    implementation(libs.androidx.palette)
-    implementation(libs.androidx.swiperefreshlayout)
-    implementation(libs.androidx.coordinatorlayout)
 
     // Network
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
-
-    // Image
-    implementation(libs.glide)
-    ksp(libs.glide.ksp)
-    implementation(libs.glide.okhttp)
-    implementation(libs.photoview)
-    implementation(libs.materialprogressbar)
-    implementation(libs.bubbleseekbar)
 
     // Database
     implementation(libs.room.runtime)
@@ -86,13 +70,6 @@ dependencies {
     // Parse
     implementation(libs.jsoup)
     implementation(libs.gson)
-
-    // UI
-    implementation(libs.brvah)
-    implementation(libs.material.dialogs.core)
-    implementation(libs.material.dialogs.input)
-    implementation(libs.material.dialogs.files)
-    implementation(libs.flexbox)
 
     // Image Loading
     implementation(libs.coil.compose)
