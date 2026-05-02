@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Bus body outline -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,36 L74,36 Q78,36 78,40 L78,66 Q78,68 76,68 L74,68 L74,72 L70,72 L70,68 L38,68 L38,72 L34,72 L34,68 L32,68 Q30,68 30,66 L30,40 Q30,36 34,36 Z" />
+
+    <!-- Windshield cutout -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M36,40 L52,40 Q54,40 54,42 L54,54 Q54,56 52,56 L36,56 Q34,56 34,54 L34,42 Q34,40 36,40 Z" />
+
+    <!-- Side windows cutout -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M57,40 L76,40 Q77,40 77,41 L77,49 Q77,50 76,50 L57,50 Q56,50 56,49 L56,41 Q56,40 57,40 Z" />
+
+    <!-- Door cutout -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M57,53 L65,53 Q66,53 66,54 L66,64 Q66,65 65,65 L57,65 Q56,65 56,64 L56,54 Q56,53 57,53 Z" />
+
+    <!-- Wheels -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,68 A4,4 0 1,1 38,76 A4,4 0 1,1 38,68 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,68 A4,4 0 1,1 70,76 A4,4 0 1,1 70,68 Z" />
+
+</vector>
