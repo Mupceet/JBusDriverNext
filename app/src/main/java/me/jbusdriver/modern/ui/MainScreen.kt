@@ -149,7 +149,6 @@ private fun CategoryPagerScreen(
 
         HorizontalPager(
             state = pagerState,
-            beyondViewportPageCount = 2,
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val option = CategoryOptions[page]
