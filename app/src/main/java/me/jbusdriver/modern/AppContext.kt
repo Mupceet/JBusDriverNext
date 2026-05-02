@@ -5,8 +5,6 @@ import android.os.Environment
 import android.util.Log
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.JBusManager
-import me.jbusdriver.modern.core.arrayMapof
-import me.jbusdriver.modern.data.remote.JAVBusService
 import java.io.File
 
 /**
@@ -25,14 +23,6 @@ lateinit var JBus: AppContext
  * 继承关系：JBusApplication → AppContext → Application
  */
 open class AppContext : Application() {
-
-    /**
-     * 当前可用的 JAVBusService 实例映射表
-     *
-     * key: baseUrl, value: 对应的 Retrofit Service 实例
-     * URL 切换时通过 JAVBusService.INSTANCE 更新此表
-     */
-    val JBusServices by lazy { arrayMapof<String, JAVBusService>() }
 
     /** 调试模式检测：BuildConfig.DEBUG 或 SD 卡存在 debug 标记文件 */
     private val isDebug by lazy {
@@ -55,15 +45,12 @@ open class AppContext : Application() {
         this.registerActivityLifecycleCallbacks(JBusManager)
     }
 
-    /** 内存不足时清空 Retrofit Service 缓存，释放连接池资源 */
+    /** 内存不足时释放资源 */
     override fun onLowMemory() {
         super.onLowMemory()
-        JBusServices.clear()
     }
 
-    /** 系统请求释放内存时清空 Retrofit Service 缓存 */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        JBusServices.clear()
     }
 }

@@ -31,14 +31,22 @@ import java.util.concurrent.TimeUnit
  * 职责：全局 HTTP 客户端配置中心，管理 OkHttpClient 和 Retrofit 实例
  *
  * 使用场景：
- * - JAVBusService 通过 getRetrofit() 创建 Retrofit 实例
+ * - Repository 通过 fetchHtml/fetchDocument 获取网页内容
  * - Coil 通过 glideOkHttpClient 复用同一 OkHttp 连接池和拦截器配置
- * - Repository 通过 apiClient 发起网络请求
  *
  * 线程：OkHttp 内部管理线程池，调用方可安全在任意线程发起请求
  */
 object NetClient {
     private const val TAG = "NetClient"
+
+    /** 默认站点 URL */
+    var defaultFastUrl = "https://www.javbus.com"
+
+    /** 欧美站点 URL */
+    val defaultXyzUrl = "https://www.javbus.one"
+
+    /** 欧美站点的域名后缀集合 */
+    val xyzHostDomains = mutableSetOf(".one")
 
     /** 通用 User-Agent，模拟桌面浏览器避免被目标网站拒绝 */
     const val USER_AGENT =
@@ -77,7 +85,7 @@ object NetClient {
     /**
      * 响应体转 String 的 Converter Factory
      *
-     * 用于 Retrofit 接口返回原始 HTML 字符串（如 JAVBusService.get()）
+     * 用于 Retrofit 接口返回原始 HTML 字符串
      */
     private val strConv = object : Converter.Factory() {
         override fun responseBodyConverter(
@@ -112,24 +120,6 @@ object NetClient {
                 }
             }
     }
-
-    /**
-     * 创建 Retrofit 实例
-     *
-     * @param baseUrl 基础 URL，末尾需带 /
-     * @param handleJson true 使用 JSON 校验 Converter，false 使用原始 String Converter
-     * @param client 自定义 OkHttpClient，默认使用全局共享实例
-     * @return 配置好的 Retrofit 实例
-     */
-    fun getRetrofit(
-        baseUrl: String = "https://raw.githubusercontent.com/",
-        handleJson: Boolean = false,
-        client: OkHttpClient = okHttpClient
-    ): Retrofit =
-        Retrofit.Builder().client(client).apply {
-            if (baseUrl.isNotEmpty()) this.baseUrl(baseUrl)
-        }.addConverterFactory(if (handleJson) jsonConv else strConv)
-            .build()
 
     /** OkHttp 客户端，配置超时、拦截器、Cookie 管理 */
     private val okHttpClient by lazy {

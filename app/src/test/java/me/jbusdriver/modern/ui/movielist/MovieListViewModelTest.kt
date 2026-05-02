@@ -7,8 +7,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.MovieRepository
-import me.jbusdriver.modern.data.model.MoviePageResult
-import me.jbusdriver.modern.data.model.PageInfo
+import me.jbusdriver.modern.domain.model.MoviePageResult
+import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.ui.data.enums.DataSourceType

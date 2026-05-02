@@ -3,10 +3,9 @@ package me.jbusdriver.modern.data
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.urlPath
-import me.jbusdriver.modern.data.model.ActressDetail
-import me.jbusdriver.modern.data.model.MoviePageResult
-import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.data.remote.JAVBusService
+import me.jbusdriver.modern.domain.model.ActressDetail
+import me.jbusdriver.modern.domain.model.MoviePageResult
+import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
@@ -116,7 +115,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val baseUrl = JAVBusService.defaultFastUrl
+        val baseUrl = NetClient.defaultFastUrl
         val basePath = when (type) {
             DataSourceType.UNCENSORED -> "/uncensored"
             DataSourceType.XYZ -> "/xyz"
@@ -139,8 +138,8 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         forceRefresh: Boolean
     ): Pair<List<ActressInfo>, PageInfo> {
         val baseUrl = when (type) {
-            DataSourceType.UNCENSORED_ACTRESSES -> JAVBusService.defaultFastUrl + "/uncensored/actresses"
-            else -> JAVBusService.defaultFastUrl + "/actresses"
+            DataSourceType.UNCENSORED_ACTRESSES -> NetClient.defaultFastUrl + "/uncensored/actresses"
+            else -> NetClient.defaultFastUrl + "/actresses"
         }
         val url = if (page == 1) baseUrl else "$baseUrl/$page"
         val cacheKey = "actresses_${type.key}_$page"
@@ -161,8 +160,8 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         forceRefresh: Boolean
     ): List<GenreCategory> {
         val baseUrl = when (type) {
-            DataSourceType.UNCENSORED_GENRE -> JAVBusService.defaultFastUrl + "/uncensored/genre"
-            else -> JAVBusService.defaultFastUrl + "/genre"
+            DataSourceType.UNCENSORED_GENRE -> NetClient.defaultFastUrl + "/uncensored/genre"
+            else -> NetClient.defaultFastUrl + "/genre"
         }
         val cacheKey = "genres_${type.key}"
 

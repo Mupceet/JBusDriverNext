@@ -2,9 +2,8 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.data.model.MoviePageResult
-import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.data.remote.JAVBusService
+import me.jbusdriver.modern.domain.model.MoviePageResult
+import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.domain.model.loadMovieFromDoc
@@ -71,7 +70,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         page: Int,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val baseUrl = JAVBusService.defaultFastUrl
+        val baseUrl = NetClient.defaultFastUrl
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
@@ -87,7 +86,7 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         query: String,
         page: Int
     ): Pair<PageInfo, List<ActressInfo>> {
-        val baseUrl = JAVBusService.defaultFastUrl
+        val baseUrl = NetClient.defaultFastUrl
         val type = SearchType.ACTRESS
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"

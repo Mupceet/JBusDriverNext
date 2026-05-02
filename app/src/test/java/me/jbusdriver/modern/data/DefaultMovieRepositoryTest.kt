@@ -1,9 +1,9 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.test.runTest
-import me.jbusdriver.modern.data.model.MoviePageResult
-import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.MoviePageResult
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.mvp.bean.Movie
 import me.jbusdriver.ui.data.enums.DataSourceType
 import org.junit.Assert.assertEquals

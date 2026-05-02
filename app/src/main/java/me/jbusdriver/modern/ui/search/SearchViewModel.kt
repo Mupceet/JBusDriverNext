@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.SearchRepository
-import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel

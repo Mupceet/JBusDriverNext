@@ -1,6 +1,4 @@
-package me.jbusdriver.modern.data.model
-
-import me.jbusdriver.modern.domain.model.Movie
+package me.jbusdriver.modern.domain.model
 
 /**
  * 分页信息数据类，描述当前页、下一页及可用页码列表。

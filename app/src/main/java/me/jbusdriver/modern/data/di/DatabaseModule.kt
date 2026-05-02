@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data.local.di
+package me.jbusdriver.modern.data.di
 
 import dagger.Module
 import dagger.Provides

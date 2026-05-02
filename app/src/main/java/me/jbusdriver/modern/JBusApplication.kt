@@ -6,7 +6,6 @@ import coil.ImageLoaderFactory
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.data.remote.JAVBusService
 import okhttp3.Interceptor
 
 /**
@@ -39,7 +38,7 @@ class JBusApplication : AppContext(), ImageLoaderFactory {
             .addInterceptor(Interceptor { chain ->
                 val original = chain.request()
                 val request = original.newBuilder()
-                    .header("Referer", "${JAVBusService.defaultFastUrl}/")
+                    .header("Referer", "${NetClient.defaultFastUrl}/")
                     .build()
                 chain.proceed(request)
             })

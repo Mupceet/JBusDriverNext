@@ -1,8 +1,7 @@
 package me.jbusdriver.modern.domain.model
 
 import android.text.TextUtils
-import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.data.remote.JAVBusService
+import me.jbusdriver.modern.core.http.NetClient
 import org.jsoup.nodes.Document
 
 /**
@@ -243,7 +242,7 @@ fun parseGenreCategories(doc: Document): List<Pair<String, List<Genre>>> {
 fun String.wrapImage() = when {
     this.startsWith("http") -> this
     this.startsWith("//") -> "https:$this"
-    else -> JAVBusService.defaultFastUrl + this
+    else -> NetClient.defaultFastUrl + this
 }
 
 // endregion

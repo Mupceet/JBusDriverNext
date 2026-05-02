@@ -3,7 +3,7 @@ package me.jbusdriver.modern.domain.model
 import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.data.db.entity.LinkItem
-import me.jbusdriver.modern.data.remote.JAVBusService
+import me.jbusdriver.modern.core.http.NetClient
 
 /**
  * 列表项展开类型：分组头部。
@@ -166,5 +166,5 @@ data class SearchLink(val type: SearchType, var query: String) : ILink {
 
     /** 动态计算的搜索 URL，基于当前生效的服务器地址和搜索路径模板 */
     override val link: String
-        get() = "${JAVBusService.defaultFastUrl}${type.urlPathFormater.format(query)}"
+        get() = "${NetClient.defaultFastUrl}${type.urlPathFormater.format(query)}"
 }

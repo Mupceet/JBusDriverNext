@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
-import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel

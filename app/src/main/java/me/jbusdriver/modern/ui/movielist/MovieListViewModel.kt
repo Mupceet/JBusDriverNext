@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
-import me.jbusdriver.modern.data.model.PageInfo
-import me.jbusdriver.modern.data.model.hasNext
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
