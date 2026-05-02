@@ -1,14 +1,10 @@
 package me.jbusdriver.modern.core.http
 
-import android.content.Context
-import android.net.ConnectivityManager
 import android.text.TextUtils
-import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.BuildConfig
-import me.jbusdriver.modern.core.GSON
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Cookie
@@ -18,35 +14,26 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import okhttp3.ResponseBody
+import okhttp3.logging.HttpLoggingInterceptor
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import retrofit2.Converter
-import retrofit2.Retrofit
 import java.io.IOException
-import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
 /**
- * 职责：全局 HTTP 客户端配置中心，管理 OkHttpClient 和 Retrofit 实例
+ * 全局 HTTP 客户端配置中心，管理 OkHttpClient 实例和网页获取。
  *
- * 使用场景：
- * - Repository 通过 fetchHtml/fetchDocument 获取网页内容
- * - Coil 通过 glideOkHttpClient 复用同一 OkHttp 连接池和拦截器配置
+ * 职责：
+ * - 提供共享的 OkHttpClient（Cookie 管理、拦截器、超时配置）
+ * - 通过 [fetchDocument] 获取网页 HTML 并解析为 Jsoup Document
+ * - 管理 [defaultFastUrl] 站点基础 URL 配置
  *
  * 线程：OkHttp 内部管理线程池，调用方可安全在任意线程发起请求
  */
 object NetClient {
-    private const val TAG = "NetClient"
 
     /** 默认站点 URL */
     var defaultFastUrl = "https://www.javbus.com"
-
-    /** 欧美站点 URL */
-    val defaultXyzUrl = "https://www.javbus.one"
-
-    /** 欧美站点的域名后缀集合 */
-    val xyzHostDomains = mutableSetOf(".one")
 
     /** 通用 User-Agent，模拟桌面浏览器避免被目标网站拒绝 */
     const val USER_AGENT =
@@ -79,48 +66,6 @@ object NetClient {
         }
     }
 
-    /** 全局共享的 OkHttpClient 实例 */
-    val apiClient: OkHttpClient by lazy { okHttpClient }
-
-    /**
-     * 响应体转 String 的 Converter Factory
-     *
-     * 用于 Retrofit 接口返回原始 HTML 字符串
-     */
-    private val strConv = object : Converter.Factory() {
-        override fun responseBodyConverter(
-            type: Type?,
-            annotations: Array<out Annotation>?,
-            retrofit: Retrofit?
-        ): Converter<ResponseBody, *> =
-            Converter<ResponseBody, String> { it.string() }
-    }
-
-    /**
-     * 响应体转 JsonObject 的 Converter Factory
-     *
-     * 解析 JSON 并校验 code==200，失败时抛异常
-     */
-    private val jsonConv = object : Converter.Factory() {
-        override fun responseBodyConverter(
-            type: Type?,
-            annotations: Array<out Annotation>?,
-            retrofit: Retrofit?
-        ): Converter<ResponseBody, *> =
-            Converter<ResponseBody, JsonObject> {
-                val s = it.string()
-                val json = GSON.fromJson(s, JsonObject::class.java)
-                if (json == null || json.isJsonNull || json.entrySet().isEmpty()) {
-                    error("json is null")
-                }
-                if (json.get("code")?.asInt == 200) {
-                    return@Converter json
-                } else {
-                    error(json.get("message")?.asString ?: "未知错误")
-                }
-            }
-    }
-
     /** OkHttp 客户端，配置超时、拦截器、Cookie 管理 */
     private val okHttpClient by lazy {
         val client = OkHttpClient.Builder()
@@ -128,7 +73,6 @@ object NetClient {
             .readTimeout(20 * 1000L, TimeUnit.MILLISECONDS)
             .connectTimeout(15 * 1000L, TimeUnit.MILLISECONDS)
             .addNetworkInterceptor(EXIST_MAGNET_INTERCEPTOR)
-            // 内存级 Cookie 存储，同一 host 的请求自动携带 Cookie
             .cookieJar(object : CookieJar {
                 private val cookieStore = HashMap<String, List<Cookie>>()
 
@@ -139,7 +83,9 @@ object NetClient {
                 override fun loadForRequest(url: HttpUrl) = cookieStore[url.host] ?: emptyList()
             })
         if (BuildConfig.DEBUG) {
-            client.addInterceptor(LoggerInterceptor("OK_HTTP"))
+            client.addInterceptor(
+                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
+            )
         }
         client.build()
     }
@@ -148,37 +94,15 @@ object NetClient {
     val glideOkHttpClient: OkHttpClient by lazy { okHttpClient }
 
     /**
-     * 检查网络是否可用
-     *
-     * @param context 用于获取 ConnectivityManager
-     * @return true 表示有可用网络
-     */
-    fun isNetAvailable(context: Context): Boolean = try {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        cm.activeNetworkInfo?.isAvailable ?: false
-    } catch (e: Exception) {
-        false
-    }
-
-    /**
      * 使用 OkHttp 异步请求获取 URL 的 HTML 内容
-     *
-     * 通过 suspendCancellableCoroutine 将 OkHttp 的 Callback 转为协程挂起，
-     * 协程取消时自动取消底层 OkHttp Call
-     *
-     * @param url 目标页面完整 URL
-     * @param showAll true 时请求头添加 existmag=all，否则默认 existmag=mag
-     * @return HTML 字符串
-     * @throws IOException 网络请求失败
-     * @throws IllegalStateException 响应体为空
      */
-    suspend fun fetchHtml(url: String, showAll: Boolean = false): String =
+    private suspend fun fetchHtml(url: String, showAll: Boolean = false): String =
         suspendCancellableCoroutine { cont ->
             val request = Request.Builder()
                 .url(url)
                 .header("existmag", if (showAll) "all" else "")
                 .build()
-            val call = apiClient.newCall(request)
+            val call = okHttpClient.newCall(request)
             cont.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
@@ -203,8 +127,8 @@ object NetClient {
     /**
      * 获取 URL 的 HTML 并解析为 Jsoup Document
      *
-     * 封装 fetchHtml + withContext(Default) + Jsoup.parse 三步流程，
-     * 确保网络请求在 IO 线程、HTML 解析在 Default 线程执行。
+     * 封装 fetchHtml + Jsoup.parse 流程，
+     * 网络请求在 OkHttp 内部线程、HTML 解析在 Default 线程执行。
      *
      * @param url 目标页面完整 URL
      * @param showAll true 时请求头添加 existmag=all
