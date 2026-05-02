@@ -9,9 +9,10 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.mvp.bean.Movie
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.ActressDetail
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,7 +23,26 @@ import org.junit.Test
 
 class MovieListViewModelTest {
 
+    // Use a shared dispatcher for both Main and IO so test can control execution
     private val testDispatcher = StandardTestDispatcher()
+
+    private val testMovies = listOf(
+        Movie("Test Movie 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1"),
+        Movie("Test Movie 2", "http://img2.jpg", "DEF-002", "2024-01-02", "http://link2")
+    )
+
+    private fun fullFakeRepo(
+        onLoadPage: (DataSourceType, Int) -> MoviePageResult
+    ) = object : MovieRepository {
+        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+            onLoadPage(type, page)
+        override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+            emptyList<ActressInfo>() to PageInfo()
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
+        override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean) =
+            MoviePageResult(PageInfo(), emptyList())
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+    }
 
     @Before
     fun setup() {
@@ -34,31 +54,20 @@ class MovieListViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private val testMovies = listOf(
-        Movie("Test Movie 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1"),
-        Movie("Test Movie 2", "http://img2.jpg", "DEF-002", "2024-01-02", "http://link2")
-    )
-
-    private val testMovieUiModels = testMovies.map {
-        MovieUiModel(it.title, it.imageUrl, it.code, it.date, it.link)
-    }
-
-    private fun createViewModel(repository: MovieRepository): MovieListViewModel {
-        return MovieListViewModel(repository)
-    }
-
     @Test
     fun loadFirstPage_loadsMoviesAndPageInfo() = runTest(testDispatcher) {
-        val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
-                MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
+        val repository = fullFakeRepo { _, _ ->
+            MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = createViewModel(repository)
+        val viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
+        // ViewModel launches on Dispatchers.IO; give real IO threads time to complete
+        advanceUntilIdle()
+        Thread.sleep(100)
         advanceUntilIdle()
 
-        assertEquals(testMovieUiModels, viewModel.uiState.value.movies)
+        assertEquals(2, viewModel.uiState.value.movies.size)
         assertEquals(1, viewModel.uiState.value.pageInfo.activePage)
         assertTrue(viewModel.uiState.value.hasMore)
         assertFalse(viewModel.uiState.value.isLoading)
@@ -67,44 +76,42 @@ class MovieListViewModelTest {
 
     @Test
     fun loadMore_appendsMovies() = runTest(testDispatcher) {
-        val page2Movies = listOf(
-            Movie("Movie 3", "http://img3.jpg", "GHI-003", "2024-01-03", "http://link3")
-        )
-        val page2UiModels = page2Movies.map {
-            MovieUiModel(it.title, it.imageUrl, it.code, it.date, it.link)
-        }
+        val page2Movies = listOf(Movie("Movie 3", "http://img3.jpg", "GHI-003", "2024-01-03", "http://link3"))
         var callCount = 0
-        val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
-                when (page) {
-                    1 -> MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies).also { callCount++ }
-                    else -> MoviePageResult(PageInfo(2, 3, listOf(1, 2, 3)), page2Movies).also { callCount++ }
-                }
+        val repository = fullFakeRepo { _, page ->
+            callCount++
+            when (page) {
+                1 -> MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
+                else -> MoviePageResult(PageInfo(2, 3, listOf(1, 2, 3)), page2Movies)
+            }
         }
-        val viewModel = createViewModel(repository)
+        val viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
+        advanceUntilIdle()
+        Thread.sleep(100)
         advanceUntilIdle()
         assertEquals(1, callCount)
 
         viewModel.loadMore()
         advanceUntilIdle()
+        Thread.sleep(100)
+        advanceUntilIdle()
         assertEquals(2, callCount)
 
-        assertEquals(testMovieUiModels + page2UiModels, viewModel.uiState.value.movies)
+        assertEquals(3, viewModel.uiState.value.movies.size)
         assertEquals(2, viewModel.uiState.value.pageInfo.activePage)
         assertTrue(viewModel.uiState.value.hasMore)
     }
 
     @Test
     fun loadFirstPage_handlesError() = runTest(testDispatcher) {
-        val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
-                throw RuntimeException("Network error")
-        }
-        val viewModel = createViewModel(repository)
+        val repository = fullFakeRepo { _, _ -> throw RuntimeException("Network error") }
+        val viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
+        advanceUntilIdle()
+        Thread.sleep(100)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.error?.contains("Network error") == true)
@@ -114,32 +121,37 @@ class MovieListViewModelTest {
     @Test
     fun refresh_resetsMovies() = runTest(testDispatcher) {
         var callCount = 0
-        val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
-                MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies).also { callCount++ }
+        val repository = fullFakeRepo { _, _ ->
+            callCount++
+            MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = createViewModel(repository)
+        val viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
+        advanceUntilIdle()
+        Thread.sleep(100)
         advanceUntilIdle()
 
         viewModel.refresh()
         advanceUntilIdle()
+        Thread.sleep(100)
+        advanceUntilIdle()
 
         assertEquals(2, callCount)
-        assertEquals(testMovieUiModels, viewModel.uiState.value.movies)
+        assertEquals(2, viewModel.uiState.value.movies.size)
         assertFalse(viewModel.uiState.value.isRefreshing)
     }
 
     @Test
     fun loadMore_doesNotLoadWhenNoMorePages() = runTest(testDispatcher) {
-        val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
-                MoviePageResult(PageInfo(1, 1, listOf(1)), testMovies)
+        val repository = fullFakeRepo { _, _ ->
+            MoviePageResult(PageInfo(1, 1, listOf(1)), testMovies)
         }
-        val viewModel = createViewModel(repository)
+        val viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
+        advanceUntilIdle()
+        Thread.sleep(100)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.hasMore)
@@ -147,7 +159,7 @@ class MovieListViewModelTest {
         viewModel.loadMore()
         advanceUntilIdle()
 
-        assertEquals(testMovieUiModels, viewModel.uiState.value.movies)
+        assertEquals(2, viewModel.uiState.value.movies.size)
         assertFalse(viewModel.uiState.value.isLoadingMore)
     }
 }

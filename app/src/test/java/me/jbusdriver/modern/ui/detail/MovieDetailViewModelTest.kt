@@ -6,9 +6,13 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
-import me.jbusdriver.mvp.bean.Header
-import me.jbusdriver.mvp.bean.MovieDetail
+import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.Header
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.MovieDetail
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +37,18 @@ class MovieDetailViewModelTest {
         relatedMovies = emptyList()
     )
 
+    private val stubCollectRepo = object : CollectRepository {
+        override suspend fun isCollected(linkItem: LinkItem) = false
+        override suspend fun addCollect(linkItem: LinkItem) = true
+        override suspend fun removeCollect(linkItem: LinkItem) = true
+        override suspend fun isMovieCollected(movie: Movie) = false
+        override suspend fun toggleMovieCollect(movie: Movie) = true
+        override suspend fun isActressCollected(actress: ActressInfo) = false
+        override suspend fun toggleActressCollect(actress: ActressInfo) = true
+        override suspend fun getCollectedMovies(): List<Movie> = emptyList()
+        override suspend fun getCollectedActresses(): List<ActressInfo> = emptyList()
+    }
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
@@ -45,10 +61,10 @@ class MovieDetailViewModelTest {
 
     @Test
     fun loadDetail_loadsMovieDetail() = runTest(testDispatcher) {
-        val repository = object : MovieDetailRepository {
-            override suspend fun getMovieDetail(url: String) = testDetail
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(repository)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -61,11 +77,11 @@ class MovieDetailViewModelTest {
 
     @Test
     fun loadDetail_handlesError() = runTest(testDispatcher) {
-        val repository = object : MovieDetailRepository {
-            override suspend fun getMovieDetail(url: String) =
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 throw RuntimeException("Network error")
         }
-        val viewModel = MovieDetailViewModel(repository)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -77,10 +93,11 @@ class MovieDetailViewModelTest {
     @Test
     fun refresh_reloadsDetail() = runTest(testDispatcher) {
         var callCount = 0
-        val repository = object : MovieDetailRepository {
-            override suspend fun getMovieDetail(url: String) = testDetail.also { callCount++ }
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
+                testDetail.also { callCount++ }
         }
-        val viewModel = MovieDetailViewModel(repository)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()

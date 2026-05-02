@@ -4,26 +4,39 @@ import kotlinx.coroutines.test.runTest
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
-import me.jbusdriver.mvp.bean.Movie
-import me.jbusdriver.ui.data.enums.DataSourceType
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.ActressDetail
+import me.jbusdriver.modern.ui.movielist.GenreCategory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FakeMovieRepositoryTest {
 
-    // Tests the MovieRepository interface contract with a fake implementation
     private val fakeMovies = listOf(
         Movie("Test Movie 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1"),
         Movie("Test Movie 2", "http://img2.jpg", "DEF-002", "2024-01-02", "http://link2")
     )
 
     private val repository = object : MovieRepository {
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean) =
+        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(
                 pageInfo = PageInfo(page, page + 1, listOf(page, page + 1)),
                 movies = fakeMovies
             )
+
+        override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+            emptyList<ActressInfo>() to PageInfo(page, page + 1)
+
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+            emptyList<GenreCategory>()
+
+        override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean) =
+            MoviePageResult(PageInfo(page, page + 1, listOf(page, page + 1)), fakeMovies)
+
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
     }
 
     @Test
