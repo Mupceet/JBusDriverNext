@@ -72,9 +72,9 @@ fun SearchScreen(
     }
 
     fun doSearch() {
-        focusManager.clearFocus()
         val query = searchInput.trim()
         if (query.isNotBlank()) {
+            focusManager.clearFocus()
             viewModel.search(query)
         }
     }
@@ -106,7 +106,7 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
-                .padding(horizontal = 16.dp, vertical = 2.dp),
+                .padding(horizontal = 16.dp),
             leadingIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")

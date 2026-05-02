@@ -266,7 +266,7 @@ private fun DetailContent(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     SelectionContainer {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
                             detail.headers.forEach { header ->
                                 Row(
                                     modifier = Modifier
@@ -282,7 +282,7 @@ private fun DetailContent(
                                     )
                                     Text(
                                         text = header.value,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.labelMedium,
                                         color = if (header.link.isNotBlank())
                                             MaterialTheme.colorScheme.primary
                                         else
