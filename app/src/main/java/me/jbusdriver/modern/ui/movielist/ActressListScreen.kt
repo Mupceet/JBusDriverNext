@@ -99,7 +99,7 @@ fun ActressListScreen(
                 }
 
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                    columns = GridCells.Adaptive(95.dp),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -116,11 +116,12 @@ fun ActressListScreen(
                             ActressAvatar(
                                 avatarUrl = actress.avatar,
                                 contentDescription = actress.name,
-                                size = 96.dp
+                                size = 90.dp
                             )
                             Text(
                                 text = actress.name,
                                 style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = 4.dp)

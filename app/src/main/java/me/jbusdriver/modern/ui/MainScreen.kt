@@ -139,7 +139,11 @@ private fun CategoryPagerScreen(
                 }
             }
             IconButton(onClick = onSearchClick) {
-                Icon(Icons.Default.Search, contentDescription = "搜索")
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "搜索",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 

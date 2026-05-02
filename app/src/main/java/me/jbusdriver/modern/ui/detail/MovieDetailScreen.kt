@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -243,7 +244,7 @@ private fun DetailContent(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(3f / 4f)
+                    .aspectRatio(3f / 2f)
                     .clickable { onImageClick(listOf(detail.cover), 0) }
                     .onSizeChanged { size -> coverHeight.value = size.height }
             )
@@ -253,7 +254,7 @@ private fun DetailContent(
         item(key = "headers") {
             if (detail.headers.isNotEmpty()) {
                 Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -393,9 +394,9 @@ private fun ImageSampleSection(
                     model = sample.thumb,
                     contentDescription = sample.title,
                     modifier = Modifier
-                        .width(160.dp)
+                        .width(100.dp)
                         .aspectRatio(4f / 3f)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .clickable {
                             val images = samples.map { it.image }
                             onImageClick(images, index)
@@ -495,7 +496,7 @@ private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movie
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(2f / 3f)
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
+                            .clip(RoundedCornerShape(4.dp)),
                         contentScale = ContentScale.Crop
                     )
                     Spacer(Modifier.height(4.dp))
