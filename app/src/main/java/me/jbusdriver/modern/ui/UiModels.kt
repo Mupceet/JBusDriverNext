@@ -39,7 +39,7 @@ data class MovieDetailUiModel(
 
 /** 详情页信息行的 UI 模型 */
 @Immutable
-data class HeaderUiModel(val name: String, val value: String)
+data class HeaderUiModel(val name: String, val value: String, val link: String = "")
 
 /** 类别标签的 UI 模型 */
 @Immutable
@@ -79,7 +79,7 @@ fun MovieDetail.toUiModel(): MovieDetailUiModel {
             .filter { it.name != "類別" }
             .map {
                 if (it.name == "描述") HeaderUiModel("描述", title.removePrefix(code).trim())
-                else HeaderUiModel(it.name, it.value)
+                else HeaderUiModel(it.name, it.value, it.link)
             },
         genres = genres.map { GenreUiModel(it.name, it.link) },
         actresses = actress.map { ActressUiModel(it.name, it.avatar, it.link) },

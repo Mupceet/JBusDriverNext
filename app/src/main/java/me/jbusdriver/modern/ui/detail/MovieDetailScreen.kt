@@ -6,6 +6,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -68,6 +69,7 @@ import coil.compose.AsyncImage
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
+import me.jbusdriver.modern.ui.HeaderUiModel
 import me.jbusdriver.modern.ui.ImageSampleUiModel
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
@@ -98,6 +100,7 @@ fun MovieDetailScreen(
     onActressClick: (ActressUiModel) -> Unit = {},
     onGenreClick: (GenreUiModel) -> Unit = {},
     onImageClick: (List<String>, Int) -> Unit = { _, _ -> },
+    onHeaderClick: (HeaderUiModel) -> Unit = {},
     onBack: () -> Unit = {},
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
@@ -181,6 +184,7 @@ fun MovieDetailScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
                         onGenreClick = onGenreClick,
+                        onHeaderClick = onHeaderClick,
                         onImageClick = onImageClick,
                         onMagnetClick = {
                             showMagnetSheet = true
@@ -223,6 +227,7 @@ private fun DetailContent(
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit,
     onGenreClick: (GenreUiModel) -> Unit,
+    onHeaderClick: (HeaderUiModel) -> Unit,
     onImageClick: (List<String>, Int) -> Unit,
     onMagnetClick: () -> Unit
 ) {
@@ -260,25 +265,33 @@ private fun DetailContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        detail.headers.forEach { header ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = header.name,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(80.dp)
-                                )
-                                Text(
-                                    text = header.value,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
+                    SelectionContainer {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            detail.headers.forEach { header ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = header.name,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.width(80.dp)
+                                    )
+                                    Text(
+                                        text = header.value,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (header.link.isNotBlank())
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface,
+                                        modifier = if (header.link.isNotBlank()) {
+                                            Modifier.weight(1f).clickable { onHeaderClick(header) }
+                                        } else Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
                     }

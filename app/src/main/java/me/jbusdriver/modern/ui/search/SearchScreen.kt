@@ -28,11 +28,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -55,7 +58,12 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     LaunchedEffect(uiState.query) {
         if (uiState.query != searchInput) {
@@ -97,6 +105,7 @@ fun SearchScreen(
             shape = RoundedCornerShape(25),
             modifier = Modifier
                 .fillMaxWidth()
+                .focusRequester(focusRequester)
                 .padding(horizontal = 16.dp, vertical = 2.dp),
             leadingIcon = {
                 IconButton(onClick = onBack) {

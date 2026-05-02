@@ -23,6 +23,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
+import me.jbusdriver.modern.ui.GenreUiModel
+import me.jbusdriver.modern.ui.HeaderUiModel
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
@@ -133,6 +135,13 @@ fun JBusNavigation(
                     navController.navigate(
                         NavigationKeys.linkMovies(genre.link, genre.name, type = "genre")
                     )
+                },
+                onHeaderClick = { header ->
+                    if (header.link.isNotBlank()) {
+                        navController.navigate(
+                            NavigationKeys.linkMovies(header.link, header.name + ": " + header.value, type = "header")
+                        )
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )
