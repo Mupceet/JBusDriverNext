@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.db.ActressDBType
@@ -128,6 +129,7 @@ private fun CategoryPagerScreen(
                                 "${option.group}·${option.name}",
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                fontSize = 16.sp,
                                 fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
                                 color = if (pagerState.currentPage == index)
                                     MaterialTheme.colorScheme.primary

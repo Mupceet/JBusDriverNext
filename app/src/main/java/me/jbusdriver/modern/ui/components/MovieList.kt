@@ -173,7 +173,7 @@ fun MovieItem(
             ) {
                 Text(
                     text = movie.title,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -187,7 +187,7 @@ fun MovieItem(
                         movie.tags.forEach { tag ->
                             Text(
                                 text = tag,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
@@ -204,13 +204,13 @@ fun MovieItem(
                 ) {
                     Text(
                         text = movie.code,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                     if (movie.date.isNotBlank()) {
                         Text(
                             text = movie.date,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
