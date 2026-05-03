@@ -8,11 +8,11 @@ import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
-import me.jbusdriver.modern.domain.model.loadMovieFromDoc
-import me.jbusdriver.modern.domain.model.parseActressAttrs
-import me.jbusdriver.modern.domain.model.parseActressList
-import me.jbusdriver.modern.domain.model.parseGenreCategories
-import me.jbusdriver.modern.domain.model.parsePageInfo
+import me.jbusdriver.modern.data.parser.loadMovieFromDoc
+import me.jbusdriver.modern.data.parser.parseActressAttrs
+import me.jbusdriver.modern.data.parser.parseActressList
+import me.jbusdriver.modern.data.parser.parseGenreCategories
+import me.jbusdriver.modern.data.parser.parsePageInfo
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.ui.movielist.GenreCategory
 import javax.inject.Inject

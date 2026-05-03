@@ -6,9 +6,9 @@ import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.SearchType
-import me.jbusdriver.modern.domain.model.loadMovieFromDoc
-import me.jbusdriver.modern.domain.model.parseActressList
-import me.jbusdriver.modern.domain.model.parsePageInfo
+import me.jbusdriver.modern.data.parser.loadMovieFromDoc
+import me.jbusdriver.modern.data.parser.parseActressList
+import me.jbusdriver.modern.data.parser.parsePageInfo
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton

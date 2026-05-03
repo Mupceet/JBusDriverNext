@@ -1,7 +1,8 @@
-package me.jbusdriver.modern.domain.model
+package me.jbusdriver.modern.data.parser
 
 import android.text.TextUtils
 import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.domain.model.*
 import org.jsoup.nodes.Document
 
 /**
