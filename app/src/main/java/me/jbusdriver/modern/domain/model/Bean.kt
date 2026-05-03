@@ -125,7 +125,7 @@ fun ILink.convertDBItem() = LinkItem(
     key = this.uniqueKey,
     jsonStr = this.toJsonString(),
     categoryId = when {
-        this is ICollectCategory && this.categoryId > 0 -> categoryId
+        this.categoryId > 0 -> categoryId
         else -> AllFirstParentDBCategoryGroup[this.DBtype]?.id ?: LinkCategory.id ?: -1
     }
 )
