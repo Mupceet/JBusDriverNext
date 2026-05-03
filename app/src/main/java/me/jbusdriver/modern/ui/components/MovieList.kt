@@ -14,7 +14,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,36 +56,75 @@ fun MovieList(
     isGrid: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
+    if (isGrid) {
+        val gridState = rememberLazyGridState()
 
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = listState.layoutInfo.totalItemsCount
-            lastVisible >= totalItems - 3
-        }.collect { nearEnd ->
-            if (nearEnd && hasMore && !isLoadingMore) onLoadMore()
+        LaunchedEffect(gridState) {
+            snapshotFlow {
+                val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItems = gridState.layoutInfo.totalItemsCount
+                lastVisible >= totalItems - 3
+            }.collect { nearEnd ->
+                if (nearEnd && hasMore && !isLoadingMore) onLoadMore()
+            }
         }
-    }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-            MovieItem(movie = movie, onClick = { onMovieClick(movie) })
-        }
-        if (isLoadingMore) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 150.dp),
+            state = gridState,
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                MovieGridItem(movie = movie, onClick = { onMovieClick(movie) })
+            }
+            if (isLoadingMore) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+            if (!hasMore && movies.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
-        if (!hasMore && movies.isNotEmpty()) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        val listState = rememberLazyListState()
+
+        LaunchedEffect(listState) {
+            snapshotFlow {
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItems = listState.layoutInfo.totalItemsCount
+                lastVisible >= totalItems - 3
+            }.collect { nearEnd ->
+                if (nearEnd && hasMore && !isLoadingMore) onLoadMore()
+            }
+        }
+
+        LazyColumn(
+            state = listState,
+            modifier = modifier.fillMaxSize(),
+        ) {
+            itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                MovieItem(movie = movie, onClick = { onMovieClick(movie) })
+            }
+            if (isLoadingMore) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+            if (!hasMore && movies.isNotEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
