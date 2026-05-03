@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.search
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -62,6 +62,7 @@ fun SearchScreen(
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
 
     LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(180)
         focusRequester.requestFocus()
     }
 
@@ -113,13 +114,17 @@ fun SearchScreen(
                 }
             },
             trailingIcon = {
-                Text(
-                    "搜尋",
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .clickable(onClick = { doSearch() })
-                )
+                if (searchInput.isNotEmpty()) {
+                    IconButton(onClick = {
+                        searchInput = ""
+                        focusRequester.requestFocus()
+                    }) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "清除"
+                        )
+                    }
+                }
             }
         )
 
@@ -133,7 +138,12 @@ fun SearchScreen(
                 FilterChip(
                     selected = uiState.searchType == type,
                     onClick = {
-                        viewModel.setSearchType(type)
+                        val query = searchInput.trim()
+                        if (query.isNotBlank()) {
+                            viewModel.search(query, type)
+                        } else {
+                            viewModel.setSearchType(type)
+                        }
                     },
                     label = { Text(type.title, style = MaterialTheme.typography.labelSmall) }
                 )
