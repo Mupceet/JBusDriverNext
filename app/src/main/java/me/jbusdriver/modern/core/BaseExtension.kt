@@ -6,8 +6,6 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.text.format.Formatter
 import androidx.collection.ArrayMap
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 
 // region 文件大小常量与格式化
 
@@ -38,31 +36,6 @@ fun <K, V> arrayMapof(vararg pairs: Pair<K, V>): ArrayMap<K, V> =
 /** 创建空 ArrayMap */
 fun <K, V> arrayMapof(): ArrayMap<K, V> = ArrayMap()
 // endregion
-
-// region Gson 扩展
-
-/**
- * 泛型 JSON 反序列化
- *
- * 通过 reified 类型参数避免传入 TypeToken
- * 使用场景：CacheLoader 读取缓存时反序列化为具体类型
- *
- * @param T 目标类型
- * @param json JSON 字符串
- * @return 反序列化结果，JSON 无效时返回 null
- */
-inline fun <reified T> Gson.fromJson(json: String): T? =
-    this.fromJson<T>(json, object : TypeToken<T>() {}.type)
-
-/**
- * 将任意对象序列化为 JSON 字符串
- *
- * 使用场景：缓存写入、数据库 Entity 的 jsonStr 字段
- */
-fun Any?.toJsonString(): String = GSON.toJson(this)
-// endregion
-
-// region 屏幕尺寸
 
 // region 剪贴板
 

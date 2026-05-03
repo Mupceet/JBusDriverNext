@@ -1,14 +1,12 @@
 package me.jbusdriver.modern.core
 
-import android.util.Log
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializer
-import java.io.File
+import com.google.gson.reflect.TypeToken
 import java.lang.reflect.Modifier.STATIC
 import java.lang.reflect.Modifier.TRANSIENT
 import java.util.Date
-
-private const val TAG = "Global"
 
 /**
  * 全局 Gson 实例
@@ -42,27 +40,21 @@ val GSON by lazy {
 }
 
 /**
- * 安全创建目录
+ * 泛型 JSON 反序列化
  *
- * @param collectDir 目标目录路径
- * @return 创建成功返回路径，失败返回 null
+ * 通过 reified 类型参数避免传入 TypeToken
+ * 使用场景：CacheLoader 读取缓存时反序列化为具体类型
+ *
+ * @param T 目标类型
+ * @param json JSON 字符串
+ * @return 反序列化结果，JSON 无效时返回 null
  */
-fun createDir(collectDir: String): String? {
-    File(collectDir.trim()).let {
-        try {
-            if (!it.exists() && it.mkdirs()) return collectDir
-            if (it.exists()) {
-                if (it.isDirectory) {
-                    return collectDir
-                } else {
-                    // 同名文件存在时先删除再重建
-                    it.delete()
-                    createDir(collectDir)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "createDir error", e)
-        }
-    }
-    return null
-}
+inline fun <reified T> Gson.fromJson(json: String): T? =
+    this.fromJson<T>(json, object : TypeToken<T>() {}.type)
+
+/**
+ * 将任意对象序列化为 JSON 字符串
+ *
+ * 使用场景：缓存写入、数据库 Entity 的 jsonStr 字段
+ */
+fun Any?.toJsonString(): String = GSON.toJson(this)
