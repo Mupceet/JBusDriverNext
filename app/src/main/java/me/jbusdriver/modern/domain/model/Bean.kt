@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.domain.model
 
 import me.jbusdriver.modern.core.toJsonString
-import me.jbusdriver.modern.core.urlPath
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.core.http.NetClient
 

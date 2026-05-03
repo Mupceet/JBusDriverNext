@@ -2,7 +2,7 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.core.urlPath
+import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.domain.model.MovieDetail
 import me.jbusdriver.modern.domain.model.parseMovieDetails
 import javax.inject.Inject

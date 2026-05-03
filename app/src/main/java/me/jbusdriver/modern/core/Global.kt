@@ -1,9 +1,6 @@
 package me.jbusdriver.modern.core
 
-import android.net.Uri
 import android.util.Log
-import androidx.collection.LruCache
-import androidx.core.net.toUri
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializer
 import java.io.File
@@ -69,35 +66,3 @@ fun createDir(collectDir: String): String? {
     }
     return null
 }
-
-/** URL 解析结果缓存，避免重复 Uri.parse() 调用 */
-private val urlCache by lazy { LruCache<String, Uri>(512) }
-
-/**
- * 从 URL 字符串提取 host 部分（scheme://host）
- *
- * 结果通过 LruCache 缓存，同一 URL 不会重复解析
- * 使用场景：MovieDetail.checkUrl() 中对比 host 是否匹配
- */
-val String.urlHost: String
-    get() = (urlCache.get(this) ?: let {
-        val uri = Uri.parse(this)
-        urlCache.put(this, uri)
-        uri
-    }).let {
-        checkNotNull(it)
-        "${it.scheme}://${it.host}"
-    }
-
-/**
- * 从 URL 字符串提取路径部分（不含 scheme 和 host）
- *
- * 结果通过 LruCache 缓存
- * 使用场景：CacheLoader 的缓存 key 生成、Repository 的 cacheKey 拼接
- */
-val String.urlPath: String
-    get() = (urlCache[this] ?: let {
-        val uri = this.toUri()
-        urlCache.put(this, uri)
-        uri
-    }).path ?: ""

@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.domain.model
 
 import androidx.compose.runtime.Immutable
-import me.jbusdriver.modern.core.urlHost
 import java.io.Serializable
 
 /**
