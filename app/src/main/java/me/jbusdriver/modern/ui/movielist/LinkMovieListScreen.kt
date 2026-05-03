@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,9 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,7 +32,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,7 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
-import me.jbusdriver.modern.ui.components.MovieItem
+import me.jbusdriver.modern.ui.components.MovieList
 
 /**
  * 关联链接影片列表页面。
@@ -148,64 +143,26 @@ fun LinkMovieListScreen(
                 }
 
                 else -> {
-                    val listState = rememberLazyListState()
-
-                    LaunchedEffect(listState, uiState.hasMore) {
-                        snapshotFlow {
-                            val lastVisible =
-                                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            val totalItems = listState.layoutInfo.totalItemsCount
-                            lastVisible >= totalItems - 3
-                        }.collect { nearEnd ->
-                            if (nearEnd && uiState.hasMore && !uiState.isLoadingMore) {
-                                viewModel.loadMore()
-                            }
-                        }
-                    }
-
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        // Actress detail header
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Actress detail header (outside MovieList)
                         if (type == "actress") {
                             val actress = uiState.actressDetail
                             val actressError = uiState.actressError
                             when {
-                                actress != null -> item(key = "actress_header") {
-                                    ActressDetailCard(actress)
-                                }
-
-                                uiState.isLoadingActress -> item(key = "actress_header_loading") {
-                                    ActressDetailLoadingPlaceholder()
-                                }
-
-                                actressError != null -> item(key = "actress_header_error") {
-                                    ActressDetailErrorCard(actressError)
-                                }
+                                actress != null -> ActressDetailCard(actress)
+                                uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                actressError != null -> ActressDetailErrorCard(actressError)
                             }
                         }
 
-                        itemsIndexed(
-                            uiState.movies,
-                            key = { index, movie -> "${index}_${movie.link}" }
-                        ) { _, movie ->
-                            MovieItem(movie = movie, onClick = { onMovieClick(movie) })
-                        }
-
-                        if (uiState.isLoadingMore) {
-                            item {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
+                        MovieList(
+                            movies = uiState.movies,
+                            hasMore = uiState.hasMore,
+                            isLoadingMore = uiState.isLoadingMore,
+                            onLoadMore = { viewModel.loadMore() },
+                            onMovieClick = onMovieClick,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
