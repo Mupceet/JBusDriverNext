@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.image
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +17,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -44,6 +49,17 @@ fun ImageViewScreen(
     startIndex: Int = 0,
     onBack: () -> Unit = {}
 ) {
+    val view = LocalView.current
+    val isDarkTheme = isSystemInDarkTheme()
+    DisposableEffect(isDarkTheme) {
+        val window = (view.context as Activity).window
+        val insetsController = WindowCompat.getInsetsController(window, view)
+        insetsController.isAppearanceLightStatusBars = false
+        onDispose {
+            insetsController.isAppearanceLightStatusBars = !isDarkTheme
+        }
+    }
+
     val pagerState = rememberPagerState(
         initialPage = startIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0)),
         pageCount = { images.size }
