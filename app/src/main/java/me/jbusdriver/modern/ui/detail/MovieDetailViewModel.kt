@@ -11,8 +11,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
-import me.jbusdriver.modern.data.magnet.Magnet
 import me.jbusdriver.modern.data.magnet.MagnetManager
+import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel

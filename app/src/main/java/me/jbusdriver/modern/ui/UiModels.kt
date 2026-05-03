@@ -1,7 +1,7 @@
 package me.jbusdriver.modern.ui
 
 import androidx.compose.runtime.Immutable
-import me.jbusdriver.modern.data.magnet.Magnet
+import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail

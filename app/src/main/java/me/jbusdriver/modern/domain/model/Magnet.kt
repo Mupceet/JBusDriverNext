@@ -1,7 +1,4 @@
-package me.jbusdriver.modern.data.magnet
-
-import me.jbusdriver.modern.domain.model.ILink
-import me.jbusdriver.modern.domain.model.LinkCategory
+package me.jbusdriver.modern.domain.model
 
 /**
  * 磁力链接数据模型，表示一个从磁力搜索站点解析出的磁力资源条目。
