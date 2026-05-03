@@ -1,12 +1,25 @@
 package me.jbusdriver.modern.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,22 +28,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import me.jbusdriver.modern.ui.MovieUiModel
 
 /**
  * 可复用的影片列表组件。
  *
- * 职责：以 LazyColumn 展示影片条目列表，支持加载更多和到底提示。
- *
- * 使用场景：被 MovieListScreen、CollectionListScreen、SearchScreen 的影片结果复用。
- *
- * @param movies 影片数据列表
- * @param hasMore 是否有更多数据可加载
- * @param isLoadingMore 是否正在加载更多
- * @param onLoadMore 滚动到底部时的加载更多回调
- * @param onMovieClick 点击影片的回调
- * @param modifier 应用于列表的 Modifier
+ * @param isGrid false = LazyColumn 列表模式, true = LazyVerticalGrid 网格模式
  */
 @Composable
 fun MovieList(
@@ -39,6 +47,7 @@ fun MovieList(
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
     onMovieClick: (MovieUiModel) -> Unit = {},
+    isGrid: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -71,6 +80,95 @@ fun MovieList(
             item {
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 影片列表中的单个影片条目卡片（横排，左图右文）。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun MovieItem(
+    movie: MovieUiModel,
+    onClick: (MovieUiModel) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = { onClick(movie) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            AsyncImage(
+                model = movie.imageUrl,
+                contentDescription = movie.title,
+                modifier = Modifier
+                    .width(80.dp)
+                    .aspectRatio(2f / 3f)
+                    .clip(RoundedCornerShape(4.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(120.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = movie.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (movie.tags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        movie.tags.forEach { tag ->
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = movie.code,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (movie.date.isNotBlank()) {
+                        Text(
+                            text = movie.date,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }
