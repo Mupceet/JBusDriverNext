@@ -1,3 +1,6 @@
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
@@ -5,6 +8,12 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.compose.compiler)
 }
+
+val gitCommitCount = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.get().trim().toInt()
+
+fun releaseTime(): String? = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
 
 android {
     namespace = "me.jbusdriver"
@@ -14,14 +23,15 @@ android {
         applicationId = "me.jbus"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 10000 + gitCommitCount
+        versionName = "1.${releaseTime()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            applicationIdSuffix = ".release"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -30,6 +40,7 @@ android {
             )
         }
         debug {
+            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
         }
     }
@@ -46,6 +57,15 @@ android {
 
     room {
         schemaDirectory("$projectDir/schemas")
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val buildType = variant.buildType ?: "unknown"
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("jbus_${buildType}_v${android.defaultConfig.versionName}.apk")
+        }
     }
 }
 
