@@ -174,3 +174,81 @@ fun MovieItem(
         }
     }
 }
+
+/**
+ * 网格模式下的影片卡片（竖排，上图下文）。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun MovieGridItem(
+    movie: MovieUiModel,
+    onClick: (MovieUiModel) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = { onClick(movie) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column {
+            AsyncImage(
+                model = movie.imageUrl,
+                contentDescription = movie.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                Text(
+                    text = movie.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (movie.tags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        movie.tags.forEach { tag ->
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = movie.code,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (movie.date.isNotBlank()) {
+                        Text(
+                            text = movie.date,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
