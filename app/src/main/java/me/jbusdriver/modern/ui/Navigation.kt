@@ -15,6 +15,10 @@ package me.jbusdriver.modern.ui
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -30,7 +34,8 @@ import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
 import java.net.URLDecoder
 
-private const val ANIM_DURATION = 300
+private const val ANIM_DURATION = 350
+private const val ANIM_DURATION_SEARCH = 400
 
 @Composable
 fun JBusNavigation(
@@ -46,16 +51,12 @@ fun JBusNavigation(
             )
         },
         exitTransition = {
-            slideOutOfContainer(
-                AnimatedContentTransitionScope.SlideDirection.Start,
-                tween(ANIM_DURATION)
-            )
+            scaleOut(targetScale = 0.9f, animationSpec = tween(ANIM_DURATION)) +
+                fadeOut(tween(ANIM_DURATION))
         },
         popEnterTransition = {
-            slideIntoContainer(
-                AnimatedContentTransitionScope.SlideDirection.End,
-                tween(ANIM_DURATION)
-            )
+            scaleIn(initialScale = 0.9f, animationSpec = tween(ANIM_DURATION)) +
+                fadeIn(tween(ANIM_DURATION))
         },
         popExitTransition = {
             slideOutOfContainer(
@@ -89,7 +90,29 @@ fun JBusNavigation(
                 }
             )
         }
-        composable(NavigationKeys.ROUTE_SEARCH) {
+        composable(
+            route = NavigationKeys.ROUTE_SEARCH,
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Up,
+                    tween(ANIM_DURATION_SEARCH)
+                ) + fadeIn(tween(ANIM_DURATION_SEARCH))
+            },
+            exitTransition = {
+                scaleOut(targetScale = 0.9f, animationSpec = tween(ANIM_DURATION)) +
+                    fadeOut(tween(ANIM_DURATION))
+            },
+            popEnterTransition = {
+                scaleIn(initialScale = 0.9f, animationSpec = tween(ANIM_DURATION)) +
+                    fadeIn(tween(ANIM_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Down,
+                    tween(ANIM_DURATION_SEARCH)
+                ) + fadeOut(tween(ANIM_DURATION_SEARCH))
+            }
+        ) {
             SearchScreen(
                 onMovieClick = { movie ->
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
