@@ -1,0 +1,40 @@
+<h2>实现方案对比</h2>
+<p class="subtitle">三种方式组织列表/网格双模式</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>MovieList 参数化（推荐）</h3>
+      <p>MovieList 增加 <code>isGrid: Boolean</code> 参数，内部根据参数选择 LazyColumn 或 LazyVerticalGrid。MovieItem 也增加同一参数切换横/竖布局。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>改动最小，复用现有的加载更多逻辑</li><li>各页面只需传入 isGrid 参数</li><li>List/Grid 的分页、空状态等逻辑保持一致</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>MovieList 和 MovieItem 内部有 if/else 分支</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>独立组件拆分</h3>
+      <p>新建 <code>MovieGridItem</code> 和 <code>MovieGridList</code> 组件，与现有的 MovieItem/MovieList 并列。各页面根据模式选择用哪组组件。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>每个组件职责单一，无分支逻辑</li><li>可以独立演进，不受对方影响</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>重复代码：加载更多、空状态、item key 逻辑要复制一份</li><li>四个消费页面都要加 if/else 选择组件</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>布局策略抽象</h3>
+      <p>抽象出 <code>ListLayoutStrategy</code> 接口，封装 LazyColumn 和 LazyVerticalGrid 的差异。MovieList 通过策略对象切换。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>最"干净"的抽象，理论上扩展性好</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>LazyColumn 和 LazyVerticalGrid API 差异较大，抽象层会很厚</li><li>只有两种模式，过度设计</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
