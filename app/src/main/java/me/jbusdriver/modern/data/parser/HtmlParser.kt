@@ -60,6 +60,7 @@ fun parsePageInfo(doc: Document): PageInfo? {
  * - `date`：`<date>` 标签，第一个为番号，第二个为发行日期
  * - `href`：影片详情页链接
  * - `.item-tag`：标签容器，子元素文本为各标签名称
+ * - `.photo-info button`：无 `.item-tag` 时的标签回退（如高清、新種等按钮）
  *
  * @param doc 列表页 HTML 的 Jsoup Document
  * @return 解析得到的影片列表
@@ -73,7 +74,7 @@ fun loadMovieFromDoc(doc: Document): List<Movie> {
             date = element.select("date").getOrNull(1)?.text() ?: "",
             link = element.attr("href"),
             tags = element.select(".item-tag").firstOrNull()?.children()?.map { it.text() }
-                ?: emptyList()
+                ?: element.select(".photo-info button").map { it.text() }
         )
     }
 }
