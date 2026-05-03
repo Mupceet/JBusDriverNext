@@ -114,7 +114,7 @@ fun SearchScreen(
             },
             trailingIcon = {
                 Text(
-                    "搜索",
+                    "搜尋",
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .padding(end = 8.dp)
@@ -154,13 +154,13 @@ fun SearchScreen(
 
             uiState.error != null && !hasResults -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.error ?: "搜索失败", color = MaterialTheme.colorScheme.error)
+                    Text(uiState.error ?: "搜尋失敗", color = MaterialTheme.colorScheme.error)
                 }
             }
 
             !hasResults && uiState.query.isBlank() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("输入关键词开始搜索", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("輸入關鍵詞開始搜尋", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 

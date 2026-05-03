@@ -45,14 +45,14 @@ fun CollectionListScreen(
 
         uiState.error != null -> {
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
             }
         }
 
         dbType == MovieDBType -> {
             if (uiState.movies.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("还没有收藏", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("還沒有收藏", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 MovieList(
@@ -66,7 +66,7 @@ fun CollectionListScreen(
         dbType == ActressDBType -> {
             if (uiState.actresses.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("还没有收藏", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("還沒有收藏", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 ActressGrid(

@@ -102,10 +102,10 @@ class MovieListViewModel @Inject constructor(
                     pageInfo = result.pageInfo,
                     isLoading = false,
                     hasMore = result.pageInfo.hasNext,
-                    error = if (result.movies.isEmpty()) "没有数据" else null
+                    error = if (result.movies.isEmpty()) "沒有數據" else null
                 )
             },
-            onError = { e, state -> state.copy(isLoading = false, error = e.message ?: "加载失败") }
+            onError = { e, state -> state.copy(isLoading = false, error = e.message ?: "載入失敗") }
         )
     }
 

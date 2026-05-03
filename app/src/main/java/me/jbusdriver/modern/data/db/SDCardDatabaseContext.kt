@@ -33,7 +33,7 @@ abstract class SDCardDatabaseContext(base: Context) : ContextWrapper(base) {
         val sdExist =
             android.os.Environment.MEDIA_MOUNTED == android.os.Environment.getExternalStorageState()
         val parentDir = if (!sdExist) {
-            KLog.e("SD卡不存在，请加载SD卡")
+            KLog.e("SD卡不存在，請載入SD卡")
             filesDir.absolutePath
         } else {
             android.os.Environment.getExternalStorageDirectory().toString()
@@ -71,7 +71,7 @@ abstract class SDCardDatabaseContext(base: Context) : ContextWrapper(base) {
         } else isFileCreateSuccess = true
 
         return if (isFileCreateSuccess) dbFile else {
-            KLog.w("无法创建数据库数据${dbFile.absolutePath}")
+            KLog.w("無法創建數據庫數據${dbFile.absolutePath}")
             null
         }
     }

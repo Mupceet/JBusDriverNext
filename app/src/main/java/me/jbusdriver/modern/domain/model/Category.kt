@@ -47,13 +47,13 @@ data class Category(val name: String, val pid: Int = -1, val tree: String, var o
  */
 
 /** 影片收藏分类，ID = 1 */
-val MovieCategory = Category("默认电影分类", -1, "1/", Int.MAX_VALUE).apply { id = 1 }
+val MovieCategory = Category("預設電影分類", -1, "1/", Int.MAX_VALUE).apply { id = 1 }
 
 /** 女优收藏分类，ID = 2 */
-val ActressCategory = Category("默认演员分类", -1, "2/", Int.MAX_VALUE).apply { id = 2 }
+val ActressCategory = Category("預設演員分類", -1, "2/", Int.MAX_VALUE).apply { id = 2 }
 
 /** 链接收藏分类，ID = 10 */
-val LinkCategory = Category("默认链接分类", -1, "10/", Int.MAX_VALUE).apply { id = 10 }
+val LinkCategory = Category("預設連結分類", -1, "10/", Int.MAX_VALUE).apply { id = 10 }
 
 /**
  * 所有顶级收藏分类的映射表，key 为分类 ID。

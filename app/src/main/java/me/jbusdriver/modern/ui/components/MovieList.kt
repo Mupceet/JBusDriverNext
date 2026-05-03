@@ -88,7 +88,7 @@ fun MovieList(
             if (!hasMore && movies.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -123,7 +123,7 @@ fun MovieList(
             if (!hasMore && movies.isNotEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("没有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

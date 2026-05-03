@@ -51,7 +51,7 @@ fun ActressListScreen(
             }
             uiState.error != null && uiState.actresses.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                    Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
                 }
             }
             else -> {

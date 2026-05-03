@@ -105,7 +105,7 @@ class MovieDetailViewModel @Inject constructor(
                 val collected = collectRepository.isMovieCollected(movie)
                 _uiState.update { it.copy(isCollected = collected) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
     }
@@ -222,7 +222,7 @@ class MovieDetailViewModel @Inject constructor(
                 title = detail.title,
                 imageUrl = detail.cover,
                 code = detail.headers.firstOrNull()?.value ?: "",
-                date = detail.headers.firstOrNull { it.name == "日期" }?.value ?: "",
+                date = detail.headers.firstOrNull { it.name == "發行日期" }?.value ?: "",
                 link = url
             )
             val newState = collectRepository.toggleMovieCollect(movie)

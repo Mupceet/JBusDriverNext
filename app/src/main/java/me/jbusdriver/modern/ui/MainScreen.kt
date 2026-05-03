@@ -55,14 +55,14 @@ data class CategoryOption(
 )
 
 val CategoryOptions = listOf(
-    CategoryOption("有码", "电影", DataSourceType.CENSORED),
-    CategoryOption("有码", "演员", DataSourceType.ACTRESSES),
-//    CategoryOption("有码", "类别", DataSourceType.GENRE),
-    CategoryOption("无码", "电影", DataSourceType.UNCENSORED),
-    CategoryOption("无码", "演员", DataSourceType.UNCENSORED_ACTRESSES),
-//    CategoryOption("无码", "类别", DataSourceType.UNCENSORED_GENRE),
-    CategoryOption("收藏", "电影", collectionDbType = MovieDBType),
-    CategoryOption("收藏", "演员", collectionDbType = ActressDBType),
+    CategoryOption("有碼", "影片", DataSourceType.CENSORED),
+    CategoryOption("有碼", "演員", DataSourceType.ACTRESSES),
+//    CategoryOption("有碼", "類別", DataSourceType.GENRE),
+    CategoryOption("無碼", "影片", DataSourceType.UNCENSORED),
+    CategoryOption("無碼", "演員", DataSourceType.UNCENSORED_ACTRESSES),
+//    CategoryOption("無碼", "類別", DataSourceType.UNCENSORED_GENRE),
+    CategoryOption("收藏", "影片", collectionDbType = MovieDBType),
+    CategoryOption("收藏", "演員", collectionDbType = ActressDBType),
 )
 
 private val genreTypes = setOf(
@@ -141,7 +141,7 @@ private fun CategoryPagerScreen(
             IconButton(onClick = onSearchClick) {
                 Icon(
                     Icons.Default.Search,
-                    contentDescription = "搜索",
+                    contentDescription = "搜尋",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }

@@ -53,7 +53,7 @@ object CacheLoader {
         val memSize = memoryInfo.availMem.formatFileSize()
         KLog.t(TAG).d("max availMem = $memSize")
         if (memoryInfo.lowMemory) {
-            KLog.w("可能的内存不足")
+            KLog.w("可能的內存不足")
         }
         val cacheSize =
             if (memoryInfo.availMem > 32.MB) 4.MB else 2.MB

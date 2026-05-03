@@ -84,7 +84,7 @@ class CollectionListViewModel @Inject constructor(
                     _uiState.update { it.copy(actresses = actresses, isLoading = false) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载收藏失败") }
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入收藏失敗") }
             }
         }
     }

@@ -49,7 +49,7 @@ fun MovieListScreen(
 
             uiState.error != null && uiState.movies.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                    Text(text = uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
                 }
             }
 

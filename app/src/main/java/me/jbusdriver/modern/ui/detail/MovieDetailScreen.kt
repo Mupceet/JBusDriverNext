@@ -125,7 +125,7 @@ fun MovieDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        detail?.title ?: "加载中...",
+                        detail?.title ?: "載入中...",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -172,11 +172,11 @@ fun MovieDetailScreen(
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                uiState.error ?: "加载失败",
+                                uiState.error ?: "載入失敗",
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(Modifier.height(8.dp))
-                            Button(onClick = { viewModel.loadDetail(movieUrl) }) { Text("重试") }
+                            Button(onClick = { viewModel.loadDetail(movieUrl) }) { Text("重試") }
                         }
                     }
                 }
@@ -270,7 +270,7 @@ private fun DetailContent(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         detail.headers.forEach { header ->
@@ -282,6 +282,7 @@ private fun DetailContent(
                                 Text(
                                     text = header.name,
                                     style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.width(80.dp)
                                 )
@@ -349,7 +350,7 @@ private fun DetailContent(
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             ) {
-                Text("查看磁力链接")
+                Text("查看磁力連結")
             }
         }
     }
@@ -362,12 +363,12 @@ private fun DetailContent(
             confirmButton = {
                 TextButton(onClick = {
                     context.copy(header.value)
-                    Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
                     selectedHeader = null
-                }) { Text("复制") }
+                }) { Text("複製") }
             },
             dismissButton = {
-                TextButton(onClick = { selectedHeader = null }) { Text("关闭") }
+                TextButton(onClick = { selectedHeader = null }) { Text("關閉") }
             }
         )
     }
@@ -387,7 +388,7 @@ private fun DetailContent(
 @Composable
 private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("类别", style = MaterialTheme.typography.titleMedium)
+        Text("類別", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             genres.forEach { genre ->
@@ -417,7 +418,7 @@ private fun ImageSampleSection(
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            "截图",
+            "截圖",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -463,7 +464,7 @@ private fun ActressSection(
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            "演员",
+            "演員",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -512,7 +513,7 @@ private fun ActressSection(
 private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (MovieUiModel) -> Unit) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            "推荐",
+            "推薦",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -584,7 +585,7 @@ private fun MagnetBottomSheet(
         ) {
             item {
                 Text(
-                    "磁力链接",
+                    "磁力連結",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -614,7 +615,7 @@ private fun MagnetBottomSheet(
                 uiState.magnets.isEmpty() -> {
                     item {
                         Text(
-                            "暂无磁力链接",
+                            "暫無磁力連結",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
@@ -637,7 +638,7 @@ private fun MagnetBottomSheet(
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp)
                             ) {
-                                Text("加载更多")
+                                Text("載入更多")
                             }
                         }
                     }
@@ -670,7 +671,7 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clipboard.setPrimaryClip(ClipData.newPlainText("magnet", magnet.link))
                     context.copy(magnet.link)
-                    Toast.makeText(context, "已复制磁力链接", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
                 }
             }
             .padding(vertical = 8.dp)

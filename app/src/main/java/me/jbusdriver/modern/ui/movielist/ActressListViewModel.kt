@@ -102,11 +102,11 @@ class ActressListViewModel @Inject constructor(
                         pageInfo = result.second,
                         isLoading = false,
                         hasMore = result.second.hasNext,
-                        error = if (result.first.isEmpty()) "没有数据" else null
+                        error = if (result.first.isEmpty()) "沒有數據" else null
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
     }

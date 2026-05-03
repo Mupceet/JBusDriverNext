@@ -85,11 +85,11 @@ class GenreListViewModel @Inject constructor(
                     it.copy(
                         genreCategories = categories,
                         isLoading = false,
-                        error = if (categories.isEmpty()) "没有数据" else null
+                        error = if (categories.isEmpty()) "沒有數據" else null
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
     }

@@ -83,8 +83,8 @@ fun LinkMovieListScreen(
     }
 
     val displayTitle = when {
-        title.isNotBlank() && type == "actress" -> "演员: $title"
-        title.isNotBlank() && type == "genre" -> "类别: $title"
+        title.isNotBlank() && type == "actress" -> "演員: $title"
+        title.isNotBlank() && type == "genre" -> "類別: $title"
         title.isNotBlank() -> title
         else -> "影片列表"
     }
@@ -138,7 +138,7 @@ fun LinkMovieListScreen(
 
                 uiState.error != null && uiState.movies.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(uiState.error ?: "加载失败", color = MaterialTheme.colorScheme.error)
+                        Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
                     }
                 }
 
