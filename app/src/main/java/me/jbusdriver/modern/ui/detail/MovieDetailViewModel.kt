@@ -99,7 +99,7 @@ class MovieDetailViewModel @Inject constructor(
                     title = detail.title,
                     imageUrl = detail.cover,
                     code = detail.headers.firstOrNull()?.value ?: "",
-                    date = "",
+                    date = detail.headers.firstOrNull { it.name == "日期" }?.value ?: "",
                     link = url
                 )
                 val collected = collectRepository.isMovieCollected(movie)
@@ -222,7 +222,7 @@ class MovieDetailViewModel @Inject constructor(
                 title = detail.title,
                 imageUrl = detail.cover,
                 code = detail.headers.firstOrNull()?.value ?: "",
-                date = "",
+                date = detail.headers.firstOrNull { it.name == "日期" }?.value ?: "",
                 link = url
             )
             val newState = collectRepository.toggleMovieCollect(movie)

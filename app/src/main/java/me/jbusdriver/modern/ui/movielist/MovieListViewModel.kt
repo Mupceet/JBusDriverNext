@@ -13,6 +13,7 @@ import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
@@ -92,23 +93,20 @@ class MovieListViewModel @Inject constructor(
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val result = repository.loadPage(dataSourceType, 1)
-                _uiState.update {
-                    it.copy(
-                        movies = result.movies.map { it.toUiModel() },
-                        pageInfo = result.pageInfo,
-                        isLoading = false,
-                        hasMore = result.pageInfo.hasNext,
-                        error = if (result.movies.isEmpty()) "没有数据" else null
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
-            }
-        }
+        loadMovies(
+            page = 1,
+            loadingFlag = { copy(isLoading = true, error = null) },
+            onSuccess = { result, state ->
+                state.copy(
+                    movies = result.movies.map { it.toUiModel() },
+                    pageInfo = result.pageInfo,
+                    isLoading = false,
+                    hasMore = result.pageInfo.hasNext,
+                    error = if (result.movies.isEmpty()) "没有数据" else null
+                )
+            },
+            onError = { e, state -> state.copy(isLoading = false, error = e.message ?: "加载失败") }
+        )
     }
 
     /**
@@ -119,22 +117,20 @@ class MovieListViewModel @Inject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         currentPage = 1
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val result = repository.loadPage(dataSourceType, 1, forceRefresh = true)
-                _uiState.update {
-                    it.copy(
-                        movies = result.movies.map { it.toUiModel() },
-                        pageInfo = result.pageInfo,
-                        isRefreshing = false,
-                        hasMore = result.pageInfo.hasNext
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
-            }
-        }
+        loadMovies(
+            page = 1,
+            forceRefresh = true,
+            loadingFlag = { copy(isRefreshing = true, error = null) },
+            onSuccess = { result, state ->
+                state.copy(
+                    movies = result.movies.map { it.toUiModel() },
+                    pageInfo = result.pageInfo,
+                    isRefreshing = false,
+                    hasMore = result.pageInfo.hasNext
+                )
+            },
+            onError = { e, state -> state.copy(isRefreshing = false, error = e.message) }
+        )
     }
 
     /**
@@ -150,21 +146,38 @@ class MovieListViewModel @Inject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
+        loadMovies(
+            page = nextPage,
+            loadingFlag = { copy(isLoadingMore = true) },
+            onSuccess = { result, state ->
+                state.copy(
+                    movies = state.movies + result.movies.map { it.toUiModel() },
+                    pageInfo = result.pageInfo,
+                    isLoadingMore = false,
+                    hasMore = result.pageInfo.hasNext
+                )
+            },
+            onError = { e, state -> state.copy(isLoadingMore = false, error = e.message) },
+            onFailure = { currentPage = _uiState.value.pageInfo.activePage }
+        )
+    }
+
+    private inline fun loadMovies(
+        page: Int,
+        forceRefresh: Boolean = false,
+        crossinline loadingFlag: MovieListUiState.() -> MovieListUiState,
+        crossinline onSuccess: (MoviePageResult, MovieListUiState) -> MovieListUiState,
+        crossinline onError: (Exception, MovieListUiState) -> MovieListUiState,
+        noinline onFailure: () -> Unit = {}
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoadingMore = true) }
+            _uiState.update(loadingFlag)
             try {
-                val result = repository.loadPage(dataSourceType, nextPage)
-                _uiState.update {
-                    it.copy(
-                        movies = it.movies + result.movies.map { m -> m.toUiModel() },
-                        pageInfo = result.pageInfo,
-                        isLoadingMore = false,
-                        hasMore = result.pageInfo.hasNext
-                    )
-                }
+                val result = repository.loadPage(dataSourceType, page, forceRefresh = forceRefresh)
+                _uiState.update { onSuccess(result, it) }
             } catch (e: Exception) {
-                currentPage = state.pageInfo.activePage
-                _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+                onFailure()
+                _uiState.update { onError(e, it) }
             }
         }
     }

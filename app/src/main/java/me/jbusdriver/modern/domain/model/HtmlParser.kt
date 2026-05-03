@@ -68,7 +68,7 @@ fun loadMovieFromDoc(doc: Document): List<Movie> {
         Movie(
             title = element.select("img").attr("title"),
             imageUrl = element.select("img").attr("src").wrapImage(),
-            code = element.select("date").first().text(),
+            code = element.select("date").getOrNull(0)?.text() ?: "",
             date = element.select("date").getOrNull(1)?.text() ?: "",
             link = element.attr("href"),
             tags = element.select(".item-tag").firstOrNull()?.children()?.map { it.text() }
@@ -87,45 +87,39 @@ fun loadMovieFromDoc(doc: Document): List<Movie> {
  * Jsoup 选择器详细说明：
  *
  * 1. **影片主体容器**：`[class=row movie]`
- * 2. **影片标题**：`.container h3`
+ * 2. **影片标题**：`.bigImage img` 的 `title` 属性
  * 3. **封面大图**：`.bigImage` 的 `href` 属性
  * 4. **元信息容器**：`.info`，包含多个 `<p>` 标签
- * 5. **普通信息行**：`p[class!=star-show]:has(span:not([class=genre])):not(:has(a)))`
+ * 5. **信息行**：`span.header` 的父 `<p>`，name 取 header 文本，value 取后续内容或链接文本
  * 6. **描述信息**：`[name=description]` 的 `content` 属性
- * 7. **带链接信息行**：`p[class!=star-show]:has(span:not([class=genre])):has(a)`
- * 8. **类别标签**：`.genre:has(a[href*=genre])`
- * 9. **出演女优**：`#avatar-waterfall .avatar-box`
- * 10. **截图样本**：`#sample-waterfall .sample-box`
- * 11. **相关推荐**：`#related-waterfall .movie-box`
+ * 7. **类别标签**：`.genre:has(a[href*=genre])`
+ * 8. **出演女优**：`#avatar-waterfall .avatar-box`
+ * 9. **截图样本**：`#sample-waterfall .sample-box`
+ * 10. **相关推荐**：`#related-waterfall .movie-box`
  *
  * @param doc 影片详情页 HTML 的 Jsoup Document
  * @return 解析得到的 [MovieDetail]
  */
 fun parseMovieDetails(doc: Document): MovieDetail {
     val roeMovie = doc.select("[class=row movie]")
-    val title = doc.select(".container h3").text()
-    val cover = roeMovie.select(".bigImage").attr("href").wrapImage()
+    val bigImage = roeMovie.select(".bigImage")
+    val title = bigImage.select("img").attr("title")
+    val cover = bigImage.attr("href").wrapImage()
 
     val headers = mutableListOf<Header>()
     val headersContainer = roeMovie.select(".info")
 
-    headersContainer.select("p[class!=star-show]:has(span:not([class=genre])):not(:has(a))")
-        .mapTo(headers) {
-            val split = it.text().split(":")
-            Header(split.first(), split.getOrNull(1)?.trim() ?: "", "")
-        }
+    // Collect all <span class="header"> elements as info rows
+    headersContainer.select("span.header").filterNot { it.parent()?.hasClass("star-show") == true }.forEach { span ->
+        val p = span.parent() ?: return@forEach
+        val name = span.text().trimEnd(':').trim()
+        val linkEl = p.select("a").firstOrNull()
+        val value = linkEl?.text() ?: p.text().removePrefix(span.text()).trim()
+        val link = linkEl?.attr("href") ?: ""
+        headers.add(Header(name, value, link))
+    }
 
     val content = doc.select("[name=description]").attr("content")?.trim() ?: ""
-    headers.add(Header("描述", content, ""))
-
-    headersContainer.select("p[class!=star-show]:has(span:not([class=genre])):has(a)")
-        .mapTo(headers) {
-            val split = it.text().split(":")
-            Header(
-                split.first(), split.getOrNull(1)?.trim()
-                    ?: "", it.select("p a").attr("href")
-            )
-        }
 
     val geneses = headersContainer.select(".genre:has(a[href*=genre])").map {
         Genre(it.text(), it.select("a").attr("href"))
