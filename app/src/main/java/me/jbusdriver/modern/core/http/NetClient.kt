@@ -111,7 +111,7 @@ object NetClient {
 
                 override fun onResponse(call: Call, response: Response) {
                     try {
-                        val body = response.body?.string() ?: ""
+                        val body = response.body.string()
                         if (body.isNotBlank()) {
                             cont.resumeWith(Result.success(body))
                         } else {
