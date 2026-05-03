@@ -3,12 +3,13 @@ package me.jbusdriver.modern.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.data.db.DB
+import me.jbusdriver.modern.data.db.ActressDBType
+import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.db.convertDBItem
 import me.jbusdriver.modern.data.db.entity.LinkItem
-import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
-import me.jbusdriver.modern.domain.model.MovieDBType
-import me.jbusdriver.modern.domain.model.convertDBItem
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -115,13 +116,13 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
 
     override suspend fun getCollectedMovies(): List<Movie> {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.listByType(MovieDBType).mapNotNull { it.getLinkValue() as? Movie }
+            DB.linkDao.listByType(MovieDBType).mapNotNull { it.toILink() as? Movie }
         }
     }
 
     override suspend fun getCollectedActresses(): List<ActressInfo> {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.listByType(ActressDBType).mapNotNull { it.getLinkValue() as? ActressInfo }
+            DB.linkDao.listByType(ActressDBType).mapNotNull { it.toILink() as? ActressInfo }
         }
     }
 }

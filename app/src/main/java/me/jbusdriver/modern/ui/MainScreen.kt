@@ -39,9 +39,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
-import me.jbusdriver.modern.domain.model.ActressDBType
+import me.jbusdriver.modern.data.db.ActressDBType
+import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.domain.model.DataSourceType
-import me.jbusdriver.modern.domain.model.MovieDBType
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.CollectionListScreen
 import me.jbusdriver.modern.ui.movielist.GenreListScreen

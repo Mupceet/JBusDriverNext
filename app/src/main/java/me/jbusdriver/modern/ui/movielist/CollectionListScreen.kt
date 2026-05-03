@@ -12,8 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.jbusdriver.modern.domain.model.ActressDBType
-import me.jbusdriver.modern.domain.model.MovieDBType
+import me.jbusdriver.modern.data.db.ActressDBType
+import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid

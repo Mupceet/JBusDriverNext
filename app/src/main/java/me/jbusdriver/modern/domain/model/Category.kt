@@ -28,6 +28,16 @@ data class Category(val name: String, val pid: Int = -1, val tree: String, var o
 
     override fun equals(other: Any?) =
         other?.let { (it as? Category)?.id == this.id } ?: false
+
+    override fun hashCode(): Int {
+        var result = pid
+        result = 31 * result + order
+        result = 31 * result + (id ?: 0)
+        result = 31 * result + name.hashCode()
+        result = 31 * result + tree.hashCode()
+        result = 31 * result + depth
+        return result
+    }
 }
 
 /**
