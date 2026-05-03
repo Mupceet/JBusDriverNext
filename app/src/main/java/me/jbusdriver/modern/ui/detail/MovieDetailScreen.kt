@@ -4,7 +4,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Box
@@ -29,12 +31,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -220,6 +224,7 @@ fun MovieDetailScreen(
  * @param onImageClick 点击图片（封面或截图）时的回调
  * @param onMagnetClick 点击"查看磁力链接"按钮时的回调
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DetailContent(
     detail: MovieDetailUiModel,
@@ -233,6 +238,8 @@ private fun DetailContent(
 ) {
     val listState = rememberLazyListState()
     val coverHeight = remember { mutableStateOf(0) }
+    val context = LocalContext.current
+    var selectedHeader by remember { mutableStateOf<HeaderUiModel?>(null) }
     detail.headers.firstOrNull()?.value ?: ""
 
     LazyColumn(
@@ -263,35 +270,35 @@ private fun DetailContent(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
                 ) {
-                    SelectionContainer {
-                        Column(modifier = Modifier.padding(8.dp)) {
-                            detail.headers.forEach { header ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = header.name,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.width(80.dp)
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        detail.headers.forEach { header ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = header.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(80.dp)
+                                )
+                                Text(
+                                    text = header.value,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (header.link.isNotBlank())
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f).combinedClickable(
+                                        onClick = {
+                                            if (header.link.isNotBlank()) onHeaderClick(header)
+                                        },
+                                        onLongClick = { selectedHeader = header }
                                     )
-                                    Text(
-                                        text = header.value,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (header.link.isNotBlank())
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.onSurface,
-                                        modifier = if (header.link.isNotBlank()) {
-                                            Modifier.weight(1f).clickable { onHeaderClick(header) }
-                                        } else Modifier.weight(1f)
-                                    )
-                                }
+                                )
                             }
                         }
                     }
@@ -345,6 +352,24 @@ private fun DetailContent(
                 Text("查看磁力链接")
             }
         }
+    }
+
+    selectedHeader?.let { header ->
+        AlertDialog(
+            onDismissRequest = { selectedHeader = null },
+            title = { Text(header.name) },
+            text = { SelectionContainer { Text(header.value) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    context.copy(header.value)
+                    Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                    selectedHeader = null
+                }) { Text("复制") }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedHeader = null }) { Text("关闭") }
+            }
+        )
     }
 }
 

@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
+import me.jbusdriver.modern.ui.components.MovieItem
 
 /**
  * 关联链接影片列表页面。

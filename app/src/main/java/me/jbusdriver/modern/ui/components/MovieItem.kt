@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.ui.movielist
+package me.jbusdriver.modern.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +33,7 @@ import me.jbusdriver.modern.ui.MovieUiModel
  * 职责：以卡片形式展示影片的封面缩略图、标题、标签、编号和日期，
  * 整个卡片可点击触发跳转到影片详情页。
  *
- * 使用场景：被 [MovieListScreen]、[CollectionListScreen]、[LinkMovieListScreen] 和 [SearchScreen]
+ * 使用场景：被 [MovieListScreen]、[CollectionListScreen]、[me.jbusdriver.modern.ui.movielist.LinkMovieListScreen] 和 [SearchScreen]
  * 中的影片列表使用，作为 LazyColumn 的单个条目项。
  *
  * @param movie 影片的 UI 数据模型
@@ -79,7 +79,7 @@ fun MovieItem(
             ) {
                 Text(
                     text = movie.title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -93,7 +93,7 @@ fun MovieItem(
                         movie.tags.forEach { tag ->
                             Text(
                                 text = tag,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
@@ -110,13 +110,13 @@ fun MovieItem(
                 ) {
                     Text(
                         text = movie.code,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                     if (movie.date.isNotBlank()) {
                         Text(
                             text = movie.date,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
