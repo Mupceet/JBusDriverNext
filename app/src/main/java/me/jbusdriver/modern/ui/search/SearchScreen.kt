@@ -186,6 +186,12 @@ fun SearchScreen(
                 }
             }
 
+            !hasResults -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("沒有找到相關結果", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
             isActress -> ActressGrid(
                 actresses = uiState.actressResults,
                 hasMore = uiState.hasMore,
