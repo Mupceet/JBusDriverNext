@@ -114,7 +114,10 @@ fun SearchScreen(
                 .focusRequester(focusRequester)
                 .padding(horizontal = 16.dp),
             leadingIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(onClick = {
+                    focusManager.clearFocus()
+                    onBack()
+                }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
             },
