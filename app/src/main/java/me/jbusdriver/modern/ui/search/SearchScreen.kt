@@ -37,6 +37,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -101,6 +102,7 @@ fun SearchScreen(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .imePadding()
     ) {
         // Search input with back button
         OutlinedTextField(
