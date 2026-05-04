@@ -96,11 +96,12 @@ object NetClient {
     /**
      * 使用 OkHttp 异步请求获取 URL 的 HTML 内容
      */
-    private suspend fun fetchHtml(url: String, showAll: Boolean = false): String =
+    internal suspend fun fetchHtml(url: String, showAll: Boolean = false, referer: String? = null): String =
         suspendCancellableCoroutine { cont ->
             val request = Request.Builder()
                 .url(url)
                 .header("existmag", if (showAll) "all" else "")
+                .apply { referer?.let { header("Referer", it) } }
                 .build()
             val call = okHttpClient.newCall(request)
             cont.invokeOnCancellation { call.cancel() }

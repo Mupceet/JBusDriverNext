@@ -1,55 +1,45 @@
 package me.jbusdriver.modern.data.magnet.loaders
 
-import android.annotation.SuppressLint
-import android.os.Looper
-import android.webkit.URLUtil
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.magnet.IMagnetLoader
 import org.json.JSONObject
 import org.jsoup.Jsoup
 
-
-private const val TAG = "DefaultLoaderImpl"
-
 /**
- * 默认磁力链接加载器实现，通过 WebView 加载目标页面并解析磁力表格。
+ * 磁力链接加载器，通过两次 HTTP 请求获取磁力数据。
  *
- * 职责：接收目标 URL，使用 [WebViewHtmlContentLoader] 获取完整 HTML 内容，
- * 然后通过 Jsoup 解析 `#magnet-table` 表格提取磁力链接信息。
- *
- * 使用场景：作为 [MagnetLoaders] 中 "default" 键对应的加载器，
- * 由 [MagnetManager] 在用户点击获取磁力时调用。
- *
- * 线程：[loadMagnets] 必须在后台线程调用（内部通过 require 断言线程检查）。
- * WebView 操作在主线程执行（由 [WebViewHtmlContentLoader] 内部处理），
- * 通过 CountDownLatch 阻塞调用线程等待结果。
+ * 流程：
+ * 1. 获取影片详情页 HTML，正则提取 gid/uc/img 参数
+ * 2. 调用 AJAX 接口 /ajax/uncledatoolsbyajax.php 获取磁力表格
+ * 3. Jsoup 解析 #magnet-table 提取磁力链接
  */
-@SuppressLint("JavascriptInterface")
 class DefaultLoaderImpl : IMagnetLoader {
 
-    /** 是否有下一页数据，当前实现默认为 false。 */
     override var hasNexPage: Boolean = false
 
-    /**
-     * 从目标 URL 加载磁力链接列表。
-     *
-     * 工作流程：
-     * 1. 校验 URL 合法性及调用线程非主线程
-     * 2. 通过 WebView 加载页面获取动态渲染后的 HTML
-     * 3. 使用 Jsoup 解析 `#magnet-table` 表格
-     * 4. 提取每行的名称、大小、日期、链接字段构造 JSONObject
-     *
-     * @param key 目标磁力搜索页面的 URL
-     * @param page 页码（当前实现未使用分页）
-     * @return 磁力链接信息的 JSONObject 列表
-     * @throws IllegalArgumentException 如果 key 不是 HTTP/HTTPS URL 或在主线程调用
-     */
-    override fun loadMagnets(key: String, page: Int): List<JSONObject> {
-        require(URLUtil.isHttpUrl(key) || URLUtil.isHttpsUrl(key)) { "需要为网络连接!" }
-        require(Looper.getMainLooper() != Looper.myLooper()) { "需要在子线程执行!" }
-        val content = WebViewHtmlContentLoader().startLoad(key)
-        KLog.w("$TAG loadMagnets: $content")
-        return Jsoup.parse(content).select("#magnet-table tr").asSequence()
+    override suspend fun loadMagnets(key: String, page: Int): List<JSONObject> {
+        val html = NetClient.fetchHtml(key, showAll = true)
+
+        val gid = Regex("""var\s+gid\s*=\s*(\d+)""").find(html)?.groupValues?.get(1) ?: return emptyList()
+        val uc = Regex("""var\s+uc\s*=\s*(\d+)""").find(html)?.groupValues?.get(1) ?: "0"
+        val img = Regex("""var\s+img\s*=\s*['"]([^'"]+)['"]""").find(html)?.groupValues?.get(1) ?: ""
+
+        val baseUrl = NetClient.defaultFastUrl
+        val floor = (Math.random() * 1000 + 1).toInt()
+        val ajaxUrl = "$baseUrl/ajax/uncledatoolsbyajax.php?gid=$gid&lang=zh&img=$img&uc=$uc&floor=$floor"
+
+        KLog.d("Magnet: gid=$gid, uc=$uc, img=$img, floor=$floor")
+
+        val ajaxHtml = NetClient.fetchHtml(ajaxUrl, showAll = true, referer = "$baseUrl/")
+        KLog.d("Magnet: ajax response length=${ajaxHtml.length}")
+
+        // AJAX 返回裸 <tr> 行，无 <table> 包裹，需手动包装以保留 <tr>/<td> 结构
+        val doc = Jsoup.parse("<table>${ajaxHtml}</table>")
+        val rows = doc.select("table tr")
+        KLog.d("Magnet: table tr count=${rows.size}")
+
+        return rows.asSequence()
             .drop(1).map {
                 val contents = it.select("td")
                 val link = it.select("a").attr("href").orEmpty()
@@ -60,8 +50,5 @@ class DefaultLoaderImpl : IMagnetLoader {
                     put("link", link)
                 }
             }.toList()
-
     }
-
-
 }

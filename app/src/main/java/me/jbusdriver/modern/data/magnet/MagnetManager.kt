@@ -46,7 +46,7 @@ object MagnetManager {
      * @param page 页码
      * @return 磁力列表的 JSON 数组字符串，加载器不存在时返回空数组
      */
-    fun getMagnets(loader: String, key: String, page: Int): String {
+    suspend fun getMagnets(loader: String, key: String, page: Int): String {
         return JSONArray(
             MagnetLoaders.Loaders[loader]?.loadMagnets(key, page)
                 ?: emptyList<JSONObject>()

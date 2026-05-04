@@ -39,7 +39,7 @@ interface IMagnetLoader {
      * @param page 页码（从 1 开始）
      * @return 磁力链接信息的 JSONObject 列表，每个对象包含 name、size、date、link 字段
      */
-    fun loadMagnets(key: String, page: Int): List<JSONObject>
+    suspend fun loadMagnets(key: String, page: Int): List<JSONObject>
 
     /**
      * 从给定的 URL 页面提取磁力链接地址。

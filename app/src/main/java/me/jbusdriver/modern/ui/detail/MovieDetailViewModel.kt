@@ -190,7 +190,7 @@ class MovieDetailViewModel @Inject constructor(
      * @param page 磁力链接的分页页码
      * @return 解析后的磁力链接 UI 模型列表
      */
-    private fun fetchMagnets(keyword: String, page: Int): List<MagnetUiModel> {
+    private suspend fun fetchMagnets(keyword: String, page: Int): List<MagnetUiModel> {
         val json = MagnetManager.getMagnets("default", keyword, page)
         val arr = JSONArray(json)
         return (0 until arr.length()).mapNotNull { i ->
