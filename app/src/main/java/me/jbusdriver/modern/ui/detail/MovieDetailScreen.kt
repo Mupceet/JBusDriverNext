@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -670,69 +672,86 @@ private fun MagnetBottomSheet(
 /**
  * 单条磁力链接的可组合项。
  *
- * 职责：展示磁力链接的名称、大小和日期信息，点击时将链接复制到系统剪贴板。
+ * 职责：展示磁力链接的名称、大小和日期信息，提供「复制」和「打开」两个独立操作。
  *
  * 使用场景：作为 [MagnetBottomSheet] 中磁力链接列表的单个条目。
  *
  * @param magnet 磁力链接数据模型
- * @param context Android Context，用于获取 ClipboardManager 服务
+ * @param context Android Context，用于获取 ClipboardManager 和启动 Intent
  */
 @Composable
 private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable {
+                if (magnet.link.isNotBlank()) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
+                        context.startActivity(Intent.createChooser(intent, "選擇下載方式"))
+                    } catch (_: ActivityNotFoundException) {
+                        Toast.makeText(context, "未找到可處理的應用", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    if (magnet.link.isNotBlank()) {
-                        context.copy(magnet.link)
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
-                            context.startActivity(Intent.createChooser(intent, "選擇下載方式"))
-                        } catch (_: ActivityNotFoundException) {
-                            Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = magnet.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (magnet.size.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                magnet.size,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
                     }
-                }
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-        ) {
-            Text(
-                text = magnet.name,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (magnet.size.isNotBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
+                    if (magnet.date.isNotBlank()) {
                         Text(
-                            magnet.size,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            magnet.date,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                     }
                 }
-                if (magnet.date.isNotBlank()) {
-                    Text(
-                        magnet.date,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+            }
+            IconButton(
+                onClick = {
+                    if (magnet.link.isNotBlank()) {
+                        context.copy(magnet.link)
+                        Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
+                    }
                 }
+            ) {
+                Icon(
+                    Icons.Filled.Share,
+                    contentDescription = "複製連結",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
