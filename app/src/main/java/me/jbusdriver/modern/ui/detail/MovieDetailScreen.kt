@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,7 +39,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -578,75 +578,84 @@ private fun MagnetBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxHeight(0.615f)
         ) {
-            item {
-                Text(
-                    "磁力連結",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-            }
+            Text(
+                "磁力連結",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(8.dp))
 
-            when {
-                uiState.isLoadingMagnets && uiState.magnets.isEmpty() -> {
-                    item {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
-
-                uiState.magnetsError != null && uiState.magnets.isEmpty() -> {
-                    item {
-                        Text(uiState.magnetsError, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-
-                uiState.magnets.isEmpty() -> {
-                    item {
-                        Text(
-                            "暫無磁力連結",
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-
-                else -> {
-                    items(uiState.magnets, key = { it.link }) { magnet ->
-                        MagnetItem(magnet = magnet, context = context)
-                        HorizontalDivider()
-                    }
-                    if (uiState.isLoadingMagnets) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                when {
+                    uiState.isLoadingMagnets && uiState.magnets.isEmpty() -> {
                         item {
-                            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-                        }
-                    } else if (uiState.hasMoreMagnets) {
-                        item {
-                            Button(
-                                onClick = onLoadMore,
-                                modifier = Modifier
+                            Box(
+                                Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text("載入更多")
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+
+                    uiState.magnetsError != null && uiState.magnets.isEmpty() -> {
+                        item {
+                            Text(uiState.magnetsError, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+
+                    uiState.magnets.isEmpty() -> {
+                        item {
+                            Text(
+                                "暫無磁力連結",
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+
+                    else -> {
+                        items(uiState.magnets, key = { it.link }) { magnet ->
+                            MagnetItem(magnet = magnet, context = context)
+                        }
+                        if (uiState.isLoadingMagnets) {
+                            item {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        } else if (uiState.hasMoreMagnets) {
+                            item {
+                                Button(
+                                    onClick = onLoadMore,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)
+                                ) {
+                                    Text("載入更多")
+                                }
                             }
                         }
                     }
                 }
             }
-
-            item { Spacer(Modifier.height(32.dp)) }
         }
     }
 }
@@ -663,47 +672,60 @@ private fun MagnetBottomSheet(
  */
 @Composable
 private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                if (magnet.link.isNotBlank()) {
-                    context.copy(magnet.link)
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(magnet.link)))
-                        Toast.makeText(context, "已複製並打開下載器", Toast.LENGTH_SHORT).show()
-                    } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            .padding(vertical = 8.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
-        Text(
-            text = magnet.name,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .clickable {
+                    if (magnet.link.isNotBlank()) {
+                        context.copy(magnet.link)
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(magnet.link)))
+                            Toast.makeText(context, "已複製並打開下載器", Toast.LENGTH_SHORT).show()
+                        } catch (_: ActivityNotFoundException) {
+                            Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            if (magnet.size.isNotBlank()) {
-                Text(
-                    magnet.size,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            if (magnet.date.isNotBlank()) {
-                Text(
-                    magnet.date,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
+            Text(
+                text = magnet.name,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (magnet.size.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            magnet.size,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+                if (magnet.date.isNotBlank()) {
+                    Text(
+                        magnet.date,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
             }
         }
     }
