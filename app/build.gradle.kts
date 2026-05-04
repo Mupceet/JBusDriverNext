@@ -90,6 +90,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image)
 
+    // Animation
+    implementation(libs.lottie.compose)
+
     // Debug
     debugImplementation(libs.leakcanary)
 

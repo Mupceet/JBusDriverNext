@@ -48,6 +48,7 @@ import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
+import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -171,9 +172,10 @@ fun SearchScreen(
             }
 
             uiState.error != null && !hasResults -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.error ?: "搜尋失敗", color = MaterialTheme.colorScheme.error)
-                }
+                ErrorView(
+                    message = "搜尋失敗，請重試",
+                    onRetry = { doSearch() }
+                )
             }
 
             !hasResults && uiState.query.isBlank() -> {

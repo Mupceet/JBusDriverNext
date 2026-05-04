@@ -16,6 +16,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,9 +49,10 @@ fun MovieListScreen(
             }
 
             uiState.error != null && uiState.movies.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
-                }
+                ErrorView(
+                    message = "載入失敗，請重試",
+                    onRetry = { viewModel.refresh() }
+                )
             }
 
             else -> {

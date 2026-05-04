@@ -17,6 +17,7 @@ import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
+import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
 
 @Composable
@@ -44,9 +45,11 @@ fun CollectionListScreen(
         }
 
         uiState.error != null -> {
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
-            }
+            ErrorView(
+                message = "載入失敗，請重試",
+                onRetry = { viewModel.loadCollection(dbType) },
+                modifier = modifier
+            )
         }
 
         dbType == MovieDBType -> {

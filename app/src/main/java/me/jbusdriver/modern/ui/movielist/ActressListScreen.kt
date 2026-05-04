@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
+import me.jbusdriver.modern.ui.components.ErrorView
 
 /**
  * 演员列表页面。
@@ -50,9 +51,10 @@ fun ActressListScreen(
                 }
             }
             uiState.error != null && uiState.actresses.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
-                }
+                ErrorView(
+                    message = "載入失敗，請重試",
+                    onRetry = { viewModel.refresh() }
+                )
             }
             else -> {
                 ActressGrid(

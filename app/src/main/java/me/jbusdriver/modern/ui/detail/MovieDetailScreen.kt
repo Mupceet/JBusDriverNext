@@ -82,6 +82,7 @@ import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
+import me.jbusdriver.modern.ui.components.ErrorView
 import androidx.core.net.toUri
 
 /**
@@ -173,16 +174,10 @@ fun MovieDetailScreen(
                 }
 
                 uiState.error != null -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                uiState.error ?: "載入失敗",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Button(onClick = { viewModel.loadDetail(movieUrl) }) { Text("重試") }
-                        }
-                    }
+                    ErrorView(
+                        message = "載入失敗，請重試",
+                        onRetry = { viewModel.loadDetail(movieUrl) }
+                    )
                 }
 
                 detail != null -> {

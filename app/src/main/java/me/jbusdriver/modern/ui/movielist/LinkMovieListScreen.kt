@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
+import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
 
 /**
@@ -137,9 +138,10 @@ fun LinkMovieListScreen(
                 }
 
                 uiState.error != null && uiState.movies.isEmpty() -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
-                    }
+                    ErrorView(
+                        message = "載入失敗，請重試",
+                        onRetry = { viewModel.refresh() }
+                    )
                 }
 
                 else -> {
