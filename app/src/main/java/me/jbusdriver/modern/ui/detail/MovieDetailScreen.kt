@@ -54,6 +54,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
@@ -242,6 +244,7 @@ private fun DetailContent(
     val coverHeight = remember { mutableStateOf(0) }
     val context = LocalContext.current
     var selectedHeader by remember { mutableStateOf<HeaderUiModel?>(null) }
+    var coverAspectRatio by remember { mutableFloatStateOf(3f / 2f) }
     detail.headers.firstOrNull()?.value ?: ""
 
     LazyColumn(
@@ -258,9 +261,17 @@ private fun DetailContent(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(3f / 2f)
+                    .aspectRatio(coverAspectRatio)
                     .clickable { onImageClick(listOf(detail.cover), 0) }
-                    .onSizeChanged { size -> coverHeight.value = size.height }
+                    .onSizeChanged { size -> coverHeight.value = size.height },
+                onSuccess = { result ->
+                    val drawable = result.result.drawable
+                    val width = drawable.intrinsicWidth
+                    val height = drawable.intrinsicHeight
+                    if (width > 0 && height > 0) {
+                        coverAspectRatio = width.toFloat() / height.toFloat()
+                    }
+                }
             )
         }
 
