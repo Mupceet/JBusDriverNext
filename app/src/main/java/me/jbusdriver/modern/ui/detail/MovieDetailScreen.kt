@@ -492,7 +492,8 @@ private fun ActressSection(
                     ActressAvatar(
                         avatarUrl = actress.avatar,
                         contentDescription = actress.name,
-                        size = 64.dp
+                        size = 64.dp,
+                        onClick = { onActressClick(actress) }
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(

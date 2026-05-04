@@ -76,7 +76,8 @@ fun ActressGrid(
                 ActressAvatar(
                     avatarUrl = actress.avatar,
                     contentDescription = actress.name,
-                    size = 90.dp
+                    size = 90.dp,
+                    onClick = { onActressClick(actress) }
                 )
                 Text(
                     text = actress.name,
