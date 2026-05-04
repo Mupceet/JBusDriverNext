@@ -56,7 +56,7 @@ object CacheLoader {
             KLog.w("可能的內存不足")
         }
         val cacheSize =
-            if (memoryInfo.availMem > 32.MB) 4.MB else 2.MB
+            if (memoryInfo.availMem > 64.MB) 32.MB else 8.MB
         KLog.t(TAG).d("max cacheSize = ${cacheSize.toLong().formatFileSize()}")
         return object : LruCache<String, String>(cacheSize) {
             override fun entryRemoved(
