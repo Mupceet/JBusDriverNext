@@ -41,7 +41,12 @@ abstract class SDCardDatabaseContext(base: Context) : ContextWrapper(base) {
         val dbDir = parentDir + File.separator + dir + File.separator
         val dbPath = dbDir + name
         val dirFile = File(dbDir)
-        if (!dirFile.exists()) dirFile.mkdirs()
+        if (!dirFile.exists() && !dirFile.mkdirs()) {
+            // Scoped Storage 阻止创建目录，降级到内部存储
+            val internal = File(filesDir.absolutePath + File.separator + dir + File.separator + name)
+            internal.parentFile?.mkdirs()
+            return internal
+        }
 
         var isFileCreateSuccess = false
         val dbFile = File(dbPath)
