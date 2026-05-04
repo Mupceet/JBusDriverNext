@@ -80,6 +80,7 @@ import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
+import androidx.core.net.toUri
 
 /**
  * 影片详情页面的顶层可组合函数。
@@ -684,8 +685,8 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                     if (magnet.link.isNotBlank()) {
                         context.copy(magnet.link)
                         try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(magnet.link)))
-                            Toast.makeText(context, "已複製並打開下載器", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
+                            context.startActivity(Intent.createChooser(intent, "選擇下載方式"))
                         } catch (_: ActivityNotFoundException) {
                             Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
                         }
