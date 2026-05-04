@@ -1,3 +1,9 @@
-# Default ignored files
+# User-specific IDE state
+/caches/
 /shelf/
 /workspace.xml
+/tasks.xml
+/planningMode.xml
+/deploymentTargetSelector.xml
+/markdown.xml
+/misc.xml
