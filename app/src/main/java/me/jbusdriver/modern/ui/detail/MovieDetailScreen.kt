@@ -1,8 +1,9 @@
 package me.jbusdriver.modern.ui.detail
 
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -667,11 +668,13 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
             .fillMaxWidth()
             .clickable {
                 if (magnet.link.isNotBlank()) {
-                    val clipboard =
-                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("magnet", magnet.link))
                     context.copy(magnet.link)
-                    Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(magnet.link)))
+                        Toast.makeText(context, "已複製並打開下載器", Toast.LENGTH_SHORT).show()
+                    } catch (_: ActivityNotFoundException) {
+                        Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .padding(vertical = 8.dp)
