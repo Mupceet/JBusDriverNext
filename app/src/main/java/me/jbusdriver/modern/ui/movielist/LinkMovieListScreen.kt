@@ -143,9 +143,8 @@ fun LinkMovieListScreen(
                 }
 
                 else -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Actress detail header (outside MovieList)
-                        if (type == "actress") {
+                    val header: (@Composable () -> Unit)? = if (type == "actress") {
+                        {
                             val actress = uiState.actressDetail
                             val actressError = uiState.actressError
                             when {
@@ -154,16 +153,17 @@ fun LinkMovieListScreen(
                                 actressError != null -> ActressDetailErrorCard(actressError)
                             }
                         }
+                    } else null
 
-                        MovieList(
-                            movies = uiState.movies,
-                            hasMore = uiState.hasMore,
-                            isLoadingMore = uiState.isLoadingMore,
-                            onLoadMore = { viewModel.loadMore() },
-                            onMovieClick = onMovieClick,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    MovieList(
+                        movies = uiState.movies,
+                        hasMore = uiState.hasMore,
+                        isLoadingMore = uiState.isLoadingMore,
+                        onLoadMore = { viewModel.loadMore() },
+                        onMovieClick = onMovieClick,
+                        modifier = Modifier.fillMaxSize(),
+                        header = header
+                    )
                 }
             }
         }
@@ -188,7 +188,7 @@ private fun ActressDetailCard(actress: ActressDetailUiModel) {
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         if (actress.info.isNotEmpty()) {
             // Layout: avatar+name on left, info on right, vertically centered
@@ -269,7 +269,7 @@ private fun ActressDetailLoadingPlaceholder() {
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -325,7 +325,7 @@ private fun ActressDetailErrorCard(error: String) {
         color = MaterialTheme.colorScheme.errorContainer,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(
             text = error,

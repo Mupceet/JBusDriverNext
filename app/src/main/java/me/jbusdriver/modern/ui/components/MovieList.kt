@@ -54,7 +54,8 @@ fun MovieList(
     onLoadMore: () -> Unit = {},
     onMovieClick: (MovieUiModel) -> Unit = {},
     isGrid: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null
 ) {
     if (isGrid) {
         val gridState = rememberLazyGridState()
@@ -75,6 +76,9 @@ fun MovieList(
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
+            if (header != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) { header() }
+            }
             itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                 MovieGridItem(movie = movie, onClick = { onMovieClick(movie) })
             }
@@ -110,6 +114,9 @@ fun MovieList(
             state = listState,
             modifier = modifier.fillMaxSize(),
         ) {
+            if (header != null) {
+                item { header() }
+            }
             itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                 MovieItem(movie = movie, onClick = { onMovieClick(movie) })
             }
