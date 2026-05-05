@@ -22,7 +22,6 @@ android {
     defaultConfig {
         applicationId = "me.jbus"
         minSdk = 28
-        targetSdk = 36
         versionCode = 10000 + gitCommitCount
         versionName = "1.${releaseTime()}"
 
