@@ -241,7 +241,13 @@ private fun DetailContent(
     val coverHeight = remember { mutableStateOf(0) }
     val context = LocalContext.current
     var selectedHeader by remember { mutableStateOf<HeaderUiModel?>(null) }
-    var coverAspectRatio by remember { mutableFloatStateOf(3f / 2f) }
+    var coverAspectRatio by remember {
+        mutableFloatStateOf(
+            if (detail.coverWidth > 0 && detail.coverHeight > 0)
+                detail.coverWidth.toFloat() / detail.coverHeight.toFloat()
+            else 3f / 2f
+        )
+    }
     detail.headers.firstOrNull()?.value ?: ""
 
     LazyColumn(
