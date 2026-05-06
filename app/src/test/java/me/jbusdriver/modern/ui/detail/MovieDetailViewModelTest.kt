@@ -111,4 +111,19 @@ class MovieDetailViewModelTest {
 
         assertFalse(viewModel.uiState.value.isRefreshing)
     }
+
+    @Test
+    fun loadDetail_storesGidAndUc() = runTest(testDispatcher) {
+        val detailWithGid = testDetail.copy(gid = "12345", uc = "67890")
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detailWithGid
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+
+        assertEquals("12345", viewModel.uiState.value.gid)
+        assertEquals("67890", viewModel.uiState.value.uc)
+    }
 }
