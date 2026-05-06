@@ -42,6 +42,13 @@ interface IMagnetLoader {
     suspend fun loadMagnets(key: String, page: Int): List<JSONObject>
 
     /**
+     * Load magnets using pre-extracted gid/uc parameters, skipping the detail page fetch.
+     * Default falls back to [loadMagnets].
+     */
+    suspend fun loadMagnetsWithParams(gid: String, uc: String, movieUrl: String): List<JSONObject> =
+        loadMagnets(movieUrl, 1)
+
+    /**
      * 从给定的 URL 页面提取磁力链接地址。
      * 默认实现返回空字符串，子类可按需覆盖。
      *

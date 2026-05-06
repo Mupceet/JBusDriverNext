@@ -54,6 +54,16 @@ object MagnetManager {
     }
 
     /**
+     * 使用预提取的 gid/uc 参数直接获取磁力链接，跳过详情页请求。
+     */
+    suspend fun getMagnetsWithParams(loader: String, gid: String, uc: String, movieUrl: String): String {
+        return JSONArray(
+            MagnetLoaders.Loaders[loader]?.loadMagnetsWithParams(gid, uc, movieUrl)
+                ?: emptyList<JSONObject>()
+        ).toString()
+    }
+
+    /**
      * 获取所有已注册加载器的名称列表。
      *
      * @return 加载器名称列表
