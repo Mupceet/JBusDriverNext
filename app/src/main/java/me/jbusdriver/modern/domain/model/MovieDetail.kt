@@ -21,6 +21,10 @@ import java.io.Serializable
  * @property actress 出演女优列表
  * @property imageSamples 影片截图样本列表
  * @property relatedMovies 相关推荐影片列表
+ * @property gid 影片全局 ID（用于磁力链接等场景），可选
+ * @property uc 用户校验参数，可选
+ * @property coverWidth 封面图宽度（像素），默认 0 表示未知
+ * @property coverHeight 封面图高度（像素），默认 0 表示未知
  */
 @Immutable
 data class MovieDetail(
@@ -31,7 +35,11 @@ data class MovieDetail(
     val genres: List<Genre>,
     val actress: List<ActressInfo>,
     val imageSamples: List<ImageSample>,
-    val relatedMovies: List<Movie>
+    val relatedMovies: List<Movie>,
+    val gid: String? = null,
+    val uc: String? = null,
+    val coverWidth: Int = 0,
+    val coverHeight: Int = 0
 )
 
 /**
