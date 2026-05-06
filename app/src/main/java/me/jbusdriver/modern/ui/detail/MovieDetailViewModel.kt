@@ -43,7 +43,11 @@ data class MovieDetailUiState(
     /** 是否还有更多磁力链接可加载 */
     val hasMoreMagnets: Boolean = true,
     /** 当前电影是否已收藏 */
-    val isCollected: Boolean = false
+    val isCollected: Boolean = false,
+    /** 从详情页 HTML 提取的 gid，用于磁力 AJAX 请求 */
+    val gid: String? = null,
+    /** 从详情页 HTML 提取的 uc，用于磁力 AJAX 请求 */
+    val uc: String? = null
 )
 
 /**
@@ -93,7 +97,14 @@ class MovieDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val detail = repository.getMovieDetail(url)
-                _uiState.update { it.copy(movieDetail = detail.toUiModel(), isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        movieDetail = detail.toUiModel(),
+                        isLoading = false,
+                        gid = detail.gid,
+                        uc = detail.uc
+                    )
+                }
                 // Check collection state
                 val movie = Movie(
                     title = detail.title,
@@ -137,22 +148,46 @@ class MovieDetailViewModel @Inject constructor(
     fun loadMagnets() {
         if (_uiState.value.isLoadingMagnets) return
         val url = currentUrl.ifBlank { return }
-        magnetPage = 1
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
-            try {
-                val magnets = withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    fetchMagnets(url, 1)
+        val gid = _uiState.value.gid
+        val uc = _uiState.value.uc
+
+        if (gid != null) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
+                try {
+                    val magnets = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        fetchMagnetsWithParams(gid, uc ?: "0", url)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            magnets = magnets,
+                            isLoadingMagnets = false,
+                            hasMoreMagnets = false
+                        )
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = e.message) }
                 }
-                _uiState.update {
-                    it.copy(
-                        magnets = magnets,
-                        isLoadingMagnets = false,
-                        hasMoreMagnets = MagnetManager.hasNext("default")
-                    )
+            }
+        } else {
+            // Fallback: no gid/uc, use two-request path
+            magnetPage = 1
+            viewModelScope.launch {
+                _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
+                try {
+                    val magnets = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        fetchMagnets(url, 1)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            magnets = magnets,
+                            isLoadingMagnets = false,
+                            hasMoreMagnets = MagnetManager.hasNext("default")
+                        )
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = e.message) }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = e.message) }
             }
         }
     }
@@ -192,6 +227,20 @@ class MovieDetailViewModel @Inject constructor(
      */
     private suspend fun fetchMagnets(keyword: String, page: Int): List<MagnetUiModel> {
         val json = MagnetManager.getMagnets("default", keyword, page)
+        val arr = JSONArray(json)
+        return (0 until arr.length()).mapNotNull { i ->
+            val obj = arr.optJSONObject(i) ?: return@mapNotNull null
+            Magnet(
+                name = obj.optString("name", ""),
+                size = obj.optString("size", ""),
+                date = obj.optString("date", ""),
+                link = obj.optString("link", "")
+            ).toUiModel()
+        }
+    }
+
+    private suspend fun fetchMagnetsWithParams(gid: String, uc: String, movieUrl: String): List<MagnetUiModel> {
+        val json = MagnetManager.getMagnetsWithParams("default", gid, uc, movieUrl)
         val arr = JSONArray(json)
         return (0 until arr.length()).mapNotNull { i ->
             val obj = arr.optJSONObject(i) ?: return@mapNotNull null
