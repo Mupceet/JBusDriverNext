@@ -204,7 +204,6 @@ fun MovieDetailScreen(
     if (showMagnetSheet) {
         MagnetBottomSheet(
             uiState = uiState,
-            onLoadMore = { viewModel.loadMoreMagnets() },
             onDismiss = { showMagnetSheet = false }
         )
     }
@@ -577,14 +576,12 @@ private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movie
  * 使用场景：在 [MovieDetailScreen] 中点击"查看磁力链接"按钮后弹出。
  *
  * @param uiState 影片详情页的 UI 状态，包含磁力链接数据和加载状态
- * @param onLoadMore 加载更多磁力链接的回调
  * @param onDismiss 关闭弹窗的回调
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MagnetBottomSheet(
     uiState: MovieDetailUiState,
-    onLoadMore: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -645,29 +642,6 @@ private fun MagnetBottomSheet(
                     else -> {
                         items(uiState.magnets, key = { it.link }) { magnet ->
                             MagnetItem(magnet = magnet, context = context)
-                        }
-                        if (uiState.isLoadingMagnets) {
-                            item {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        } else if (uiState.hasMoreMagnets) {
-                            item {
-                                Button(
-                                    onClick = onLoadMore,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 8.dp)
-                                ) {
-                                    Text("載入更多")
-                                }
-                            }
                         }
                     }
                 }

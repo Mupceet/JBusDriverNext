@@ -1,8 +1,10 @@
 package me.jbusdriver.modern.data.parser
 
 import android.text.TextUtils
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.domain.model.*
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 /**
@@ -235,6 +237,45 @@ fun parseGenreCategories(doc: Document): List<Pair<String, List<Genre>>> {
         box.select("a").map { Genre(it.text(), it.attr("href")) }
     }
     return titles.zip(genreLists)
+}
+
+// endregion
+
+// region 磁力链接获取
+
+/**
+ * 通过站内 AJAX 接口获取磁力链接列表。
+ *
+ * 使用预提取的 gid/uc 参数直接请求 `/ajax/uncledatoolsbyajax.php`，
+ * 解析返回的 HTML 表格为 [Magnet] 列表。
+ *
+ * @param gid 从详情页 HTML 提取的 gid 参数
+ * @param uc 从详情页 HTML 提取的 uc 参数
+ * @return 解析得到的磁力链接列表
+ */
+suspend fun fetchMagnets(gid: String, uc: String): List<Magnet> {
+    val baseUrl = NetClient.defaultFastUrl
+    val floor = (Math.random() * 1000 + 1).toInt()
+    val ajaxUrl = "$baseUrl/ajax/uncledatoolsbyajax.php?gid=$gid&lang=zh&uc=$uc&floor=$floor"
+
+    KLog.d("Magnet: gid=$gid, uc=$uc, floor=$floor")
+
+    val ajaxHtml = NetClient.fetchHtml(ajaxUrl, showAll = true, referer = "$baseUrl/")
+    KLog.d("Magnet: ajax response length=${ajaxHtml.length}")
+
+    val doc = Jsoup.parse("<table>$ajaxHtml</table>")
+    val rows = doc.select("table tr")
+    KLog.d("Magnet: table tr count=${rows.size}")
+
+    return rows.asSequence().drop(1).map { tr ->
+        val tds = tr.select("td")
+        Magnet(
+            name = tds.getOrNull(0)?.text().orEmpty(),
+            size = tds.getOrNull(1)?.text().orEmpty(),
+            date = tds.getOrNull(2)?.text().orEmpty(),
+            link = tr.select("a").attr("href").orEmpty()
+        )
+    }.filter { it.link.isNotBlank() }.toList()
 }
 
 // endregion
