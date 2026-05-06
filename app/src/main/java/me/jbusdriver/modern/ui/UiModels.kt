@@ -30,6 +30,8 @@ data class MovieDetailUiModel(
     val title: String,
     val content: String,
     val cover: String,
+    val coverWidth: Int = 0,
+    val coverHeight: Int = 0,
     val headers: List<HeaderUiModel>,
     val genres: List<GenreUiModel>,
     val actresses: List<ActressUiModel>,
@@ -75,6 +77,8 @@ fun MovieDetail.toUiModel(): MovieDetailUiModel {
         title = title,
         content = content,
         cover = cover,
+        coverWidth = coverWidth,
+        coverHeight = coverHeight,
         headers = headers
             .filter { it.name != "類別" }
             .map {
