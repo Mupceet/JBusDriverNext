@@ -248,6 +248,9 @@ private fun DetailContent(
         )
     }
     detail.headers.firstOrNull()?.value ?: ""
+    val allImages = remember(detail.cover, detail.imageSamples) {
+        listOf(detail.cover) + detail.imageSamples.map { it.image }
+    }
 
     LazyColumn(
         state = listState,
@@ -264,7 +267,7 @@ private fun DetailContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(coverAspectRatio)
-                    .clickable { onImageClick(listOf(detail.cover), 0) }
+                    .clickable { onImageClick(allImages, 0) }
                     .onSizeChanged { size -> coverHeight.value = size.height },
                 onSuccess = { result ->
                     val drawable = result.result.drawable
@@ -327,6 +330,7 @@ private fun DetailContent(
             item(key = "samples") {
                 ImageSampleSection(
                     samples = detail.imageSamples,
+                    allImages = allImages,
                     onImageClick = onImageClick
                 )
             }
@@ -429,6 +433,7 @@ private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel
 @Composable
 private fun ImageSampleSection(
     samples: List<ImageSampleUiModel>,
+    allImages: List<String>,
     onImageClick: (List<String>, Int) -> Unit
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -452,8 +457,7 @@ private fun ImageSampleSection(
                         .aspectRatio(4f / 3f)
                         .clip(RoundedCornerShape(4.dp))
                         .clickable {
-                            val images = samples.map { it.image }
-                            onImageClick(images, index)
+                            onImageClick(allImages, index + 1)
                         },
                     contentScale = ContentScale.Crop
                 )
