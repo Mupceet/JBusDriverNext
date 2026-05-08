@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -58,7 +60,6 @@ import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
-import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -194,6 +195,7 @@ fun ImageViewScreen(
                     .fillMaxWidth()
                     .background(Color.Black.copy(alpha = 0.7f))
                     .padding(vertical = 8.dp)
+                    .navigationBarsPadding()
             )
         }
     }
@@ -221,14 +223,11 @@ private fun ThumbnailStrip(
         itemsIndexed(images) { index, imageUrl ->
             val isSelected = index == currentPage
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(imageUrl)
-                    .crossfade(true)
-                    .build(),
+                model = imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(width = 48.dp, height = 36.dp)
+                    .size(width = 100.dp, height = 75.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .then(
                         if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
@@ -305,6 +304,7 @@ private suspend fun shareImage(context: Context, imageUrl: String) {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/jpeg"
                 putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newRawUri("", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             context.startActivity(Intent.createChooser(intent, "分享圖片"))
