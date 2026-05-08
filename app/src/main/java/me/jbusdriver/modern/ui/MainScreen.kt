@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.res.painterResource
+import me.jbusdriver.R
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -142,7 +142,7 @@ private fun CategoryPagerScreen(
             }
             IconButton(onClick = onSearchClick) {
                 Icon(
-                    Icons.Default.Search,
+                    painterResource(R.drawable.search_24px),
                     contentDescription = "搜尋",
                     tint = MaterialTheme.colorScheme.onSurface
                 )

@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.ui.res.painterResource
+import me.jbusdriver.R
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,7 +72,7 @@ fun ActressAvatar(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.Person,
+            painter = painterResource(R.drawable.person_24px),
             contentDescription = contentDescription,
             modifier = Modifier.size(size * 0.8f),
             tint = MaterialTheme.colorScheme.outline

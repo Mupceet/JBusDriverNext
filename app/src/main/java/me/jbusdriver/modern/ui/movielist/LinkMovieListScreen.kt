@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.ui.res.painterResource
+import me.jbusdriver.R
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -102,7 +100,7 @@ fun LinkMovieListScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
                     }
                 },
                 actions = {
@@ -113,7 +111,7 @@ fun LinkMovieListScreen(
                             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(
-                                imageVector = if (uiState.isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                painter = painterResource(R.drawable.favorite_24px),
                                 contentDescription = if (uiState.isCollected) "取消收藏" else "收藏",
                                 tint = if (uiState.isCollected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )

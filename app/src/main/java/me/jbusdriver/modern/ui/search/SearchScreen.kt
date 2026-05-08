@@ -13,9 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.res.painterResource
+import me.jbusdriver.R
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -121,7 +120,7 @@ fun SearchScreen(
                     focusManager.clearFocus()
                     onBack()
                 }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
                 }
             },
             trailingIcon = {
@@ -131,7 +130,7 @@ fun SearchScreen(
                         focusRequester.requestFocus()
                     }) {
                         Icon(
-                            Icons.Default.Close,
+                            painterResource(R.drawable.close_24px),
                             contentDescription = "清除"
                         )
                     }

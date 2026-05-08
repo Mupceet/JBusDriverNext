@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.detail
 
+import me.jbusdriver.R
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -30,11 +31,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -67,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,7 +136,7 @@ fun MovieDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
                     }
                 },
                 actions = {
@@ -150,7 +147,7 @@ fun MovieDetailScreen(
                             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(
-                                imageVector = if (uiState.isCollected) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                painter = painterResource(R.drawable.favorite_24px),
                                 contentDescription = if (uiState.isCollected) "取消收藏" else "收藏",
                                 tint = if (uiState.isCollected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
@@ -732,7 +729,8 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                 }
             ) {
                 Icon(
-                    Icons.Filled.Share,
+                    painterResource(
+                        R.drawable.content_copy_24px),
                     contentDescription = "複製連結",
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant

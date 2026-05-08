@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.image
 
+import me.jbusdriver.R
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
@@ -29,10 +30,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,19 +52,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,7 +142,7 @@ fun ImageViewScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
+                            painterResource(R.drawable.arrow_back_24px),
                             contentDescription = "返回",
                             tint = Color.White
                         )
@@ -155,7 +155,7 @@ fun ImageViewScreen(
                         }
                     }) {
                         Icon(
-                            Icons.Filled.Favorite,
+                            painterResource(R.drawable.download_24px),
                             contentDescription = "保存",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
@@ -167,7 +167,7 @@ fun ImageViewScreen(
                         }
                     }) {
                         Icon(
-                            Icons.Filled.Send,
+                            painterResource(R.drawable.share_24px),
                             contentDescription = "分享",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
@@ -194,7 +194,7 @@ fun ImageViewScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(vertical = 8.dp)
+                    .padding(top = 16.dp, bottom = 32.dp)
                     .navigationBarsPadding()
             )
         }
@@ -239,13 +239,20 @@ private fun ThumbnailStrip(
     }
 }
 
+private suspend fun getCachedBitmap(context: Context, imageUrl: String) =
+    withContext(Dispatchers.IO) {
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .allowHardware(false)
+            .build()
+        val result = context.imageLoader.execute(request)
+        (result as? SuccessResult)?.drawable?.toBitmap()
+            ?: throw IllegalStateException("圖片未載入")
+    }
+
 private suspend fun saveToGallery(context: Context, imageUrl: String) {
     try {
-        val bytes = withContext(Dispatchers.IO) {
-            val client = OkHttpClient.Builder().build()
-            val request = Request.Builder().url(imageUrl).build()
-            client.newCall(request).execute().body?.bytes()
-        } ?: throw IllegalStateException("Empty response")
+        val bitmap = getCachedBitmap(context, imageUrl)
 
         withContext(Dispatchers.IO) {
             val filename = "JBus_${System.currentTimeMillis()}.jpg"
@@ -262,7 +269,7 @@ private suspend fun saveToGallery(context: Context, imageUrl: String) {
             ) ?: throw IllegalStateException("Failed to create media store entry")
 
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(bytes)
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -283,15 +290,12 @@ private suspend fun saveToGallery(context: Context, imageUrl: String) {
 
 private suspend fun shareImage(context: Context, imageUrl: String) {
     try {
-        val file = withContext(Dispatchers.IO) {
-            val client = OkHttpClient.Builder().build()
-            val request = Request.Builder().url(imageUrl).build()
-            val response = client.newCall(request).execute()
-            val bytes = response.body?.bytes() ?: throw IllegalStateException("Empty response")
+        val bitmap = getCachedBitmap(context, imageUrl)
 
+        val file = withContext(Dispatchers.IO) {
             val shareDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
             val file = File(shareDir, "share_${System.currentTimeMillis()}.jpg")
-            file.writeBytes(bytes)
+            file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
             file
         }
 
