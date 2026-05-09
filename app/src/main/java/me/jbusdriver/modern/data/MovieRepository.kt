@@ -13,6 +13,7 @@ import me.jbusdriver.modern.data.parser.parseActressAttrs
 import me.jbusdriver.modern.data.parser.parseActressList
 import me.jbusdriver.modern.data.parser.parseGenreCategories
 import me.jbusdriver.modern.data.parser.parsePageInfo
+import me.jbusdriver.modern.data.parser.parseMovieFilterInfo
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.ui.movielist.GenreCategory
 import javax.inject.Inject
@@ -76,12 +77,14 @@ interface MovieRepository {
      *
      * @param url 完整的列表页 URL
      * @param page 页码（从 1 开始）
+     * @param showAll 是否显示全部（包括无磁力链接的影片）
      * @param forceRefresh 是否强制刷新缓存
      * @return 包含分页信息和影片列表的结果
      */
     suspend fun loadPageByUrl(
         url: String,
         page: Int,
+        showAll: Boolean = false,
         forceRefresh: Boolean = false
     ): MoviePageResult
 
@@ -128,7 +131,8 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
             val doc = NetClient.fetchDocument(url, showAll)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
             val movies = loadMovieFromDoc(doc)
-            MoviePageResult(pageInfo, movies)
+            val filterInfo = parseMovieFilterInfo(doc)
+            MoviePageResult(pageInfo, movies, filterInfo)
         }
     }
 
@@ -176,16 +180,18 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     override suspend fun loadPageByUrl(
         url: String,
         page: Int,
+        showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val cacheKey = "page_${url.urlPath}_$page"
+        val cacheKey = "page_${url.urlPath}_${showAll}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) url else "$url/$page"
-            val doc = NetClient.fetchDocument(fullUrl)
+            val doc = NetClient.fetchDocument(fullUrl, showAll)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
             val movies = loadMovieFromDoc(doc)
-            MoviePageResult(pageInfo, movies)
+            val filterInfo = parseMovieFilterInfo(doc)
+            MoviePageResult(pageInfo, movies, filterInfo)
         }
     }
 
