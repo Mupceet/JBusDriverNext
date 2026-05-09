@@ -147,7 +147,7 @@ fun MovieDetailScreen(
                             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(
-                                painter = painterResource(R.drawable.favorite_24px),
+                                painter = painterResource(if (uiState.isCollected) R.drawable.favorite_fill_24px else R.drawable.favorite_24px),
                                 contentDescription = if (uiState.isCollected) "取消收藏" else "收藏",
                                 tint = if (uiState.isCollected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
