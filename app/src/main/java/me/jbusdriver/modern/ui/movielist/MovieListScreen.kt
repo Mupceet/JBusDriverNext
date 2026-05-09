@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,12 +57,23 @@ fun MovieListScreen(
             }
 
             else -> {
+                val filterBar: (@Composable () -> Unit)? = uiState.filterInfo?.let { info ->
+                    {
+                        MovieFilterBar(
+                            magnetCount = info.magnetCount,
+                            totalCount = info.totalCount,
+                            showAll = uiState.showAll,
+                            onToggle = { viewModel.toggleShowAll() }
+                        )
+                    }
+                }
                 MovieList(
                     movies = uiState.movies,
                     hasMore = uiState.hasMore,
                     isLoadingMore = uiState.isLoadingMore,
                     onLoadMore = { viewModel.loadMore() },
-                    onMovieClick = onMovieClick
+                    onMovieClick = onMovieClick,
+                    header = filterBar
                 )
             }
         }
