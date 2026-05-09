@@ -227,7 +227,7 @@ private fun ThumbnailStrip(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(width = 100.dp, height = 75.dp)
+                    .size(width = 60.dp, height = 60.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .then(
                         if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
