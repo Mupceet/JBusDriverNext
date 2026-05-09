@@ -36,7 +36,25 @@ data class MoviePageResult(
     /** 分页信息。 */
     val pageInfo: PageInfo,
     /** 当前页的影片列表。 */
-    val movies: List<Movie>
+    val movies: List<Movie>,
+    /** 筛选信息（磁力数量与总数），仅在筛选模式下有值。 */
+    val filterInfo: MovieFilterInfo? = null
+)
+
+/**
+ * 影片筛选信息，包含当前筛选条件下的磁力影片数和影片总数。
+ *
+ * 职责：封装从列表页筛选提示栏解析出的统计信息。
+ *
+ * 使用场景：[MoviePageResult] 中携带筛选信息，UI 层用于展示筛选状态。
+ *
+ * 线程：纯数据类，无线程限制。
+ */
+data class MovieFilterInfo(
+    /** 已有磁力链接的影片数量。 */
+    val magnetCount: Int,
+    /** 全部影片数量。 */
+    val totalCount: Int
 )
 
 /**
