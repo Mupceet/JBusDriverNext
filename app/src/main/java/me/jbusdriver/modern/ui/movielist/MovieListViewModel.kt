@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.DataSourceType
@@ -37,7 +38,11 @@ data class MovieListUiState(
     /** 错误信息，正常时为 null */
     val error: String? = null,
     /** 是否还有更多数据可加载 */
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    /** 是否显示全部影片（含无磁力链接的影片） */
+    val showAll: Boolean = false,
+    /** 筛选信息（磁力数量与总数），仅在筛选模式下有值 */
+    val filterInfo: MovieFilterInfo? = null
 )
 
 /**
@@ -102,7 +107,8 @@ class MovieListViewModel @Inject constructor(
                     pageInfo = result.pageInfo,
                     isLoading = false,
                     hasMore = result.pageInfo.hasNext,
-                    error = if (result.movies.isEmpty()) "沒有數據" else null
+                    error = if (result.movies.isEmpty()) "沒有數據" else null,
+                    filterInfo = result.filterInfo
                 )
             },
             onError = { e, state -> state.copy(isLoading = false, error = e.message ?: "載入失敗") }
@@ -126,7 +132,8 @@ class MovieListViewModel @Inject constructor(
                     movies = result.movies.map { it.toUiModel() },
                     pageInfo = result.pageInfo,
                     isRefreshing = false,
-                    hasMore = result.pageInfo.hasNext
+                    hasMore = result.pageInfo.hasNext,
+                    filterInfo = result.filterInfo
                 )
             },
             onError = { e, state -> state.copy(isRefreshing = false, error = e.message) }
@@ -154,7 +161,8 @@ class MovieListViewModel @Inject constructor(
                     movies = state.movies + result.movies.map { it.toUiModel() },
                     pageInfo = result.pageInfo,
                     isLoadingMore = false,
-                    hasMore = result.pageInfo.hasNext
+                    hasMore = result.pageInfo.hasNext,
+                    filterInfo = result.filterInfo ?: state.filterInfo
                 )
             },
             onError = { e, state -> state.copy(isLoadingMore = false, error = e.message) },
@@ -173,7 +181,7 @@ class MovieListViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update(loadingFlag)
             try {
-                val result = repository.loadPage(dataSourceType, page, forceRefresh = forceRefresh)
+                val result = repository.loadPage(dataSourceType, page, showAll = _uiState.value.showAll, forceRefresh = forceRefresh)
                 _uiState.update { onSuccess(result, it) }
             } catch (e: Exception) {
                 onFailure()
@@ -185,5 +193,17 @@ class MovieListViewModel @Inject constructor(
     /** 清除当前的错误信息 */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * 切换是否显示全部影片（含无磁力链接的影片）。
+     *
+     * 切换后重置页码并重新加载第一页数据。
+     */
+    fun toggleShowAll() {
+        val newState = !_uiState.value.showAll
+        _uiState.update { it.copy(showAll = newState, movies = emptyList()) }
+        currentPage = 0
+        loadFirstPage()
     }
 }
