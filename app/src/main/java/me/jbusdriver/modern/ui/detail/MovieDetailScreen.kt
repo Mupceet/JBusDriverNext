@@ -190,8 +190,9 @@ fun MovieDetailScreen(
                         onImageClick = onImageClick,
                         onMagnetClick = {
                             showMagnetSheet = true
-                            viewModel.loadMagnets()
-                        }
+                        },
+                        isLoadingMagnets = uiState.isLoadingMagnets,
+                        hasMagnets = uiState.magnets.isNotEmpty()
                     )
                 }
             }
@@ -231,7 +232,9 @@ private fun DetailContent(
     onGenreClick: (GenreUiModel) -> Unit,
     onHeaderClick: (HeaderUiModel) -> Unit,
     onImageClick: (List<String>, Int) -> Unit,
-    onMagnetClick: () -> Unit
+    onMagnetClick: () -> Unit,
+    isLoadingMagnets: Boolean = false,
+    hasMagnets: Boolean = false
 ) {
     val listState = rememberLazyListState()
     val coverHeight = remember { mutableStateOf(0) }
@@ -354,19 +357,36 @@ private fun DetailContent(
             }
         }
 
-        // Magnet button
-        item(key = "magnet") {
-            Button(
-                onClick = onMagnetClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Text("查看磁力連結")
+        // Magnet button or bottom spacing
+        if (isLoadingMagnets || hasMagnets) {
+            item(key = "magnet") {
+                Button(
+                    onClick = onMagnetClick,
+                    enabled = hasMagnets,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    if (isLoadingMagnets) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("查看磁力連結")
+                }
+            }
+        } else {
+            item(key = "bottom_spacer") {
+                Spacer(Modifier.height(32.dp))
             }
         }
     }

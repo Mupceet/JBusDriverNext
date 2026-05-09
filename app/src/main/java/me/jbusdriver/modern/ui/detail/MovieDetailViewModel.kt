@@ -59,6 +59,7 @@ class MovieDetailViewModel @Inject constructor(
                         uc = detail.uc
                     )
                 }
+                loadMagnets()
                 val movie = Movie(
                     title = detail.title,
                     imageUrl = detail.cover,
