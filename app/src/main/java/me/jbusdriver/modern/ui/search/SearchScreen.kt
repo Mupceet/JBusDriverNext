@@ -69,7 +69,10 @@ fun SearchScreen(
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            focusRequester.requestFocus()
+            val query = searchInput.trim()
+            if (query.isBlank()) {
+                focusRequester.requestFocus()
+            }
         }
     }
 
