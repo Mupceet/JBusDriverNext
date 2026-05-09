@@ -44,6 +44,7 @@ import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
 
 /**
@@ -143,17 +144,44 @@ fun LinkMovieListScreen(
                 }
 
                 else -> {
-                    val header: (@Composable () -> Unit)? = if (type == "actress") {
+                    val filterBar: (@Composable () -> Unit)? = uiState.filterInfo?.let { info ->
                         {
-                            val actress = uiState.actressDetail
-                            val actressError = uiState.actressError
-                            when {
-                                actress != null -> ActressDetailCard(actress)
-                                uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
-                                actressError != null -> ActressDetailErrorCard(actressError)
+                            MovieFilterBar(
+                                magnetCount = info.magnetCount,
+                                totalCount = info.totalCount,
+                                showAll = uiState.showAll,
+                                onToggle = { viewModel.toggleShowAll() }
+                            )
+                        }
+                    }
+
+                    val header: (@Composable () -> Unit)? = when {
+                        type == "actress" && filterBar != null -> {
+                            {
+                                val actress = uiState.actressDetail
+                                val actressError = uiState.actressError
+                                when {
+                                    actress != null -> ActressDetailCard(actress)
+                                    uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                    actressError != null -> ActressDetailErrorCard(actressError)
+                                }
+                                filterBar()
                             }
                         }
-                    } else null
+                        type == "actress" -> {
+                            {
+                                val actress = uiState.actressDetail
+                                val actressError = uiState.actressError
+                                when {
+                                    actress != null -> ActressDetailCard(actress)
+                                    uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                    actressError != null -> ActressDetailErrorCard(actressError)
+                                }
+                            }
+                        }
+                        filterBar != null -> filterBar
+                        else -> null
+                    }
 
                     MovieList(
                         movies = uiState.movies,
