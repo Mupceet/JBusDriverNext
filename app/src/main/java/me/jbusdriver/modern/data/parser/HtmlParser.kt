@@ -280,6 +280,30 @@ suspend fun fetchMagnets(gid: String, uc: String): List<Magnet> {
 
 // endregion
 
+// region 筛选信息解析
+
+/**
+ * 从列表页 HTML 解析筛选信息（磁力影片数与全部影片数）。
+ *
+ * Jsoup 选择器说明：
+ * - `.alert-success`：筛选提示栏容器
+ * - `#resultshowmag`：已有磁力影片数
+ * - `#resultshowall`：全部影片数
+ *
+ * @param doc 列表页 HTML 的 Jsoup Document
+ * @return 筛选信息，无筛选提示栏时返回 null
+ */
+fun parseMovieFilterInfo(doc: Document): MovieFilterInfo? {
+    val alert = doc.selectFirst(".alert-success") ?: return null
+    val magnetText = alert.selectFirst("#resultshowmag")?.text() ?: return null
+    val allText = alert.selectFirst("#resultshowall")?.text() ?: return null
+    val magnetCount = magnetText.filter { it.isDigit() }.toIntOrNull() ?: return null
+    val totalCount = allText.filter { it.isDigit() }.toIntOrNull() ?: return null
+    return MovieFilterInfo(magnetCount, totalCount)
+}
+
+// endregion
+
 // region URL 工具
 
 /**
