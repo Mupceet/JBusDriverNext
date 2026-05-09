@@ -40,7 +40,7 @@ class ActressListViewModelTest {
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             onLoadActresses(type, page)
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
-        override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean) =
+        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(PageInfo(), emptyList())
         override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
     }

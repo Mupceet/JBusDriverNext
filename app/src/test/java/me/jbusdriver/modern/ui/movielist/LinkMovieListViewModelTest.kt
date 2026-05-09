@@ -15,6 +15,7 @@ import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import org.junit.After
@@ -54,7 +55,7 @@ class LinkMovieListViewModelTest {
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
-        override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean) =
+        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             onLoadPageByUrl(url, page)
         override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
     }
@@ -116,5 +117,34 @@ class LinkMovieListViewModelTest {
         assertEquals(2, callCount)
 
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun toggleShowAll_reloadsMoviesWithShowAll() = runTest(testDispatcher) {
+        var showAllCapture = false
+        val repository = object : MovieRepository {
+            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+                MoviePageResult(PageInfo(), emptyList())
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
+            override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean): MoviePageResult {
+                showAllCapture = showAll
+                return MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies, MovieFilterInfo(5, 10))
+            }
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+        }
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, SavedStateHandle())
+
+        viewModel.setLink("http://example.com/star/abc")
+        advanceUntilIdle()
+        assertFalse(showAllCapture)
+
+        viewModel.toggleShowAll()
+        advanceUntilIdle()
+        assertTrue(showAllCapture)
+        assertTrue(viewModel.uiState.value.showAll)
+        assertEquals(5, viewModel.uiState.value.filterInfo?.magnetCount)
+        assertEquals(10, viewModel.uiState.value.filterInfo?.totalCount)
     }
 }

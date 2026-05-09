@@ -41,7 +41,7 @@ class GenreListViewModelTest {
             emptyList<ActressInfo>() to PageInfo()
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
             onLoadGenreCategories(type)
-        override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean) =
+        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(PageInfo(), emptyList())
         override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
     }

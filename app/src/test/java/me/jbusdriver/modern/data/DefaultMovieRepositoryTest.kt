@@ -33,7 +33,7 @@ class FakeMovieRepositoryTest {
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
             emptyList<GenreCategory>()
 
-        override suspend fun loadPageByUrl(url: String, page: Int, forceRefresh: Boolean) =
+        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(PageInfo(page, page + 1, listOf(page, page + 1)), fakeMovies)
 
         override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
