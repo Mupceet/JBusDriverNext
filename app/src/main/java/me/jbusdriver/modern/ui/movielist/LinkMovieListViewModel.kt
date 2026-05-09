@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -46,7 +47,11 @@ data class LinkMovieListUiState(
     /** 女优详情加载错误信息 */
     val actressError: String? = null,
     /** 当前女优是否已收藏 */
-    val isCollected: Boolean = false
+    val isCollected: Boolean = false,
+    /** 是否显示全部影片（含无磁力链接的影片） */
+    val showAll: Boolean = false,
+    /** 筛选信息（磁力数量与总数），仅在筛选模式下有值 */
+    val filterInfo: MovieFilterInfo? = null
 )
 
 /**
@@ -123,14 +128,15 @@ class LinkMovieListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val result = repository.loadPageByUrl(linkUrl, 1)
+                val result = repository.loadPageByUrl(linkUrl, 1, showAll = _uiState.value.showAll)
                 _uiState.update {
                     it.copy(
                         movies = result.movies.map { m -> m.toUiModel() },
                         pageInfo = result.pageInfo,
                         isLoading = false,
                         hasMore = result.pageInfo.hasNext,
-                        error = if (result.movies.isEmpty()) "沒有數據" else null
+                        error = if (result.movies.isEmpty()) "沒有數據" else null,
+                        filterInfo = result.filterInfo
                     )
                 }
             } catch (e: Exception) {
@@ -155,13 +161,14 @@ class LinkMovieListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val result = repository.loadPageByUrl(linkUrl, nextPage)
+                val result = repository.loadPageByUrl(linkUrl, nextPage, showAll = _uiState.value.showAll)
                 _uiState.update {
                     it.copy(
                         movies = it.movies + result.movies.map { m -> m.toUiModel() },
                         pageInfo = result.pageInfo,
                         isLoadingMore = false,
-                        hasMore = result.pageInfo.hasNext
+                        hasMore = result.pageInfo.hasNext,
+                        filterInfo = result.filterInfo ?: it.filterInfo
                     )
                 }
             } catch (e: Exception) {
@@ -183,13 +190,14 @@ class LinkMovieListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                val result = repository.loadPageByUrl(linkUrl, 1, forceRefresh = true)
+                val result = repository.loadPageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, forceRefresh = true)
                 _uiState.update {
                     it.copy(
                         movies = result.movies.map { m -> m.toUiModel() },
                         pageInfo = result.pageInfo,
                         isRefreshing = false,
-                        hasMore = result.pageInfo.hasNext
+                        hasMore = result.pageInfo.hasNext,
+                        filterInfo = result.filterInfo
                     )
                 }
             } catch (e: Exception) {
@@ -254,5 +262,17 @@ class LinkMovieListViewModel @Inject constructor(
             val newState = collectRepository.toggleActressCollect(actress)
             _uiState.update { it.copy(isCollected = newState) }
         }
+    }
+
+    /**
+     * 切换是否显示全部影片（含无磁力链接的影片）。
+     *
+     * 切换后重置页码并重新加载第一页数据。
+     */
+    fun toggleShowAll() {
+        val newState = !_uiState.value.showAll
+        _uiState.update { it.copy(showAll = newState, movies = emptyList()) }
+        currentPage = 0
+        loadFirstPage()
     }
 }
