@@ -295,7 +295,8 @@ private fun DetailContent(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 2.dp)
+                                    .padding(vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = header.name,
@@ -304,20 +305,55 @@ private fun DetailContent(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.width(80.dp)
                                 )
-                                Text(
-                                    text = header.value,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (header.link.isNotBlank())
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f).combinedClickable(
-                                        onClick = {
-                                            if (header.link.isNotBlank()) onHeaderClick(header)
-                                        },
-                                        onLongClick = { selectedHeader = header }
+                                if (header.name == "識別碼") {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f).combinedClickable(
+                                            onClick = {
+                                                if (header.link.isNotBlank()) onHeaderClick(header)
+                                            },
+                                            onLongClick = { selectedHeader = header }
+                                        )
+                                    ) {
+                                        Text(
+                                            text = header.value,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (header.link.isNotBlank())
+                                                MaterialTheme.colorScheme.primary
+                                            else
+                                                MaterialTheme.colorScheme.onSurface
+                                        )
+                                        val context = LocalContext.current
+                                        Icon(
+                                            painter = painterResource(R.drawable.content_copy_24px),
+                                            contentDescription = "複製",
+                                            modifier = Modifier
+                                                .size(22.dp)
+                                                .padding(start = 4.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .clickable {
+                                                    context.copy(header.value)
+                                                    Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
+                                                },
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = header.value,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (header.link.isNotBlank())
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f).combinedClickable(
+                                            onClick = {
+                                                if (header.link.isNotBlank()) onHeaderClick(header)
+                                            },
+                                            onLongClick = { selectedHeader = header }
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     }
