@@ -18,7 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +51,8 @@ fun ActressGrid(
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+    val showScrollToTop = rememberIsScrolledPastFirstPage(gridState)
 
     LaunchedEffect(gridState) {
         snapshotFlow {
@@ -60,48 +64,58 @@ fun ActressGrid(
         }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(95.dp),
-        state = gridState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        itemsIndexed(actresses, key = { _, actress -> actress.link }) { _, actress ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onActressClick(actress) }
-            ) {
-                ActressAvatar(
-                    avatarUrl = actress.avatar,
-                    contentDescription = actress.name,
-                    size = 90.dp,
-                    onClick = { onActressClick(actress) }
-                )
-                Text(
-                    text = actress.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(95.dp),
+            state = gridState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(actresses, key = { _, actress -> actress.link }) { _, actress ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onActressClick(actress) }
+                ) {
+                    ActressAvatar(
+                        avatarUrl = actress.avatar,
+                        contentDescription = actress.name,
+                        size = 90.dp,
+                        onClick = { onActressClick(actress) }
+                    )
+                    Text(
+                        text = actress.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
-        }
-        if (isLoadingMore) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            if (isLoadingMore) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+            if (!hasMore && actresses.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
-        if (!hasMore && actresses.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+
+        ScrollToTopButton(
+            visible = showScrollToTop,
+            onClick = { scope.launch { gridState.animateScrollToItem(0) } },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
     }
 }
