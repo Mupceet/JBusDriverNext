@@ -115,7 +115,7 @@ fun ActressGrid(
             onClick = { scope.launch { gridState.animateScrollToItem(0) } },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
+                .padding(bottom = 48.dp)
         )
     }
 }
