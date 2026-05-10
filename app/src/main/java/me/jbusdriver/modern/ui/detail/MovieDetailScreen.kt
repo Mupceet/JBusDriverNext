@@ -278,6 +278,26 @@ private fun DetailContent(
             )
         }
 
+        // Title
+        item(key = "title") {
+            Text(
+                text = detail.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .combinedClickable(
+                        onLongClick = {
+
+                            context.copy(detail.title)
+                            Toast.makeText(context, "已複製標題", Toast.LENGTH_SHORT).show()
+                        },
+                        onClick = {}
+                    )
+            )
+        }
+
         // Headers info
         item(key = "headers") {
             if (detail.headers.isNotEmpty()) {
@@ -294,7 +314,7 @@ private fun DetailContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.Top
                             ) {
                                 Text(
                                     text = header.name,

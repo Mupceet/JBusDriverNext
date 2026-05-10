@@ -72,7 +72,6 @@ fun Movie.toUiModel() = MovieUiModel(title, imageUrl, code, date, link, tags.orE
  * - "描述"行去掉番号前缀，只保留描述文本
  */
 fun MovieDetail.toUiModel(): MovieDetailUiModel {
-    val code = headers.firstOrNull { it.name == "識別碼" }?.value.orEmpty()
     return MovieDetailUiModel(
         title = title,
         content = content,
@@ -82,8 +81,7 @@ fun MovieDetail.toUiModel(): MovieDetailUiModel {
         headers = headers
             .filter { it.name != "類別" }
             .map {
-                if (it.name == "描述") HeaderUiModel("描述", title.removePrefix(code).trim())
-                else HeaderUiModel(it.name, it.value, it.link)
+                HeaderUiModel(it.name, it.value, it.link)
             },
         genres = genres.map { GenreUiModel(it.name, it.link) },
         actresses = actress.map { ActressUiModel(it.name, it.avatar, it.link) },
