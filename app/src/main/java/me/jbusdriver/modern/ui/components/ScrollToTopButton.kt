@@ -12,8 +12,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -53,15 +58,43 @@ fun ScrollToTopButton(
 }
 
 @Composable
-fun rememberIsScrolledPastFirstPage(listState: LazyListState): Boolean {
-    return remember {
+fun rememberScrollToTopVisibility(listState: LazyListState): Boolean {
+    val isScrolledPastFirstPage by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 }
-    }.value
+    }
+    var hideAfterDelay by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isScrolledPastFirstPage, listState.isScrollInProgress) {
+        if (!isScrolledPastFirstPage) {
+            hideAfterDelay = false
+        } else if (listState.isScrollInProgress) {
+            hideAfterDelay = false
+        } else {
+            delay(5000)
+            hideAfterDelay = true
+        }
+    }
+
+    return isScrolledPastFirstPage && !hideAfterDelay
 }
 
 @Composable
-fun rememberIsScrolledPastFirstPage(gridState: LazyGridState): Boolean {
-    return remember {
+fun rememberScrollToTopVisibility(gridState: LazyGridState): Boolean {
+    val isScrolledPastFirstPage by remember {
         derivedStateOf { gridState.firstVisibleItemIndex > 0 }
-    }.value
+    }
+    var hideAfterDelay by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isScrolledPastFirstPage, gridState.isScrollInProgress) {
+        if (!isScrolledPastFirstPage) {
+            hideAfterDelay = false
+        } else if (gridState.isScrollInProgress) {
+            hideAfterDelay = false
+        } else {
+            delay(5000)
+            hideAfterDelay = true
+        }
+    }
+
+    return isScrolledPastFirstPage && !hideAfterDelay
 }

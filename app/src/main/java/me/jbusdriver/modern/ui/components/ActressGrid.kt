@@ -52,7 +52,7 @@ fun ActressGrid(
 ) {
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
-    val showScrollToTop = rememberIsScrolledPastFirstPage(gridState)
+    val showScrollToTop = rememberScrollToTopVisibility(gridState)
 
     LaunchedEffect(gridState) {
         snapshotFlow {

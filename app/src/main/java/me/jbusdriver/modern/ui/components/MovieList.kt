@@ -62,7 +62,7 @@ fun MovieList(
     if (isGrid) {
         val gridState = rememberLazyGridState()
         val scope = rememberCoroutineScope()
-        val showScrollToTop = rememberIsScrolledPastFirstPage(gridState)
+        val showScrollToTop = rememberScrollToTopVisibility(gridState)
 
         LaunchedEffect(gridState) {
             snapshotFlow {
@@ -114,7 +114,7 @@ fun MovieList(
     } else {
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
-        val showScrollToTop = rememberIsScrolledPastFirstPage(listState)
+        val showScrollToTop = rememberScrollToTopVisibility(listState)
 
         LaunchedEffect(listState) {
             snapshotFlow {
