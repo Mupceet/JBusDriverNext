@@ -42,7 +42,9 @@ data class MovieListUiState(
     /** 是否显示全部影片（含无磁力链接的影片） */
     val showAll: Boolean = false,
     /** 筛选信息（磁力数量与总数），仅在筛选模式下有值 */
-    val filterInfo: MovieFilterInfo? = null
+    val filterInfo: MovieFilterInfo? = null,
+    /** 是否正在切换筛选条件（保留旧列表，显示顶部刷新指示器） */
+    val isFilterSwitching: Boolean = false
 )
 
 /**
@@ -106,12 +108,13 @@ class MovieListViewModel @Inject constructor(
                     movies = result.movies.map { it.toUiModel() },
                     pageInfo = result.pageInfo,
                     isLoading = false,
+                    isFilterSwitching = false,
                     hasMore = result.pageInfo.hasNext,
                     error = if (result.movies.isEmpty()) "沒有數據" else null,
                     filterInfo = result.filterInfo
                 )
             },
-            onError = { e, state -> state.copy(isLoading = false, error = e.message ?: "載入失敗") }
+            onError = { e, state -> state.copy(isLoading = false, isFilterSwitching = false, error = e.message ?: "載入失敗") }
         )
     }
 
@@ -202,7 +205,7 @@ class MovieListViewModel @Inject constructor(
      */
     fun toggleShowAll() {
         val newState = !_uiState.value.showAll
-        _uiState.update { it.copy(showAll = newState, movies = emptyList()) }
+        _uiState.update { it.copy(showAll = newState, isFilterSwitching = true) }
         currentPage = 0
         loadFirstPage()
     }

@@ -190,11 +190,16 @@ class MovieListViewModelTest {
         assertFalse(showAllCapture)
 
         viewModel.toggleShowAll()
+        // Immediately after toggle: isFilterSwitching should be true, movies NOT cleared
+        assertTrue(viewModel.uiState.value.isFilterSwitching)
+        assertEquals(2, viewModel.uiState.value.movies.size) // old movies still present
+        assertTrue(viewModel.uiState.value.showAll)
+
         advanceUntilIdle()
         Thread.sleep(100)
         advanceUntilIdle()
         assertTrue(showAllCapture)
-        assertTrue(viewModel.uiState.value.showAll)
+        assertFalse(viewModel.uiState.value.isFilterSwitching)
         assertEquals(5, viewModel.uiState.value.filterInfo?.magnetCount)
     }
 }
