@@ -31,7 +31,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +61,8 @@ fun MovieList(
 ) {
     if (isGrid) {
         val gridState = rememberLazyGridState()
+        val scope = rememberCoroutineScope()
+        val showScrollToTop = rememberIsScrolledPastFirstPage(gridState)
 
         LaunchedEffect(gridState) {
             snapshotFlow {
@@ -70,35 +74,47 @@ fun MovieList(
             }
         }
 
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 150.dp),
-            state = gridState,
-            modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 4.dp)
-        ) {
-            if (header != null) {
-                item(span = { GridItemSpan(maxLineSpan) }) { header() }
-            }
-            itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                MovieGridItem(movie = movie, onClick = { onMovieClick(movie) })
-            }
-            if (isLoadingMore) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+        Box(modifier = modifier.fillMaxSize()) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 150.dp),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                if (header != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { header() }
+                }
+                itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                    MovieGridItem(movie = movie, onClick = { onMovieClick(movie) })
+                }
+                if (isLoadingMore) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+                if (!hasMore && movies.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
-            if (!hasMore && movies.isNotEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
+
+            ScrollToTopButton(
+                visible = showScrollToTop,
+                onClick = { scope.launch { gridState.animateScrollToItem(0) } },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            )
         }
     } else {
         val listState = rememberLazyListState()
+        val scope = rememberCoroutineScope()
+        val showScrollToTop = rememberIsScrolledPastFirstPage(listState)
 
         LaunchedEffect(listState) {
             snapshotFlow {
@@ -110,30 +126,40 @@ fun MovieList(
             }
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = modifier.fillMaxSize(),
-        ) {
-            if (header != null) {
-                item { header() }
-            }
-            itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                MovieItem(movie = movie, onClick = { onMovieClick(movie) })
-            }
-            if (isLoadingMore) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+        Box(modifier = modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (header != null) {
+                    item { header() }
+                }
+                itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                    MovieItem(movie = movie, onClick = { onMovieClick(movie) })
+                }
+                if (isLoadingMore) {
+                    item {
+                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+                if (!hasMore && movies.isNotEmpty()) {
+                    item {
+                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
-            if (!hasMore && movies.isNotEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
+
+            ScrollToTopButton(
+                visible = showScrollToTop,
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            )
         }
     }
 }
