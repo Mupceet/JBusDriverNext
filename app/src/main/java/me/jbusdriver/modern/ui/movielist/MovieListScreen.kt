@@ -38,12 +38,12 @@ fun MovieListScreen(
     }
 
     PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
+        isRefreshing = uiState.isRefreshing || uiState.isFilterSwitching,
         onRefresh = { viewModel.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
         when {
-            uiState.isLoading -> {
+            uiState.isLoading && uiState.movies.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
