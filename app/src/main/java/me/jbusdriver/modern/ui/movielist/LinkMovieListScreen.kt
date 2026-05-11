@@ -213,7 +213,7 @@ fun LinkMovieListScreen(
 private fun ActressDetailCard(actress: ActressDetailUiModel) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -294,7 +294,7 @@ private fun ActressDetailCard(actress: ActressDetailUiModel) {
 private fun ActressDetailLoadingPlaceholder() {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)

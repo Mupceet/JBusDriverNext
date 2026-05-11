@@ -47,7 +47,7 @@ fun ScrollToTopButton(
             modifier = Modifier
                 .shadow(10.dp, CircleShape)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .size(48.dp)
         ) {
             Icon(

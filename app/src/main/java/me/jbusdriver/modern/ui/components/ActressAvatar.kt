@@ -62,7 +62,7 @@ fun ActressAvatar(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .then(
                 if (onClick != null) Modifier.combinedClickable(
                     onClick = onClick,
