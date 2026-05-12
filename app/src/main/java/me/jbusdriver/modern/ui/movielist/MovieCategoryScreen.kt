@@ -2,7 +2,6 @@ package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,7 +46,7 @@ fun MovieCategoryScreen(
     val pagerState = rememberPagerState(initialPage = 0) { MovieTabs.size }
     val scope = rememberCoroutineScope()
 
-    Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
+    Column(modifier = modifier.fillMaxSize()) {
         CategorySearchBar(onClick = onSearchClick)
 
         ScrollableTabRow(
