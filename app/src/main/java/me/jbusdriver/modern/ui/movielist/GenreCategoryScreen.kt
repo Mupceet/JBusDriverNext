@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.movielist
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,9 +8,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -53,7 +57,6 @@ fun GenreCategoryScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedSourceIndex by rememberSaveable { mutableIntStateOf(0) }
-    var selectedThemeIndex by rememberSaveable { mutableIntStateOf(0) }
 
     val viewModelKey = "genre_source_$selectedSourceIndex"
     val viewModel: GenreListViewModel = hiltViewModel(key = viewModelKey)
@@ -63,17 +66,11 @@ fun GenreCategoryScreen(
         viewModel.setDataSourceType(GenreSourceTabs[selectedSourceIndex].dataSourceType)
     }
 
-    val themeGroups = uiState.genreCategories
-    LaunchedEffect(themeGroups) {
-        if (selectedThemeIndex >= themeGroups.size && themeGroups.isNotEmpty()) {
-            selectedThemeIndex = 0
-        }
-    }
+    val genreGroups = uiState.genreCategories
 
     Column(modifier = modifier.fillMaxSize()) {
         CategorySearchBar(onClick = onSearchClick)
 
-        // Outer tabs: 有码类别 / 无码类别
         ScrollableTabRow(
             selectedTabIndex = selectedSourceIndex,
             edgePadding = 8.dp,
@@ -87,10 +84,7 @@ fun GenreCategoryScreen(
             GenreSourceTabs.forEachIndexed { index, tab ->
                 Tab(
                     selected = selectedSourceIndex == index,
-                    onClick = {
-                        selectedSourceIndex = index
-                        selectedThemeIndex = 0
-                    },
+                    onClick = { selectedSourceIndex = index },
                     text = {
                         Text(
                             tab.title,
@@ -108,43 +102,6 @@ fun GenreCategoryScreen(
             }
         }
 
-        // Inner tabs: dynamic theme groups
-        if (themeGroups.isNotEmpty()) {
-            val clampedIndex = selectedThemeIndex.coerceIn(0, themeGroups.size - 1)
-            ScrollableTabRow(
-                selectedTabIndex = clampedIndex,
-                edgePadding = 8.dp,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                indicator = { tabPositions ->
-                    SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[clampedIndex])
-                    )
-                },
-                divider = {}
-            ) {
-                themeGroups.forEachIndexed { index, category ->
-                    Tab(
-                        selected = clampedIndex == index,
-                        onClick = { selectedThemeIndex = index },
-                        text = {
-                            Text(
-                                category.title,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontSize = 14.sp,
-                                fontWeight = if (clampedIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (clampedIndex == index)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    )
-                }
-            }
-        }
-
-        // Content: genre chips
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
@@ -156,28 +113,57 @@ fun GenreCategoryScreen(
                         CircularProgressIndicator()
                     }
                 }
-                uiState.error != null && themeGroups.isEmpty() -> {
+                uiState.error != null && genreGroups.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
                     }
                 }
-                themeGroups.isNotEmpty() -> {
-                    val clampedIndex = selectedThemeIndex.coerceIn(0, themeGroups.size - 1)
-                    val genres = themeGroups[clampedIndex].genres
-                    FlowRow(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        genres.forEach { genre ->
-                            AssistChip(
-                                onClick = { onGenreClick(genre) },
-                                label = {
-                                    Text(genre.name, style = MaterialTheme.typography.labelSmall)
+                else -> {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        genreGroups.forEachIndexed { index, group ->
+                            stickyHeader(key = "header_${group.title}") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.background)
+                                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+                                ) {
+                                    Text(
+                                        text = group.title,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
-                            )
+                            }
+                            item(key = "chips_${group.title}") {
+                                FlowRow(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    group.genres.forEach { genre ->
+                                        AssistChip(
+                                            onClick = { onGenreClick(genre) },
+                                            label = {
+                                                Text(genre.name, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            if (index < genreGroups.lastIndex) {
+                                stickyHeader(key = "divider_${group.title}") {
+                                    HorizontalDivider(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.background)
+                                            .padding(horizontal = 16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
