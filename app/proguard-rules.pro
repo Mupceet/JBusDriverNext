@@ -19,9 +19,11 @@
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
-# Keep all domain model classes used in Gson serialization.
+# Keep all model classes used in Gson serialization.
 # Gson maps JSON keys to field names by reflection – R8 must not rename them.
 -keep class me.jbusdriver.modern.domain.model.** { <fields>; }
+-keep class me.jbusdriver.modern.ui.movielist.GenreCategory { <fields>; }
+-keep class me.jbusdriver.modern.ui.GenreUiModel { <fields>; }
 
 # Keep the global Gson instance and extension helpers
 -keep class me.jbusdriver.modern.core.GsonExtKt { *; }
