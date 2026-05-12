@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -124,12 +125,12 @@ private fun GenreGroupList(
     onGenreClick: (GenreUiModel) -> Unit,
     viewModel: GenreListViewModel
 ) {
-    var expandedGroups by rememberSaveable { mutableStateOf(setOf(0)) }
+    var expandedGroups by rememberSaveable { mutableStateOf(emptySet<Int>()) }
+    val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
 
     LaunchedEffect(dataSourceType, active) {
         if (active) {
             viewModel.setDataSourceType(dataSourceType)
-            expandedGroups = setOf(0)
         }
     }
 
@@ -154,6 +155,7 @@ private fun GenreGroupList(
             }
             else -> {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
