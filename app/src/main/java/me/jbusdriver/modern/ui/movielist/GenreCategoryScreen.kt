@@ -1,21 +1,26 @@
 package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -25,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,6 +63,7 @@ fun GenreCategoryScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedSourceIndex by rememberSaveable { mutableIntStateOf(0) }
+    var expandedGroups by rememberSaveable { mutableStateOf(setOf(0)) }
 
     val viewModelKey = "genre_source_$selectedSourceIndex"
     val viewModel: GenreListViewModel = hiltViewModel(key = viewModelKey)
@@ -64,6 +71,7 @@ fun GenreCategoryScreen(
 
     LaunchedEffect(selectedSourceIndex) {
         viewModel.setDataSourceType(GenreSourceTabs[selectedSourceIndex].dataSourceType)
+        expandedGroups = setOf(0)
     }
 
     val genreGroups = uiState.genreCategories
@@ -119,52 +127,85 @@ fun GenreCategoryScreen(
                     }
                 }
                 else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        genreGroups.forEachIndexed { index, group ->
-                            stickyHeader(key = "header_${group.title}") {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.background)
-                                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
-                                ) {
-                                    Text(
-                                        text = group.title,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                            item(key = "chips_${group.title}") {
-                                FlowRow(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    group.genres.forEach { genre ->
-                                        AssistChip(
-                                            onClick = { onGenreClick(genre) },
-                                            label = {
-                                                Text(genre.name, style = MaterialTheme.typography.labelSmall)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            if (index < genreGroups.lastIndex) {
-                                stickyHeader(key = "divider_${group.title}") {
-                                    HorizontalDivider(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.background)
-                                            .padding(horizontal = 16.dp)
-                                    )
-                                }
-                            }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(genreGroups, key = { it.title }) { group ->
+                            val index = genreGroups.indexOf(group)
+                            val isExpanded = index in expandedGroups
+                            GenreGroupCard(
+                                title = group.title,
+                                chipCount = group.genres.size,
+                                isExpanded = isExpanded,
+                                onToggle = {
+                                    expandedGroups = if (isExpanded)
+                                        expandedGroups - index
+                                    else
+                                        expandedGroups + index
+                                },
+                                genres = if (isExpanded) group.genres else emptyList(),
+                                onGenreClick = onGenreClick
+                            )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenreGroupCard(
+    title: String,
+    chipCount: Int,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    genres: List<GenreUiModel>,
+    onGenreClick: (GenreUiModel) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (isExpanded) "▼ $chipCount" else "▶ $chipCount",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (isExpanded && genres.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    genres.forEach { genre ->
+                        AssistChip(
+                            onClick = { onGenreClick(genre) },
+                            label = {
+                                Text(genre.name, style = MaterialTheme.typography.labelSmall)
+                            }
+                        )
                     }
                 }
             }
