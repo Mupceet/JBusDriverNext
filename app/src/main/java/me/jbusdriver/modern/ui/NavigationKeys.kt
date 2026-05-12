@@ -9,6 +9,7 @@ package me.jbusdriver.modern.ui
 object NavigationKeys {
     const val ROUTE_MAIN = "main"
     const val ROUTE_SEARCH = "search"
+    const val ROUTE_SEARCH_WITH_TYPE = "search?defaultSearchType={defaultSearchType}"
     const val ROUTE_MOVIE_DETAIL = "movie_detail/{movieUrl}"
     const val ROUTE_IMAGE_VIEWER = "image_viewer/{images}?startIndex={startIndex}"
     const val ROUTE_LINK_MOVIES = "link_movies/{linkUrl}?title={title}&type={type}&avatar={avatar}"
@@ -35,6 +36,8 @@ object NavigationKeys {
      * @param type 链接类型："actress" 或 "genre"
      * @param avatar 演员头像 URL（仅 actress 类型使用）
      */
+    fun searchWithType(searchType: String): String = "search?defaultSearchType=$searchType"
+
     fun linkMovies(
         linkUrl: String,
         title: String = "",

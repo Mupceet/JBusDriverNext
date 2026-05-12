@@ -55,6 +55,7 @@ import me.jbusdriver.modern.ui.components.MovieList
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    defaultSearchType: String = "",
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
     onBack: () -> Unit = {},
@@ -79,6 +80,17 @@ fun SearchScreen(
     LaunchedEffect(uiState.query) {
         if (uiState.query != searchInput) {
             searchInput = uiState.query
+        }
+    }
+
+    LaunchedEffect(defaultSearchType) {
+        if (defaultSearchType.isNotBlank()) {
+            try {
+                val type = SearchType.valueOf(defaultSearchType)
+                viewModel.setSearchType(type)
+            } catch (_: IllegalArgumentException) {
+                // Ignore invalid search type
+            }
         }
     }
 

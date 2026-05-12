@@ -91,7 +91,13 @@ fun JBusNavigation(
             )
         }
         composable(
-            route = NavigationKeys.ROUTE_SEARCH,
+            route = NavigationKeys.ROUTE_SEARCH_WITH_TYPE,
+            arguments = listOf(
+                navArgument("defaultSearchType") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            ),
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Up,
@@ -112,8 +118,10 @@ fun JBusNavigation(
                     tween(ANIM_DURATION_SEARCH)
                 ) + fadeOut(tween(ANIM_DURATION_SEARCH))
             }
-        ) {
+        ) { backStackEntry ->
+            val defaultSearchType = backStackEntry.arguments?.getString("defaultSearchType") ?: ""
             SearchScreen(
+                defaultSearchType = defaultSearchType,
                 onMovieClick = { movie ->
                     navController.navigate(NavigationKeys.movieDetailUrl(movie.link))
                 },
