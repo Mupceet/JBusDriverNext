@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.movielist
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,7 +30,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -41,9 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.ui.components.CategorySearchBar
+import androidx.compose.runtime.rememberCoroutineScope
 
 private data class GenreSourceTab(
     val title: String,
@@ -62,45 +64,34 @@ fun GenreCategoryScreen(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedSourceIndex by rememberSaveable { mutableIntStateOf(0) }
-    var expandedGroups by rememberSaveable { mutableStateOf(setOf(0)) }
-
-    val viewModelKey = "genre_source_$selectedSourceIndex"
-    val viewModel: GenreListViewModel = hiltViewModel(key = viewModelKey)
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    LaunchedEffect(selectedSourceIndex) {
-        viewModel.setDataSourceType(GenreSourceTabs[selectedSourceIndex].dataSourceType)
-        expandedGroups = setOf(0)
-    }
-
-    val genreGroups = uiState.genreCategories
+    val pagerState = rememberPagerState(initialPage = 0) { GenreSourceTabs.size }
+    val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
         CategorySearchBar(onClick = onSearchClick)
 
         ScrollableTabRow(
-            selectedTabIndex = selectedSourceIndex,
+            selectedTabIndex = pagerState.currentPage,
             edgePadding = 8.dp,
             indicator = { tabPositions ->
                 SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(tabPositions[selectedSourceIndex])
+                    Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage])
                 )
             },
             divider = {}
         ) {
             GenreSourceTabs.forEachIndexed { index, tab ->
                 Tab(
-                    selected = selectedSourceIndex == index,
-                    onClick = { selectedSourceIndex = index },
+                    selected = pagerState.currentPage == index,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                     text = {
                         Text(
                             tab.title,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 16.sp,
-                            fontWeight = if (selectedSourceIndex == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedSourceIndex == index)
+                            fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
+                            color = if (pagerState.currentPage == index)
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.onSurface
@@ -110,45 +101,79 @@ fun GenreCategoryScreen(
             }
         }
 
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = { viewModel.refresh() },
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxSize()
-        ) {
-            when {
-                uiState.isLoading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+        ) { page ->
+            val active = pagerState.settledPage == page
+            GenreGroupList(
+                dataSourceType = GenreSourceTabs[page].dataSourceType,
+                active = active,
+                onGenreClick = onGenreClick,
+                viewModel = hiltViewModel(key = "genre_tab_$page")
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun GenreGroupList(
+    dataSourceType: DataSourceType,
+    active: Boolean,
+    onGenreClick: (GenreUiModel) -> Unit,
+    viewModel: GenreListViewModel
+) {
+    var expandedGroups by rememberSaveable { mutableStateOf(setOf(0)) }
+
+    LaunchedEffect(dataSourceType, active) {
+        if (active) {
+            viewModel.setDataSourceType(dataSourceType)
+            expandedGroups = setOf(0)
+        }
+    }
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val genreGroups = uiState.genreCategories
+
+    PullToRefreshBox(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = { viewModel.refresh() },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when {
+            uiState.isLoading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-                uiState.error != null && genreGroups.isEmpty() -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
-                    }
+            }
+            uiState.error != null && genreGroups.isEmpty() -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(uiState.error ?: "載入失敗", color = MaterialTheme.colorScheme.error)
                 }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(genreGroups, key = { it.title }) { group ->
-                            val index = genreGroups.indexOf(group)
-                            val isExpanded = index in expandedGroups
-                            GenreGroupCard(
-                                title = group.title,
-                                chipCount = group.genres.size,
-                                isExpanded = isExpanded,
-                                onToggle = {
-                                    expandedGroups = if (isExpanded)
-                                        expandedGroups - index
-                                    else
-                                        expandedGroups + index
-                                },
-                                genres = if (isExpanded) group.genres else emptyList(),
-                                onGenreClick = onGenreClick
-                            )
-                        }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(genreGroups, key = { it.title }) { group ->
+                        val index = genreGroups.indexOf(group)
+                        val isExpanded = index in expandedGroups
+                        GenreGroupCard(
+                            title = group.title,
+                            chipCount = group.genres.size,
+                            isExpanded = isExpanded,
+                            onToggle = {
+                                expandedGroups = if (isExpanded)
+                                    expandedGroups - index
+                                else
+                                    expandedGroups + index
+                            },
+                            genres = if (isExpanded) group.genres else emptyList(),
+                            onGenreClick = onGenreClick
+                        )
                     }
                 }
             }
