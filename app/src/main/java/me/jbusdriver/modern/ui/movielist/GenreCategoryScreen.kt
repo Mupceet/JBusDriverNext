@@ -78,9 +78,9 @@ fun GenreCategoryScreen(
         ScrollableTabRow(
             selectedTabIndex = selectedSourceIndex,
             edgePadding = 8.dp,
-            indicator = {
+            indicator = { tabPositions ->
                 SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(selectedSourceIndex, matchContentSize = false)
+                    Modifier.tabIndicatorOffset(tabPositions[selectedSourceIndex])
                 )
             },
             divider = {}
@@ -116,9 +116,9 @@ fun GenreCategoryScreen(
                 selectedTabIndex = clampedIndex,
                 edgePadding = 8.dp,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                indicator = {
+                indicator = { tabPositions ->
                     SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(clampedIndex, matchContentSize = false)
+                        Modifier.tabIndicatorOffset(tabPositions[clampedIndex])
                     )
                 },
                 divider = {}

@@ -53,9 +53,9 @@ fun MovieCategoryScreen(
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 8.dp,
-            indicator = {
+            indicator = { tabPositions ->
                 SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(pagerState.currentPage, matchContentSize = false)
+                    Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage])
                 )
             },
             divider = {}

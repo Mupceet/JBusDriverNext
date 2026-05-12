@@ -85,8 +85,8 @@ fun JBusNavigation(
                         NavigationKeys.linkMovies(genre.link, genre.name, type = "genre")
                     )
                 },
-                onSearchClick = {
-                    navController.navigate(NavigationKeys.ROUTE_SEARCH)
+                onSearchClick = { searchType ->
+                    navController.navigate(NavigationKeys.searchWithType(searchType))
                 }
             )
         }
