@@ -1,16 +1,3 @@
-/**
- * 职责：主界面 — 底部导航栏 + 4 个分类页面
- *
- * 使用场景：作为 Navigation 起始页，包含电影/演员/类别/收藏四个底部导航项
- *
- * 导航结构：
- * - 电影: MovieCategoryScreen
- * - 演员: ActressCategoryScreen
- * - 类别: GenreCategoryScreen
- * - 收藏: CollectCategoryScreen
- *
- * 使用 SaveableStateProvider 保存各页面的滚动位置和状态
- */
 package me.jbusdriver.modern.ui
 
 import androidx.compose.foundation.layout.Column
@@ -42,7 +29,7 @@ enum class BottomNavCategory {
 }
 
 private data class BottomNavItem(
-    val category: BottomNavCategory,
+    val category: BottomNavCategory?,
     val label: String,
     val iconRes: Int,
     val defaultSearchType: SearchType
@@ -51,6 +38,7 @@ private data class BottomNavItem(
 private val BottomNavItems = listOf(
     BottomNavItem(BottomNavCategory.MOVIE, "电影", R.drawable.movie_24px, SearchType.CENSORED),
     BottomNavItem(BottomNavCategory.ACTRESS, "演员", R.drawable.person_24px, SearchType.ACTRESS),
+    BottomNavItem(null, "搜索", R.drawable.search_24px, SearchType.CENSORED),
     BottomNavItem(BottomNavCategory.GENRE, "类别", R.drawable.category_24px, SearchType.CENSORED),
     BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px, SearchType.CENSORED)
 )
@@ -71,8 +59,17 @@ fun MainScreen(
             NavigationBar {
                 BottomNavItems.forEach { item ->
                     NavigationBarItem(
-                        selected = selectedCategory == item.category,
-                        onClick = { selectedCategory = item.category },
+                        selected = item.category != null && selectedCategory == item.category,
+                        onClick = {
+                            if (item.category != null) {
+                                selectedCategory = item.category
+                            } else {
+                                val currentSearchType = BottomNavItems
+                                    .find { it.category == selectedCategory }
+                                    ?.defaultSearchType ?: SearchType.CENSORED
+                                onSearchClick(currentSearchType.name)
+                            }
+                        },
                         icon = {
                             Icon(
                                 painter = painterResource(item.iconRes),
@@ -85,9 +82,6 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        val currentSearchType = BottomNavItems.find { it.category == selectedCategory }
-            ?.defaultSearchType ?: SearchType.CENSORED
-
         saveableStateHolder.SaveableStateProvider(selectedCategory) {
             Column(
                 modifier = Modifier
@@ -96,21 +90,17 @@ fun MainScreen(
             ) {
                 when (selectedCategory) {
                     BottomNavCategory.MOVIE -> MovieCategoryScreen(
-                        onMovieClick = onMovieClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
+                        onMovieClick = onMovieClick
                     )
                     BottomNavCategory.ACTRESS -> ActressCategoryScreen(
-                        onActressClick = onActressClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
+                        onActressClick = onActressClick
                     )
                     BottomNavCategory.GENRE -> GenreCategoryScreen(
-                        onGenreClick = onGenreClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
+                        onGenreClick = onGenreClick
                     )
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
-                        onActressClick = onActressClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
+                        onActressClick = onActressClick
                     )
                 }
             }

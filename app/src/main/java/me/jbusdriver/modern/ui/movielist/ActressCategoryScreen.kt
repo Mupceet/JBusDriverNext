@@ -22,7 +22,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.ActressUiModel
-import me.jbusdriver.modern.ui.components.CategorySearchBar
 
 private data class ActressTab(
     val title: String,
@@ -38,15 +37,12 @@ private val ActressTabs = listOf(
 @Composable
 fun ActressCategoryScreen(
     onActressClick: (ActressUiModel) -> Unit,
-    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { ActressTabs.size }
     val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
-        CategorySearchBar(onClick = onSearchClick)
-
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 8.dp,

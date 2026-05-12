@@ -1,0 +1,91 @@
+<h2>图片查看器改造方案</h2>
+<p class="subtitle">三处改动：合并图片列表、底部缩略条、右上角操作按钮</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">当前：封面和截图分开查看</div>
+    <div class="mockup-body" style="background:#111;color:#fff;padding:16px;">
+      <div style="border:1px solid #444;border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="color:#888;font-size:12px;margin-bottom:4px;">点击封面 →</div>
+        <div style="background:#222;border-radius:4px;padding:8px;font-size:13px;">onImageClick([cover], 0)</div>
+        <div style="color:#666;font-size:11px;margin-top:4px;">只能看到封面一张</div>
+      </div>
+      <div style="border:1px solid #444;border-radius:8px;padding:12px;">
+        <div style="color:#888;font-size:12px;margin-bottom:4px;">点击截图 →</div>
+        <div style="background:#222;border-radius:4px;padding:8px;font-size:13px;">onImageClick([sample1, sample2, ...], index)</div>
+        <div style="color:#666;font-size:11px;margin-top:4px;">只能看到截图，没有封面</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改造后：统一查看</div>
+    <div class="mockup-body" style="background:#111;color:#fff;padding:16px;">
+      <div style="border:1px solid #444;border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="color:#888;font-size:12px;margin-bottom:4px;">点击封面 →</div>
+        <div style="background:#222;border-radius:4px;padding:8px;font-size:13px;">onImageClick([cover, sample1, sample2, ...], 0)</div>
+      </div>
+      <div style="border:1px solid #444;border-radius:8px;padding:12px;">
+        <div style="color:#888;font-size:12px;margin-bottom:4px;">点击截图 i →</div>
+        <div style="background:#222;border-radius:4px;padding:8px;font-size:13px;">onImageClick([cover, sample1, sample2, ...], i+1)</div>
+      </div>
+      <div style="color:#4CAF50;font-size:12px;margin-top:8px;">✓ 封面始终为第一张，点击截图时 startIndex = index + 1</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>查看器界面布局</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="background:#000;color:#fff;height:480px;display:flex;flex-direction:column;">
+      <!-- Top bar -->
+      <div style="display:flex;align-items:center;padding:8px 12px;background:rgba(0,0,0,0.5);">
+        <div style="color:#fff;font-size:18px;margin-right:12px;">←</div>
+        <div style="flex:1;color:#fff;font-size:14px;">3 / 12</div>
+        <div style="display:flex;gap:4px;">
+          <div style="background:rgba(255,255,255,0.15);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;">↓</div>
+          <div style="background:rgba(255,255,255,0.15);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;">↗</div>
+        </div>
+      </div>
+      <!-- Main image area -->
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#555;font-size:13px;">
+        ← 滑动切换 · 双指缩放 →
+      </div>
+      <!-- Bottom thumbnail strip -->
+      <div style="padding:8px 12px 16px;background:rgba(0,0,0,0.7);">
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;">
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#555;flex-shrink:0;border:2px solid #fff;">当前</div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+          <div style="width:48px;height:36px;border-radius:4px;background:#333;flex-shrink:0;border:2px solid transparent;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>功能说明</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr style="border-bottom:1px solid #ddd;">
+      <td style="padding:8px;font-weight:bold;width:140px;">封面+截图合并</td>
+      <td style="padding:8px;">DetailContent 中预构建 allImages = [cover] + samples，所有图片点击统一传 allImages</td>
+    </tr>
+    <tr style="border-bottom:1px solid #ddd;">
+      <td style="padding:8px;font-weight:bold;">底部缩略条</td>
+      <td style="padding:8px;">LazyRow 显示缩略图，当前页高亮白边框，点击跳转到对应页，与 pagerState 双向同步</td>
+    </tr>
+    <tr style="border-bottom:1px solid #ddd;">
+      <td style="padding:8px;font-weight:bold;">↓ 保存按钮</td>
+      <td style="padding:8px;">保存当前图片到相册（MediaStore API + OkHttp 下载 + ContentValues 插入）</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;font-weight:bold;">↗ 分享按钮</td>
+      <td style="padding:8px;">下载图片到临时文件 → Intent.ACTION_SEND + FileProvider → createChooser</td>
+    </tr>
+  </table>
+</div>

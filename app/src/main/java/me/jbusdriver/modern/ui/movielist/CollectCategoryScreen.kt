@@ -24,7 +24,6 @@ import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.modern.ui.components.CategorySearchBar
 
 private data class CollectTab(
     val title: String,
@@ -41,15 +40,12 @@ private val CollectTabs = listOf(
 fun CollectCategoryScreen(
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit,
-    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { CollectTabs.size }
     val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
-        CategorySearchBar(onClick = onSearchClick)
-
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 8.dp,

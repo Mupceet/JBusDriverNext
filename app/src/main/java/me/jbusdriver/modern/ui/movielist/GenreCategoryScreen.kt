@@ -45,7 +45,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreUiModel
-import me.jbusdriver.modern.ui.components.CategorySearchBar
 import androidx.compose.runtime.rememberCoroutineScope
 
 private data class GenreSourceTab(
@@ -62,15 +61,12 @@ private val GenreSourceTabs = listOf(
 @Composable
 fun GenreCategoryScreen(
     onGenreClick: (GenreUiModel) -> Unit,
-    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { GenreSourceTabs.size }
     val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
-        CategorySearchBar(onClick = onSearchClick)
-
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 8.dp,

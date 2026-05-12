@@ -1,0 +1,212 @@
+<h2>GenreCategoryScreen 替代方案</h2>
+<p class="subtitle">解决：层级太多、双层Tab混乱、信息密度低、切换不流畅</p>
+
+<div class="cards">
+  <div class="card" data-choice="single-tab-all-groups" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;border-radius:12px;padding:0;overflow:hidden;max-width:360px;margin:0 auto">
+        <div style="background:#0f0f1a;padding:4px 12px;font-size:10px;color:#888">9:41</div>
+        <!-- Search bar -->
+        <div style="padding:8px 12px 4px">
+          <div style="background:#2a2a3e;border-radius:20px;padding:8px 14px;display:flex;align-items:center;gap:6px">
+            <span style="color:#888;font-size:12px">🔍</span>
+            <span style="color:#666;font-size:12px">搜索影片、演员...</span>
+          </div>
+        </div>
+        <!-- Single tab row: 有码/无码 -->
+        <div style="display:flex;gap:4px;padding:4px 12px 8px;border-bottom:1px solid #2a2a3e">
+          <span style="background:#5c6bc0;color:white;padding:4px 12px;border-radius:16px;font-size:12px">有码类别</span>
+          <span style="color:#888;padding:4px 8px;font-size:12px">无码类别</span>
+        </div>
+        <!-- Content: ALL groups at once, scrollable -->
+        <div style="padding:12px;max-height:280px;overflow-y:auto">
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;color:#5c6bc0;font-weight:600;margin-bottom:6px">题材</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">單體作品</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">企劃</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">高中</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">護士</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">OL</span>
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;color:#5c6bc0;font-weight:600;margin-bottom:6px">系列</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">絶對的</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">一本道</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">天然むすめ</span>
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;color:#5c6bc0;font-weight:600;margin-bottom:6px">制作商</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">S1</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">SOD</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">Prestige</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">Maxing</span>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom nav -->
+        <div style="padding:6px 16px 10px;border-top:1px solid #2a2a3e;background:#0f0f1a">
+          <div style="display:flex;justify-content:space-around">
+            <span style="color:#888;font-size:10px">🎬 电影</span>
+            <span style="color:#888;font-size:10px">👤 演员</span>
+            <span style="color:#5c6bc0;font-size:10px">🏷️ 类别</span>
+            <span style="color:#888;font-size:10px">⭐ 收藏</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 去掉内层Tab，所有分组一次性展示</h3>
+      <p>只保留「有码/无码」一个Tab，数据加载后按分组标题全部展示在一个可滚动列表中。信息密度最高，一目了然。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="expandable-groups" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;border-radius:12px;padding:0;overflow:hidden;max-width:360px;margin:0 auto">
+        <div style="background:#0f0f1a;padding:4px 12px;font-size:10px;color:#888">9:41</div>
+        <!-- Search bar -->
+        <div style="padding:8px 12px 4px">
+          <div style="background:#2a2a3e;border-radius:20px;padding:8px 14px;display:flex;align-items:center;gap:6px">
+            <span style="color:#888;font-size:12px">🔍</span>
+            <span style="color:#666;font-size:12px">搜索影片、演员...</span>
+          </div>
+        </div>
+        <!-- Single tab row -->
+        <div style="display:flex;gap:4px;padding:4px 12px 8px;border-bottom:1px solid #2a2a3e">
+          <span style="background:#5c6bc0;color:white;padding:4px 12px;border-radius:16px;font-size:12px">有码类别</span>
+          <span style="color:#888;padding:4px 8px;font-size:12px">无码类别</span>
+        </div>
+        <!-- Expandable groups -->
+        <div style="padding:8px 12px;max-height:280px;overflow-y:auto">
+          <div style="background:#2a2a3e;border-radius:8px;margin-bottom:6px;overflow:hidden">
+            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;color:#e0e0e0;font-weight:500">题材</span>
+              <span style="color:#5c6bc0;font-size:10px">▼ 42</span>
+            </div>
+            <div style="padding:0 14px 10px;display:flex;flex-wrap:wrap;gap:4px">
+              <span style="background:#3a3a4e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">單體作品</span>
+              <span style="background:#3a3a4e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">企劃</span>
+              <span style="background:#3a3a4e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">高中</span>
+              <span style="background:#3a3a4e;color:#ccc;padding:4px 10px;border-radius:12px;font-size:10px">護士</span>
+            </div>
+          </div>
+          <div style="background:#2a2a3e;border-radius:8px;margin-bottom:6px;overflow:hidden">
+            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;color:#e0e0e0;font-weight:500">系列</span>
+              <span style="color:#888;font-size:10px">▶ 28</span>
+            </div>
+          </div>
+          <div style="background:#2a2a3e;border-radius:8px;margin-bottom:6px;overflow:hidden">
+            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;color:#e0e0e0;font-weight:500">制作商</span>
+              <span style="color:#888;font-size:10px">▶ 35</span>
+            </div>
+          </div>
+          <div style="background:#2a2a3e;border-radius:8px;margin-bottom:6px;overflow:hidden">
+            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;color:#e0e0e0;font-weight:500">发行商</span>
+              <span style="color:#888;font-size:10px">▶ 20</span>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom nav -->
+        <div style="padding:6px 16px 10px;border-top:1px solid #2a2a3e;background:#0f0f1a">
+          <div style="display:flex;justify-content:space-around">
+            <span style="color:#888;font-size:10px">🎬 电影</span>
+            <span style="color:#888;font-size:10px">👤 演员</span>
+            <span style="color:#5c6bc0;font-size:10px">🏷️ 类别</span>
+            <span style="color:#888;font-size:10px">⭐ 收藏</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 可折叠分组卡片</h3>
+      <p>只用一个Tab（有码/无码），分组以可展开/收起的卡片呈现。默认展开第一个分组，点击其他分组标题展开。紧凑且有层次。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="horizontal-pager-groups" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e;color:#e0e0e0;border-radius:12px;padding:0;overflow:hidden;max-width:360px;margin:0 auto">
+        <div style="background:#0f0f1a;padding:4px 12px;font-size:10px;color:#888">9:41</div>
+        <!-- Search bar -->
+        <div style="padding:8px 12px 4px">
+          <div style="background:#2a2a3e;border-radius:20px;padding:8px 14px;display:flex;align-items:center;gap:6px">
+            <span style="color:#888;font-size:12px">🔍</span>
+            <span style="color:#666;font-size:12px">搜索影片、演员...</span>
+          </div>
+        </div>
+        <!-- Single tab row -->
+        <div style="display:flex;gap:4px;padding:4px 12px 8px;border-bottom:1px solid #2a2a3e">
+          <span style="background:#5c6bc0;color:white;padding:4px 12px;border-radius:16px;font-size:12px">有码类别</span>
+          <span style="color:#888;padding:4px 8px;font-size:12px">无码类别</span>
+        </div>
+        <!-- Sticky section header + scrollable list -->
+        <div style="position:relative">
+          <div style="background:#1a1a2e;padding:8px 12px;border-bottom:1px solid #2a2a3e;position:sticky;top:0;z-index:1">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;color:#5c6bc0;font-weight:600">题材</span>
+              <span style="font-size:10px;color:#888">1/5 · 向下滑动查看更多</span>
+            </div>
+          </div>
+          <div style="padding:12px;max-height:240px;overflow-y:auto">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px">
+              <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">單體作品</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">企劃</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">高中</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">護士</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">OL</span>
+              <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">教師</span>
+            </div>
+            <div style="border-top:1px solid #2a2a3e;padding-top:8px;margin-bottom:8px">
+              <div style="font-size:12px;color:#5c6bc0;font-weight:600;margin-bottom:6px">系列</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">絶對的</span>
+                <span style="background:#2a2a3e;color:#ccc;padding:5px 12px;border-radius:12px;font-size:11px">一本道</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom nav -->
+        <div style="padding:6px 16px 10px;border-top:1px solid #2a2a3e;background:#0f0f1a">
+          <div style="display:flex;justify-content:space-around">
+            <span style="color:#888;font-size:10px">🎬 电影</span>
+            <span style="color:#888;font-size:10px">👤 演员</span>
+            <span style="color:#5c6bc0;font-size:10px">🏷️ 类别</span>
+            <span style="color:#888;font-size:10px">⭐ 收藏</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 粘性分组头 + 连续滚动列表</h3>
+      <p>单Tab + 所有分组连续排列在一个滚动列表中，分组标题作为粘性头部（sticky header）。滚动时当前分组标题吸顶，自然流畅。</p>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:16px">
+  <div class="pros">
+    <h4>推荐：方案 A</h4>
+    <ul>
+      <li>最简洁，去掉内层Tab后只有一层导航</li>
+      <li>信息密度最高，所有分组一目了然</li>
+      <li>实现最简单 — 就是原来的 GenreListScreen 逻辑</li>
+      <li>和旧版体验一致，用户无学习成本</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>取舍</h4>
+    <ul>
+      <li>A: 分组多时页面较长，但可以滚动</li>
+      <li>B: 更紧凑但需要点击展开，交互步骤多</li>
+      <li>C: 粘性头部效果好但 LazyColumn sticky header 实现稍复杂</li>
+    </ul>
+  </div>
+</div>

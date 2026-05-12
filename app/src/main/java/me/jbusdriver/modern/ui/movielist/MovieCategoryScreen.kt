@@ -22,7 +22,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.modern.ui.components.CategorySearchBar
 
 private data class MovieTab(
     val title: String,
@@ -32,23 +31,18 @@ private data class MovieTab(
 private val MovieTabs = listOf(
     MovieTab("有码", DataSourceType.CENSORED),
     MovieTab("无码", DataSourceType.UNCENSORED),
-    MovieTab("高清", DataSourceType.GENRE_HD),
-    MovieTab("字幕", DataSourceType.Sub)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieCategoryScreen(
     onMovieClick: (MovieUiModel) -> Unit,
-    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { MovieTabs.size }
     val scope = rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
-        CategorySearchBar(onClick = onSearchClick)
-
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 8.dp,
