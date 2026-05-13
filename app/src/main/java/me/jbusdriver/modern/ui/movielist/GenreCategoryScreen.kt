@@ -57,8 +57,8 @@ private data class GenreSourceTab(
 )
 
 private val GenreSourceTabs = listOf(
-    GenreSourceTab("有码", DataSourceType.GENRE),
-    GenreSourceTab("无码", DataSourceType.UNCENSORED_GENRE)
+    GenreSourceTab("有碼", DataSourceType.GENRE),
+    GenreSourceTab("無碼", DataSourceType.UNCENSORED_GENRE)
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

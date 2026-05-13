@@ -37,9 +37,9 @@ private data class BottomNavItem(
 )
 
 private val BottomNavItems = listOf(
-    BottomNavItem(BottomNavCategory.MOVIE, "电影", R.drawable.movie_24px, SearchType.CENSORED),
-    BottomNavItem(BottomNavCategory.ACTRESS, "演员", R.drawable.person_24px, SearchType.ACTRESS),
-    BottomNavItem(BottomNavCategory.GENRE, "类别", R.drawable.category_24px, SearchType.CENSORED),
+    BottomNavItem(BottomNavCategory.MOVIE, "電影", R.drawable.movie_24px, SearchType.CENSORED),
+    BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px, SearchType.ACTRESS),
+    BottomNavItem(BottomNavCategory.GENRE, "類別", R.drawable.category_24px, SearchType.CENSORED),
     BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px, SearchType.CENSORED)
 )
 

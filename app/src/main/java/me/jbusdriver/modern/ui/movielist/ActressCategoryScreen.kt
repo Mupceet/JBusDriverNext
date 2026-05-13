@@ -37,8 +37,8 @@ private data class ActressTab(
 )
 
 private val ActressTabs = listOf(
-    ActressTab("有码", DataSourceType.ACTRESSES),
-    ActressTab("无码", DataSourceType.UNCENSORED_ACTRESSES)
+    ActressTab("有碼", DataSourceType.ACTRESSES),
+    ActressTab("無碼", DataSourceType.UNCENSORED_ACTRESSES)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -50,7 +50,7 @@ fun ScrollToTopButton(
         ) {
             Icon(
                 painter = painterResource(R.drawable.keyboard_double_arrow_up_24px),
-                contentDescription = "回到顶部"
+                contentDescription = "回到頂部"
             )
         }
     }

@@ -37,8 +37,8 @@ private data class MovieTab(
 )
 
 private val MovieTabs = listOf(
-    MovieTab("有码", DataSourceType.CENSORED),
-    MovieTab("无码", DataSourceType.UNCENSORED),
+    MovieTab("有碼", DataSourceType.CENSORED),
+    MovieTab("無碼", DataSourceType.UNCENSORED),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

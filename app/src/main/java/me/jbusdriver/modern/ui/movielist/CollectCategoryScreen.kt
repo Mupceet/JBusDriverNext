@@ -39,8 +39,8 @@ private data class CollectTab(
 )
 
 private val CollectTabs = listOf(
-    CollectTab("电影", MovieDBType),
-    CollectTab("女优", ActressDBType)
+    CollectTab("電影", MovieDBType),
+    CollectTab("演員", ActressDBType)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
