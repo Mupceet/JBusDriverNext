@@ -26,6 +26,10 @@ fun MovieListScreen(
     dataSourceType: DataSourceType = DataSourceType.CENSORED,
     active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
+    compact: Boolean = false,
+    isCollected: ((MovieUiModel) -> Boolean)? = null,
+    onToggleCollect: ((MovieUiModel) -> Unit)? = null,
+    isGrid: Boolean = false,
     modifier: Modifier = Modifier,
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
@@ -73,6 +77,10 @@ fun MovieListScreen(
                     isLoadingMore = uiState.isLoadingMore,
                     onLoadMore = { viewModel.loadMore() },
                     onMovieClick = onMovieClick,
+                    isGrid = isGrid,
+                    compact = compact,
+                    isCollected = isCollected,
+                    onToggleCollect = onToggleCollect,
                     header = filterBar
                 )
             }
