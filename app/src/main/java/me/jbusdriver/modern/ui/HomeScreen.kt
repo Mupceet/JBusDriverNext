@@ -209,11 +209,27 @@ fun HomeScreen(
                         CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_ACTRESSES
                         else -> DataSourceType.ACTRESSES
                     }
+                    val actressChipsHeader: @Composable () -> Unit = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CensorFilter.entries.forEach { filter ->
+                                FilterChip(
+                                    selected = censorFilter == filter,
+                                    onClick = { censorFilter = filter },
+                                    label = { Text(filter.label, fontSize = 12.sp) }
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
+                        }
+                    }
                     ActressListScreen(
                         dataSourceType = actressType,
                         active = true,
                         onActressClick = onActressClick,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        header = actressChipsHeader
                     )
                 }
             }

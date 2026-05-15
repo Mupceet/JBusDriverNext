@@ -50,7 +50,8 @@ fun ActressGrid(
     onLoadMore: () -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
     onActressLongClick: ((ActressUiModel) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null
 ) {
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
@@ -75,6 +76,9 @@ fun ActressGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (header != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) { header() }
+            }
             itemsIndexed(actresses, key = { _, actress -> actress.link }) { _, actress ->
                 ActressGridItem(
                     actress = actress,

@@ -31,6 +31,7 @@ fun ActressListScreen(
     active: Boolean = true,
     onActressClick: (ActressUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
     viewModel: ActressListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -62,7 +63,8 @@ fun ActressListScreen(
                     hasMore = uiState.hasMore,
                     isLoadingMore = uiState.isLoadingMore,
                     onLoadMore = { viewModel.loadMore() },
-                    onActressClick = onActressClick
+                    onActressClick = onActressClick,
+                    header = header
                 )
             }
         }
