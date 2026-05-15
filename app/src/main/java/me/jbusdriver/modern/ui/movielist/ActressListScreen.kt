@@ -41,7 +41,7 @@ fun ActressListScreen(
     }
 
     PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing,
+        isRefreshing = uiState.isRefreshing && uiState.actresses.isNotEmpty(),
         onRefresh = { viewModel.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
