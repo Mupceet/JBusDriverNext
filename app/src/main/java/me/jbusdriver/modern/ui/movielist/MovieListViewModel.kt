@@ -76,6 +76,9 @@ class MovieListViewModel @Inject constructor(
     /** 当前的数据源类型（有码/无码/欧美等） */
     private var dataSourceType: DataSourceType = DataSourceType.CENSORED
 
+    /** 当前 genre 过滤的 URL，非 null 时优先使用 URL 加载 */
+    private var genreUrl: String? = null
+
     /**
      * 设置数据源类型并重新加载列表。
      *
@@ -87,6 +90,22 @@ class MovieListViewModel @Inject constructor(
     fun setDataSourceType(type: DataSourceType) {
         if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) return
         dataSourceType = type
+        currentPage = 0
+        _uiState.value = MovieListUiState()
+        loadFirstPage()
+    }
+
+    /**
+     * 设置 genre URL 并重新加载列表。
+     *
+     * 如果 URL 未变化且列表中已有数据，则跳过重复加载。
+     * 重置页码和 UI 状态后自动调用 [loadFirstPage]。
+     *
+     * @param url genre 过滤页面的完整 URL，传 null 则回退到按数据源类型加载
+     */
+    fun setGenreUrl(url: String?) {
+        if (genreUrl == url && _uiState.value.movies.isNotEmpty()) return
+        genreUrl = url
         currentPage = 0
         _uiState.value = MovieListUiState()
         loadFirstPage()
@@ -184,7 +203,11 @@ class MovieListViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update(loadingFlag)
             try {
-                val result = repository.loadPage(dataSourceType, page, showAll = _uiState.value.showAll, forceRefresh = forceRefresh)
+                val result = if (genreUrl != null) {
+                    repository.loadPageByUrl(genreUrl!!, page, showAll = _uiState.value.showAll, forceRefresh = forceRefresh)
+                } else {
+                    repository.loadPage(dataSourceType, page, showAll = _uiState.value.showAll, forceRefresh = forceRefresh)
+                }
                 _uiState.update { onSuccess(result, it) }
             } catch (e: Exception) {
                 onFailure()
