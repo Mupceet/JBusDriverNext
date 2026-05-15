@@ -80,7 +80,7 @@ class ActressListViewModel @Inject constructor(
         if (dataSourceType == type && _uiState.value.actresses.isNotEmpty()) return
         dataSourceType = type
         currentPage = 0
-        _uiState.value = ActressListUiState()
+        _uiState.update { it.copy(isRefreshing = true, hasMore = true, error = null) }
         loadFirstPage()
     }
 

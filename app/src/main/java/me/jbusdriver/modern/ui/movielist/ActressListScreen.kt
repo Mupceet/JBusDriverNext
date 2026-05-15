@@ -46,7 +46,7 @@ fun ActressListScreen(
         modifier = modifier.fillMaxSize()
     ) {
         when {
-            uiState.isLoading -> {
+            uiState.isLoading && uiState.actresses.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }

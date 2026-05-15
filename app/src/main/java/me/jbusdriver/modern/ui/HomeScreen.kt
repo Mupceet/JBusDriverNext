@@ -122,7 +122,50 @@ fun HomeScreen(
             }
         }
 
-        // Content (chips are passed as list header so they scroll with content)
+        // Filter chips (shared across segments)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CensorFilter.entries.forEach { filter ->
+                FilterChip(
+                    selected = censorFilter == filter,
+                    onClick = { censorFilter = filter },
+                    label = { Text(filter.label, fontSize = 12.sp) }
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+            if (segment == HomeSegment.MOVIE) {
+                FilterChip(
+                    selected = selectedGenres.isNotEmpty(),
+                    onClick = { showCategorySheet = true },
+                    label = {
+                        Text(
+                            if (selectedGenres.isEmpty()) "類別▾"
+                            else "類別(${selectedGenres.size})",
+                            fontSize = 12.sp
+                        )
+                    },
+                    trailingIcon = if (selectedGenres.isEmpty()) {
+                        { Icon(painterResource(R.drawable.category_24px), null, modifier = Modifier.size(16.dp)) }
+                    } else null
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(
+                    onClick = { isGrid = !isGrid },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(if (isGrid) R.drawable.view_list_24px else R.drawable.grid_view_24px),
+                        contentDescription = if (isGrid) "列表" else "網格",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Content
         Box(modifier = Modifier.fillMaxSize()) {
             when (segment) {
                 HomeSegment.MOVIE -> {
@@ -134,48 +177,6 @@ fun HomeScreen(
                             }
                     } else null
 
-                    val filterChipsHeader: @Composable () -> Unit = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CensorFilter.entries.forEach { filter ->
-                                FilterChip(
-                                    selected = censorFilter == filter,
-                                    onClick = { censorFilter = filter },
-                                    label = { Text(filter.label, fontSize = 12.sp) }
-                                )
-                                Spacer(Modifier.width(6.dp))
-                            }
-                            FilterChip(
-                                selected = selectedGenres.isNotEmpty(),
-                                onClick = { showCategorySheet = true },
-                                label = {
-                                    Text(
-                                        if (selectedGenres.isEmpty()) "類別▾"
-                                        else "類別(${selectedGenres.size})",
-                                        fontSize = 12.sp
-                                    )
-                                },
-                                trailingIcon = if (selectedGenres.isEmpty()) {
-                                    { Icon(painterResource(R.drawable.category_24px), null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                            Spacer(Modifier.weight(1f))
-                            IconButton(
-                                onClick = { isGrid = !isGrid },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(if (isGrid) R.drawable.view_list_24px else R.drawable.grid_view_24px),
-                                    contentDescription = if (isGrid) "列表" else "網格",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
                     if (genreUrl != null) {
                         val genreVm: MovieListViewModel = hiltViewModel(key = "genre_$genreUrl")
                         LaunchedEffect(genreUrl) { genreVm.setGenreUrl(genreUrl) }
@@ -185,8 +186,7 @@ fun HomeScreen(
                             compact = true,
                             isGrid = isGrid,
                             modifier = Modifier.fillMaxSize(),
-                            viewModel = genreVm,
-                            header = filterChipsHeader
+                            viewModel = genreVm
                         )
                     } else {
                         val dataSourceType = when (censorFilter) {
@@ -199,8 +199,7 @@ fun HomeScreen(
                             onMovieClick = onMovieClick,
                             compact = true,
                             isGrid = isGrid,
-                            modifier = Modifier.fillMaxSize(),
-                            header = filterChipsHeader
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
@@ -209,27 +208,11 @@ fun HomeScreen(
                         CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_ACTRESSES
                         else -> DataSourceType.ACTRESSES
                     }
-                    val actressChipsHeader: @Composable () -> Unit = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CensorFilter.entries.forEach { filter ->
-                                FilterChip(
-                                    selected = censorFilter == filter,
-                                    onClick = { censorFilter = filter },
-                                    label = { Text(filter.label, fontSize = 12.sp) }
-                                )
-                                Spacer(Modifier.width(6.dp))
-                            }
-                        }
-                    }
                     ActressListScreen(
                         dataSourceType = actressType,
                         active = true,
                         onActressClick = onActressClick,
-                        modifier = Modifier.fillMaxSize(),
-                        header = actressChipsHeader
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }

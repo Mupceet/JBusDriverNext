@@ -91,7 +91,7 @@ class MovieListViewModel @Inject constructor(
         if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) return
         dataSourceType = type
         currentPage = 0
-        _uiState.value = MovieListUiState()
+        _uiState.update { it.copy(isFilterSwitching = true, hasMore = true, error = null) }
         loadFirstPage()
     }
 
