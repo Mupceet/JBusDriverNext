@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -81,44 +82,61 @@ fun CategoryBottomSheet(
 
         LazyColumn(
             modifier = Modifier.weight(1f, fill = false).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(categories, key = { it.title }) { group ->
-                Text(
-                    group.title,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 4.dp)
+                var expanded by remember { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    group.genres.forEach { genre ->
-                        val isSelected = genre in selectedGenres
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                val newSelection = if (isMultiSelect) {
-                                    if (isSelected) selectedGenres - genre else selectedGenres + genre
-                                } else {
-                                    if (isSelected) emptySet() else setOf(genre)
+                    Text(
+                        group.title,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        if (expanded) "▲" else "▼",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (expanded) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                    ) {
+                        group.genres.forEach { genre ->
+                            val isSelected = genre in selectedGenres
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    val newSelection = if (isMultiSelect) {
+                                        if (isSelected) selectedGenres - genre else selectedGenres + genre
+                                    } else {
+                                        if (isSelected) emptySet() else setOf(genre)
+                                    }
+                                    onSelectionChange(newSelection)
+                                },
+                                label = {
+                                    Text(genre.name, fontSize = 12.sp)
+                                    if (isSelected) {
+                                        Spacer(Modifier.width(2.dp))
+                                        Icon(
+                                            painter = painterResource(R.drawable.check_24px),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
                                 }
-                                onSelectionChange(newSelection)
-                            },
-                            label = {
-                                Text(genre.name, fontSize = 12.sp)
-                                if (isSelected) {
-                                    Spacer(Modifier.width(2.dp))
-                                    Icon(
-                                        painter = painterResource(R.drawable.check_24px),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
