@@ -8,7 +8,7 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.ActressDetail
-import me.jbusdriver.modern.ui.movielist.GenreCategory
+import me.jbusdriver.modern.ui.GenreCategory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

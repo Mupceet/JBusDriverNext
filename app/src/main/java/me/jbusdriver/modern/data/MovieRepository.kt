@@ -15,7 +15,7 @@ import me.jbusdriver.modern.data.parser.parseGenreCategories
 import me.jbusdriver.modern.data.parser.parsePageInfo
 import me.jbusdriver.modern.data.parser.parseMovieFilterInfo
 import me.jbusdriver.modern.ui.GenreUiModel
-import me.jbusdriver.modern.ui.movielist.GenreCategory
+import me.jbusdriver.modern.ui.GenreCategory
 import javax.inject.Inject
 import javax.inject.Singleton
 

@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.ui.GenreCategory
 import me.jbusdriver.modern.ui.GenreUiModel
 
 private data class GenreSourceTab(
