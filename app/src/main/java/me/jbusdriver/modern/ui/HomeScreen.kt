@@ -24,7 +24,7 @@ import me.jbusdriver.modern.ui.movielist.MovieListViewModel
 private enum class HomeSegment { MOVIE, ACTRESS }
 
 private enum class CensorFilter(val label: String) {
-    ALL("全部"), CENSORED("有碼"), UNCENSORED("無碼")
+    CENSORED("有碼"), UNCENSORED("無碼")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,7 +36,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     var segment by remember { mutableStateOf(HomeSegment.MOVIE) }
-    var censorFilter by remember { mutableStateOf(CensorFilter.ALL) }
+    var censorFilter by remember { mutableStateOf(CensorFilter.CENSORED) }
     var showCategorySheet by remember { mutableStateOf(false) }
     var selectedGenres by remember { mutableStateOf<Set<GenreUiModel>>(emptySet()) }
     var isGrid by remember { mutableStateOf(false) }
@@ -121,37 +121,7 @@ fun HomeScreen(
             }
         }
 
-        // Filter chips
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            CensorFilter.entries.forEach { filter ->
-                FilterChip(
-                    selected = censorFilter == filter,
-                    onClick = { censorFilter = filter },
-                    label = { Text(filter.label, fontSize = 12.sp) }
-                )
-            }
-            if (segment == HomeSegment.MOVIE) {
-                FilterChip(
-                    selected = selectedGenres.isNotEmpty(),
-                    onClick = { showCategorySheet = true },
-                    label = {
-                        Text(
-                            if (selectedGenres.isEmpty()) "類別▾"
-                            else "類別(${selectedGenres.size})",
-                            fontSize = 12.sp
-                        )
-                    },
-                    trailingIcon = if (selectedGenres.isEmpty()) {
-                        { Icon(painterResource(R.drawable.category_24px), null, modifier = Modifier.size(16.dp)) }
-                    } else null
-                )
-            }
-        }
-
-        // Content
+        // Content (chips are passed as list header so they scroll with content)
         Box(modifier = Modifier.fillMaxSize()) {
             when (segment) {
                 HomeSegment.MOVIE -> {
@@ -163,6 +133,48 @@ fun HomeScreen(
                             }
                     } else null
 
+                    val filterChipsHeader: @Composable () -> Unit = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CensorFilter.entries.forEach { filter ->
+                                FilterChip(
+                                    selected = censorFilter == filter,
+                                    onClick = { censorFilter = filter },
+                                    label = { Text(filter.label, fontSize = 12.sp) }
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            FilterChip(
+                                selected = selectedGenres.isNotEmpty(),
+                                onClick = { showCategorySheet = true },
+                                label = {
+                                    Text(
+                                        if (selectedGenres.isEmpty()) "類別▾"
+                                        else "類別(${selectedGenres.size})",
+                                        fontSize = 12.sp
+                                    )
+                                },
+                                trailingIcon = if (selectedGenres.isEmpty()) {
+                                    { Icon(painterResource(R.drawable.category_24px), null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                            Spacer(Modifier.weight(1f))
+                            IconButton(
+                                onClick = { isGrid = !isGrid },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(if (isGrid) R.drawable.view_list_24px else R.drawable.grid_view_24px),
+                                    contentDescription = if (isGrid) "列表" else "網格",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     if (genreUrl != null) {
                         val genreVm: MovieListViewModel = hiltViewModel(key = "genre_$genreUrl")
                         LaunchedEffect(genreUrl) { genreVm.setGenreUrl(genreUrl) }
@@ -172,7 +184,8 @@ fun HomeScreen(
                             compact = true,
                             isGrid = isGrid,
                             modifier = Modifier.fillMaxSize(),
-                            viewModel = genreVm
+                            viewModel = genreVm,
+                            header = filterChipsHeader
                         )
                     } else {
                         val dataSourceType = when (censorFilter) {
@@ -185,35 +198,9 @@ fun HomeScreen(
                             onMovieClick = onMovieClick,
                             compact = true,
                             isGrid = isGrid,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            header = filterChipsHeader
                         )
-                    }
-
-                    // View toggle
-                    Row(
-                        modifier = Modifier.align(Alignment.TopEnd).padding(end = 12.dp, top = 4.dp)
-                    ) {
-                        SmallFloatingActionButton(
-                            onClick = { isGrid = false },
-                            containerColor = if (!isGrid) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (!isGrid) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(painterResource(R.drawable.view_list_24px), "列表", modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(Modifier.width(4.dp))
-                        SmallFloatingActionButton(
-                            onClick = { isGrid = true },
-                            containerColor = if (isGrid) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (isGrid) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(painterResource(R.drawable.grid_view_24px), "網格", modifier = Modifier.size(16.dp))
-                        }
                     }
                 }
                 HomeSegment.ACTRESS -> {

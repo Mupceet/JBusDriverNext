@@ -31,6 +31,7 @@ fun MovieListScreen(
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
     isGrid: Boolean = false,
     modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +72,14 @@ fun MovieListScreen(
                         )
                     }
                 }
+                val combinedHeader: (@Composable () -> Unit)? = when {
+                    header != null && filterBar != null -> {
+                        { header(); filterBar() }
+                    }
+                    header != null -> header
+                    filterBar != null -> filterBar
+                    else -> null
+                }
                 MovieList(
                     movies = uiState.movies,
                     hasMore = uiState.hasMore,
@@ -81,7 +90,7 @@ fun MovieListScreen(
                     compact = compact,
                     isCollected = isCollected,
                     onToggleCollect = onToggleCollect,
-                    header = filterBar
+                    header = combinedHeader
                 )
             }
         }
