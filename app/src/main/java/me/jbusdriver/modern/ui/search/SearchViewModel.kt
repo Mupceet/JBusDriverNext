@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.SearchType
@@ -62,7 +63,8 @@ data class SearchUiState(
  */
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: SearchRepository
+    private val repository: SearchRepository,
+    private val historyStore: SearchHistoryStore
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -70,6 +72,16 @@ class SearchViewModel @Inject constructor(
 
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+
+    /** 搜索历史记录 */
+    private val _searchHistory = MutableStateFlow(historyStore.getHistory())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    /** 清除搜索历史 */
+    fun clearHistory() {
+        historyStore.clearHistory()
+        _searchHistory.value = emptyList()
+    }
 
     /** 当前是否为女优搜索模式 */
     private val isActressSearch get() = _uiState.value.searchType == SearchType.ACTRESS
@@ -86,6 +98,8 @@ class SearchViewModel @Inject constructor(
     fun search(query: String, type: SearchType? = null) {
         if (query.isBlank()) return
         val searchType = type ?: _uiState.value.searchType
+        historyStore.addQuery(query)
+        _searchHistory.value = historyStore.getHistory()
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
