@@ -183,10 +183,11 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val cacheKey = "page_${url.urlPath}_${showAll}_$page"
+        val resolvedUrl = if (url.startsWith("http")) url else NetClient.defaultFastUrl + url
+        val cacheKey = "page_${resolvedUrl.urlPath}_${showAll}_$page"
 
         return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val fullUrl = if (page == 1) url else "$url/$page"
+            val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
             val doc = NetClient.fetchDocument(fullUrl, showAll)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
             val movies = loadMovieFromDoc(doc)

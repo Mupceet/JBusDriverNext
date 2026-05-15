@@ -45,6 +45,7 @@ fun HomeScreen(
     val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(censorFilter) {
+        selectedGenres = emptySet()
         val genreType = when (censorFilter) {
             CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_GENRE
             else -> DataSourceType.GENRE
