@@ -29,25 +29,30 @@ fun CategoryBottomSheet(
     modifier: Modifier = Modifier
 ) {
     var isMultiSelect by remember { mutableStateOf(false) }
+    val expandedTitles = remember { mutableStateSetOf<String>() }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                modifier = Modifier.width(32.dp).height(4.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(2.dp)
-            ) {}
-        }
-
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("選擇類別", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("選擇類別", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(12.dp))
+                Text("多選", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(4.dp))
+                Switch(
+                    checked = isMultiSelect,
+                    onCheckedChange = {
+                        isMultiSelect = it
+                        if (!it && selectedGenres.size > 1) {
+                            onSelectionChange(selectedGenres.lastOrNull()?.let { setOf(it) } ?: emptySet())
+                        }
+                    },
+                    modifier = Modifier.height(24.dp)
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (selectedGenres.isNotEmpty()) {
                     Text(
@@ -55,7 +60,29 @@ fun CategoryBottomSheet(
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp
                     )
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(8.dp))
+                }
+                IconButton(
+                    onClick = { expandedTitles.addAll(categories.map { it.title }) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.keyboard_double_arrow_up_24px),
+                        contentDescription = "全部展開",
+                        modifier = Modifier.graphicsLayer { rotationZ = 180f }.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
+                    onClick = { expandedTitles.clear() },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.keyboard_double_arrow_up_24px),
+                        contentDescription = "全部摺疊",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 TextButton(onClick = { onSelectionChange(emptySet()) }) {
                     Text("重置", fontSize = 12.sp)
@@ -63,34 +90,19 @@ fun CategoryBottomSheet(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("多選", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(8.dp))
-            Switch(
-                checked = isMultiSelect,
-                onCheckedChange = {
-                    isMultiSelect = it
-                    if (!it && selectedGenres.size > 1) {
-                        onSelectionChange(selectedGenres.lastOrNull()?.let { setOf(it) } ?: emptySet())
-                    }
-                },
-                modifier = Modifier.height(24.dp)
-            )
-        }
-
         LazyColumn(
             modifier = Modifier.weight(1f, fill = false).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(categories, key = { it.title }) { group ->
-                var expanded by remember { mutableStateOf(false) }
+                val expanded = group.title in expandedTitles
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { expanded = !expanded }
+                        .clickable {
+                            if (expanded) expandedTitles.remove(group.title)
+                            else expandedTitles.add(group.title)
+                        }
                         .padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
