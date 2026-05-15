@@ -43,7 +43,7 @@ fun MovieListScreen(
     }
 
     PullToRefreshBox(
-        isRefreshing = uiState.isRefreshing || uiState.isFilterSwitching,
+        isRefreshing = (uiState.isRefreshing || uiState.isFilterSwitching) && uiState.movies.isNotEmpty(),
         onRefresh = { viewModel.refresh() },
         modifier = modifier.fillMaxSize()
     ) {
