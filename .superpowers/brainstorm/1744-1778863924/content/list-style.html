@@ -1,0 +1,134 @@
+<h2>影片列表样式</h2>
+<p class="subtitle">首页中影片的展示方式 — 影响信息密度和浏览效率</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>列表视图（现有样式）</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding: 12px;">
+          <div style="display:flex; gap:10px; background:var(--surface); border-radius:12px; padding:10px; margin-bottom:8px;">
+            <div class="placeholder" style="width:72px; height:96px; min-width:72px; border-radius:6px;"></div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+              <div style="font-weight:600; font-size:13px; margin-bottom:2px;">ABCD-123 高标題範例文字</div>
+              <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">2025-01-15</div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <span style="background:var(--surface-variant); padding:2px 6px; border-radius:4px; font-size:10px;">标签1</span>
+                <span style="background:var(--surface-variant); padding:2px 6px; border-radius:4px; font-size:10px;">标签2</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; background:var(--surface); border-radius:12px; padding:10px; margin-bottom:8px;">
+            <div class="placeholder" style="width:72px; height:96px; min-width:72px; border-radius:6px;"></div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+              <div style="font-weight:600; font-size:13px; margin-bottom:2px;">EFGH-456 另一個標題</div>
+              <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">2025-01-14</div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <span style="background:var(--surface-variant); padding:2px 6px; border-radius:4px; font-size:10px;">标签3</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; background:var(--surface); border-radius:12px; padding:10px;">
+            <div class="placeholder" style="width:72px; height:96px; min-width:72px; border-radius:6px;"></div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+              <div style="font-weight:600; font-size:13px; margin-bottom:2px;">IJKL-789 第三個範例</div>
+              <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">2025-01-13</div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <span style="background:var(--surface-variant); padding:2px 6px; border-radius:4px; font-size:10px;">标签4</span>
+                <span style="background:var(--surface-variant); padding:2px 6px; border-radius:4px; font-size:10px;">标签5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p>信息密度高，一屏可看约5-6条。标题、日期、标签一目了然。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>卡片网格（2列）</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding: 12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--surface); border-radius:12px; overflow:hidden;">
+              <div class="placeholder" style="width:100%; height:120px;"></div>
+              <div style="padding:6px 8px;">
+                <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">ABCD-123</div>
+                <div style="font-size:10px; color:var(--text-secondary);">2025-01-15</div>
+              </div>
+            </div>
+            <div style="background:var(--surface); border-radius:12px; overflow:hidden;">
+              <div class="placeholder" style="width:100%; height:120px;"></div>
+              <div style="padding:6px 8px;">
+                <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">EFGH-456</div>
+                <div style="font-size:10px; color:var(--text-secondary);">2025-01-14</div>
+              </div>
+            </div>
+            <div style="background:var(--surface); border-radius:12px; overflow:hidden;">
+              <div class="placeholder" style="width:100%; height:120px;"></div>
+              <div style="padding:6px 8px;">
+                <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">IJKL-789</div>
+                <div style="font-size:10px; color:var(--text-secondary);">2025-01-13</div>
+              </div>
+            </div>
+            <div style="background:var(--surface); border-radius:12px; overflow:hidden;">
+              <div class="placeholder" style="width:100%; height:120px;"></div>
+              <div style="padding:6px 8px;">
+                <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">MNOP-012</div>
+                <div style="font-size:10px; color:var(--text-secondary);">2025-01-12</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p>视觉冲击力强，封面图为主角。一屏约6-8张卡片，但信息量少（标题被截断、无标签）。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>紧凑列表 + 可切换</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding: 12px;">
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
+            <span style="background:var(--primary); color:white; padding:4px 8px; border-radius:6px; font-size:11px;">≡ 列表</span>
+            <span style="background:var(--surface); color:var(--text-secondary); padding:4px 8px; border-radius:6px; font-size:11px;">▦ 网格</span>
+          </div>
+          <div style="display:flex; gap:8px; background:var(--surface); border-radius:10px; padding:8px; margin-bottom:6px;">
+            <div class="placeholder" style="width:56px; height:75px; min-width:56px; border-radius:4px;"></div>
+            <div style="flex:1;">
+              <div style="font-weight:600; font-size:12px;">ABCD-123</div>
+              <div style="font-size:10px; color:var(--text-secondary);">2025-01-15 · 标签1 标签2</div>
+            </div>
+            <div style="color:var(--text-secondary); font-size:16px; align-self:center;">⭐</div>
+          </div>
+          <div style="display:flex; gap:8px; background:var(--surface); border-radius:10px; padding:8px; margin-bottom:6px;">
+            <div class="placeholder" style="width:56px; height:75px; min-width:56px; border-radius:4px;"></div>
+            <div style="flex:1;">
+              <div style="font-weight:600; font-size:12px;">EFGH-456</div>
+              <div style="font-size:10px; color:var(--text-secondary);">2025-01-14 · 标签3</div>
+            </div>
+            <div style="color:var(--text-secondary); font-size:16px; align-self:center;">☆</div>
+          </div>
+          <div style="display:flex; gap:8px; background:var(--surface); border-radius:10px; padding:8px;">
+            <div class="placeholder" style="width:56px; height:75px; min-width:56px; border-radius:4px;"></div>
+            <div style="flex:1;">
+              <div style="font-weight:600; font-size:12px;">IJKL-789</div>
+              <div style="font-size:10px; color:var(--text-secondary);">2025-01-13 · 标签4 标签5</div>
+            </div>
+            <div style="color:var(--text-secondary); font-size:16px; align-self:center;">⭐</div>
+          </div>
+        </div>
+      </div>
+      <p>默认列表更紧凑，右上角可切换网格模式。每行右侧有快捷收藏按钮，信息高效。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <p style="color:var(--text-secondary);">💡 推荐: <strong>方案 C (紧凑列表+可切换)</strong> — 默认列表浏览效率高，想看封面时一键切换网格。右侧快捷收藏按钮减少操作路径。</p>
+</div>

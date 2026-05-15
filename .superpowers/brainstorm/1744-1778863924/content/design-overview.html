@@ -1,0 +1,91 @@
+<h2>JBus 重设计 — 整体架构</h2>
+<p class="subtitle">搜索 + 收藏驱动的电影资源索引工具</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">应用信息架构</div>
+    <div class="mockup-body" style="padding: 20px;">
+
+      <!-- App map -->
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="display:inline-block; background:var(--primary); color:white; padding:10px 24px; border-radius:12px; font-weight:600;">JBus App</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <!-- 首页 -->
+        <div style="border:2px solid var(--primary); border-radius:12px; padding:12px;">
+          <div style="font-weight:700; margin-bottom:8px; text-align:center;">🏠 首页</div>
+          <div style="background:var(--surface); border-radius:8px; padding:8px; margin-bottom:6px; font-size:12px;">
+            <div style="color:var(--text-secondary); margin-bottom:4px;">搜索栏 → 全屏搜索页</div>
+          </div>
+          <div style="background:var(--surface); border-radius:8px; padding:8px; margin-bottom:6px; font-size:12px;">
+            <strong>分段:</strong> 影片 | 演员
+          </div>
+          <div style="background:var(--surface); border-radius:8px; padding:8px; margin-bottom:6px; font-size:12px;">
+            <strong>筛选:</strong> 全部 | 有码 | 无码 | 类别▾
+          </div>
+          <div style="background:var(--surface); border-radius:8px; padding:8px; font-size:12px;">
+            <strong>内容:</strong> 紧凑列表 ⇄ 网格
+          </div>
+        </div>
+
+        <!-- 收藏 -->
+        <div style="border:2px solid var(--border); border-radius:12px; padding:12px;">
+          <div style="font-weight:700; margin-bottom:8px; text-align:center;">⭐ 收藏</div>
+          <div style="background:var(--surface); border-radius:8px; padding:8px; margin-bottom:6px; font-size:12px;">
+            <strong>分段:</strong> 影片收藏 | 演员收藏
+          </div>
+          <div style="background:var(--surface); border-radius:8px; padding:8px; font-size:12px;">
+            长按删除 · 列表/网格视图
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary screens -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+        <div style="background:var(--surface-variant); border-radius:10px; padding:10px; text-align:center; font-size:11px;">
+          <div style="font-weight:600; margin-bottom:4px;">🔍 全屏搜索</div>
+          7种类型<br>搜索历史<br>实时结果
+        </div>
+        <div style="background:var(--surface-variant); border-radius:10px; padding:10px; text-align:center; font-size:11px;">
+          <div style="font-weight:600; margin-bottom:4px;">📄 影片详情</div>
+          封面/信息<br>演员/类别<br>磁力/截图
+        </div>
+        <div style="background:var(--surface-variant); border-radius:10px; padding:10px; text-align:center; font-size:11px;">
+          <div style="font-weight:600; margin-bottom:4px;">🎭 演员页</div>
+          头像/信息<br>作品列表<br>收藏按钮
+        </div>
+      </div>
+
+      <!-- Navigation bar -->
+      <div style="margin-top:20px; padding:10px; background:var(--surface); border-radius:12px;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-align:center;">底部导航栏</div>
+        <div style="display:flex; justify-content:space-around; align-items:center;">
+          <div style="text-align:center; font-size:12px;">
+            <div style="font-size:20px;">🏠</div>
+            <div>首页</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:48px; height:48px; background:var(--primary); border-radius:14px; display:flex; align-items:center; justify-content:center; color:white; font-size:22px; margin:0 auto;">🔍</div>
+          </div>
+          <div style="text-align:center; font-size:12px;">
+            <div style="font-size:20px;">⭐</div>
+            <div>收藏</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>核心设计决策总结</h3>
+  <table style="width:100%; font-size:13px; border-collapse:collapse;">
+    <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px; font-weight:600;">Tab 结构</td><td style="padding:6px;">2 Tab (首页 + 收藏) + 中央 FAB 搜索</td></tr>
+    <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px; font-weight:600;">有码/无码</td><td style="padding:6px;">合并为筛选 Chips（全部/有码/无码）</td></tr>
+    <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px; font-weight:600;">类别</td><td style="padding:6px;">影片段内"类别▾"按钮 → 底部弹出面板</td></tr>
+    <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px; font-weight:600;">搜索</td><td style="padding:6px;">全屏搜索页，7种搜索类型 + 搜索历史</td></tr>
+    <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px; font-weight:600;">列表样式</td><td style="padding:6px;">紧凑列表(默认) ⇄ 网格，快捷收藏按钮</td></tr>
+    <tr><td style="padding:6px; font-weight:600;">收藏组织</td><td style="padding:6px;">分段切换(影片收藏/演员收藏)</td></tr>
+  </table>
+</div>

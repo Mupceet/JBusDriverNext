@@ -1,0 +1,172 @@
+<h2>首页详细设计</h2>
+<p class="subtitle">浏览与发现的核心界面</p>
+
+<div class="split">
+  <!-- 影片模式 -->
+  <div class="mockup">
+    <div class="mockup-header">影片模式</div>
+    <div class="mockup-body" style="padding:0;">
+      <!-- Status bar -->
+      <div style="background:var(--surface); padding:4px 12px; display:flex; justify-content:space-between; font-size:10px; color:var(--text-secondary);">
+        <span>9:41</span><span>●●● 🔋</span>
+      </div>
+      <!-- Search bar -->
+      <div style="padding:8px 12px;">
+        <div style="background:var(--surface-variant); border-radius:24px; padding:10px 16px; color:var(--text-secondary); font-size:13px; display:flex; align-items:center; gap:8px;">
+          <span>🔍</span>
+          <span>搜索影片、演员、类别...</span>
+        </div>
+      </div>
+      <!-- Segment: 影片 | 演员 -->
+      <div style="display:flex; padding:0 12px; gap:0; margin-bottom:8px;">
+        <div style="flex:1; text-align:center; padding:8px; font-weight:700; font-size:14px; border-bottom:2px solid var(--primary); color:var(--primary);">影片</div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:14px; color:var(--text-secondary); border-bottom:2px solid var(--border);">演员</div>
+      </div>
+      <!-- Filter chips -->
+      <div style="display:flex; gap:6px; padding:0 12px; margin-bottom:10px; overflow-x:auto;">
+        <span style="background:var(--primary); color:white; padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap;">全部</span>
+        <span style="background:var(--surface-variant); padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap;">有码</span>
+        <span style="background:var(--surface-variant); padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap;">无码</span>
+        <span style="background:var(--surface-variant); padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:2px;">类别 ▾</span>
+      </div>
+      <!-- View toggle -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0 12px; margin-bottom:8px;">
+        <span style="font-size:12px; color:var(--text-secondary);">今日新片</span>
+        <div style="display:flex; gap:4px;">
+          <span style="background:var(--primary); color:white; padding:3px 8px; border-radius:6px; font-size:10px;">≡ 列表</span>
+          <span style="background:var(--surface); color:var(--text-secondary); padding:3px 8px; border-radius:6px; font-size:10px;">▦ 网格</span>
+        </div>
+      </div>
+      <!-- Compact list -->
+      <div style="padding:0 12px;">
+        <div style="display:flex; gap:8px; background:var(--surface); border-radius:10px; padding:8px; margin-bottom:6px; align-items:center;">
+          <div class="placeholder" style="width:52px; height:70px; min-width:52px; border-radius:4px;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">ABCD-123 高標題範例</div>
+            <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">2025-01-15</div>
+            <div style="display:flex; gap:3px; margin-top:3px;">
+              <span style="background:var(--surface-variant); padding:1px 5px; border-radius:3px; font-size:9px;">高畫質</span>
+              <span style="background:var(--surface-variant); padding:1px 5px; border-radius:3px; font-size:9px;">單體</span>
+            </div>
+          </div>
+          <div style="color:#FFD700; font-size:18px; padding:4px;">⭐</div>
+        </div>
+        <div style="display:flex; gap:8px; background:var(--surface); border-radius:10px; padding:8px; margin-bottom:6px; align-items:center;">
+          <div class="placeholder" style="width:52px; height:70px; min-width:52px; border-radius:4px;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">EFGH-456 另一個標題</div>
+            <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">2025-01-14</div>
+            <div style="display:flex; gap:3px; margin-top:3px;">
+              <span style="background:var(--surface-variant); padding:1px 5px; border-radius:3px; font-size:9px;">VR</span>
+            </div>
+          </div>
+          <div style="color:var(--text-secondary); font-size:18px; padding:4px;">☆</div>
+        </div>
+        <div style="display:flex; gap:8px; background:var(--surface); border-radius:10px; padding:8px; margin-bottom:6px; align-items:center;">
+          <div class="placeholder" style="width:52px; height:70px; min-width:52px; border-radius:4px;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">IJKL-789 範例三</div>
+            <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">2025-01-13</div>
+            <div style="display:flex; gap:3px; margin-top:3px;">
+              <span style="background:var(--surface-variant); padding:1px 5px; border-radius:3px; font-size:9px;">企劃</span>
+              <span style="background:var(--surface-variant); padding:1px 5px; border-radius:3px; font-size:9px;">多人</span>
+            </div>
+          </div>
+          <div style="color:var(--text-secondary); font-size:18px; padding:4px;">☆</div>
+        </div>
+      </div>
+      <!-- Bottom nav -->
+      <div style="display:flex; justify-content:space-around; align-items:center; padding:8px 0 12px; border-top:1px solid var(--border); margin-top:auto;">
+        <div style="text-align:center; font-size:10px; color:var(--primary);"><div style="font-size:18px;">🏠</div>首页</div>
+        <div style="width:44px; height:44px; background:var(--primary); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:20px; margin-top:-20px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">🔍</div>
+        <div style="text-align:center; font-size:10px; color:var(--text-secondary);"><div style="font-size:18px;">⭐</div>收藏</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 演员模式 -->
+  <div class="mockup">
+    <div class="mockup-header">演员模式</div>
+    <div class="mockup-body" style="padding:0;">
+      <!-- Status bar -->
+      <div style="background:var(--surface); padding:4px 12px; display:flex; justify-content:space-between; font-size:10px; color:var(--text-secondary);">
+        <span>9:41</span><span>●●● 🔋</span>
+      </div>
+      <!-- Search bar -->
+      <div style="padding:8px 12px;">
+        <div style="background:var(--surface-variant); border-radius:24px; padding:10px 16px; color:var(--text-secondary); font-size:13px; display:flex; align-items:center; gap:8px;">
+          <span>🔍</span>
+          <span>搜索影片、演员、类别...</span>
+        </div>
+      </div>
+      <!-- Segment -->
+      <div style="display:flex; padding:0 12px; gap:0; margin-bottom:8px;">
+        <div style="flex:1; text-align:center; padding:8px; font-size:14px; color:var(--text-secondary); border-bottom:2px solid var(--border);">影片</div>
+        <div style="flex:1; text-align:center; padding:8px; font-weight:700; font-size:14px; border-bottom:2px solid var(--primary); color:var(--primary);">演员</div>
+      </div>
+      <!-- Filter chips -->
+      <div style="display:flex; gap:6px; padding:0 12px; margin-bottom:10px;">
+        <span style="background:var(--primary); color:white; padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap;">全部</span>
+        <span style="background:var(--surface-variant); padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap;">有码</span>
+        <span style="background:var(--surface-variant); padding:5px 14px; border-radius:16px; font-size:12px; white-space:nowrap;">无码</span>
+      </div>
+      <div style="padding:0 12px; margin-bottom:8px;">
+        <span style="font-size:12px; color:var(--text-secondary);">热门演员</span>
+      </div>
+      <!-- Actress grid -->
+      <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; padding:0 12px;">
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">演員名A</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名B</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名C</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名D</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名E</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名F</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名G</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="placeholder" style="width:64px; height:64px; border-radius:50%; margin:0 auto 4px;"></div>
+          <div style="font-size:11px;">演員名H</div>
+        </div>
+      </div>
+      <!-- Bottom nav -->
+      <div style="display:flex; justify-content:space-around; align-items:center; padding:8px 0 12px; border-top:1px solid var(--border); margin-top:auto; position:absolute; bottom:0; left:0; right:0; background:var(--background);">
+        <div style="text-align:center; font-size:10px; color:var(--primary);"><div style="font-size:18px;">🏠</div>首页</div>
+        <div style="width:44px; height:44px; background:var(--primary); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:20px; margin-top:-20px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">🔍</div>
+        <div style="text-align:center; font-size:10px; color:var(--text-secondary);"><div style="font-size:18px;">⭐</div>收藏</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;">
+  <h3>交互说明</h3>
+  <ul>
+    <li><strong>搜索栏:</strong> 点击任意处跳转全屏搜索页</li>
+    <li><strong>分段切换:</strong> 影片/演员切换，保持筛选状态</li>
+    <li><strong>筛选 Chips:</strong> 互斥选择（全部/有码/无码），选中类别后变为激活色</li>
+    <li><strong>类别▾:</strong> 点击弹出底部面板，按大类分组显示标签云，选中后列表过滤</li>
+    <li><strong>列表/网格切换:</strong> 右上角切换按钮，状态记忆</li>
+    <li><strong>收藏星标:</strong> 点击直接收藏/取消，带短暂动画反馈</li>
+    <li><strong>下拉刷新 + 无限滚动</strong></li>
+  </ul>
+</div>

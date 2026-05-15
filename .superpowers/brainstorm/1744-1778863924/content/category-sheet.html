@@ -1,0 +1,72 @@
+<h2>类别筛选底部面板（多选）</h2>
+<p class="subtitle">点击"类别▾"后从底部弹出，支持多选类别过滤</p>
+
+<div class="mockup">
+  <div class="mockup-header">类别筛选面板</div>
+  <div class="mockup-body" style="padding:0;">
+    <!-- Semi-transparent overlay hint -->
+    <div style="background:rgba(0,0,0,0.3); padding:40px 0 0;"></div>
+    <!-- Bottom sheet -->
+    <div style="background:var(--background); border-radius:20px 20px 0 0; padding:0;">
+      <!-- Handle -->
+      <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+        <div style="width:32px; height:4px; background:var(--border); border-radius:2px;"></div>
+      </div>
+      <!-- Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 16px 12px;">
+        <span style="font-weight:700; font-size:15px;">选择类别</span>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <span style="font-size:12px; color:var(--primary);">已选 2</span>
+          <span style="font-size:12px; color:var(--text-secondary);">重置</span>
+        </div>
+      </div>
+      <!-- Category group 1 -->
+      <div style="padding:0 16px 12px;">
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px; font-weight:600;">题材</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">單體作品</span>
+          <span style="background:var(--primary); color:white; padding:5px 12px; border-radius:16px; font-size:12px;">高畫質 ✓</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">企劃</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">VR</span>
+          <span style="background:var(--primary); color:white; padding:5px 12px; border-radius:16px; font-size:12px;">多人 ✓</span>
+        </div>
+      </div>
+      <!-- Category group 2 -->
+      <div style="padding:0 16px 12px;">
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px; font-weight:600;">場景</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">學校</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">辦公室</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">戶外</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">溫泉</span>
+        </div>
+      </div>
+      <!-- Category group 3 -->
+      <div style="padding:0 16px 12px;">
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px; font-weight:600;">角色</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">教師</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">護士</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">OL</span>
+          <span style="background:var(--surface-variant); padding:5px 12px; border-radius:16px; font-size:12px;">人妻</span>
+        </div>
+      </div>
+      <!-- Apply button -->
+      <div style="padding:8px 16px 20px;">
+        <div style="background:var(--primary); color:white; text-align:center; padding:12px; border-radius:12px; font-weight:600;">套用筛选</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>交互说明</h3>
+  <ul>
+    <li><strong>多选:</strong> 点击 chip 切换选中/取消，选中项变为主题色 + ✓ 标记</li>
+    <li><strong>已选计数:</strong> 右上角显示已选数量，点击"重置"清空所有选中</li>
+    <li><strong>分组展示:</strong> 按服务器返回的大类分组（题材/场景/角色...），每组标签云</li>
+    <li><strong>套用筛选:</strong> 底部按钮确认后关闭面板并过滤列表</li>
+    <li><strong>筛选状态:</strong> 选中类别后，筛选栏的"类别▾"变为"类别(2)"显示已选数量</li>
+    <li><strong>下拉关闭:</strong> 下拉面板可关闭，等同于取消</li>
+  </ul>
+</div>

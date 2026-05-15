@@ -1,0 +1,58 @@
+<h2>底部导航栏改进方案</h2>
+<p class="subtitle">去掉凸起 FAB，寻找更美观的搜索入口</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>3 Tab 平底导航: 首页 | 搜索 | 收藏</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:12px;">
+          <div style="display:flex; justify-content:space-around; align-items:center; padding:8px 0 12px; border-top:1px solid var(--border); background:var(--surface);">
+            <div style="text-align:center; font-size:11px; color:var(--primary);"><div style="font-size:20px;">🏠</div>首页</div>
+            <div style="text-align:center; font-size:11px; color:var(--text-secondary);"><div style="font-size:20px;">🔍</div>搜索</div>
+            <div style="text-align:center; font-size:11px; color:var(--text-secondary);"><div style="font-size:20px;">⭐</div>收藏</div>
+          </div>
+        </div>
+      </div>
+      <p>搜索作为平等的第三个 tab，简洁无突兀。首页顶部仍保留搜索栏作为快捷入口。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>2 Tab + 顶部搜索栏为主入口</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:12px;">
+          <div style="background:var(--primary); border-radius:28px; padding:10px 16px; color:white; font-size:13px; display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <span style="font-size:16px;">🔍</span>
+            <span style="opacity:0.8;">搜索影片、演员、类别...</span>
+          </div>
+          <div style="display:flex; justify-content:space-around; align-items:center; padding:8px 0 12px; border-top:1px solid var(--border);">
+            <div style="text-align:center; font-size:11px; color:var(--primary);"><div style="font-size:20px;">🏠</div>首页</div>
+            <div style="text-align:center; font-size:11px; color:var(--text-secondary);"><div style="font-size:20px;">⭐</div>收藏</div>
+          </div>
+        </div>
+      </div>
+      <p>搜索入口只有顶部搜索栏（使用主题色突出）。底部导航保持干净的 2 tab。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>2 Tab + 底部导航中央内嵌搜索图标</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:12px;">
+          <div style="display:flex; justify-content:space-around; align-items:center; padding:8px 0 12px; border-top:1px solid var(--border); background:var(--surface);">
+            <div style="text-align:center; font-size:11px; color:var(--primary);"><div style="font-size:20px;">🏠</div>首页</div>
+            <div style="text-align:center; width:56px; height:32px; background:var(--primary); border-radius:16px; display:flex; align-items:center; justify-content:center; color:white; font-size:16px;">🔍</div>
+            <div style="text-align:center; font-size:11px; color:var(--text-secondary);"><div style="font-size:20px;">⭐</div>收藏</div>
+          </div>
+        </div>
+      </div>
+      <p>搜索按钮融入导航栏（胶囊形，不高出），保持 2 tab 但搜索仍有独立触控区。</p>
+    </div>
+  </div>
+</div>
