@@ -97,8 +97,7 @@ fun MainScreen(
                     )
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
-                        onActressClick = onActressClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
+                        onActressClick = onActressClick
                     )
                 }
             }

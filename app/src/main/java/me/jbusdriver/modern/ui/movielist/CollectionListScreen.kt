@@ -61,6 +61,9 @@ fun CollectionListScreen(
                 MovieList(
                     movies = uiState.movies,
                     onMovieClick = onMovieClick,
+                    compact = true,
+                    isCollected = { true },
+                    onToggleCollect = { viewModel.removeMovie(it) },
                     modifier = modifier
                 )
             }
@@ -75,6 +78,7 @@ fun CollectionListScreen(
                 ActressGrid(
                     actresses = uiState.actresses,
                     onActressClick = onActressClick,
+                    onActressLongClick = { viewModel.removeActress(it) },
                     modifier = modifier
                 )
             }

@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
@@ -28,6 +30,10 @@ data class CollectionListUiState(
     val movies: List<MovieUiModel> = emptyList(),
     /** 已收藏的女优列表 */
     val actresses: List<ActressUiModel> = emptyList(),
+    /** 已收藏的电影总数 */
+    val movieCount: Int = 0,
+    /** 已收藏的女优总数 */
+    val actressCount: Int = 0,
     /** 是否正在加载收藏数据 */
     val isLoading: Boolean = false,
     /** 错误信息，正常时为 null */
@@ -77,15 +83,76 @@ class CollectionListViewModel @Inject constructor(
             try {
                 if (dbType == MovieDBType) {
                     val movies = collectRepository.getCollectedMovies().map { it.toUiModel() }
-                    _uiState.update { it.copy(movies = movies, isLoading = false) }
+                    val actressCount = collectRepository.getCollectedActresses().size
+                    _uiState.update {
+                        it.copy(
+                            movies = movies,
+                            movieCount = movies.size,
+                            actressCount = actressCount,
+                            isLoading = false
+                        )
+                    }
                 } else {
-                    val actresses =
-                        collectRepository.getCollectedActresses().map { it.toActressUiModel() }
-                    _uiState.update { it.copy(actresses = actresses, isLoading = false) }
+                    val actresses = collectRepository.getCollectedActresses().map { it.toActressUiModel() }
+                    val movieCount = collectRepository.getCollectedMovies().size
+                    _uiState.update {
+                        it.copy(
+                            actresses = actresses,
+                            actressCount = actresses.size,
+                            movieCount = movieCount,
+                            isLoading = false
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入收藏失敗") }
             }
+        }
+    }
+
+    /**
+     * 从收藏中移除指定电影。
+     *
+     * 使用电影详情页 URL 路径作为 key（与 [ILink.uniqueKey] 一致），
+     * 移除后自动重新加载电影收藏列表。
+     *
+     * @param movie 要移除的电影 UI 模型
+     */
+    fun removeMovie(movie: MovieUiModel) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val linkItem = LinkItem(
+                    dbType = MovieDBType,
+                    key = movie.link.urlPath,
+                    jsonStr = "",
+                    createTime = System.currentTimeMillis()
+                )
+                collectRepository.removeCollect(linkItem)
+                loadCollection(MovieDBType)
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * 从收藏中移除指定演员。
+     *
+     * 使用演员页面 URL 路径作为 key（与 [ILink.uniqueKey] 一致），
+     * 移除后自动重新加载演员收藏列表。
+     *
+     * @param actress 要移除的演员 UI 模型
+     */
+    fun removeActress(actress: ActressUiModel) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val linkItem = LinkItem(
+                    dbType = ActressDBType,
+                    key = actress.link.urlPath,
+                    jsonStr = "",
+                    createTime = System.currentTimeMillis()
+                )
+                collectRepository.removeCollect(linkItem)
+                loadCollection(ActressDBType)
+            } catch (_: Exception) {}
         }
     }
 

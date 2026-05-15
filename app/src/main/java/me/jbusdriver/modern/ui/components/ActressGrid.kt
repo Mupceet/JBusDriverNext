@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +49,7 @@ fun ActressGrid(
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
+    onActressLongClick: ((ActressUiModel) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
@@ -74,25 +76,11 @@ fun ActressGrid(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             itemsIndexed(actresses, key = { _, actress -> actress.link }) { _, actress ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onActressClick(actress) }
-                ) {
-                    ActressAvatar(
-                        avatarUrl = actress.avatar,
-                        contentDescription = actress.name,
-                        size = 90.dp,
-                        onClick = { onActressClick(actress) }
-                    )
-                    Text(
-                        text = actress.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
+                ActressGridItem(
+                    actress = actress,
+                    onClick = { onActressClick(actress) },
+                    onLongClick = if (onActressLongClick != null) {{ onActressLongClick(actress) }} else null
+                )
             }
             if (isLoadingMore) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -116,6 +104,41 @@ fun ActressGrid(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 48.dp)
+        )
+    }
+}
+
+/**
+ * 演员网格中的单个演员条目，支持长按操作。
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ActressGridItem(
+    actress: ActressUiModel,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null
+) {
+    Column(
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        modifier = modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+    ) {
+        ActressAvatar(
+            avatarUrl = actress.avatar,
+            contentDescription = actress.name,
+            size = 90.dp,
+            onClick = onClick
+        )
+        Text(
+            text = actress.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp)
         )
     }
 }
