@@ -101,12 +101,13 @@ class ActressListViewModel @Inject constructor(
                         actresses = result.first.map { a -> a.toActressUiModel() },
                         pageInfo = result.second,
                         isLoading = false,
+                        isRefreshing = false,
                         hasMore = result.second.hasNext,
                         error = if (result.first.isEmpty()) "沒有數據" else null
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
+                _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message ?: "載入失敗") }
             }
         }
     }
