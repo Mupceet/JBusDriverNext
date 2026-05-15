@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -19,28 +20,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import me.jbusdriver.R
-import me.jbusdriver.modern.domain.model.SearchType
-import me.jbusdriver.modern.ui.movielist.ActressCategoryScreen
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
-import me.jbusdriver.modern.ui.movielist.GenreCategoryScreen
-import me.jbusdriver.modern.ui.movielist.MovieCategoryScreen
 
-enum class BottomNavCategory {
-    MOVIE, ACTRESS, GENRE, COLLECT
-}
+enum class BottomNavCategory { HOME, COLLECT }
 
 private data class BottomNavItem(
     val category: BottomNavCategory,
     val label: String,
-    val iconRes: Int,
-    val defaultSearchType: SearchType
+    val iconRes: Int
 )
 
 private val BottomNavItems = listOf(
-    BottomNavItem(BottomNavCategory.MOVIE, "電影", R.drawable.movie_24px, SearchType.CENSORED),
-    BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px, SearchType.ACTRESS),
-    BottomNavItem(BottomNavCategory.GENRE, "類別", R.drawable.category_24px, SearchType.CENSORED),
-    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px, SearchType.CENSORED)
+    BottomNavItem(BottomNavCategory.HOME, "首頁", R.drawable.home_24px),
+    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px)
 )
 
 @Composable
@@ -50,19 +42,19 @@ fun MainScreen(
     onGenreClick: (GenreUiModel) -> Unit = {},
     onSearchClick: (String) -> Unit = {}
 ) {
-    var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
+    var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.HOME) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar (modifier = Modifier.height(64.dp)) {
+            NavigationBar(modifier = Modifier.height(64.dp)) {
                 BottomNavItems.forEach { item ->
                     NavigationBarItem(
                         selected = selectedCategory == item.category,
                         onClick = { selectedCategory = item.category },
                         icon = {
-                            androidx.compose.material3.Icon(
+                            Icon(
                                 painter = painterResource(item.iconRes),
                                 contentDescription = item.label
                             )
@@ -73,9 +65,6 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        val currentSearchType = BottomNavItems.find { it.category == selectedCategory }
-            ?.defaultSearchType ?: SearchType.CENSORED
-
         saveableStateHolder.SaveableStateProvider(selectedCategory) {
             Column(
                 modifier = Modifier
@@ -83,21 +72,15 @@ fun MainScreen(
                     .padding(innerPadding)
             ) {
                 when (selectedCategory) {
-                    BottomNavCategory.MOVIE -> MovieCategoryScreen(
+                    BottomNavCategory.HOME -> HomeScreen(
                         onMovieClick = onMovieClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
-                    )
-                    BottomNavCategory.ACTRESS -> ActressCategoryScreen(
                         onActressClick = onActressClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
-                    )
-                    BottomNavCategory.GENRE -> GenreCategoryScreen(
-                        onGenreClick = onGenreClick,
-                        onSearchClick = { onSearchClick(currentSearchType.name) }
+                        onSearchClick = { onSearchClick("") }
                     )
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
-                        onActressClick = onActressClick
+                        onActressClick = onActressClick,
+                        onGoHome = { selectedCategory = BottomNavCategory.HOME }
                     )
                 }
             }
