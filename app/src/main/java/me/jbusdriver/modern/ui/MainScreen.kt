@@ -1,28 +1,56 @@
 package me.jbusdriver.modern.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.ui.components.CategoryBottomSheet
+import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
+import me.jbusdriver.modern.ui.movielist.GenreListViewModel
+import me.jbusdriver.modern.ui.movielist.MovieListScreen
+import me.jbusdriver.modern.ui.movielist.MovieListViewModel
 
-enum class BottomNavCategory { HOME, COLLECT }
+enum class BottomNavCategory { MOVIE, ACTRESS, COLLECT }
+
+private enum class CensorFilter(val label: String) {
+    CENSORED("有碼"), UNCENSORED("無碼")
+}
 
 private data class BottomNavItem(
     val category: BottomNavCategory,
@@ -31,10 +59,12 @@ private data class BottomNavItem(
 )
 
 private val BottomNavItems = listOf(
-    BottomNavItem(BottomNavCategory.HOME, "首頁", R.drawable.home_24px),
+    BottomNavItem(BottomNavCategory.MOVIE, "影片", R.drawable.movie_24px),
+    BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px),
     BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px)
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     onMovieClick: (MovieUiModel) -> Unit,
@@ -42,7 +72,7 @@ fun MainScreen(
     onGenreClick: (GenreUiModel) -> Unit = {},
     onSearchClick: (String) -> Unit = {}
 ) {
-    var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.HOME) }
+    var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
     Scaffold(
@@ -72,15 +102,202 @@ fun MainScreen(
                     .padding(innerPadding)
             ) {
                 when (selectedCategory) {
-                    BottomNavCategory.HOME -> HomeScreen(
-                        onMovieClick = onMovieClick,
-                        onActressClick = onActressClick,
-                        onSearchClick = { onSearchClick("") }
-                    )
+                    BottomNavCategory.MOVIE -> {
+                        var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
+                        var showCategorySheet by rememberSaveable { mutableStateOf(false) }
+                        var selectedGenres by rememberSaveable { mutableStateOf<Set<GenreUiModel>>(emptySet()) }
+                        var isGrid by rememberSaveable { mutableStateOf(false) }
+
+                        val genreViewModel: GenreListViewModel = hiltViewModel()
+                        val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
+
+                        LaunchedEffect(censorFilter) {
+                            selectedGenres = emptySet()
+                            val genreType = when (censorFilter) {
+                                CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_GENRE
+                                else -> DataSourceType.GENRE
+                            }
+                            genreViewModel.setDataSourceType(genreType)
+                        }
+
+                        if (showCategorySheet) {
+                            ModalBottomSheet(
+                                onDismissRequest = { showCategorySheet = false }
+                            ) {
+                                CategoryBottomSheet(
+                                    categories = genreState.genreCategories,
+                                    selectedGenres = selectedGenres,
+                                    onSelectionChange = { selectedGenres = it },
+                                    onDismiss = { showCategorySheet = false },
+                                    onApply = { showCategorySheet = false }
+                                )
+                            }
+                        }
+
+                        // Search bar
+                        Surface(
+                            onClick = { onSearchClick("") },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.search_24px),
+                                    contentDescription = "搜尋",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "搜索影片、演員、類別...",
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        // Filter chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CensorFilter.entries.forEach { filter ->
+                                FilterChip(
+                                    selected = censorFilter == filter,
+                                    onClick = { censorFilter = filter },
+                                    label = { Text(filter.label, fontSize = 12.sp) }
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            FilterChip(
+                                selected = selectedGenres.isNotEmpty(),
+                                onClick = { showCategorySheet = true },
+                                label = {
+                                    Text(
+                                        if (selectedGenres.isEmpty()) "類別▾"
+                                        else "類別(${selectedGenres.size})",
+                                        fontSize = 12.sp
+                                    )
+                                },
+                                trailingIcon = if (selectedGenres.isEmpty()) {
+                                    { Icon(painterResource(R.drawable.category_24px), null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                            Spacer(Modifier.weight(1f))
+                            IconButton(
+                                onClick = { isGrid = !isGrid },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(if (isGrid) R.drawable.view_list_24px else R.drawable.grid_view_24px),
+                                    contentDescription = if (isGrid) "列表" else "網格",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Movie list
+                        val genreUrl = if (selectedGenres.isNotEmpty()) {
+                            selectedGenres.joinToString("-") { it.link.trimEnd('/').substringAfterLast("/") }
+                                .let { ids ->
+                                    val base = if (censorFilter == CensorFilter.UNCENSORED) "uncensored/" else ""
+                                    "/${base}genre/$ids"
+                                }
+                        } else null
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            if (genreUrl != null) {
+                                val genreVm: MovieListViewModel = hiltViewModel(key = "genre_$genreUrl")
+                                LaunchedEffect(genreUrl) { genreVm.setGenreUrl(genreUrl) }
+                                MovieListScreen(
+                                    active = true,
+                                    onMovieClick = onMovieClick,
+                                    compact = true,
+                                    isGrid = isGrid,
+                                    modifier = Modifier.fillMaxSize(),
+                                    viewModel = genreVm
+                                )
+                            } else {
+                                val dataSourceType = when (censorFilter) {
+                                    CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED
+                                    else -> DataSourceType.CENSORED
+                                }
+                                MovieListScreen(
+                                    dataSourceType = dataSourceType,
+                                    active = true,
+                                    onMovieClick = onMovieClick,
+                                    compact = true,
+                                    isGrid = isGrid,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+
+                    BottomNavCategory.ACTRESS -> {
+                        var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
+
+                        // Search bar
+                        Surface(
+                            onClick = { onSearchClick("") },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.search_24px),
+                                    contentDescription = "搜尋",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "搜索影片、演員、類別...",
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        // Filter chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CensorFilter.entries.forEach { filter ->
+                                FilterChip(
+                                    selected = censorFilter == filter,
+                                    onClick = { censorFilter = filter },
+                                    label = { Text(filter.label, fontSize = 12.sp) }
+                                )
+                                Spacer(Modifier.width(6.dp))
+                            }
+                        }
+
+                        // Actress list
+                        val actressType = when (censorFilter) {
+                            CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_ACTRESSES
+                            else -> DataSourceType.ACTRESSES
+                        }
+                        ActressListScreen(
+                            dataSourceType = actressType,
+                            active = true,
+                            onActressClick = onActressClick,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
-                        onGoHome = { selectedCategory = BottomNavCategory.HOME }
+                        onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
                     )
                 }
             }
