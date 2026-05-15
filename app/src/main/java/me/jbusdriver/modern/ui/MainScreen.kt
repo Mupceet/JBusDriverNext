@@ -22,7 +22,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -122,10 +121,8 @@ fun MainScreen(
                         }
 
                         if (showCategorySheet) {
-                            val sheetHeight = LocalConfiguration.current.screenHeightDp * 0.618f
                             ModalBottomSheet(
-                                onDismissRequest = { showCategorySheet = false },
-                                modifier = Modifier.height(sheetHeight.dp)
+                                onDismissRequest = { showCategorySheet = false }
                             ) {
                                 CategoryBottomSheet(
                                     categories = genreState.genreCategories,
