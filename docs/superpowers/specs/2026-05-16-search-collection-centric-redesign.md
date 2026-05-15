@@ -14,7 +14,7 @@ Redesign JBus from a browsing-oriented movie resource app into a **search + coll
 | Tab structure | 2 tabs: Home + Collection |
 | Search entry | Prominent theme-colored search bar at top of home page, tapping opens full-screen search |
 | Censored/Uncensored | Merged into filter chips (All / Censored / Uncensored) |
-| Genre/Category | Integrated into movie segment as "Category▾" chip, opens bottom sheet with multi-select |
+| Genre/Category | Integrated into movie segment as "Category▾" chip, opens bottom sheet; default single-select, optional multi-select (AND logic, IDs joined with "-" in URL) |
 | List style | Compact list (default) with grid toggle, quick-favorite star on each row |
 | Collection org | Segmented switch: Movie favorites / Actress favorites |
 | Search UX | Full-screen search page with 6 search types + persistent history |
@@ -61,7 +61,7 @@ No FAB. Search is accessed via the prominent theme-colored search bar at the top
 - Slides up from bottom with drag handle
 - Title: "选择类别" + selected count badge + "重置" button
 - Categories grouped by server-returned groups (题材, 場景, 角色, etc.)
-- **Multi-select:** Tapping a chip toggles selection, selected chips use theme color + ✓ mark. Multiple selections use OR logic (show movies matching any selected category)
+- **Multi-select:** Default is single-select. A toggle (e.g. "多选" switch) enables multi-select mode. In multi-select mode, tapping a chip toggles selection, selected chips use theme color + ✓ mark. Multiple selections use AND logic — genre IDs are joined with "-" in the URL path (e.g. `/genre/1n-10`)
 - "套用筛选" confirm button at bottom
 - When categories selected, filter chip changes from "类别▾" to "类别(n)" showing count
 - Pull-down to dismiss (cancel)
