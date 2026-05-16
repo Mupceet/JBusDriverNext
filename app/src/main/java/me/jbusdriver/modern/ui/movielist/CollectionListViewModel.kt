@@ -75,9 +75,7 @@ class CollectionListViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = true,
-                    error = null,
-                    movies = emptyList(),
-                    actresses = emptyList()
+                    error = null
                 )
             }
             try {

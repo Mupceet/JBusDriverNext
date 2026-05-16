@@ -38,13 +38,13 @@ fun CollectionListScreen(
     }
 
     when {
-        uiState.isLoading -> {
+        uiState.isLoading && uiState.movies.isEmpty() && uiState.actresses.isEmpty() -> {
             Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         }
 
-        uiState.error != null -> {
+        uiState.error != null && uiState.movies.isEmpty() && uiState.actresses.isEmpty() -> {
             ErrorView(
                 message = "載入失敗，請重試",
                 onRetry = { viewModel.loadCollection(dbType) },

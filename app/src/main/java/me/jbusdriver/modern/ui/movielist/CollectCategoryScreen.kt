@@ -1,25 +1,26 @@
 package me.jbusdriver.modern.ui.movielist
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,69 +38,61 @@ fun CollectCategoryScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(0) }
-    val saveableStateHolder = rememberSaveableStateHolder()
+    val pagerState = rememberPagerState { 2 }
 
-    // Get counts from the ViewModel
-    val countViewModel: CollectionListViewModel = hiltViewModel()
-    val countState by countViewModel.uiState.collectAsStateWithLifecycle()
+    // Sync pager → tab
+    LaunchedEffect(pagerState.currentPage) {
+        if (selectedTab != pagerState.currentPage) selectedTab = pagerState.currentPage
+    }
+    // Sync tab → pager
+    LaunchedEffect(selectedTab) {
+        if (pagerState.currentPage != selectedTab) pagerState.animateScrollToPage(selectedTab)
+    }
+
+    val movieVm: CollectionListViewModel = hiltViewModel(key = "collect_0")
+    val countState by movieVm.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
         Text(
             "我的收藏",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            modifier = Modifier.padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 8.dp)
         )
 
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.padding(3.dp)) {
-                listOf(
-                    "影片 (${countState.movieCount})" to 0,
-                    "演員 (${countState.actressCount})" to 1
-                ).forEach { (label, index) ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { selectedTab = index },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (selectedTab == index) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Text(
-                            label,
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = if (selectedTab == index) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
+            FilterChip(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                label = { Text("影片 (${countState.movieCount})", fontSize = 12.sp) }
+            )
+            Spacer(Modifier.width(6.dp))
+            FilterChip(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                label = { Text("演員 (${countState.actressCount})", fontSize = 12.sp) }
+            )
         }
 
-        saveableStateHolder.SaveableStateProvider(selectedTab) {
-            when (selectedTab) {
-                0 -> CollectionListScreen(
-                    dbType = MovieDBType,
-                    active = true,
-                    onMovieClick = onMovieClick,
-                    onActressClick = onActressClick
-                )
-                1 -> CollectionListScreen(
-                    dbType = ActressDBType,
-                    active = true,
-                    onMovieClick = onMovieClick,
-                    onActressClick = onActressClick
-                )
-            }
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 1,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) { page ->
+            val dbType = if (page == 0) MovieDBType else ActressDBType
+            val vm: CollectionListViewModel = hiltViewModel(key = "collect_$page")
+            CollectionListScreen(
+                dbType = dbType,
+                active = true,
+                onMovieClick = onMovieClick,
+                onActressClick = onActressClick,
+                viewModel = vm
+            )
         }
     }
 }
