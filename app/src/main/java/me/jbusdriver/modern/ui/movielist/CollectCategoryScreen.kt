@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -72,7 +73,7 @@ fun CollectCategoryScreen(
     val countState by movieVm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showMenu by mutableStateOf(false)
+    var showMenu by remember { mutableStateOf(false) }
     val repo = movieVm.collectRepository
 
     val exportLauncher = rememberLauncherForActivityResult(
