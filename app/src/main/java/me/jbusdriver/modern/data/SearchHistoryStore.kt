@@ -2,6 +2,8 @@ package me.jbusdriver.modern.data
 
 import android.content.SharedPreferences
 import me.jbusdriver.modern.JBus
+import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.fromJson
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,18 +13,26 @@ class SearchHistoryStore @Inject constructor() {
         JBus.getSharedPreferences("search_history", 0)
 
     fun getHistory(): List<String> {
-        return prefs.getStringSet(KEY_HISTORY, emptySet())?.toList() ?: emptyList()
+        val json = prefs.getString(KEY_HISTORY, null) ?: return emptyList()
+        return GSON.fromJson<List<String>>(json) ?: emptyList()
     }
 
     fun addQuery(query: String) {
         if (query.isBlank()) return
-        val current = prefs.getStringSet(KEY_HISTORY, emptySet())?.toMutableSet() ?: mutableSetOf()
-        current.add(query)
+        val current = getHistory().toMutableList()
+        current.remove(query)
+        current.add(0, query)
         if (current.size > MAX_HISTORY) {
-            val toRemove = current.toList().drop(MAX_HISTORY)
-            toRemove.forEach { current.remove(it) }
+            current.removeAt(current.lastIndex)
         }
-        prefs.edit().putStringSet(KEY_HISTORY, current).apply()
+        prefs.edit().putString(KEY_HISTORY, GSON.toJson(current)).apply()
+    }
+
+    fun removeQuery(query: String) {
+        val current = getHistory().toMutableList()
+        if (current.remove(query)) {
+            prefs.edit().putString(KEY_HISTORY, GSON.toJson(current)).apply()
+        }
     }
 
     fun clearHistory() {

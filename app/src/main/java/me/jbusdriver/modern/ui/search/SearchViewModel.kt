@@ -83,6 +83,25 @@ class SearchViewModel @Inject constructor(
         _searchHistory.value = emptyList()
     }
 
+    /** 删除单条搜索历史 */
+    fun removeHistoryItem(query: String) {
+        historyStore.removeQuery(query)
+        _searchHistory.value = historyStore.getHistory()
+    }
+
+    /** 清空搜索内容，恢复空状态 */
+    fun clearSearch() {
+        _uiState.update {
+            it.copy(
+                query = "",
+                results = emptyList(),
+                actressResults = emptyList(),
+                error = null,
+                isLoading = false
+            )
+        }
+    }
+
     /** 当前是否为女优搜索模式 */
     private val isActressSearch get() = _uiState.value.searchType == SearchType.ACTRESS
 

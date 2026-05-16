@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import me.jbusdriver.R
 import androidx.compose.material3.CircularProgressIndicator
@@ -75,6 +77,7 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
+    var isDeletingHistory by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(lifecycleOwner) {
@@ -153,6 +156,7 @@ fun SearchScreen(
                 if (searchInput.isNotEmpty()) {
                     IconButton(onClick = {
                         searchInput = ""
+                        viewModel.clearSearch()
                         focusRequester.requestFocus()
                     }) {
                         Icon(
@@ -214,8 +218,27 @@ fun SearchScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("搜索歷史", fontWeight = FontWeight.SemiBold)
-                            TextButton(onClick = { viewModel.clearHistory() }) {
-                                Text("清除", fontSize = 12.sp)
+                            if (isDeletingHistory) {
+                                Row {
+                                    TextButton(onClick = {
+                                        viewModel.clearHistory()
+                                        isDeletingHistory = false
+                                    }) {
+                                        Text("全部刪除", fontSize = 12.sp)
+                                    }
+                                    TextButton(onClick = { isDeletingHistory = false }) {
+                                        Text("完成", fontSize = 12.sp)
+                                    }
+                                }
+                            } else {
+                                IconButton(onClick = { isDeletingHistory = true }) {
+                                    Icon(
+                                        painterResource(R.drawable.delete_24px),
+                                        contentDescription = "刪除",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                         FlowRow(
@@ -224,13 +247,35 @@ fun SearchScreen(
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
                             searchHistory.forEach { query ->
-                                SuggestionChip(
-                                    onClick = {
-                                        searchInput = query
-                                        viewModel.search(query, uiState.searchType)
-                                    },
-                                    label = { Text(query, fontSize = 12.sp) }
-                                )
+                                if (isDeletingHistory) {
+                                    SuggestionChip(
+                                        onClick = {},
+                                        label = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(query, fontSize = 12.sp)
+                                                Icon(
+                                                    painterResource(R.drawable.close_24px),
+                                                    contentDescription = "刪除",
+                                                    modifier = Modifier
+                                                        .size(14.dp)
+                                                        .clickable { viewModel.removeHistoryItem(query) },
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    )
+                                } else {
+                                    SuggestionChip(
+                                        onClick = {
+                                            searchInput = query
+                                            focusManager.clearFocus()
+                                            viewModel.search(query, uiState.searchType)
+                                        },
+                                        label = { Text(query, fontSize = 12.sp) }
+                                    )
+                                }
                             }
                         }
                     }
