@@ -28,10 +28,10 @@ fun MovieFilterBar(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(vertical = 4.dp)
     ) {
         Row(
             modifier = Modifier.padding(4.dp),
@@ -65,7 +65,7 @@ private fun FilterSegment(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .clip(shape)
-            .background(if (active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(if (active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp)
     ) {
