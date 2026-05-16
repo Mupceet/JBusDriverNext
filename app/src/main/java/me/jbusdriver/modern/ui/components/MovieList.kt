@@ -210,7 +210,7 @@ fun MovieItem(
                 model = movie.imageUrl,
                 contentDescription = movie.title,
                 modifier = Modifier
-                    .width(80.dp)
+                    .width(50.dp)
                     .aspectRatio(2f / 3f)
                     .clip(RoundedCornerShape(4.dp)),
                 contentScale = ContentScale.Crop
@@ -221,13 +221,13 @@ fun MovieItem(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .height(120.dp),
+                    .height(75.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = movie.title,
                     style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
