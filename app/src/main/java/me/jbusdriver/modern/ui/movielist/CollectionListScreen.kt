@@ -60,6 +60,7 @@ fun CollectionListScreen(
             } else {
                 MovieList(
                     movies = uiState.movies,
+                    isGrid = false,
                     onMovieClick = onMovieClick,
                     isCollected = { true },
                     onToggleCollect = { viewModel.removeMovie(it) },

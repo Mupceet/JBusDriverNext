@@ -122,7 +122,6 @@ fun MainScreen(
                         val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
 
                         LaunchedEffect(censorFilter) {
-                            selectedGenres = emptySet()
                             val genreType = when (censorFilter) {
                                 CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_GENRE
                                 else -> DataSourceType.GENRE
@@ -139,8 +138,6 @@ fun MainScreen(
                                     categories = genreState.genreCategories,
                                     selectedGenres = selectedGenres,
                                     onSelectionChange = { selectedGenres = it },
-                                    onDismiss = { showCategorySheet = false },
-                                    onApply = { showCategorySheet = false }
                                 )
                             }
                         }
@@ -178,7 +175,12 @@ fun MainScreen(
                             CensorFilter.entries.forEach { filter ->
                                 FilterChip(
                                     selected = censorFilter == filter,
-                                    onClick = { censorFilter = filter },
+                                    onClick = {
+                                        if (censorFilter != filter) {
+                                            censorFilter = filter
+                                            selectedGenres = emptySet()
+                                        }
+                                    },
                                     label = { Text(filter.label, fontSize = 12.sp) }
                                 )
                                 Spacer(Modifier.width(6.dp))

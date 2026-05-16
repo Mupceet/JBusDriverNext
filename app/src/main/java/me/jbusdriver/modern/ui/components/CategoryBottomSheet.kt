@@ -25,8 +25,6 @@ fun CategoryBottomSheet(
     categories: List<GenreCategory>,
     selectedGenres: Set<GenreUiModel>,
     onSelectionChange: (Set<GenreUiModel>) -> Unit,
-    onDismiss: () -> Unit,
-    onApply: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isMultiSelect by remember { mutableStateOf(false) }
@@ -74,8 +72,10 @@ fun CategoryBottomSheet(
                     )
                     Spacer(Modifier.width(8.dp))
                 }
-                TextButton(onClick = { onSelectionChange(emptySet()) }) {
-                    Text("重置", fontSize = 12.sp)
+                if (selectedGenres.isNotEmpty()) {
+                    TextButton(onClick = { onSelectionChange(emptySet()) }) {
+                        Text("重置", fontSize = 12.sp)
+                    }
                 }
 //                Text("多選", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 //                Spacer(Modifier.width(4.dp))
