@@ -79,7 +79,7 @@ lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", versio
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-ksp = { id = "com.google.devtools.ksp", version = "2.3.7" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.8" }
 room = { id = "androidx.room", version.ref = "room" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
