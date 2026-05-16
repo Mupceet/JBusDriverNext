@@ -158,14 +158,16 @@ fun LinkMovieListScreen(
                     val header: (@Composable () -> Unit)? = when {
                         type == "actress" && filterBar != null -> {
                             {
-                                val actress = uiState.actressDetail
-                                val actressError = uiState.actressError
-                                when {
-                                    actress != null -> ActressDetailCard(actress)
-                                    uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
-                                    actressError != null -> ActressDetailErrorCard(actressError)
+                                Column {
+                                    val actress = uiState.actressDetail
+                                    val actressError = uiState.actressError
+                                    when {
+                                        actress != null -> ActressDetailCard(actress)
+                                        uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                        actressError != null -> ActressDetailErrorCard(actressError)
+                                    }
+                                    filterBar()
                                 }
-                                filterBar()
                             }
                         }
                         type == "actress" -> {
@@ -216,7 +218,6 @@ private fun ActressDetailCard(actress: ActressDetailUiModel) {
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         if (actress.info.isNotEmpty()) {
             // Layout: avatar+name on left, info on right, vertically centered
@@ -297,7 +298,6 @@ private fun ActressDetailLoadingPlaceholder() {
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -353,7 +353,6 @@ private fun ActressDetailErrorCard(error: String) {
         color = MaterialTheme.colorScheme.errorContainer,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Text(
             text = error,
