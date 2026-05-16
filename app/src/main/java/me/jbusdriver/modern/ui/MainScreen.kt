@@ -117,6 +117,7 @@ fun MainScreen(
                         var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
                         var showCategorySheet by rememberSaveable { mutableStateOf(false) }
                         var selectedGenres by rememberSaveable { mutableStateOf<Set<GenreUiModel>>(emptySet()) }
+                        val genreMemory = remember { mutableMapOf<CensorFilter, Set<GenreUiModel>>() }
 
                         val genreViewModel: GenreListViewModel = hiltViewModel()
                         val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
@@ -177,8 +178,9 @@ fun MainScreen(
                                     selected = censorFilter == filter,
                                     onClick = {
                                         if (censorFilter != filter) {
+                                            genreMemory[censorFilter] = selectedGenres
                                             censorFilter = filter
-                                            selectedGenres = emptySet()
+                                            selectedGenres = genreMemory[filter] ?: emptySet()
                                         }
                                     },
                                     label = { Text(filter.label, fontSize = 12.sp) }
