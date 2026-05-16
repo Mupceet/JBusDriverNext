@@ -181,13 +181,12 @@ fun MainScreen(
                                 label = {
                                     Text(
                                         if (selectedGenres.isEmpty()) "類別"
-                                        else "類別(${selectedGenres.size})",
-                                        fontSize = 12.sp
+                                        else selectedGenres.joinToString("+") { it.name },
+                                        fontSize = 12.sp,
+                                        maxLines = 1
                                     )
                                 },
-                                trailingIcon = if (selectedGenres.isEmpty()) {
-                                    { Icon(painterResource(R.drawable.filter_alt_24px), null, modifier = Modifier.size(16.dp)) }
-                                } else null
+                                trailingIcon = { Icon(painterResource(R.drawable.filter_alt_24px), null, modifier = Modifier.size(16.dp)) }
                             )
                             Spacer(Modifier.width(8.dp))
                             IconButton(
