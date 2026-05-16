@@ -1,7 +1,11 @@
 package me.jbusdriver.modern.data
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.data.db.DB
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -10,6 +14,9 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,6 +61,18 @@ interface CollectRepository {
 
     /** 获取所有收藏的演员列表 */
     suspend fun getCollectedActresses(): List<ActressInfo>
+
+    /** Export all collected movies and actresses as a JSON string (new format v1) */
+    suspend fun exportCollectionsJson(): String
+
+    /**
+     * Import collections from a JSON string.
+     * Supports both new format (v1) and legacy MVP format.
+     * Skips items whose key already exists in the database.
+     *
+     * @return [imported count, skipped count]
+     */
+    suspend fun importCollectionsFromJson(json: String): Pair<Int, Int>
 }
 
 /**
@@ -124,5 +143,97 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
         return withContext(Dispatchers.IO) {
             DB.linkDao.listByType(ActressDBType).mapNotNull { it.toILink() as? ActressInfo }
         }
+    }
+
+    override suspend fun exportCollectionsJson(): String {
+        val movies = getCollectedMovies()
+        val actresses = getCollectedActresses()
+        val root = JsonObject().apply {
+            addProperty("version", 1)
+            addProperty("exportTime", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date()))
+            add("movies", JsonArray().apply {
+                movies.forEach { movie ->
+                    add(GSON.fromJson(movie.toJsonString(), JsonObject::class.java))
+                }
+            })
+            add("actresses", JsonArray().apply {
+                actresses.forEach { actress ->
+                    add(GSON.fromJson(actress.toJsonString(), JsonObject::class.java))
+                }
+            })
+        }
+        return GSON.toJson(root)
+    }
+
+    override suspend fun importCollectionsFromJson(json: String): Pair<Int, Int> {
+        val element = GSON.fromJson(json, com.google.gson.JsonElement::class.java)
+        return if (element.isJsonArray) {
+            importLegacyFormat(element.asJsonArray)
+        } else {
+            importNewFormat(element.asJsonObject)
+        }
+    }
+
+    private suspend fun importNewFormat(root: JsonObject): Pair<Int, Int> {
+        var imported = 0
+        var skipped = 0
+        withContext(Dispatchers.IO) {
+            root.getAsJsonArray("movies")?.forEach { element ->
+                val movie = GSON.fromJson(element.toString(), Movie::class.java)
+                val item = movie.convertDBItem()
+                if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                    skipped++
+                } else {
+                    DB.linkDao.insert(item)
+                    imported++
+                }
+            }
+            root.getAsJsonArray("actresses")?.forEach { element ->
+                val actress = GSON.fromJson(element.toString(), ActressInfo::class.java)
+                val item = actress.convertDBItem()
+                if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                    skipped++
+                } else {
+                    DB.linkDao.insert(item)
+                    imported++
+                }
+            }
+        }
+        return imported to skipped
+    }
+
+    private suspend fun importLegacyFormat(array: JsonArray): Pair<Int, Int> {
+        var imported = 0
+        var skipped = 0
+        withContext(Dispatchers.IO) {
+            array.forEach { element ->
+                val obj = element.asJsonObject
+                val type = obj.get("type")?.asInt ?: return@forEach
+                val jsonStr = obj.get("jsonStr")?.asString ?: return@forEach
+                when (type) {
+                    MovieDBType -> {
+                        val movie = GSON.fromJson(jsonStr, Movie::class.java)
+                        val item = movie.convertDBItem()
+                        if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                            skipped++
+                        } else {
+                            DB.linkDao.insert(item)
+                            imported++
+                        }
+                    }
+                    ActressDBType -> {
+                        val actress = GSON.fromJson(jsonStr, ActressInfo::class.java)
+                        val item = actress.convertDBItem()
+                        if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                            skipped++
+                        } else {
+                            DB.linkDao.insert(item)
+                            imported++
+                        }
+                    }
+                }
+            }
+        }
+        return imported to skipped
     }
 }
