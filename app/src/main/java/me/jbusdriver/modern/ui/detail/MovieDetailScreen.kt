@@ -669,7 +669,7 @@ private fun MagnetBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.615f)
+                .fillMaxHeight(0.618f)
         ) {
             Text(
                 "磁力連結",

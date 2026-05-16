@@ -31,9 +31,8 @@ fun CategoryBottomSheet(
 ) {
     var isMultiSelect by remember { mutableStateOf(false) }
     val expandedTitles = remember { mutableStateSetOf<String>() }
-    val sheetHeight = LocalConfiguration.current.screenHeightDp * 0.618f
 
-    Column(modifier = modifier.fillMaxWidth().height(sheetHeight.dp)) {
+    Column(modifier = modifier.fillMaxWidth().fillMaxHeight(0.618f)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -42,34 +41,12 @@ fun CategoryBottomSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("選擇類別", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(12.dp))
-                Text("多選", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(4.dp))
-                Switch(
-                    checked = isMultiSelect,
-                    onCheckedChange = {
-                        isMultiSelect = it
-                        if (!it && selectedGenres.size > 1) {
-                            onSelectionChange(selectedGenres.lastOrNull()?.let { setOf(it) } ?: emptySet())
-                        }
-                    },
-                    modifier = Modifier.height(24.dp)
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (selectedGenres.isNotEmpty()) {
-                    Text(
-                        "已選 ${selectedGenres.size}",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
                 IconButton(
                     onClick = { expandedTitles.addAll(categories.map { it.title }) },
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.keyboard_double_arrow_up_24px),
+                        painter = painterResource(R.drawable.expand_all_24px),
                         contentDescription = "全部展開",
                         modifier = Modifier.graphicsLayer { rotationZ = 180f }.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -80,15 +57,38 @@ fun CategoryBottomSheet(
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.keyboard_double_arrow_up_24px),
+                        painter = painterResource(R.drawable.collapse_all_24px),
                         contentDescription = "全部摺疊",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isMultiSelect && selectedGenres.isNotEmpty()) {
+                    Text(
+                        "已選 ${selectedGenres.size}",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 TextButton(onClick = { onSelectionChange(emptySet()) }) {
                     Text("重置", fontSize = 12.sp)
                 }
+//                Text("多選", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+//                Spacer(Modifier.width(4.dp))
+//                Checkbox(
+//                    checked = isMultiSelect,
+//                    onCheckedChange = {
+//                        isMultiSelect = it
+//                        if (!it && selectedGenres.size > 1) {
+//                            onSelectionChange(selectedGenres.lastOrNull()?.let { setOf(it) } ?: emptySet())
+//                        }
+//                    },
+//                    modifier = Modifier.height(24.dp)
+//                )
             }
         }
 
@@ -152,28 +152,12 @@ fun CategoryBottomSheet(
                                 },
                                 label = {
                                     Text(genre.name, fontSize = 12.sp)
-                                    if (isSelected) {
-                                        Spacer(Modifier.width(2.dp))
-                                        Icon(
-                                            painter = painterResource(R.drawable.check_24px),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
                                 }
                             )
                         }
                     }
                 }
             }
-        }
-
-        Button(
-            onClick = onApply,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("套用篩選", fontWeight = FontWeight.SemiBold)
         }
     }
 }

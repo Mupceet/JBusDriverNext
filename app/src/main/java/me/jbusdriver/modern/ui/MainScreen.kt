@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -122,6 +123,7 @@ fun MainScreen(
 
                         if (showCategorySheet) {
                             ModalBottomSheet(
+                                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                                 onDismissRequest = { showCategorySheet = false }
                             ) {
                                 CategoryBottomSheet(
@@ -172,6 +174,7 @@ fun MainScreen(
                                 )
                                 Spacer(Modifier.width(6.dp))
                             }
+                            Spacer(Modifier.weight(1f))
                             FilterChip(
                                 selected = selectedGenres.isNotEmpty(),
                                 onClick = { showCategorySheet = true },
@@ -183,10 +186,10 @@ fun MainScreen(
                                     )
                                 },
                                 trailingIcon = if (selectedGenres.isEmpty()) {
-                                    { Icon(painterResource(R.drawable.category_24px), null, modifier = Modifier.size(16.dp)) }
+                                    { Icon(painterResource(R.drawable.filter_alt_24px), null, modifier = Modifier.size(16.dp)) }
                                 } else null
                             )
-                            Spacer(Modifier.weight(1f))
+                            Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = { isGrid = !isGrid },
                                 modifier = Modifier.size(32.dp)
