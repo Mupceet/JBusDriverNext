@@ -14,6 +14,7 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.data.parser.wrapImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -180,6 +181,7 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
         withContext(Dispatchers.IO) {
             root.getAsJsonArray("movies")?.forEach { element ->
                 val movie = GSON.fromJson(element.toString(), Movie::class.java)
+                    .let { it.copy(imageUrl = it.imageUrl.wrapImage()) }
                 val item = movie.convertDBItem()
                 if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
                     skipped++
@@ -190,6 +192,7 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
             }
             root.getAsJsonArray("actresses")?.forEach { element ->
                 val actress = GSON.fromJson(element.toString(), ActressInfo::class.java)
+                    .let { it.copy(avatar = it.avatar.wrapImage()) }
                 val item = actress.convertDBItem()
                 if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
                     skipped++
@@ -213,6 +216,7 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
                 when (type) {
                     MovieDBType -> {
                         val movie = GSON.fromJson(jsonStr, Movie::class.java)
+                            .let { it.copy(imageUrl = it.imageUrl.wrapImage()) }
                         val item = movie.convertDBItem()
                         if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
@@ -223,6 +227,7 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
                     }
                     ActressDBType -> {
                         val actress = GSON.fromJson(jsonStr, ActressInfo::class.java)
+                            .let { it.copy(avatar = it.avatar.wrapImage()) }
                         val item = actress.convertDBItem()
                         if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
