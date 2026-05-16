@@ -171,7 +171,7 @@ fun MainScreen(
                             onClick = { onSearchClick("") },
                             modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
                             shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -180,12 +180,12 @@ fun MainScreen(
                                 Icon(
                                     painter = painterResource(R.drawable.search_24px),
                                     contentDescription = "搜尋",
-                                    tint = MaterialTheme.colorScheme.onPrimary
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     "搜索影片、演員、類別...",
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                     fontSize = 14.sp
                                 )
                             }
@@ -301,7 +301,7 @@ fun MainScreen(
                             onClick = { onSearchClick("") },
                             modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
                             shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -310,12 +310,12 @@ fun MainScreen(
                                 Icon(
                                     painter = painterResource(R.drawable.search_24px),
                                     contentDescription = "搜尋",
-                                    tint = MaterialTheme.colorScheme.onPrimary
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     "搜索影片、演員、類別...",
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                     fontSize = 14.sp
                                 )
                             }
