@@ -218,9 +218,10 @@ fun MovieItem(
                 model = movie.imageUrl,
                 contentDescription = movie.title,
                 modifier = Modifier
-                    .width(50.dp)
-                    .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(4.dp)),
+                    .height(90.dp)
+                    .aspectRatio(3f / 4f)
+                    .clip(RoundedCornerShape(4.dp))
+                    .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
                 contentScale = ContentScale.Crop
             )
 
@@ -229,13 +230,13 @@ fun MovieItem(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .height(75.dp),
+                    .height(90.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = movie.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -248,7 +249,7 @@ fun MovieItem(
                         movie.tags.forEach { tag ->
                             Text(
                                 text = tag,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
@@ -265,13 +266,13 @@ fun MovieItem(
                 ) {
                     Text(
                         text = movie.code,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                     if (movie.date.isNotBlank()) {
                         Text(
                             text = movie.date,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -355,12 +356,6 @@ fun MovieGridItem(
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(bg)
                                     .padding(horizontal = 2.dp, vertical = 2.dp)
-                            )
-                        } else {
-                            Text(
-                                text = " ",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
                             )
                         }
                     }
