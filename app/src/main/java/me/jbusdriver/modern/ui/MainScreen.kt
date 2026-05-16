@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -43,6 +44,7 @@ import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
+import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
 import me.jbusdriver.modern.ui.movielist.GenreListViewModel
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
@@ -118,6 +120,7 @@ fun MainScreen(
                         var showCategorySheet by rememberSaveable { mutableStateOf(false) }
                         var selectedGenres by rememberSaveable { mutableStateOf<Set<GenreUiModel>>(emptySet()) }
                         val genreMemory = remember { mutableMapOf<CensorFilter, Set<GenreUiModel>>() }
+                        val moviePagerState = rememberPagerState { CensorFilter.entries.size }
 
                         val genreViewModel: GenreListViewModel = hiltViewModel()
                         val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
@@ -130,6 +133,23 @@ fun MainScreen(
                             genreViewModel.setDataSourceType(genreType)
                         }
 
+                        // Sync pager → censorFilter
+                        LaunchedEffect(moviePagerState.currentPage) {
+                            val filter = CensorFilter.entries[moviePagerState.currentPage]
+                            if (censorFilter != filter) {
+                                genreMemory[censorFilter] = selectedGenres
+                                censorFilter = filter
+                                selectedGenres = genreMemory[filter] ?: emptySet()
+                            }
+                        }
+                        // Sync chip → pager
+                        LaunchedEffect(censorFilter) {
+                            val target = CensorFilter.entries.indexOf(censorFilter)
+                            if (moviePagerState.currentPage != target) {
+                                moviePagerState.animateScrollToPage(target)
+                            }
+                        }
+
                         if (showCategorySheet) {
                             ModalBottomSheet(
                                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -138,7 +158,10 @@ fun MainScreen(
                                 CategoryBottomSheet(
                                     categories = genreState.genreCategories,
                                     selectedGenres = selectedGenres,
-                                    onSelectionChange = { selectedGenres = it },
+                                    onSelectionChange = {
+                                        selectedGenres = it
+                                        genreMemory[censorFilter] = it
+                                    },
                                 )
                             }
                         }
@@ -215,16 +238,22 @@ fun MainScreen(
                             }
                         }
 
-                        // Movie list
-                        val genreUrl = if (selectedGenres.isNotEmpty()) {
-                            selectedGenres.joinToString("-") { it.link.trimEnd('/').substringAfterLast("/") }
-                                .let { ids ->
-                                    val base = if (censorFilter == CensorFilter.UNCENSORED) "uncensored/" else ""
-                                    "/${base}genre/$ids"
-                                }
-                        } else null
+                        // Movie list pager
+                        HorizontalPager(
+                            state = moviePagerState,
+                            beyondViewportPageCount = 1,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            val filter = CensorFilter.entries[page]
+                            val pageGenres = genreMemory[filter] ?: emptySet()
+                            val genreUrl = if (pageGenres.isNotEmpty()) {
+                                pageGenres.joinToString("-") { it.link.trimEnd('/').substringAfterLast("/") }
+                                    .let { ids ->
+                                        val base = if (filter == CensorFilter.UNCENSORED) "uncensored/" else ""
+                                        "/${base}genre/$ids"
+                                    }
+                            } else null
 
-                        Box(modifier = Modifier.fillMaxSize()) {
                             if (genreUrl != null) {
                                 val genreVm: MovieListViewModel = hiltViewModel(key = "genre_$genreUrl")
                                 LaunchedEffect(genreUrl) { genreVm.setGenreUrl(genreUrl) }
@@ -236,16 +265,18 @@ fun MainScreen(
                                     viewModel = genreVm
                                 )
                             } else {
-                                val dataSourceType = when (censorFilter) {
+                                val dataSourceType = when (filter) {
                                     CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED
                                     else -> DataSourceType.CENSORED
                                 }
+                                val vm: MovieListViewModel = hiltViewModel(key = "pager_$filter")
                                 MovieListScreen(
                                     dataSourceType = dataSourceType,
                                     active = true,
                                     onMovieClick = onMovieClick,
                                     isGrid = isGrid,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
+                                    viewModel = vm
                                 )
                             }
                         }
@@ -253,6 +284,17 @@ fun MainScreen(
 
                     BottomNavCategory.ACTRESS -> {
                         var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
+                        val actressPagerState = rememberPagerState { CensorFilter.entries.size }
+
+                        LaunchedEffect(actressPagerState.currentPage) {
+                            censorFilter = CensorFilter.entries[actressPagerState.currentPage]
+                        }
+                        LaunchedEffect(censorFilter) {
+                            val target = CensorFilter.entries.indexOf(censorFilter)
+                            if (actressPagerState.currentPage != target) {
+                                actressPagerState.animateScrollToPage(target)
+                            }
+                        }
 
                         // Search bar
                         Surface(
@@ -294,17 +336,26 @@ fun MainScreen(
                             }
                         }
 
-                        // Actress list
-                        val actressType = when (censorFilter) {
-                            CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_ACTRESSES
-                            else -> DataSourceType.ACTRESSES
-                        }
-                        ActressListScreen(
-                            dataSourceType = actressType,
-                            active = true,
-                            onActressClick = onActressClick,
+                        // Actress list pager
+                        HorizontalPager(
+                            state = actressPagerState,
+                            beyondViewportPageCount = 1,
                             modifier = Modifier.fillMaxSize()
-                        )
+                        ) { page ->
+                            val filter = CensorFilter.entries[page]
+                            val actressType = when (filter) {
+                                CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_ACTRESSES
+                                else -> DataSourceType.ACTRESSES
+                            }
+                            val vm: ActressListViewModel = hiltViewModel(key = "actress_$filter")
+                            ActressListScreen(
+                                dataSourceType = actressType,
+                                active = true,
+                                onActressClick = onActressClick,
+                                modifier = Modifier.fillMaxSize(),
+                                viewModel = vm
+                            )
+                        }
                     }
 
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
