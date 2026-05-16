@@ -54,7 +54,7 @@ data class CollectionListUiState(
  */
 @HiltViewModel
 class CollectionListViewModel @Inject constructor(
-    private val collectRepository: CollectRepository
+    val collectRepository: CollectRepository
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
