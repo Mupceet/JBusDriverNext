@@ -137,7 +137,7 @@ fun CollectCategoryScreen(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("導出收藏") },
+                        text = { Text("導出收藏", color = MaterialTheme.colorScheme.onSurface) },
                         onClick = {
                             showMenu = false
                             val filename = "jbus_backup_${SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())}.json"
@@ -145,7 +145,7 @@ fun CollectCategoryScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("導入收藏") },
+                        text = { Text("導入收藏", color = MaterialTheme.colorScheme.onSurface) },
                         onClick = {
                             showMenu = false
                             importLauncher.launch(arrayOf("application/json"))
