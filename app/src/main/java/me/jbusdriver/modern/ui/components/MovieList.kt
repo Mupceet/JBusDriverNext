@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -86,10 +87,10 @@ fun MovieList(
 
         Box(modifier = modifier.fillMaxSize()) {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 150.dp),
+                columns = GridCells.Adaptive(minSize = 95.dp),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 4.dp)
+                contentPadding = PaddingValues(horizontal = 8.dp),
             ) {
                 if (header != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) { header() }
@@ -284,6 +285,7 @@ fun MovieGridItem(
 ) {
     Card(
         onClick = { onClick(movie) },
+        shape = RoundedCornerShape(8.dp),
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -295,54 +297,64 @@ fun MovieGridItem(
                 contentDescription = movie.title,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
+                    .aspectRatio(3f / 4f)
+                    .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
                 contentScale = ContentScale.Crop
             )
 
-            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+            Column(
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
                 Text(
                     text = movie.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 3,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (movie.tags.isNotEmpty()) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        movie.tags.forEach { tag ->
+                Text(
+                    text = movie.code,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = movie.date.ifBlank { " " },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val tagColors = listOf(
+                        MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer,
+                        MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    (0..1).forEach { index ->
+                        val tag = movie.tags.getOrNull(index)
+                        if (tag != null) {
+                            val (bg, fg) = tagColors[index]
                             Text(
                                 text = tag,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = fg,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .background(bg)
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                            )
+                        } else {
+                            Text(
+                                text = " ",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
                             )
                         }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = movie.code,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    if (movie.date.isNotBlank()) {
-                        Text(
-                            text = movie.date,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }

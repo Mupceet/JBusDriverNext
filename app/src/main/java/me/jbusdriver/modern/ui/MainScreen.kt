@@ -137,7 +137,7 @@ fun MainScreen(
                         // Search bar
                         Surface(
                             onClick = { onSearchClick("") },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
                             shape = RoundedCornerShape(24.dp),
                             color = MaterialTheme.colorScheme.primary
                         ) {
@@ -161,7 +161,7 @@ fun MainScreen(
 
                         // Filter chips
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CensorFilter.entries.forEach { filter ->
@@ -177,7 +177,7 @@ fun MainScreen(
                                 onClick = { showCategorySheet = true },
                                 label = {
                                     Text(
-                                        if (selectedGenres.isEmpty()) "類別▾"
+                                        if (selectedGenres.isEmpty()) "類別"
                                         else "類別(${selectedGenres.size})",
                                         fontSize = 12.sp
                                     )
@@ -189,12 +189,12 @@ fun MainScreen(
                             Spacer(Modifier.weight(1f))
                             IconButton(
                                 onClick = { isGrid = !isGrid },
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
-                                    painter = painterResource(if (isGrid) R.drawable.view_list_24px else R.drawable.grid_view_24px),
+                                    painter = painterResource(if (isGrid) R.drawable.list_view_24px else R.drawable.grid_view_24px),
                                     contentDescription = if (isGrid) "列表" else "網格",
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(24.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -216,7 +216,6 @@ fun MainScreen(
                                 MovieListScreen(
                                     active = true,
                                     onMovieClick = onMovieClick,
-                                    compact = true,
                                     isGrid = isGrid,
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = genreVm
@@ -230,7 +229,6 @@ fun MainScreen(
                                     dataSourceType = dataSourceType,
                                     active = true,
                                     onMovieClick = onMovieClick,
-                                    compact = true,
                                     isGrid = isGrid,
                                     modifier = Modifier.fillMaxSize()
                                 )
@@ -244,7 +242,7 @@ fun MainScreen(
                         // Search bar
                         Surface(
                             onClick = { onSearchClick("") },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
                             shape = RoundedCornerShape(24.dp),
                             color = MaterialTheme.colorScheme.primary
                         ) {
@@ -268,7 +266,7 @@ fun MainScreen(
 
                         // Filter chips
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CensorFilter.entries.forEach { filter ->
