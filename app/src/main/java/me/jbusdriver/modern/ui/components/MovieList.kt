@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.launch
@@ -51,6 +52,10 @@ import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
 
+private val gridPrefs by lazy {
+    me.jbusdriver.modern.JBus.getSharedPreferences("ui_prefs", 0)
+}
+
 /**
  * 可复用的影片列表组件。
  *
@@ -63,14 +68,15 @@ fun MovieList(
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
     onMovieClick: (MovieUiModel) -> Unit = {},
-    isGrid: Boolean = false,
+    isGrid: Boolean? = null,
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
     modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null
 ) {
-    if (isGrid) {
+    val useGrid = isGrid ?: remember { gridPrefs.getBoolean("is_grid", false) }
+    if (useGrid) {
         val gridState = rememberLazyGridState()
         val scope = rememberCoroutineScope()
         val showScrollToTop = rememberScrollToTopVisibility(gridState)

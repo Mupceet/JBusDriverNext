@@ -6,6 +6,7 @@ import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.content.edit
 
 @Singleton
 class SearchHistoryStore @Inject constructor() {
@@ -25,18 +26,18 @@ class SearchHistoryStore @Inject constructor() {
         if (current.size > MAX_HISTORY) {
             current.removeAt(current.lastIndex)
         }
-        prefs.edit().putString(KEY_HISTORY, GSON.toJson(current)).apply()
+        prefs.edit { putString(KEY_HISTORY, GSON.toJson(current)) }
     }
 
     fun removeQuery(query: String) {
         val current = getHistory().toMutableList()
         if (current.remove(query)) {
-            prefs.edit().putString(KEY_HISTORY, GSON.toJson(current)).apply()
+            prefs.edit { putString(KEY_HISTORY, GSON.toJson(current)) }
         }
     }
 
     fun clearHistory() {
-        prefs.edit().remove(KEY_HISTORY).apply()
+        prefs.edit { remove(KEY_HISTORY) }
     }
 
     companion object {

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
+import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
@@ -46,6 +47,7 @@ import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
 import me.jbusdriver.modern.ui.movielist.GenreListViewModel
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListViewModel
+import androidx.core.content.edit
 
 enum class BottomNavCategory { MOVIE, ACTRESS, COLLECT }
 
@@ -75,6 +77,14 @@ fun MainScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
+    val uiPrefs = remember { JBus.getSharedPreferences("ui_prefs", 0) }
+    var isGrid by rememberSaveable {
+        mutableStateOf(uiPrefs.getBoolean("is_grid", false))
+    }
+    val toggleGrid = {
+        isGrid = !isGrid
+        uiPrefs.edit { putBoolean("is_grid", isGrid) }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -107,7 +117,6 @@ fun MainScreen(
                         var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
                         var showCategorySheet by rememberSaveable { mutableStateOf(false) }
                         var selectedGenres by rememberSaveable { mutableStateOf<Set<GenreUiModel>>(emptySet()) }
-                        var isGrid by rememberSaveable { mutableStateOf(false) }
 
                         val genreViewModel: GenreListViewModel = hiltViewModel()
                         val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
@@ -190,7 +199,7 @@ fun MainScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             IconButton(
-                                onClick = { isGrid = !isGrid },
+                                onClick = { toggleGrid() },
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
