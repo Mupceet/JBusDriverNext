@@ -299,7 +299,11 @@ fun parseMovieFilterInfo(doc: Document): MovieFilterInfo? {
     val allText = alert.selectFirst("#resultshowall")?.text() ?: return null
     val magnetCount = magnetText.filter { it.isDigit() }.toIntOrNull() ?: return null
     val totalCount = allText.filter { it.isDigit() }.toIntOrNull() ?: return null
-    return MovieFilterInfo(magnetCount, totalCount)
+    val parts = alert.selectFirst("b")?.text()
+        ?.split("-")?.map { it.trim() }?.filter { it.isNotBlank() }
+    val breadcrumbName = parts?.getOrNull(0)
+    val breadcrumbType = parts?.getOrNull(1)
+    return MovieFilterInfo(magnetCount, totalCount, breadcrumbName, breadcrumbType)
 }
 
 // endregion

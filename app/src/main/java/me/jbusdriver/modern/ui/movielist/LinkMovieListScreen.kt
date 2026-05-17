@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.movielist
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -83,10 +84,10 @@ fun LinkMovieListScreen(
     }
 
     val displayTitle = when {
+        uiState.resolvedTitle != null -> uiState.resolvedTitle!!
         title.isNotBlank() && type == "actress" -> "演員: $title"
         title.isNotBlank() && type == "genre" -> "類別: $title"
-        title.isNotBlank() -> title
-        else -> "影片列表"
+        else -> "載入中..."
     }
 
     Scaffold(
@@ -105,6 +106,26 @@ fun LinkMovieListScreen(
                     }
                 },
                 actions = {
+                    if (linkUrl.isNotBlank()) {
+                        IconButton(onClick = {
+                            val shareText = buildString {
+                                append(displayTitle)
+                                append("\n")
+                                append(linkUrl)
+                            }
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                setType("text/plain")
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享"))
+                        }) {
+                            Icon(
+                                painter = painterResource(R.drawable.share_24px),
+                                contentDescription = "分享",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                     if (type == "actress" && uiState.actressDetail != null) {
                         IconButton(onClick = {
                             viewModel.toggleActressCollect()

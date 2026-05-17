@@ -40,9 +40,48 @@ class ModernMainActivity : ComponentActivity() {
             else -> null
         }
         if (javbusUrl != null) {
-            return "movie_detail/${java.net.URLEncoder.encode(javbusUrl, "UTF-8")}"
+            return resolveJavbusRoute(javbusUrl)
         }
         return null
+    }
+
+    private fun resolveJavbusRoute(url: String): String {
+        val path = java.net.URL(url).path.orEmpty().trimEnd('/')
+        val segments = path.split("/").filter { it.isNotBlank() }
+
+        // Root or section pages (/uncensored, /xyz) → main
+        if (segments.isEmpty() || segments.singleOrNull() in listOf("uncensored", "xyz")) {
+            return "main"
+        }
+
+        // Listing index pages (/genre, /actresses, /uncensored/genre, etc.) → main
+        if (segments.last() in listOf("genre", "actresses")) {
+            return "main"
+        }
+
+        // Single-segment movie code like /ABCD-123 → movie detail
+        if (segments.size == 1) {
+            val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
+            return "movie_detail/$encodedUrl"
+        }
+
+        // Two+ segments with a known sub-path → link_movies
+        // e.g. /star/xxx, /genre/xxx, /director/xxx, /uncensored/star/xxx, etc.
+        val subPath = if (segments[0] in listOf("uncensored", "xyz")) segments[1] else segments[0]
+        if (subPath in listOf("star", "genre", "director", "studio", "label", "series", "publisher")) {
+            val type = when (subPath) {
+                "star" -> "actress"
+                "genre" -> "genre"
+                else -> "header"
+            }
+            val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
+            val title = segments.last()
+            val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
+            return "link_movies/$encodedUrl?title=$encodedTitle&type=$type"
+        }
+
+        // Unknown pattern → main
+        return "main"
     }
 
     companion object {

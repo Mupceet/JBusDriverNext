@@ -54,7 +54,11 @@ data class MovieFilterInfo(
     /** 已有磁力链接的影片数量。 */
     val magnetCount: Int,
     /** 全部影片数量。 */
-    val totalCount: Int
+    val totalCount: Int,
+    /** 面包屑名称，如 "ダイナナ"。 */
+    val breadcrumbName: String? = null,
+    /** 面包屑类型名，如 "導演"、"演員"、"類別"。 */
+    val breadcrumbType: String? = null
 )
 
 /**

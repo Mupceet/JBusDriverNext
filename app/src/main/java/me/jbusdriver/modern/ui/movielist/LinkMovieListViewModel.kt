@@ -53,7 +53,9 @@ data class LinkMovieListUiState(
     /** 筛选信息（磁力数量与总数），仅在筛选模式下有值 */
     val filterInfo: MovieFilterInfo? = null,
     /** 是否正在切换筛选条件（保留旧列表，显示顶部刷新指示器） */
-    val isFilterSwitching: Boolean = false
+    val isFilterSwitching: Boolean = false,
+    /** 从页面加载的真实标题（外部链接打开时使用） */
+    val resolvedTitle: String? = null
 )
 
 /**
@@ -131,15 +133,25 @@ class LinkMovieListViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val result = repository.loadPageByUrl(linkUrl, 1, showAll = _uiState.value.showAll)
-                _uiState.update {
-                    it.copy(
+                _uiState.update { state ->
+                    state.copy(
                         movies = result.movies.map { m -> m.toUiModel() },
                         pageInfo = result.pageInfo,
                         isLoading = false,
                         isFilterSwitching = false,
                         hasMore = result.pageInfo.hasNext,
                         error = if (result.movies.isEmpty()) "沒有數據" else null,
-                        filterInfo = result.filterInfo
+                        filterInfo = result.filterInfo,
+                        resolvedTitle = result.filterInfo?.let {
+                            if (it.breadcrumbType != null && it.breadcrumbName != null) {
+                                val typeLabel = when (it.breadcrumbType) {
+                                    "女優" -> "演員"
+                                    "有碼類別", "無碼類別" -> "類別"
+                                    else -> it.breadcrumbType
+                                }
+                                "$typeLabel: ${it.breadcrumbName}"
+                            } else null
+                        }
                     )
                 }
             } catch (e: Exception) {
@@ -230,7 +242,8 @@ class LinkMovieListViewModel @Inject constructor(
                                 detail.avatar,
                                 detail.info
                             ),
-                            isLoadingActress = false
+                            isLoadingActress = false,
+                            resolvedTitle = "演員: ${detail.name}"
                         )
                     }
                     val actress = ActressInfo(
