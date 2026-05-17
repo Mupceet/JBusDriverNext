@@ -251,7 +251,7 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize()
                         ) { page ->
                             val filter = CensorFilter.entries[page]
-                            val pageGenres = genreMemory[filter] ?: emptySet()
+                            val pageGenres = if (filter == censorFilter) selectedGenres else (genreMemory[filter] ?: emptySet())
                             val genreUrl = if (pageGenres.isNotEmpty()) {
                                 pageGenres.joinToString("-") { it.link.trimEnd('/').substringAfterLast("/") }
                                     .let { ids ->
