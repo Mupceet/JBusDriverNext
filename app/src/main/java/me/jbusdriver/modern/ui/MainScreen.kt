@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -118,7 +119,12 @@ fun MainScreen(
                     BottomNavCategory.MOVIE -> {
                         var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
                         var showCategorySheet by rememberSaveable { mutableStateOf(false) }
-                        var selectedGenres by rememberSaveable { mutableStateOf<Set<GenreUiModel>>(emptySet()) }
+
+                        val genreSaver = listSaver<Set<GenreUiModel>, String>(
+                            save = { it.map { g -> "${g.name}||${g.link}" } },
+                            restore = { it.map { s -> s.split("||", limit = 2).let { p -> GenreUiModel(p[0], p.getOrElse(1) { "" }) } }.toSet() }
+                        )
+                        var selectedGenres by rememberSaveable(stateSaver = genreSaver) { mutableStateOf(emptySet()) }
                         val genreMemory = remember { mutableMapOf<CensorFilter, Set<GenreUiModel>>() }
                         val moviePagerState = rememberPagerState { CensorFilter.entries.size }
 
