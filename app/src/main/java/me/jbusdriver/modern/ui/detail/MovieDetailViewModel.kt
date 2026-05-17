@@ -45,6 +45,7 @@ class MovieDetailViewModel @Inject constructor(
     private var currentUrl: String = ""
 
     fun loadDetail(url: String) {
+        if (currentUrl == url && _uiState.value.movieDetail != null) return
         if (_uiState.value.isLoading) return
         currentUrl = url
         viewModelScope.launch {
