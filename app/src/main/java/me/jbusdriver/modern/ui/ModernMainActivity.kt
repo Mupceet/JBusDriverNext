@@ -24,14 +24,30 @@ class ModernMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        val deepLinkUri = resolveDeepLink(intent)
         setContent {
             JBusTheme {
-                JBusNavigation()
+                JBusNavigation(deepLinkUri = deepLinkUri)
             }
         }
     }
 
+    private fun resolveDeepLink(intent: android.content.Intent?): String? {
+        val javbusUrl = when (intent?.action) {
+            android.content.Intent.ACTION_VIEW -> intent.data?.toString()
+            android.content.Intent.ACTION_SEND ->
+                JBUS_URL_REGEX.find(intent.getStringExtra(android.content.Intent.EXTRA_TEXT) ?: "")?.value
+            else -> null
+        }
+        if (javbusUrl != null) {
+            return "movie_detail/${java.net.URLEncoder.encode(javbusUrl, "UTF-8")}"
+        }
+        return null
+    }
+
     companion object {
+        private val JBUS_URL_REGEX = Regex("""https?://(?:www\.)?javbus\.com/\S+""")
+
         fun start(context: android.content.Context) {
             val intent = android.content.Intent(context, ModernMainActivity::class.java)
             context.startActivity(intent)

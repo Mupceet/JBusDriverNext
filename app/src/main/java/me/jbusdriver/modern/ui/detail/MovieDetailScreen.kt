@@ -54,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -139,6 +140,26 @@ fun MovieDetailScreen(
                 },
                 actions = {
                     if (detail != null) {
+                        IconButton(onClick = {
+                            val code = detail.headers.firstOrNull()?.value ?: ""
+                            val shareText = buildString {
+                                if (code.isNotBlank()) append(code).append("\n")
+                                append(detail.title)
+                                append("\n")
+                                append(movieUrl)
+                            }
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享"))
+                        }) {
+                            Icon(
+                                painter = painterResource(R.drawable.share_24px),
+                                contentDescription = "分享",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         IconButton(onClick = {
                             viewModel.toggleCollect()
                             val msg = if (!uiState.isCollected) "收藏成功" else "已取消收藏"

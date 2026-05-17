@@ -20,12 +20,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.ui.HeaderUiModel
@@ -39,8 +41,12 @@ private const val ANIM_DURATION_SEARCH = 400
 
 @Composable
 fun JBusNavigation(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    deepLinkUri: String? = null
 ) {
+    LaunchedEffect(deepLinkUri) {
+        deepLinkUri?.let { navController.navigate(it) }
+    }
     NavHost(
         navController = navController,
         startDestination = NavigationKeys.ROUTE_MAIN,
