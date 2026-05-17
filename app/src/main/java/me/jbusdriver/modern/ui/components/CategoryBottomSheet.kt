@@ -117,7 +117,7 @@ fun CategoryBottomSheet(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "${group.genres.size}",
+                            "${group.genres?.size ?: 0}",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -138,7 +138,7 @@ fun CategoryBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
                     ) {
-                        group.genres.forEach { genre ->
+                        group.genres.orEmpty().forEach { genre ->
                             val isSelected = genre in selectedGenres
                             FilterChip(
                                 selected = isSelected,

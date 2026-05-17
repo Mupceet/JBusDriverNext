@@ -45,6 +45,7 @@ data class HeaderUiModel(val name: String, val value: String, val link: String =
 
 /** 类别标签的 UI 模型 */
 @Immutable
+@androidx.annotation.Keep
 data class GenreUiModel(val name: String = "", val link: String = "")
 
 /** 演员的 UI 模型 */
@@ -106,4 +107,5 @@ data class ActressDetailUiModel(
 )
 
 /** 类别分组（按大类如题材、场景等分组） */
-data class GenreCategory(val title: String = "", val genres: List<GenreUiModel> = emptyList())
+@androidx.annotation.Keep
+data class GenreCategory(val title: String = "", val genres: List<GenreUiModel>? = emptyList())

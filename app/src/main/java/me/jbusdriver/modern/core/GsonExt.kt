@@ -56,8 +56,8 @@ val GSON by lazy {
 private object NullSafeFactory : TypeAdapterFactory {
     override fun <T : Any> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T>? {
         val raw = type.rawType
-        // 只处理项目内的 data class（以 me.jbusdriver 开头）
-        if (!raw.name.startsWith("me.jbusdriver.")) return null
+        // Only process project data classes or @Keep-annotated classes
+        if (!raw.name.startsWith("me.jbusdriver.") && raw.getAnnotation(androidx.annotation.Keep::class.java) == null) return null
         val delegate = gson.getDelegateAdapter(this, type)
         return object : TypeAdapter<T>() {
             override fun write(out: JsonWriter, value: T?) = delegate.write(out, value)

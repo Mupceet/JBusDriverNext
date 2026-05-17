@@ -29,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -120,18 +119,9 @@ fun MainScreen(
                         var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
                         var showCategorySheet by rememberSaveable { mutableStateOf(false) }
 
-                        val genreSaver = listSaver<Set<GenreUiModel>, String>(
-                            save = { it.map { g -> "${g.name}||${g.link}" } },
-                            restore = { it.map { s -> s.split("||", limit = 2).let { p -> GenreUiModel(p[0], p.getOrElse(1) { "" }) } }.toSet() }
-                        )
-                        val genreMapSaver = listSaver<Map<CensorFilter, Set<GenreUiModel>>, Pair<String, String>>(
-                            save = { map -> map.entries.flatMap { (k, v) -> v.map { k.name to "${it.name}||${it.link}" } } },
-                            restore = { pairs -> pairs.groupBy({ it.first }, { it.second })
-                                .mapKeys { (k, _) -> CensorFilter.valueOf(k) }
-                                .mapValues { (_, vals) -> vals.map { s -> s.split("||", limit = 2).let { p -> GenreUiModel(p[0], p.getOrElse(1) { "" }) } }.toSet() } }
-                        )
-                        var genreMemory by rememberSaveable(stateSaver = genreMapSaver) { mutableStateOf(emptyMap<CensorFilter, Set<GenreUiModel>>()) }
-                        var selectedGenres by rememberSaveable(stateSaver = genreSaver) { mutableStateOf(emptySet()) }
+                        // Store only link strings to avoid GenreUiModel serialization issues
+                        var selectedGenreLinks by rememberSaveable { mutableStateOf(emptySet<String>()) }
+                        var genreLinkMemory by rememberSaveable { mutableStateOf(emptyMap<String, Set<String>>()) }
                         val moviePagerState = rememberPagerState { CensorFilter.entries.size }
 
                         val genreViewModel: GenreListViewModel = hiltViewModel()
@@ -149,9 +139,9 @@ fun MainScreen(
                         LaunchedEffect(moviePagerState.currentPage) {
                             val filter = CensorFilter.entries[moviePagerState.currentPage]
                             if (censorFilter != filter) {
-                                genreMemory = genreMemory + (censorFilter to selectedGenres)
+                                genreLinkMemory = genreLinkMemory + (censorFilter.name to selectedGenreLinks)
                                 censorFilter = filter
-                                selectedGenres = genreMemory[filter] ?: emptySet()
+                                selectedGenreLinks = genreLinkMemory[filter.name] ?: emptySet()
                             }
                         }
                         // Sync chip → pager
@@ -163,6 +153,10 @@ fun MainScreen(
                         }
 
                         if (showCategorySheet) {
+                            // Build selectedGenres from links using ViewModel data
+                            val allGenres = genreState.genreCategories.flatMap { it.genres.orEmpty() }
+                            val selectedGenres = allGenres.filter { it.link in selectedGenreLinks }.toSet()
+
                             ModalBottomSheet(
                                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                                 onDismissRequest = { showCategorySheet = false }
@@ -170,9 +164,9 @@ fun MainScreen(
                                 CategoryBottomSheet(
                                     categories = genreState.genreCategories,
                                     selectedGenres = selectedGenres,
-                                    onSelectionChange = {
-                                        selectedGenres = it
-                                        genreMemory = genreMemory + (censorFilter to it)
+                                    onSelectionChange = { newSelection ->
+                                        selectedGenreLinks = newSelection.map { it.link }.toSet()
+                                        genreLinkMemory = genreLinkMemory + (censorFilter.name to newSelection.map { it.link }.toSet())
                                     },
                                 )
                             }
@@ -213,9 +207,9 @@ fun MainScreen(
                                     selected = censorFilter == filter,
                                     onClick = {
                                         if (censorFilter != filter) {
-                                            genreMemory = genreMemory + (censorFilter to selectedGenres)
+                                            genreLinkMemory = genreLinkMemory + (censorFilter.name to selectedGenreLinks)
                                             censorFilter = filter
-                                            selectedGenres = genreMemory[filter] ?: emptySet()
+                                            selectedGenreLinks = genreLinkMemory[filter.name] ?: emptySet()
                                         }
                                     },
                                     label = { Text(filter.label, fontSize = 12.sp) }
@@ -223,13 +217,16 @@ fun MainScreen(
                                 Spacer(Modifier.width(6.dp))
                             }
                             Spacer(Modifier.weight(1f))
+                            // Build selectedGenres for display from all known genres
+                            val allGenresForChip = genreState.genreCategories.flatMap { it.genres.orEmpty() }
+                            val selectedGenresForChip = allGenresForChip.filter { it.link in selectedGenreLinks }.toSet()
                             FilterChip(
-                                selected = selectedGenres.isNotEmpty(),
+                                selected = selectedGenreLinks.isNotEmpty(),
                                 onClick = { showCategorySheet = true },
                                 label = {
                                     Text(
-                                        if (selectedGenres.isEmpty()) "類別"
-                                        else selectedGenres.joinToString("+") { it.name },
+                                        if (selectedGenreLinks.isEmpty()) "類別"
+                                        else selectedGenresForChip.joinToString("+") { it.name },
                                         fontSize = 12.sp,
                                         maxLines = 1
                                     )
@@ -257,9 +254,9 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize()
                         ) { page ->
                             val filter = CensorFilter.entries[page]
-                            val pageGenres = if (filter == censorFilter) selectedGenres else (genreMemory[filter] ?: emptySet())
-                            val genreUrl = if (pageGenres.isNotEmpty()) {
-                                pageGenres.joinToString("-") { it.link.trimEnd('/').substringAfterLast("/") }
+                            val pageLinks = if (filter == censorFilter) selectedGenreLinks else (genreLinkMemory[filter.name] ?: emptySet())
+                            val genreUrl = if (pageLinks.isNotEmpty()) {
+                                pageLinks.joinToString("-") { it.trimEnd('/').substringAfterLast("/") }
                                     .let { ids ->
                                         val base = if (filter == CensorFilter.UNCENSORED) "uncensored/" else ""
                                         "/${base}genre/$ids"

@@ -22,8 +22,11 @@
 # Keep all model classes used in Gson serialization.
 # Gson maps JSON keys to field names by reflection – R8 must not rename them.
 -keep class me.jbusdriver.modern.domain.model.** { <fields>; }
--keep class me.jbusdriver.modern.ui.movielist.GenreCategory { <fields>; }
--keep class me.jbusdriver.modern.ui.GenreUiModel { <fields>; }
+# GenreCategory has List<GenreUiModel> — R8 must preserve generic type signatures
+-keep,allowobfuscation class me.jbusdriver.modern.ui.movielist.GenreCategory { *; }
+-keep,allowobfuscation class me.jbusdriver.modern.ui.GenreUiModel { *; }
+# Keep all UI data models that may be serialized via Gson or Bundle
+-keep class me.jbusdriver.modern.ui.**UiModel { <fields>; }
 
 # Keep the global Gson instance and extension helpers
 -keep class me.jbusdriver.modern.core.GsonExtKt { *; }
