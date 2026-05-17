@@ -142,7 +142,7 @@ fun parseMovieDetails(doc: Document): MovieDetail {
 
     val samples = doc.select("#sample-waterfall .sample-box").map {
         val thumb = it.select("img").attr("src").wrapImage()
-        val image = it.attr("href")
+        val image = it.attr("href").wrapImage()
         ImageSample(
             it.select("img").attr("title"),
             thumb,
