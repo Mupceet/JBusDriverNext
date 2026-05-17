@@ -124,8 +124,14 @@ fun MainScreen(
                             save = { it.map { g -> "${g.name}||${g.link}" } },
                             restore = { it.map { s -> s.split("||", limit = 2).let { p -> GenreUiModel(p[0], p.getOrElse(1) { "" }) } }.toSet() }
                         )
+                        val genreMapSaver = listSaver<Map<CensorFilter, Set<GenreUiModel>>, Pair<String, String>>(
+                            save = { map -> map.entries.flatMap { (k, v) -> v.map { k.name to "${it.name}||${it.link}" } } },
+                            restore = { pairs -> pairs.groupBy({ it.first }, { it.second })
+                                .mapKeys { (k, _) -> CensorFilter.valueOf(k) }
+                                .mapValues { (_, vals) -> vals.map { s -> s.split("||", limit = 2).let { p -> GenreUiModel(p[0], p.getOrElse(1) { "" }) } }.toSet() } }
+                        )
+                        var genreMemory by rememberSaveable(stateSaver = genreMapSaver) { mutableStateOf(emptyMap<CensorFilter, Set<GenreUiModel>>()) }
                         var selectedGenres by rememberSaveable(stateSaver = genreSaver) { mutableStateOf(emptySet()) }
-                        val genreMemory = remember { mutableMapOf<CensorFilter, Set<GenreUiModel>>() }
                         val moviePagerState = rememberPagerState { CensorFilter.entries.size }
 
                         val genreViewModel: GenreListViewModel = hiltViewModel()
@@ -143,7 +149,7 @@ fun MainScreen(
                         LaunchedEffect(moviePagerState.currentPage) {
                             val filter = CensorFilter.entries[moviePagerState.currentPage]
                             if (censorFilter != filter) {
-                                genreMemory[censorFilter] = selectedGenres
+                                genreMemory = genreMemory + (censorFilter to selectedGenres)
                                 censorFilter = filter
                                 selectedGenres = genreMemory[filter] ?: emptySet()
                             }
@@ -166,7 +172,7 @@ fun MainScreen(
                                     selectedGenres = selectedGenres,
                                     onSelectionChange = {
                                         selectedGenres = it
-                                        genreMemory[censorFilter] = it
+                                        genreMemory = genreMemory + (censorFilter to it)
                                     },
                                 )
                             }
@@ -207,7 +213,7 @@ fun MainScreen(
                                     selected = censorFilter == filter,
                                     onClick = {
                                         if (censorFilter != filter) {
-                                            genreMemory[censorFilter] = selectedGenres
+                                            genreMemory = genreMemory + (censorFilter to selectedGenres)
                                             censorFilter = filter
                                             selectedGenres = genreMemory[filter] ?: emptySet()
                                         }
