@@ -217,7 +217,7 @@ fun SearchScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("搜索歷史", fontWeight = FontWeight.SemiBold)
+                            Text("搜索歷史", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (isDeletingHistory) {
                                 Row {
                                     TextButton(onClick = {
@@ -242,8 +242,8 @@ fun SearchScreen(
                             }
                         }
                         FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
                             searchHistory.forEach { query ->
