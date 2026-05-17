@@ -1,21 +1,22 @@
 package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.core.CacheLoader
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.domain.model.urlPath
-import me.jbusdriver.modern.domain.model.ActressDetail
-import me.jbusdriver.modern.domain.model.MoviePageResult
-import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.domain.model.ActressInfo
-import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.data.parser.loadMovieFromDoc
 import me.jbusdriver.modern.data.parser.parseActressAttrs
 import me.jbusdriver.modern.data.parser.parseActressList
 import me.jbusdriver.modern.data.parser.parseGenreCategories
-import me.jbusdriver.modern.data.parser.parsePageInfo
 import me.jbusdriver.modern.data.parser.parseMovieFilterInfo
-import me.jbusdriver.modern.ui.GenreUiModel
+import me.jbusdriver.modern.data.parser.parsePageInfo
+import me.jbusdriver.modern.domain.model.ActressDetail
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.MoviePageResult
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.GenreCategory
+import me.jbusdriver.modern.ui.GenreUiModel
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -167,12 +168,25 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
             DataSourceType.UNCENSORED_GENRE -> NetClient.defaultFastUrl + "/uncensored/genre"
             else -> NetClient.defaultFastUrl + "/genre"
         }
-        val cacheKey = "genres_${type.key}"
+        val cacheKey = "genres_v2_${type.key}"
 
         return CacheLoader.persistentCached(cacheKey) {
             val doc = NetClient.fetchDocument(baseUrl)
-            parseGenreCategories(doc).map { (title, genres) ->
-                GenreCategory(title, genres.map { GenreUiModel(it.name, it.link) })
+            val allGenres = mutableListOf<GenreUiModel>()
+            val rawCategories = parseGenreCategories(doc).map { (title, genres) ->
+                val items = genres.map { GenreUiModel(it.name, it.link) }
+                allGenres.addAll(items)
+                title to items
+            }
+            allGenres.groupBy { it.link }
+                .filter { it.value.size > 1 }
+                .forEach { (link, items) ->
+                    KLog.w("Duplicate genre link=$link, names=${items.map { it.name }}")
+                }
+            val seen = mutableSetOf<String>()
+            rawCategories.mapNotNull { (title, genres) ->
+                val deduped = genres.filter { seen.add(it.link) }
+                if (deduped.isEmpty()) null else GenreCategory(title, deduped)
             }
         }
     }
