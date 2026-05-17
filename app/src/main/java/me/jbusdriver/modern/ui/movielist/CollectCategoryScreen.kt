@@ -70,6 +70,7 @@ fun CollectCategoryScreen(
     }
 
     val movieVm: CollectionListViewModel = hiltViewModel(key = "collect_0")
+    val actressVm: CollectionListViewModel = hiltViewModel(key = "collect_1")
     val countState by movieVm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -109,6 +110,7 @@ fun CollectCategoryScreen(
                 val msg = if (skipped > 0) "導入 $imported 項，跳過 $skipped 項" else "導入 $imported 項"
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 movieVm.loadCollection(MovieDBType)
+                actressVm.loadCollection(ActressDBType)
             } catch (e: Exception) {
                 Toast.makeText(context, "導入失敗: ${e.message}", Toast.LENGTH_SHORT).show()
             }
