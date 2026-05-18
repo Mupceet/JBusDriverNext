@@ -1,8 +1,10 @@
 package me.jbusdriver.modern.ui.movielist
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +19,8 @@ import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.toUiModel
-import javax.inject.Inject
 
 /**
  * 关联电影列表页的 UI 状态。
@@ -74,11 +76,11 @@ data class LinkMovieListUiState(
  * @param collectRepository 收藏仓库，负责查询和切换女优收藏状态
  * @param savedStateHandle Navigation 参数持有者，用于获取传入的链接 URL
  */
-@HiltViewModel
-class LinkMovieListViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = LinkMovieListViewModel.Factory::class)
+class LinkMovieListViewModel @AssistedInject constructor(
     private val repository: MovieRepository,
     private val collectRepository: CollectRepository,
-    savedStateHandle: SavedStateHandle
+    @Assisted private val navKey: RouteLinkMovies
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -90,8 +92,8 @@ class LinkMovieListViewModel @Inject constructor(
     /** 当前已加载到的页码 */
     private var currentPage = 0
 
-    /** 当前加载的链接 URL，优先从 SavedStateHandle 获取 */
-    private var linkUrl: String = savedStateHandle.get<String>("linkUrl") ?: ""
+    /** 当前加载的链接 URL */
+    private var linkUrl: String = navKey.linkUrl
 
     /** 列表类型，如 "actress" 表示女优关联影片 */
     private var listType: String = ""
@@ -290,5 +292,10 @@ class LinkMovieListViewModel @Inject constructor(
         _uiState.update { it.copy(showAll = newState, isFilterSwitching = true) }
         currentPage = 0
         loadFirstPage()
+    }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(navKey: RouteLinkMovies): LinkMovieListViewModel
     }
 }

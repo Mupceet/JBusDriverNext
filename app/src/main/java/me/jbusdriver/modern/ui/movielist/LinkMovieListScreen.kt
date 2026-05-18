@@ -39,10 +39,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieFilterBar
@@ -74,7 +75,9 @@ fun LinkMovieListScreen(
     avatarUrl: String = "",
     onMovieClick: (MovieUiModel) -> Unit = {},
     onBack: () -> Unit = {},
-    viewModel: LinkMovieListViewModel = hiltViewModel()
+    viewModel: LinkMovieListViewModel = hiltViewModel<LinkMovieListViewModel, LinkMovieListViewModel.Factory>(
+        creationCallback = { factory -> factory.create(RouteLinkMovies(linkUrl, title, type, avatarUrl)) }
+    )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current

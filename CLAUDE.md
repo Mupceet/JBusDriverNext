@@ -96,7 +96,7 @@ me.jbusdriver.modern/
 ### Key Patterns
 
 - **Single Activity**: `ModernMainActivity` with `enableEdgeToEdge()` hosts all Compose UI
-- **Hilt DI**: ViewModels use `hiltViewModel()`, repositories are interface+impl pairs bound via `@Binds` in `DataModule`
+- **Hilt DI**: ViewModels use `hiltViewModel()` (from `hilt-navigation-compose`), repositories are interface+impl pairs bound via `@Binds` in `DataModule`. Navigation-arg ViewModels use `@AssistedInject` + `@AssistedFactory`.
 - **Repository pattern**: Each screen has a ViewModel that delegates to a Hilt-provided repository
 - **HTML scraping**: `NetClient.fetchDocument()` (OkHttp → Jsoup) → domain models via top-level functions in `HtmlParser.kt`
 - **Two-tier cache**: `CacheLoader.lruCached()` (memory only) for lists; `CacheLoader.persistentCached()` (memory + disk) for details
@@ -111,15 +111,15 @@ me.jbusdriver.modern/
    - `JBusDatabase`: history tracking
    - `CollectDatabase`: categories and link items (stored on SD card for persistence across reinstalls)
 
-## Navigation Routes
+## Navigation Routes (Nav3)
 
-| Route | Purpose |
-|-------|---------|
-| `main` | Tab pager (home) |
-| `search` | Search screen (slides up) |
-| `movie_detail/{movieUrl}` | Movie detail |
-| `image_viewer/{images}?startIndex={n}` | Full-screen image viewer, images joined by `\|\|\|` |
-| `link_movies/{linkUrl}?title=&type=&avatar=` | Actress filmography / genre movie list |
+| Route Key | Purpose |
+|-----------|---------|
+| `RouteMain` | Tab pager (home) |
+| `RouteSearch(defaultSearchType)` | Search screen |
+| `RouteMovieDetail(movieUrl)` | Movie detail |
+| `RouteImageViewer(images, startIndex)` | Full-screen image viewer |
+| `RouteLinkMovies(linkUrl, title, type, avatar)` | Actress/genre movie list |
 
 ## Key Libraries
 
@@ -134,7 +134,7 @@ me.jbusdriver.modern/
 | Image Loading | Coil 2.7 |
 | Image Zoom | Telephoto 0.19 |
 | JSON | Gson 2.14 |
-| Navigation | Compose Navigation 2.9 |
+| Navigation | Navigation 3 (1.1.1) |
 | Debug | LeakCanary 2.14 (debugOnly) |
 
 ## Project Configuration

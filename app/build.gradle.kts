@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.room)
     alias(libs.plugins.hilt)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.serialization)
 }
 
 val gitCommitCount = providers.exec {
@@ -115,11 +116,13 @@ dependencies {
     implementation(libs.compose.foundation)
     debugImplementation(libs.compose.ui.tooling)
 
-    // Lifecycle + ViewModel + Navigation (Compose)
+    // Lifecycle + ViewModel + Navigation 3
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
-    implementation(libs.navigation.compose)
+    implementation(libs.navigation3.runtime)
+    implementation(libs.navigation3.ui)
+    implementation(libs.lifecycle.viewmodel.navigation3)
 
     // Coroutines
     implementation(libs.coroutines.android)
