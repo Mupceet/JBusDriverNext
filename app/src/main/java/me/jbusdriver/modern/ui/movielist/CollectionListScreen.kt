@@ -23,10 +23,10 @@ import me.jbusdriver.modern.ui.components.MovieList
 @Composable
 fun CollectionListScreen(
     dbType: Int,
+    modifier: Modifier = Modifier,
     active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
-    modifier: Modifier = Modifier,
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

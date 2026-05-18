@@ -64,6 +64,7 @@ private val gridPrefs by lazy {
 @Composable
 fun MovieList(
     movies: List<MovieUiModel>,
+    modifier: Modifier = Modifier,
     hasMore: Boolean = true,
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
@@ -72,7 +73,6 @@ fun MovieList(
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
-    modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null
 ) {
     val useGrid = isGrid ?: remember { gridPrefs.getBoolean("is_grid", false) }

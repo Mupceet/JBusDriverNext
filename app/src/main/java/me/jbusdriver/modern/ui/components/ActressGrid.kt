@@ -45,12 +45,12 @@ import me.jbusdriver.modern.ui.ActressUiModel
 @Composable
 fun ActressGrid(
     actresses: List<ActressUiModel>,
+    modifier: Modifier = Modifier,
     hasMore: Boolean = true,
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
     onActressLongClick: ((ActressUiModel) -> Unit)? = null,
-    modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null
 ) {
     val gridState = rememberLazyGridState()

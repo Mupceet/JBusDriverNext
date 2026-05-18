@@ -65,11 +65,11 @@ import me.jbusdriver.modern.ui.components.MovieList
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
+    modifier: Modifier = Modifier,
     defaultSearchType: String = "",
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
     onBack: () -> Unit = {},
-    modifier: Modifier = Modifier,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

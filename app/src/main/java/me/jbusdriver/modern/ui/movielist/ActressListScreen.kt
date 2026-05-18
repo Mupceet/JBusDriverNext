@@ -28,9 +28,9 @@ import me.jbusdriver.modern.ui.components.ErrorView
 @Composable
 fun ActressListScreen(
     dataSourceType: DataSourceType,
+    modifier: Modifier = Modifier,
     active: Boolean = true,
     onActressClick: (ActressUiModel) -> Unit = {},
-    modifier: Modifier = Modifier,
     header: (@Composable () -> Unit)? = null,
     viewModel: ActressListViewModel = hiltViewModel()
 ) {

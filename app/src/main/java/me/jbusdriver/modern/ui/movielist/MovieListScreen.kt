@@ -23,6 +23,7 @@ import me.jbusdriver.modern.ui.components.MovieList
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieListScreen(
+    modifier: Modifier = Modifier,
     dataSourceType: DataSourceType = DataSourceType.CENSORED,
     active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
@@ -30,7 +31,6 @@ fun MovieListScreen(
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
     isGrid: Boolean = false,
-    modifier: Modifier = Modifier,
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
