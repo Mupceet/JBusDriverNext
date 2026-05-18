@@ -110,8 +110,6 @@ fun parseMovieDetails(doc: Document): MovieDetail {
     val title = bigImage.select("img").attr("title")
     val cover = bigImage.attr("href").wrapImage()
     val coverImg = bigImage.select("img")
-    val coverWidth = coverImg.attr("width").toIntOrNull() ?: 0
-    val coverHeight = coverImg.attr("height").toIntOrNull() ?: 0
 
     val html = doc.html()
     val gid = Regex("""var\s+gid\s*=\s*(\d+)""").find(html)?.groupValues?.get(1)
@@ -163,8 +161,6 @@ fun parseMovieDetails(doc: Document): MovieDetail {
         title, content, cover, headers, geneses, actresses, samples, relatedMovies,
         gid = gid,
         uc = uc,
-        coverWidth = coverWidth,
-        coverHeight = coverHeight
     )
 }
 

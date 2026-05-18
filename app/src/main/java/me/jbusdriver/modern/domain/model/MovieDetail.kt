@@ -38,8 +38,6 @@ data class MovieDetail(
     val relatedMovies: List<Movie>,
     val gid: String? = null,
     val uc: String? = null,
-    val coverWidth: Int = 0,
-    val coverHeight: Int = 0
 )
 
 /**

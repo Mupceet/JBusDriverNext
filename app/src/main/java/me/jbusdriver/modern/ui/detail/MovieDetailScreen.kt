@@ -260,11 +260,7 @@ private fun DetailContent(
     val context = LocalContext.current
     var selectedHeader by remember { mutableStateOf<HeaderUiModel?>(null) }
     var coverAspectRatio by remember {
-        mutableFloatStateOf(
-            if (detail.coverWidth > 0 && detail.coverHeight > 0)
-                detail.coverWidth.toFloat() / detail.coverHeight.toFloat()
-            else 3f / 2f
-        )
+        mutableFloatStateOf(1.49f)
     }
     detail.headers.firstOrNull()?.value ?: ""
     val allImages = remember(detail.cover, detail.imageSamples) {
