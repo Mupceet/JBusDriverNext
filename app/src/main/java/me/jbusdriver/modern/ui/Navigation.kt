@@ -21,16 +21,15 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
+import kotlinx.coroutines.flow.StateFlow
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.navDeepLink
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
-import me.jbusdriver.modern.ui.GenreUiModel
-import me.jbusdriver.modern.ui.HeaderUiModel
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
@@ -42,10 +41,31 @@ private const val ANIM_DURATION_SEARCH = 400
 @Composable
 fun JBusNavigation(
     navController: NavHostController = rememberNavController(),
-    deepLinkUri: String? = null
+    deepLinkFlow: StateFlow<String?>? = null,
+    deepLinkUri: String? = null,
+    onDeepLinkConsumed: () -> Unit = {}
 ) {
-    LaunchedEffect(deepLinkUri) {
-        deepLinkUri?.let { navController.navigate(it) }
+    val deepLinkValue = deepLinkFlow?.collectAsState()?.value ?: deepLinkUri
+    LaunchedEffect(deepLinkValue) {
+        deepLinkValue?.let { route ->
+            if (route == NavigationKeys.ROUTE_MAIN) {
+                navController.popBackStack(NavigationKeys.ROUTE_MAIN, inclusive = false)
+            } else {
+                val currentRoute = navController.currentDestination?.route ?: ""
+                when {
+                    currentRoute.startsWith("search") -> {
+                        navController.popBackStack()
+                        navController.navigate(route)
+                    }
+                    currentRoute.startsWith("image_viewer") -> {
+                        navController.popBackStack()
+                        navController.navigate(route)
+                    }
+                    else -> navController.navigate(route)
+                }
+            }
+            onDeepLinkConsumed()
+        }
     }
     NavHost(
         navController = navController,

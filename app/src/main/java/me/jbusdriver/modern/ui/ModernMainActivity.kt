@@ -15,21 +15,39 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import me.jbusdriver.modern.ui.theme.JBusTheme
 
 @AndroidEntryPoint
 class ModernMainActivity : ComponentActivity() {
 
+    private val _deepLink = MutableStateFlow<String?>(null)
+    private val deepLink: StateFlow<String?> = _deepLink
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
-        val deepLinkUri = resolveDeepLink(intent)
+        handleIntent(intent)
         setContent {
             JBusTheme {
-                JBusNavigation(deepLinkUri = deepLinkUri)
+                JBusNavigation(
+                    deepLinkFlow = deepLink,
+                    onDeepLinkConsumed = { _deepLink.value = null }
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: android.content.Intent?) {
+        val route = resolveDeepLink(intent)
+        _deepLink.value = route
     }
 
     private fun resolveDeepLink(intent: android.content.Intent?): String? {
