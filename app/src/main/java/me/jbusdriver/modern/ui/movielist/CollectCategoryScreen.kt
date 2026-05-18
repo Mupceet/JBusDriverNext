@@ -119,7 +119,7 @@ fun CollectCategoryScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -140,7 +140,7 @@ fun CollectCategoryScreen(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("導出收藏", color = MaterialTheme.colorScheme.onSurface) },
+                        text = { Text("導出收藏") },
                         onClick = {
                             showMenu = false
                             val filename = "jbus_backup_${SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())}.json"
@@ -148,7 +148,7 @@ fun CollectCategoryScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("導入收藏", color = MaterialTheme.colorScheme.onSurface) },
+                        text = { Text("導入收藏") },
                         onClick = {
                             showMenu = false
                             importLauncher.launch(arrayOf("application/json"))
