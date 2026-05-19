@@ -31,6 +31,8 @@ import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
+import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
+import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
 
 private const val ANIM_DURATION = 350
 private const val ANIM_DURATION_SEARCH = 400
@@ -126,6 +128,12 @@ fun JBusNavigation(
                     },
                     onSearchClick = { searchType ->
                         backStack.add(RouteSearch(searchType))
+                    },
+                    onForumBoardClick = { board ->
+                        backStack.add(RouteForumThreadList(board.id, board.name))
+                    },
+                    onForumThreadClick = { tid ->
+                        backStack.add(RouteForumThreadDetail(tid))
                     }
                 )
             }
@@ -234,6 +242,25 @@ fun JBusNavigation(
                     avatarUrl = key.avatar,
                     onMovieClick = { movie ->
                         backStack.add(RouteMovieDetail(movie.link))
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<RouteForumThreadList> { key ->
+                ForumThreadListScreen(
+                    fid = key.fid,
+                    title = key.title,
+                    onThreadClick = { tid ->
+                        backStack.add(RouteForumThreadDetail(tid))
+                    },
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<RouteForumThreadDetail> { key ->
+                ForumThreadDetailScreen(
+                    tid = key.tid,
+                    onImageClick = { images, startIndex ->
+                        backStack.add(RouteImageViewer(images, startIndex))
                     },
                     onBack = { backStack.removeLastOrNull() }
                 )
