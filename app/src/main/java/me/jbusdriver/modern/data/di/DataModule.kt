@@ -6,9 +6,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.DefaultCollectRepository
+import me.jbusdriver.modern.data.DefaultForumRepository
 import me.jbusdriver.modern.data.DefaultMovieDetailRepository
 import me.jbusdriver.modern.data.DefaultMovieRepository
 import me.jbusdriver.modern.data.DefaultSearchRepository
+import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.SearchRepository
@@ -55,4 +57,11 @@ abstract class DataModule {
     abstract fun bindCollectRepository(
         impl: DefaultCollectRepository
     ): CollectRepository
+
+    /** 绑定 [ForumRepository] 到 [DefaultForumRepository]。 */
+    @Binds
+    @Singleton
+    abstract fun bindForumRepository(
+        impl: DefaultForumRepository
+    ): ForumRepository
 }
