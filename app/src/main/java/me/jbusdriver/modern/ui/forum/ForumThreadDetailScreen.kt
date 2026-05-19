@@ -27,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -95,81 +96,86 @@ fun ForumThreadDetailScreen(
             )
         }
     ) { innerPadding ->
-        when {
-            state.error != null && detail == null -> {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { viewModel.loadDetail() }) { Text("重試") }
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.fillMaxSize().padding(innerPadding)
+        ) {
+            when {
+                state.error != null && detail == null -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(state.error!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = { viewModel.loadDetail() }) { Text("重試") }
+                    }
                 }
-            }
-            detail != null -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.padding(innerPadding),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(12.dp)
-                ) {
-                    // Title section
-                    item(key = "header") {
-                        ThreadHeader(detail)
-                    }
-
-                    // Content section
-                    item(key = "content") {
-                        ThreadContentSection(
-                            content = detail.content,
-                            images = detail.contentImages,
-                            onImageClick = onImageClick
-                        )
-                    }
-
-                    // Comments section
-                    if (detail.comments.isNotEmpty()) {
-                        item(key = "comments") {
-                            CommentsSection(comments = detail.comments)
+                detail != null -> {
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(12.dp)
+                    ) {
+                        // Title section
+                        item(key = "header") {
+                            ThreadHeader(detail)
                         }
-                    }
 
-                    // Replies section
-                    if (detail.replies.isNotEmpty()) {
-                        item(key = "replies_header") {
-                            Text(
-                                "精彩評論 (${detail.replyCount})",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 4.dp)
+                        // Content section
+                        item(key = "content") {
+                            ThreadContentSection(
+                                content = detail.content,
+                                images = detail.contentImages,
+                                onImageClick = onImageClick
                             )
                         }
-                        items(count = detail.replies.size, key = { "reply_${detail.replies[it].floor}" }) { index ->
-                            ReplyItem(reply = detail.replies[index], onImageClick = onImageClick)
-                        }
-                    }
 
-                    if (state.isLoadingMore) {
-                        item(key = "loading_more") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        // Comments section
+                        if (detail.comments.isNotEmpty()) {
+                            item(key = "comments") {
+                                CommentsSection(comments = detail.comments)
+                            }
+                        }
+
+                        // Replies section
+                        if (detail.replies.isNotEmpty()) {
+                            item(key = "replies_header") {
+                                Text(
+                                    "精彩評論 (${detail.replyCount})",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                            items(count = detail.replies.size, key = { "reply_${detail.replies[it].floor}" }) { index ->
+                                ReplyItem(reply = detail.replies[index], onImageClick = onImageClick)
+                            }
+                        }
+
+                        if (state.isLoadingMore) {
+                            item(key = "loading_more") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
                             }
                         }
                     }
                 }
-            }
-            state.isLoading -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) { CircularProgressIndicator() }
+                state.isLoading -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) { CircularProgressIndicator() }
+                }
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -88,75 +89,77 @@ fun ForumThreadListScreen(
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.fillMaxSize().padding(innerPadding)
         ) {
-            // Type filter chips
-            if (state.typeFilters.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FilterChip(
-                        selected = state.currentTypeId == null,
-                        onClick = { viewModel.filterByType(null) },
-                        label = { Text("全部", fontSize = 12.sp) }
-                    )
-                    state.typeFilters.forEach { filter ->
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Type filter chips
+                if (state.typeFilters.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         FilterChip(
-                            selected = state.currentTypeId == filter.typeId,
-                            onClick = { viewModel.filterByType(filter.typeId) },
-                            label = { Text(filter.name, fontSize = 12.sp) }
+                            selected = state.currentTypeId == null,
+                            onClick = { viewModel.filterByType(null) },
+                            label = { Text("全部", fontSize = 12.sp) }
                         )
-                    }
-                }
-            }
-
-            when {
-                state.error != null && state.threads.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = { viewModel.loadFirstPage() }) { Text("重試") }
-                    }
-                }
-                state.threads.isNotEmpty() || state.isLoading -> {
-                    LazyColumn(
-                        state = listState,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.threads, key = { it.tid }) { thread ->
-                            ThreadCard(thread = thread, onClick = { onThreadClick(thread.tid) })
+                        state.typeFilters.forEach { filter ->
+                            FilterChip(
+                                selected = state.currentTypeId == filter.typeId,
+                                onClick = { viewModel.filterByType(filter.typeId) },
+                                label = { Text(filter.name, fontSize = 12.sp) }
+                            )
                         }
-                        if (state.isLoadingMore) {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+
+                when {
+                    state.error != null && state.threads.isEmpty() -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(state.error!!, color = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { viewModel.loadFirstPage() }) { Text("重試") }
+                        }
+                    }
+                    state.threads.isNotEmpty() || state.isLoading -> {
+                        LazyColumn(
+                            state = listState,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(state.threads, key = { it.tid }) { thread ->
+                                ThreadCard(thread = thread, onClick = { onThreadClick(thread.tid) })
+                            }
+                            if (state.isLoadingMore) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                state.isLoading -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) { CircularProgressIndicator() }
+                    state.isLoading -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) { CircularProgressIndicator() }
+                    }
                 }
             }
         }
