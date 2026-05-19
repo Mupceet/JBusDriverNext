@@ -49,9 +49,10 @@ import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
 import me.jbusdriver.modern.ui.movielist.GenreListViewModel
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListViewModel
+import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import androidx.core.content.edit
 
-enum class BottomNavCategory { MOVIE, ACTRESS, COLLECT }
+enum class BottomNavCategory { MOVIE, ACTRESS, COLLECT, FORUM }
 
 private enum class CensorFilter(val label: String) {
     CENSORED("有碼"), UNCENSORED("無碼")
@@ -66,7 +67,8 @@ private data class BottomNavItem(
 private val BottomNavItems = listOf(
     BottomNavItem(BottomNavCategory.MOVIE, "影片", R.drawable.movie_24px),
     BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px),
-    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px)
+    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px),
+    BottomNavItem(BottomNavCategory.FORUM, "论坛", R.drawable.forum_24px)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,7 +77,9 @@ fun MainScreen(
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit = {},
     onGenreClick: (GenreUiModel) -> Unit = {},
-    onSearchClick: (String) -> Unit = {}
+    onSearchClick: (String) -> Unit = {},
+    onForumBoardClick: (me.jbusdriver.modern.domain.model.ForumBoard) -> Unit = {},
+    onForumThreadClick: (Int) -> Unit = {}
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
@@ -371,6 +375,10 @@ fun MainScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
                         onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
+                    )
+
+                    BottomNavCategory.FORUM -> ForumBoardsScreen(
+                        onBoardClick = onForumBoardClick
                     )
                 }
             }
