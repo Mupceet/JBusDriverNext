@@ -29,3 +29,14 @@ data class RouteLinkMovies(
     val type: String = "",
     val avatar: String = ""
 ) : NavKey
+
+@Serializable
+data class RouteForumThreadList(
+    val fid: Int,
+    val title: String = ""
+) : NavKey
+
+@Serializable
+data class RouteForumThreadDetail(
+    val tid: Int
+) : NavKey
