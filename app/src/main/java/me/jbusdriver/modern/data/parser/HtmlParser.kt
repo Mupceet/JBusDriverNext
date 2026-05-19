@@ -304,6 +304,296 @@ fun parseMovieFilterInfo(doc: Document): MovieFilterInfo? {
 
 // endregion
 
+// region 论坛解析
+
+fun parseForumBoards(doc: Document): List<ForumBoard> {
+    val boards = mutableListOf<ForumBoard>()
+    val categoryDivs = doc.select("div.fl.bm div[id^=category_]")
+
+    for (categoryDiv in categoryDivs) {
+        val rows = categoryDiv.select("table.fl_tb > tbody > tr")
+        for (row in rows) {
+            val nameLink = row.select("td h2 a").firstOrNull() ?: continue
+            val fid = nameLink.attr("href")
+                .let { Regex("fid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+                ?: continue
+
+            val todayText = row.select("em.xw0.xi1").text()
+            val todayPosts = Regex("\\((\\d+)\\)").find(todayText)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+
+            val statsSpans = row.select("td.fl_i span")
+            val totalThreads = statsSpans.getOrNull(0)?.text()?.trim() ?: ""
+            val totalPosts = statsSpans.getOrNull(2)?.text()?.trim() ?: ""
+
+            val lastPostDiv = row.select("td.fl_by .forumlist").firstOrNull()
+            val lastPostTitle = lastPostDiv?.select("a.xi2")?.text()?.trim() ?: ""
+            val lastPostAuthor = lastPostDiv?.select("cite a")?.text()?.trim() ?: ""
+            val lastPostTime = lastPostDiv?.select("cite span")?.text()?.trim() ?: ""
+
+            boards.add(
+                ForumBoard(
+                    id = fid,
+                    name = nameLink.text().trim(),
+                    description = row.select("td p.xg2").text().trim(),
+                    todayPosts = todayPosts,
+                    totalThreads = totalThreads,
+                    totalPosts = totalPosts,
+                    lastPost = LastPost(lastPostTitle, lastPostAuthor, lastPostTime)
+                )
+            )
+        }
+    }
+    return boards
+}
+
+fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
+    return doc.select("ul#thread_types > li > a").mapNotNull { link ->
+        val href = link.attr("href")
+        val typeId = Regex("typeid=(\\d+)").find(href)?.groupValues?.get(1)?.toIntOrNull()
+            ?: return@mapNotNull null
+        val countText = link.select("span.num").text().trim()
+        val count = countText.toIntOrNull() ?: 0
+        val name = link.ownText().trim()
+        val color = link.select("font").attr("color").ifBlank { "#666666" }
+        ForumTypeFilter(typeId, name, color, count)
+    }
+}
+
+fun parseForumThreads(doc: Document): ForumThreadPageResult {
+    val typeFilters = parseForumTypeFilters(doc)
+
+    val threads = mutableListOf<ForumThread>()
+
+    // Parse pinned threads
+    for (tbody in doc.select("tbody[id^=stickthread_]")) {
+        parseSingleThread(tbody, isPinned = true)?.let { threads.add(it) }
+    }
+
+    // Parse normal threads
+    for (tbody in doc.select("tbody[id^=normalthread_]")) {
+        parseSingleThread(tbody, isPinned = false)?.let { threads.add(it) }
+    }
+
+    val pageInfo = parseForumPageInfo(doc)
+
+    return ForumThreadPageResult(threads, pageInfo, typeFilters)
+}
+
+private fun parseSingleThread(tbody: org.jsoup.nodes.Element, isPinned: Boolean): ForumThread? {
+    val titleLink = tbody.select(".post_infolist_tit a.s").firstOrNull() ?: return null
+    val tid = titleLink.attr("href")
+        .let { Regex("tid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+        ?: return null
+
+    val typeLink = tbody.select(".post_infolist_tit em a").firstOrNull()
+    val typeId = typeLink?.attr("href")
+        ?.let { Regex("typeid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
+    val typeName = typeLink?.text()?.trim() ?: ""
+    val typeColor = typeLink?.select("font")?.attr("color")?.ifBlank { "#666666" } ?: "#666666"
+
+    val viewsText = tbody.select(".views").text().trim()
+    val replyText = tbody.select(".reply").text().trim()
+
+    val authorLink = tbody.select(".author a").firstOrNull()
+    val authorUid = authorLink?.attr("href")
+        ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
+
+    val avatarSrc = tbody.select(".post_avatar img[src]").attr("src")
+
+    val images = tbody.select(".post_infolist_tit > a > img[src]")
+        .map { it.attr("src") }
+        .filter { it.isNotEmpty() && !it.contains("pin_") && !it.contains("small.gif") && !it.contains("hot.jpg") && !it.contains("recommend") }
+
+    val isDigest = tbody.select("img[alt=recommend]").isNotEmpty()
+
+    val pagesSpan = tbody.select(".tps a").lastOrNull()
+    val pages = pagesSpan?.text()?.toIntOrNull() ?: 1
+
+    val lastReplyAuthor = tbody.select(".time a").text().trim()
+    val lastReplyTime = tbody.select(".time span[title]").attr("title")
+        .ifBlank { tbody.select(".time span").lastOrNull()?.text()?.trim() ?: "" }
+
+    return ForumThread(
+        tid = tid,
+        typeId = typeId,
+        typeName = typeName,
+        typeColor = typeColor,
+        title = titleLink.text().trim(),
+        author = authorLink?.text()?.trim() ?: "",
+        authorUid = authorUid,
+        authorAvatar = avatarSrc,
+        dateLine = tbody.select(".dateline span[title]").attr("title")
+            .ifBlank { tbody.select(".dateline span").text().trim() },
+        viewCount = viewsText.toIntOrNull() ?: 0,
+        replyCount = replyText.toIntOrNull() ?: 0,
+        lastReplyAuthor = lastReplyAuthor,
+        lastReplyTime = lastReplyTime,
+        images = images,
+        isPinned = isPinned,
+        isDigest = isDigest,
+        pages = pages
+    )
+}
+
+private fun parseForumPageInfo(doc: Document): PageInfo {
+    val currentLink = doc.select(".pg strong").firstOrNull()
+    val currentPage = currentLink?.text()?.toIntOrNull() ?: 1
+
+    val nextLink = doc.select(".pg a.nxt").firstOrNull()
+    val nextPage = if (nextLink != null) {
+        nextLink.attr("href")
+            .let { Regex("page=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+            ?: currentPage
+    } else currentPage
+
+    return PageInfo(activePage = currentPage, nextPage = nextPage)
+}
+
+fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
+    val titleEl = doc.select("#thread_subject").firstOrNull()
+    val title = titleEl?.text()?.trim() ?: ""
+
+    val typeLink = doc.select("h1.ts a, .nthread_info h1.ts a").firstOrNull()
+    val typeId = typeLink?.attr("href")
+        ?.let { Regex("typeid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
+    val typeName = typeLink?.text()?.replace("[", "")?.replace("]", "")?.trim() ?: ""
+    val typeColor = typeLink?.select("font")?.attr("color")?.ifBlank { "#666666" } ?: "#666666"
+
+    val tidMatch = Regex("tid=(\\d+)").find(doc.location() ?: "")
+        ?: Regex("tid=(\\d+)").find(doc.html())
+
+    val viewCount = doc.select(".xi1").firstOrNull()?.text()?.toIntOrNull() ?: 0
+    val replyCount = doc.select(".xi1").getOrNull(1)?.text()?.toIntOrNull()
+        ?: doc.select("span:contains(回復:) ~ .xi1").lastOrNull()?.text()?.toIntOrNull() ?: 0
+
+    // Parse first post (author info)
+    val firstPost = doc.select(".nthread_firstpostbox").firstOrNull()
+    val authorLink = firstPost?.select(".authi .au, .nthread_other .au")?.firstOrNull()
+        ?: doc.select(".nthread_other .au").firstOrNull()
+    val authorName = authorLink?.text()?.trim() ?: ""
+    val authorUid = authorLink?.attr("href")
+        ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
+    val postTime = doc.select(".nthread_other .mr10").firstOrNull()?.text()?.trim()
+        ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim() ?: ""
+
+    val avatarSrc = doc.select(".nthread_firstpost .post_avatar img[src]").attr("src")
+        .ifBlank { doc.select(".pls.favatar .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
+
+    // Parse content from td.t_f
+    val contentTd = firstPost?.select("td.t_f")?.firstOrNull()
+    val contentResult = parsePostContent(contentTd)
+
+    // Parse comments (點評)
+    val comments = firstPost?.select("div.cm div.pstl")?.map { pstl ->
+        Comment(
+            author = pstl.select(".psta a.xi2").text().trim(),
+            authorAvatar = pstl.select(".psta img[src]").attr("src"),
+            content = pstl.select(".psti").firstOrNull()?.ownText()?.trim()
+                ?: pstl.select(".psti").text().trim().let { text ->
+                    val timeIdx = text.lastIndexOf("發表於")
+                    if (timeIdx > 0) text.substring(0, timeIdx).trim() else text
+                },
+            time = pstl.select(".psti .xg1 span[title]").attr("title")
+                .ifBlank { pstl.select(".psti .xg1 span").text().trim() }
+        )
+    } ?: emptyList()
+
+    // Parse replies
+    val replies = doc.select(".nthread_postbox").filter { !it.hasClass("nthread_firstpostbox") }.mapNotNull { postBox ->
+        val floorEl = postBox.select("a[id^=postnum] em").firstOrNull() ?: return@mapNotNull null
+        val floor = floorEl.text().toIntOrNull() ?: return@mapNotNull null
+
+        val replyAuthorLink = postBox.select(".pls a.xw1").firstOrNull()
+        val replyAuthorUid = replyAuthorLink?.attr("href")
+            ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
+        val replyAvatar = postBox.select(".favatar .avatar img[src]").attr("src")
+            .ifBlank { postBox.select(".pls .avatar img[src]").attr("src") }
+        val authorGroup = postBox.select(".pls em a").text().trim()
+
+        val replyContentTd = postBox.select("td.t_f").firstOrNull()
+        val replyContentResult = parsePostContent(replyContentTd)
+
+        val replyTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
+            .ifBlank { postBox.select("em[id^=authorposton]").text().removePrefix("發表於 ").trim() }
+
+        ForumReply(
+            floor = floor,
+            author = replyAuthorLink?.text()?.trim() ?: "",
+            authorUid = replyAuthorUid,
+            authorAvatar = replyAvatar,
+            authorGroup = authorGroup,
+            content = replyContentResult.first,
+            contentImages = replyContentResult.second,
+            postTime = replyTime
+        )
+    }
+
+    val pageInfo = parseForumPageInfo(doc)
+
+    return ForumThreadDetail(
+        tid = tidMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0,
+        typeId = typeId,
+        typeName = typeName,
+        typeColor = typeColor,
+        title = title,
+        viewCount = viewCount,
+        replyCount = replyCount,
+        author = authorName,
+        authorUid = authorUid,
+        authorAvatar = avatarSrc,
+        postTime = postTime,
+        content = contentResult.first,
+        contentImages = contentResult.second,
+        comments = comments,
+        replies = replies,
+        pageInfo = pageInfo
+    )
+}
+
+private fun parsePostContent(td: org.jsoup.nodes.Element?): Pair<String, List<String>> {
+    if (td == null) return "" to emptyList()
+
+    val textBuilder = StringBuilder()
+    val images = mutableListOf<String>()
+
+    fun processNode(node: org.jsoup.nodes.Node) {
+        when (node) {
+            is org.jsoup.nodes.TextNode -> {
+                val text = node.text().trim()
+                if (text.isNotEmpty()) {
+                    if (textBuilder.isNotEmpty()) textBuilder.append("\n")
+                    textBuilder.append(text)
+                }
+            }
+            is org.jsoup.nodes.Element -> {
+                when (node.tagName()) {
+                    "br" -> textBuilder.append("\n")
+                    "img" -> {
+                        val src = node.attr("src")
+                        if (src.isNotEmpty() && !src.contains("arw_r") && !src.contains("userinfo.gif") && !src.contains("fav.gif") && !src.contains("rec_add")) {
+                            images.add(src)
+                        }
+                    }
+                    "font" -> node.childNodes().forEach { processNode(it) }
+                    "table" -> { /* skip nested tables */ }
+                    "div" -> {
+                        if (!node.hasClass("modact") && !node.hasClass("locked") && !node.className().contains("cm")) {
+                            node.childNodes().forEach { processNode(it) }
+                        }
+                    }
+                    else -> node.childNodes().forEach { processNode(it) }
+                }
+            }
+        }
+    }
+
+    td.childNodes().forEach { processNode(it) }
+
+    return textBuilder.toString().trim() to images
+}
+
+// endregion
+
 // region URL 工具
 
 /**
