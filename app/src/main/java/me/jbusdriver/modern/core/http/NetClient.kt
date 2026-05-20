@@ -176,4 +176,27 @@ object NetClient {
             })
         }
     }
+
+    /**
+     * Directly inject a cookie into the CookieJar for the current host.
+     * Simulates what JavaScript `document.cookie = "name=value"` would do.
+     */
+    fun setCookie(name: String, value: String) {
+        val host = HttpUrl.Builder()
+            .scheme("https")
+            .host(defaultFastUrl.removePrefix("https://").removePrefix("http://").substringBefore("/"))
+            .build()
+            .host
+        val fakeUrl = HttpUrl.Builder()
+            .scheme("https")
+            .host(host)
+            .build()
+        val cookie = Cookie.Builder()
+            .domain(host)
+            .path("/")
+            .name(name)
+            .value(value)
+            .build()
+        okHttpClient.cookieJar.saveFromResponse(fakeUrl, listOf(cookie))
+    }
 }

@@ -28,68 +28,28 @@ class DefaultForumRepository @Inject constructor() : ForumRepository {
 
     /**
      * 主站和论坛都会被重定向到 /doc/driver-verify 年龄验证页面。
-     * 需要主动完成验证：GET 请求 driver-verify 页面中的确认链接来设置 cookie。
+     * 验证页面有表单 POST Submit=確認，但 cookie 实际由 JS 设置。
+     * 尝试 POST 表单 + 直接注入 over18 cookie 双保险。
      */
     private suspend fun passAgeVerification() {
         if (ageVerified.get()) return
         try {
-            // Step 1: 获取验证页面
             val verifyUrl = "${NetClient.defaultFastUrl}/doc/driver-verify"
-            KLog.d("[Forum] Fetching age verification page: $verifyUrl", TAG)
-            val doc = NetClient.fetchDocument(verifyUrl)
+            KLog.d("[Forum] Attempting age verification: POST Submit=確認 to $verifyUrl", TAG)
 
-            KLog.d("[Forum] Verification page title: ${doc.title()}", TAG)
-            KLog.d("[Forum] Verification page location: ${doc.location()}", TAG)
-
-            // Log all links on the page
-            val links = doc.select("a[href]")
-            KLog.d("[Forum] Verification page links: ${links.size}", TAG)
-            for (link in links) {
-                KLog.d("[Forum]   <a> text='${link.text().trim()}' href='${link.attr("href")}'", TAG)
-            }
-
-            // Log all forms
-            val forms = doc.select("form")
-            KLog.d("[Forum] Verification page forms: ${forms.size}", TAG)
-            for ((i, form) in forms.withIndex()) {
-                KLog.d("[Forum]   form[$i] action='${form.attr("action")}' method='${form.attr("method")}'", TAG)
-                form.select("input, button").forEach { el ->
-                    KLog.d("[Forum]     <${el.tagName()}> name='${el.attr("name")}' type='${el.attr("type")}' value='${el.attr("value")}'", TAG)
-                }
-            }
-
-            // Log all script urls
-            doc.select("script[src]").forEach {
-                KLog.d("[Forum]   script src='${it.attr("src")}'", TAG)
-            }
-
-            // Log body preview for manual analysis
-            val bodyPreview = doc.body()?.html()?.take(5000) ?: ""
-            KLog.d("[Forum] Verification body:\n$bodyPreview", TAG)
-
-            // Step 2: Try common verification approaches
-            // Approach A: Look for a link with over18 or confirm text
-            val confirmLink = links.firstOrNull {
-                val href = it.attr("href").lowercase()
-                val text = it.text().trim().lowercase()
-                href.contains("over18") || href.contains("confirm") || text.contains("enter") || text.contains("滿") || text.contains("18")
-            }
-            if (confirmLink != null) {
-                val confirmHref = confirmLink.attr("href")
-                val confirmUrl = if (confirmHref.startsWith("http")) confirmHref
-                    else "${NetClient.defaultFastUrl}$confirmHref"
-                KLog.d("[Forum] Found confirm link, GET: $confirmUrl", TAG)
-                NetClient.fetchHtml(confirmUrl)
-            }
-
-            // Approach B: Try POST with over18=yes
+            // POST the actual form: Submit=確認
             try {
-                KLog.d("[Forum] Trying POST over18 to: $verifyUrl", TAG)
-                NetClient.postForm(verifyUrl, mapOf("over18" to "yes"))
-            } catch (_: Exception) {}
+                NetClient.postForm(verifyUrl, mapOf("Submit" to "確認"))
+                KLog.d("[Forum] POST Submit=確認 done", TAG)
+            } catch (e: Exception) {
+                KLog.w("[Forum] POST failed: ${e.message}", TAG)
+            }
+
+            // Also directly set the over18 cookie (JS would do this)
+            NetClient.setCookie("over18", "on")
+            KLog.d("[Forum] Cookie over18=on set", TAG)
 
             ageVerified.set(true)
-            KLog.d("[Forum] Age verification completed", TAG)
         } catch (e: Exception) {
             KLog.e("[Forum] Age verification failed: ${e.message}", e, TAG)
         }
