@@ -4,7 +4,7 @@
 
 **Goal:** Replace the failing OkHttp-based forum session initialization with a hidden WebView approach, so the forum browsing feature works reliably.
 
-**Architecture:** A hidden WebView loads the main site and handles age verification (including JavaScript execution), storing cookies in Android's system `CookieManager`. OkHttp's CookieJar is replaced with a `CookieManager`-backed implementation that reads from the same store, eliminating cookie sync issues.
+**Architecture:** A hidden WebView loads the main site to establish browser cookies (including JavaScript-triggered ones), storing them in Android's system `CookieManager`. OkHttp's CookieJar is replaced with a `CookieManager`-backed implementation that reads from the same store, eliminating cookie sync issues.
 
 **Scope:** Changes are limited to the data/network layer. UI, ViewModels, navigation, and HTML parsers remain untouched.
 
@@ -17,7 +17,9 @@ The current `ForumRepository.ensureForumSession()` uses OkHttp to:
 2. POST age verification form
 3. GET forum root
 
-This fails because the site's age verification relies on JavaScript execution and browser-specific behavior that plain HTTP requests cannot replicate. Multiple iterations confirmed that even when the `age=verified` cookie is set and sent, the forum still redirects to the verification page.
+This fails because the site's cookie setup relies on JavaScript execution that plain HTTP requests cannot replicate. The forum redirects to `member.php?mod=logging&action=login` when the necessary cookies are missing.
+
+In a real browser, visiting `https://www.javbus.com/` first (the main site homepage) sets the required cookies via JavaScript, then visiting the forum works without redirect. This behavior needs to be replicated via WebView.
 
 ## Solution: Shared CookieManager
 
@@ -56,15 +58,19 @@ class ForumSessionManager @Inject constructor() {
 3. Create a `WebView(activity)` with zero-size layout params, no visibility
 4. Enable cookies: `CookieManager.getInstance().setAcceptCookie(true)`, `setAcceptThirdPartyCookies(webView, true)`
 5. Set a `WebViewClient` with `onPageFinished` and `onReceivedError` callbacks
-6. Load `https://www.javbus.com/`
+6. Load `https://www.javbus.com/forum/`
 7. Wait for `onPageFinished`:
-   - If page URL contains `driver-verify` (age verification redirect), inject JS to submit the verification form: `document.forms[0].submit()` (the form has a single Submit=確認 button)
-   - Wait for another `onPageFinished` after verification completes
-8. Load `https://www.javbus.com/forum/` to trigger Discuz! session cookie initialization (saltkey, sid)
-9. At this point, CookieManager has: PHPSESSID, age=verified, 4fJN_2132_saltkey, 4fJN_2132_sid
-10. Destroy the WebView (`webView.destroy()`)
-11. Set `initialized = true`
-12. Return to caller
+   - If the loaded URL does NOT contain `member.php` (no login redirect) → forum loaded successfully, session is valid. Done.
+   - If the loaded URL contains `member.php?mod=logging&action=login` (login redirect) → need to warm up main site first:
+     a. Load `https://www.javbus.com/` (main site homepage)
+     b. Wait for `onPageFinished` — this sets necessary cookies via JavaScript
+     c. Load `https://www.javbus.com/forum/` again
+     d. Wait for `onPageFinished` — this time no redirect
+8. Destroy the WebView (`webView.destroy()`)
+9. Set `initialized = true`
+10. Return to caller
+
+No form submission or JS injection needed. The simple act of loading the main site homepage in a WebView is sufficient to establish the required cookies.
 
 **Threading:** The `suspend` function uses `suspendCancellableCoroutine` with `withContext(Dispatchers.Main)` to bridge the async WebView callbacks to coroutine world.
 
@@ -90,13 +96,13 @@ class DefaultForumRepository @Inject constructor(
 
 ### Session Expiry Detection
 
-In `fetchForumDocument()`, after fetching, check if the response title contains "age verification" or the URL was redirected to `driver-verify`. If so, reset the session and retry once:
+In `fetchForumDocument()`, after fetching, check if the response URL contains `member.php` or the document redirects to login. If so, reset the session and retry once:
 
 ```kotlin
 private suspend fun fetchForumDocument(url: String): Document {
     ensureForumSession()
     val doc = NetClient.fetchDocument(url)
-    if (isVerificationRedirect(doc)) {
+    if (isLoginRedirect(doc)) {
         sessionManager.reset()
         ensureForumSession()
         return NetClient.fetchDocument(url)
@@ -113,13 +119,13 @@ private suspend fun fetchForumDocument(url: String): Document {
 
 ### Cookie Persistence
 
-Android's `CookieManager` persists cookies to disk. On subsequent app launches, session cookies may still be valid. `ensureSession()` can skip the WebView if a quick check shows cookies are present and the forum is accessible:
+Android's `CookieManager` persists cookies to disk. On subsequent app launches, session cookies may still be valid. `ensureSession()` can skip the WebView if a quick check shows the forum is accessible:
 
 ```kotlin
 private suspend fun hasValidSession(): Boolean {
     return try {
         val doc = NetClient.fetchDocument("${NetClient.defaultFastUrl}/forum/")
-        !isVerificationRedirect(doc)
+        !isLoginRedirect(doc)
     } catch (_: Exception) {
         false
     }
@@ -145,5 +151,5 @@ Unchanged: All ViewModels, all screens, navigation, parsers, domain models.
 |------|-----------|
 | WebView requires Activity context | Use `JBusManager.currentActivity`, fail gracefully if null |
 | WebView on main thread blocks UI | Load happens only once, shows loading spinner in forum tab |
-| Site changes verification flow | WebView handles it naturally since it's a real browser |
+| Site changes redirect behavior | WebView handles it naturally since it's a real browser |
 | CookieManager not accepting third-party cookies | Explicitly call `setAcceptThirdPartyCookies(webView, true)` |
