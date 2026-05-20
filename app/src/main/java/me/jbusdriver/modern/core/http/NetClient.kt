@@ -9,6 +9,7 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Cookie
 import okhttp3.CookieJar
+import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -43,13 +44,15 @@ object NetClient {
      * 磁力链接专用拦截器
      *
      * 注入 Cookie：existmag=all/mag 控制是否显示全部磁力链接，
-     * bus_auth 为站点认证 token
+     * bus_auth 为站点认证 token。
+     * 与 CookieJar 中的 cookies 合并，而非覆盖。
      */
     private val EXIST_MAGNET_INTERCEPTOR by lazy {
         Interceptor { chain ->
             var request = chain.request()
-            val builder = request.newBuilder().header("User-Agent", USER_AGENT)
-            val sb = buildString {
+            // Preserve any cookies already set by CookieJar
+            val existingCookies = request.header("Cookie") ?: ""
+            val extraCookies = buildString {
                 append(
                     if (!TextUtils.isEmpty(request.header("existmag"))) {
                         "existmag=all"
@@ -57,11 +60,18 @@ object NetClient {
                         "existmag=mag"
                     }
                 )
-                append(";")
+                append("; ")
                 append("bus_auth=4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO")
             }
-            builder.header("Cookie", sb)
-            request = builder.build()
+            val mergedCookies = if (existingCookies.isNotBlank()) {
+                "$existingCookies; $extraCookies"
+            } else {
+                extraCookies
+            }
+            request = request.newBuilder()
+                .header("User-Agent", USER_AGENT)
+                .header("Cookie", mergedCookies)
+                .build()
             chain.proceed(request)
         }
     }
@@ -138,5 +148,32 @@ object NetClient {
     suspend fun fetchDocument(url: String, showAll: Boolean = false): Document {
         val html = fetchHtml(url, showAll)
         return withContext(Dispatchers.Default) { Jsoup.parse(html) }
+    }
+
+    /**
+     * Submit a form via POST, letting the CookieJar store any Set-Cookie headers.
+     */
+    suspend fun postForm(url: String, params: Map<String, String>) {
+        val formBody = FormBody.Builder().apply {
+            params.forEach { (k, v) -> add(k, v) }
+        }.build()
+        val request = Request.Builder()
+            .url(url)
+            .post(formBody)
+            .header("User-Agent", USER_AGENT)
+            .build()
+        suspendCancellableCoroutine<Unit> { cont ->
+            val call = okHttpClient.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    cont.resumeWith(Result.failure(e))
+                }
+                override fun onResponse(call: Call, response: Response) {
+                    response.close()
+                    cont.resumeWith(Result.success(Unit))
+                }
+            })
+        }
     }
 }
