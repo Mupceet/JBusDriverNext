@@ -2,6 +2,7 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.CacheLoader
+import me.jbusdriver.modern.core.JBusManager
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.parser.parseForumBoards
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
@@ -9,7 +10,6 @@ import me.jbusdriver.modern.data.parser.parseForumThreads
 import me.jbusdriver.modern.domain.model.ForumBoard
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,29 +22,15 @@ interface ForumRepository {
 }
 
 @Singleton
-class DefaultForumRepository @Inject constructor() : ForumRepository {
+class DefaultForumRepository @Inject constructor(
+    private val sessionManager: ForumSessionManager
+) : ForumRepository {
 
-    private val sessionInitialized = AtomicBoolean(false)
-
-    /**
-     * 论坛需要 Discuz! session cookies 才能访问。
-     * 流程：先 POST 表单完成年龄验证 → 服务器通过 Set-Cookie 设置 Discuz! session →
-     * CookieJar 保存 → 后续请求由拦截器自动合并。
-     */
     private suspend fun ensureForumSession() {
-        if (sessionInitialized.get()) return
-        try {
-            val verifyUrl = "${NetClient.defaultFastUrl}/doc/driver-verify"
-            KLog.d("[Forum] Initializing forum session: POST Submit=確認", TAG)
-
-            // POST the age verification form — server returns Set-Cookie with Discuz! session
-            NetClient.postForm(verifyUrl, mapOf("Submit" to "確認"))
-            KLog.d("[Forum] POST verification done", TAG)
-
-            sessionInitialized.set(true)
-        } catch (e: Exception) {
-            KLog.e("[Forum] Session init failed: ${e.message}", e, TAG)
-        }
+        if (sessionManager.isInitialized()) return
+        val activity = JBusManager.manager.firstOrNull()?.get()
+            ?: throw IllegalStateException("No activity available for forum session init")
+        sessionManager.ensureSession(activity)
     }
 
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
@@ -52,12 +38,19 @@ class DefaultForumRepository @Inject constructor() : ForumRepository {
         val doc = NetClient.fetchDocument(url)
         KLog.d("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}", TAG)
 
-        // If still on verification page, log and return as-is
-        if (doc.title().lowercase().contains("age verification")) {
-            KLog.w("[Forum] Still on verification page — POST may not have set the right cookies", TAG)
+        // If redirected to login page, reset session and retry once
+        if (isLoginRedirect(doc)) {
+            KLog.w("[Forum] Login redirect detected, resetting session", TAG)
+            sessionManager.reset()
+            ensureForumSession()
+            return NetClient.fetchDocument(url)
         }
-
         return doc
+    }
+
+    private fun isLoginRedirect(doc: org.jsoup.nodes.Document): Boolean {
+        val html = doc.html()
+        return html.contains("member.php") && html.contains("mod=logging")
     }
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): List<ForumBoard> {
