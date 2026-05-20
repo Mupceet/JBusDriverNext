@@ -24,29 +24,90 @@ interface ForumRepository {
 @Singleton
 class DefaultForumRepository @Inject constructor() : ForumRepository {
 
-    private val sessionWarmedUp = AtomicBoolean(false)
+    private val ageVerified = AtomicBoolean(false)
 
     /**
-     * 论坛需要主站 session cookie 才能访问。
-     * 首次访问论坛前先请求主站首页建立 session，后续请求复用 CookieJar 中的 cookie。
+     * 主站和论坛都会被重定向到 /doc/driver-verify 年龄验证页面。
+     * 需要主动完成验证：GET 请求 driver-verify 页面中的确认链接来设置 cookie。
      */
-    private suspend fun ensureSession() {
-        if (sessionWarmedUp.get()) return
+    private suspend fun passAgeVerification() {
+        if (ageVerified.get()) return
         try {
-            val homeUrl = NetClient.defaultFastUrl
-            KLog.d("[Forum] Warming up session: $homeUrl", TAG)
-            NetClient.fetchDocument(homeUrl)
-            sessionWarmedUp.set(true)
-            KLog.d("[Forum] Session warmed up", TAG)
+            // Step 1: 获取验证页面
+            val verifyUrl = "${NetClient.defaultFastUrl}/doc/driver-verify"
+            KLog.d("[Forum] Fetching age verification page: $verifyUrl", TAG)
+            val doc = NetClient.fetchDocument(verifyUrl)
+
+            KLog.d("[Forum] Verification page title: ${doc.title()}", TAG)
+            KLog.d("[Forum] Verification page location: ${doc.location()}", TAG)
+
+            // Log all links on the page
+            val links = doc.select("a[href]")
+            KLog.d("[Forum] Verification page links: ${links.size}", TAG)
+            for (link in links) {
+                KLog.d("[Forum]   <a> text='${link.text().trim()}' href='${link.attr("href")}'", TAG)
+            }
+
+            // Log all forms
+            val forms = doc.select("form")
+            KLog.d("[Forum] Verification page forms: ${forms.size}", TAG)
+            for ((i, form) in forms.withIndex()) {
+                KLog.d("[Forum]   form[$i] action='${form.attr("action")}' method='${form.attr("method")}'", TAG)
+                form.select("input, button").forEach { el ->
+                    KLog.d("[Forum]     <${el.tagName()}> name='${el.attr("name")}' type='${el.attr("type")}' value='${el.attr("value")}'", TAG)
+                }
+            }
+
+            // Log all script urls
+            doc.select("script[src]").forEach {
+                KLog.d("[Forum]   script src='${it.attr("src")}'", TAG)
+            }
+
+            // Log body preview for manual analysis
+            val bodyPreview = doc.body()?.html()?.take(5000) ?: ""
+            KLog.d("[Forum] Verification body:\n$bodyPreview", TAG)
+
+            // Step 2: Try common verification approaches
+            // Approach A: Look for a link with over18 or confirm text
+            val confirmLink = links.firstOrNull {
+                val href = it.attr("href").lowercase()
+                val text = it.text().trim().lowercase()
+                href.contains("over18") || href.contains("confirm") || text.contains("enter") || text.contains("滿") || text.contains("18")
+            }
+            if (confirmLink != null) {
+                val confirmHref = confirmLink.attr("href")
+                val confirmUrl = if (confirmHref.startsWith("http")) confirmHref
+                    else "${NetClient.defaultFastUrl}$confirmHref"
+                KLog.d("[Forum] Found confirm link, GET: $confirmUrl", TAG)
+                NetClient.fetchHtml(confirmUrl)
+            }
+
+            // Approach B: Try POST with over18=yes
+            try {
+                KLog.d("[Forum] Trying POST over18 to: $verifyUrl", TAG)
+                NetClient.postForm(verifyUrl, mapOf("over18" to "yes"))
+            } catch (_: Exception) {}
+
+            ageVerified.set(true)
+            KLog.d("[Forum] Age verification completed", TAG)
         } catch (e: Exception) {
-            KLog.w("[Forum] Session warmup failed: ${e.message}", TAG)
+            KLog.e("[Forum] Age verification failed: ${e.message}", e, TAG)
         }
     }
 
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
-        ensureSession()
-        val doc = NetClient.fetchDocument(url)
-        KLog.d("[Forum] document fetched: title=${doc.title()}, location=${doc.location()}, htmlLength=${doc.html().length}", TAG)
+        var doc = NetClient.fetchDocument(url)
+        KLog.d("[Forum] document: title=${doc.title()}, location=${doc.location()}, length=${doc.html().length}", TAG)
+
+        // Check if we got redirected to verification page
+        if (doc.title().lowercase().contains("age verification") || doc.location().contains("driver-verify")) {
+            KLog.w("[Forum] Got verification page, attempting to pass...", TAG)
+            passAgeVerification()
+            // Retry
+            doc = NetClient.fetchDocument(url)
+            KLog.d("[Forum] Retry after verification: title=${doc.title()}, location=${doc.location()}", TAG)
+        }
+
         return doc
     }
 
