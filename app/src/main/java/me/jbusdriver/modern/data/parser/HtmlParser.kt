@@ -309,6 +309,7 @@ fun parseMovieFilterInfo(doc: Document): MovieFilterInfo? {
 fun parseForumBoards(doc: Document): List<ForumBoard> {
     val boards = mutableListOf<ForumBoard>()
     val categoryDivs = doc.select("div.fl.bm div[id^=category_]")
+    KLog.d("ForumParse", "parseForumBoards: categoryDivs=${categoryDivs.size}, docTitle=${doc.title()}, htmlLength=${doc.html().length}")
 
     for (categoryDiv in categoryDivs) {
         val rows = categoryDiv.select("table.fl_tb > tbody > tr")
@@ -343,6 +344,7 @@ fun parseForumBoards(doc: Document): List<ForumBoard> {
             )
         }
     }
+    KLog.d("ForumParse", "parseForumBoards result: ${boards.size} boards parsed")
     return boards
 }
 
@@ -364,17 +366,22 @@ fun parseForumThreads(doc: Document): ForumThreadPageResult {
 
     val threads = mutableListOf<ForumThread>()
 
+    val stickies = doc.select("tbody[id^=stickthread_]")
+    val normals = doc.select("tbody[id^=normalthread_]")
+    KLog.d("ForumParse", "parseForumThreads: stickies=${stickies.size}, normals=${normals.size}, filters=${typeFilters.size}")
+
     // Parse pinned threads
-    for (tbody in doc.select("tbody[id^=stickthread_]")) {
+    for (tbody in stickies) {
         parseSingleThread(tbody, isPinned = true)?.let { threads.add(it) }
     }
 
     // Parse normal threads
-    for (tbody in doc.select("tbody[id^=normalthread_]")) {
+    for (tbody in normals) {
         parseSingleThread(tbody, isPinned = false)?.let { threads.add(it) }
     }
 
     val pageInfo = parseForumPageInfo(doc)
+    KLog.d("ForumParse", "parseForumThreads result: ${threads.size} threads, page=${pageInfo.activePage}")
 
     return ForumThreadPageResult(threads, pageInfo, typeFilters)
 }
@@ -450,6 +457,7 @@ private fun parseForumPageInfo(doc: Document): PageInfo {
 }
 
 fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
+    KLog.d("ForumParse", "parseForumThreadDetail: docTitle=${doc.title()}, htmlLength=${doc.html().length}")
     val titleEl = doc.select("#thread_subject").firstOrNull()
     val title = titleEl?.text()?.trim() ?: ""
 

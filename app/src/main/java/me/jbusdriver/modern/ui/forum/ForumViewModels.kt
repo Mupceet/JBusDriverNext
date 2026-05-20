@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumBoard
 import me.jbusdriver.modern.domain.model.ForumThread
@@ -18,6 +19,8 @@ import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import javax.inject.Inject
+
+private const val TAG = "ForumVM"
 
 data class ForumBoardsUiState(
     val boards: List<ForumBoard> = emptyList(),
@@ -52,16 +55,22 @@ class ForumBoardsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ForumBoardsUiState())
     val uiState: StateFlow<ForumBoardsUiState> = _uiState.asStateFlow()
 
-    init { loadBoards() }
+    init {
+        KLog.d("[Forum] ForumBoardsViewModel init", TAG)
+        loadBoards()
+    }
 
     fun loadBoards() {
         if (_uiState.value.isLoading) return
+        KLog.d("[Forum] loadBoards started", TAG)
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val boards = repository.loadForumBoards()
+                KLog.d("[Forum] loadBoards success: ${boards.size} boards", TAG)
                 _uiState.update { it.copy(boards = boards, isLoading = false) }
             } catch (e: Exception) {
+                KLog.e("[Forum] loadBoards failed: ${e.message}", e, TAG)
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
@@ -91,15 +100,20 @@ class ForumThreadListViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ForumThreadListUiState())
     val uiState: StateFlow<ForumThreadListUiState> = _uiState.asStateFlow()
 
-    init { loadFirstPage() }
+    init {
+        KLog.d("[Forum] ForumThreadListViewModel init: fid=$fid", TAG)
+        loadFirstPage()
+    }
 
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
+        KLog.d("[Forum] loadFirstPage: fid=$fid, typeId=${_uiState.value.currentTypeId}", TAG)
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId)
+                KLog.d("[Forum] loadFirstPage success: ${result.threads.size} threads, ${result.typeFilters.size} filters", TAG)
                 _uiState.update {
                     it.copy(
                         threads = result.threads,
@@ -110,6 +124,7 @@ class ForumThreadListViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                KLog.e("[Forum] loadFirstPage failed: ${e.message}", e, TAG)
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
@@ -182,16 +197,22 @@ class ForumThreadDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
 
-    init { loadDetail() }
+    init {
+        KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
+        loadDetail()
+    }
 
     fun loadDetail() {
         if (_uiState.value.isLoading) return
+        KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage", TAG)
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val detail = repository.loadThreadDetail(tid, currentPage)
+                KLog.d("[Forum] loadDetail success: title=${detail.title}, replies=${detail.replies.size}", TAG)
                 _uiState.update { it.copy(detail = detail, isLoading = false) }
             } catch (e: Exception) {
+                KLog.e("[Forum] loadDetail failed: ${e.message}", e, TAG)
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
