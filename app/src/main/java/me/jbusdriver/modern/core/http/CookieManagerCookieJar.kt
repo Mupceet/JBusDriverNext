@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.core.http
 
 import android.webkit.CookieManager
+import me.jbusdriver.modern.KLog
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -31,7 +32,9 @@ class CookieManagerCookieJar : CookieJar {
     }
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
-        val cookieString = cookieManager.getCookie(url.toString()) ?: return emptyList()
+        val cookieString = cookieManager.getCookie(url.toString())
+        KLog.d("CookieJar", "loadForRequest($url) → ${cookieString ?: "null"}")
+        if (cookieString == null) return emptyList()
         return cookieString.split(";")
             .map { it.trim() }
             .filter { it.isNotEmpty() && it.contains("=") }

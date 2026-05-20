@@ -355,7 +355,7 @@ fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
             ?: return@mapNotNull null
         val countText = link.select("span.num").text().trim()
         val count = countText.toIntOrNull() ?: 0
-        val name = link.ownText().trim()
+        val name = link.text().trim().removeSuffix(countText).trim()
         val color = link.select("font").attr("color").ifBlank { "#666666" }
         ForumTypeFilter(typeId, name, color, count)
     }
@@ -407,9 +407,9 @@ private fun parseSingleThread(tbody: org.jsoup.nodes.Element, isPinned: Boolean)
 
     val avatarSrc = tbody.select(".post_avatar img[src]").attr("src")
 
-    val images = tbody.select(".post_infolist_tit > a > img[src]")
-        .map { it.attr("src") }
-        .filter { it.isNotEmpty() && !it.contains("pin_") && !it.contains("small.gif") && !it.contains("hot.jpg") && !it.contains("recommend") }
+    val images = tbody.select(".post_infolist_tit a img[src]")
+        .map { it.attr("src").wrapForumImage() }
+        .filter { it.isNotEmpty() && !it.contains("pin_") && !it.contains("small.gif") && !it.contains("hot.jpg") && !it.contains("recommend") && !it.contains("arw_r") }
 
     val isDigest = tbody.select("img[alt=recommend]").isNotEmpty()
 
@@ -577,13 +577,13 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): Pair<String, List<St
                 when (node.tagName()) {
                     "br" -> textBuilder.append("\n")
                     "img" -> {
-                        val src = node.attr("src")
+                        val src = node.attr("src").wrapForumImage()
                         if (src.isNotEmpty() && !src.contains("arw_r") && !src.contains("userinfo.gif") && !src.contains("fav.gif") && !src.contains("rec_add")) {
                             images.add(src)
                         }
                     }
                     "font" -> node.childNodes().forEach { processNode(it) }
-                    "table" -> { /* skip nested tables */ }
+                    "table" -> node.childNodes().forEach { processNode(it) }
                     "div" -> {
                         if (!node.hasClass("modact") && !node.hasClass("locked") && !node.className().contains("cm")) {
                             node.childNodes().forEach { processNode(it) }
@@ -615,6 +615,13 @@ fun String.wrapImage() = when {
     this.startsWith("http") -> this
     this.startsWith("//") -> "https:$this"
     else -> NetClient.defaultFastUrl + this
+}
+
+fun String.wrapForumImage() = when {
+    this.startsWith("http") -> this
+    this.startsWith("//") -> "https:$this"
+    this.startsWith("/") -> NetClient.defaultFastUrl + this
+    else -> NetClient.defaultFastUrl + "/forum/" + this
 }
 
 // endregion
