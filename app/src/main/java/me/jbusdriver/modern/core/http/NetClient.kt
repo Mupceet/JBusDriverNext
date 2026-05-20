@@ -8,9 +8,6 @@ import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.KLog
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.Cookie
-import okhttp3.CookieJar
-import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -86,15 +83,7 @@ object NetClient {
             .readTimeout(20 * 1000L, TimeUnit.MILLISECONDS)
             .connectTimeout(15 * 1000L, TimeUnit.MILLISECONDS)
             .addNetworkInterceptor(EXIST_MAGNET_INTERCEPTOR)
-            .cookieJar(object : CookieJar {
-                private val cookieStore = HashMap<String, List<Cookie>>()
-
-                override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-                    cookieStore[url.host] = cookies
-                }
-
-                override fun loadForRequest(url: HttpUrl) = cookieStore[url.host] ?: emptyList()
-            })
+            .cookieJar(CookieManagerCookieJar())
         if (BuildConfig.DEBUG) {
             client.addInterceptor(
                 HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
@@ -153,53 +142,4 @@ object NetClient {
         return withContext(Dispatchers.Default) { Jsoup.parse(html) }
     }
 
-    /**
-     * Submit a form via POST, letting the CookieJar store any Set-Cookie headers.
-     */
-    suspend fun postForm(url: String, params: Map<String, String>) {
-        val formBody = FormBody.Builder().apply {
-            params.forEach { (k, v) -> add(k, v) }
-        }.build()
-        val request = Request.Builder()
-            .url(url)
-            .post(formBody)
-            .header("User-Agent", USER_AGENT)
-            .build()
-        suspendCancellableCoroutine<Unit> { cont ->
-            val call = okHttpClient.newCall(request)
-            cont.invokeOnCancellation { call.cancel() }
-            call.enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    cont.resumeWith(Result.failure(e))
-                }
-                override fun onResponse(call: Call, response: Response) {
-                    response.close()
-                    cont.resumeWith(Result.success(Unit))
-                }
-            })
-        }
-    }
-
-    /**
-     * Directly inject a cookie into the CookieJar for the current host.
-     * Simulates what JavaScript `document.cookie = "name=value"` would do.
-     */
-    fun setCookie(name: String, value: String) {
-        val host = HttpUrl.Builder()
-            .scheme("https")
-            .host(defaultFastUrl.removePrefix("https://").removePrefix("http://").substringBefore("/"))
-            .build()
-            .host
-        val fakeUrl = HttpUrl.Builder()
-            .scheme("https")
-            .host(host)
-            .build()
-        val cookie = Cookie.Builder()
-            .domain(host)
-            .path("/")
-            .name(name)
-            .value(value)
-            .build()
-        okHttpClient.cookieJar.saveFromResponse(fakeUrl, listOf(cookie))
-    }
 }
