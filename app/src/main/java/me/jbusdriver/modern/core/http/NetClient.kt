@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.BuildConfig
+import me.jbusdriver.modern.KLog
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Cookie
@@ -44,7 +45,8 @@ object NetClient {
      * 磁力链接专用拦截器
      *
      * 注入 Cookie：existmag=all/mag 控制是否显示全部磁力链接，
-     * bus_auth 为站点认证 token。
+     * bus_auth 为站点认证 token，
+     * Discuz! 论坛 session cookies 用于论坛访问。
      * 与 CookieJar 中的 cookies 合并，而非覆盖。
      */
     private val EXIST_MAGNET_INTERCEPTOR by lazy {
@@ -72,6 +74,7 @@ object NetClient {
                 .header("User-Agent", USER_AGENT)
                 .header("Cookie", mergedCookies)
                 .build()
+            KLog.d("NetClient", "Cookie for ${request.url}: $mergedCookies")
             chain.proceed(request)
         }
     }

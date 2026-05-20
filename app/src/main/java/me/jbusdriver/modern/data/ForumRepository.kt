@@ -24,48 +24,37 @@ interface ForumRepository {
 @Singleton
 class DefaultForumRepository @Inject constructor() : ForumRepository {
 
-    private val ageVerified = AtomicBoolean(false)
+    private val sessionInitialized = AtomicBoolean(false)
 
     /**
-     * 主站和论坛都会被重定向到 /doc/driver-verify 年龄验证页面。
-     * 验证页面有表单 POST Submit=確認，但 cookie 实际由 JS 设置。
-     * 尝试 POST 表单 + 直接注入 over18 cookie 双保险。
+     * 论坛需要 Discuz! session cookies 才能访问。
+     * 流程：先 POST 表单完成年龄验证 → 服务器通过 Set-Cookie 设置 Discuz! session →
+     * CookieJar 保存 → 后续请求由拦截器自动合并。
      */
-    private suspend fun passAgeVerification() {
-        if (ageVerified.get()) return
+    private suspend fun ensureForumSession() {
+        if (sessionInitialized.get()) return
         try {
             val verifyUrl = "${NetClient.defaultFastUrl}/doc/driver-verify"
-            KLog.d("[Forum] Attempting age verification: POST Submit=確認 to $verifyUrl", TAG)
+            KLog.d("[Forum] Initializing forum session: POST Submit=確認", TAG)
 
-            // POST the actual form: Submit=確認
-            try {
-                NetClient.postForm(verifyUrl, mapOf("Submit" to "確認"))
-                KLog.d("[Forum] POST Submit=確認 done", TAG)
-            } catch (e: Exception) {
-                KLog.w("[Forum] POST failed: ${e.message}", TAG)
-            }
+            // POST the age verification form — server returns Set-Cookie with Discuz! session
+            NetClient.postForm(verifyUrl, mapOf("Submit" to "確認"))
+            KLog.d("[Forum] POST verification done", TAG)
 
-            // Also directly set the over18 cookie (JS would do this)
-            NetClient.setCookie("over18", "on")
-            KLog.d("[Forum] Cookie over18=on set", TAG)
-
-            ageVerified.set(true)
+            sessionInitialized.set(true)
         } catch (e: Exception) {
-            KLog.e("[Forum] Age verification failed: ${e.message}", e, TAG)
+            KLog.e("[Forum] Session init failed: ${e.message}", e, TAG)
         }
     }
 
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
-        var doc = NetClient.fetchDocument(url)
-        KLog.d("[Forum] document: title=${doc.title()}, location=${doc.location()}, length=${doc.html().length}", TAG)
+        ensureForumSession()
+        val doc = NetClient.fetchDocument(url)
+        KLog.d("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}", TAG)
 
-        // Check if we got redirected to verification page
-        if (doc.title().lowercase().contains("age verification") || doc.location().contains("driver-verify")) {
-            KLog.w("[Forum] Got verification page, attempting to pass...", TAG)
-            passAgeVerification()
-            // Retry
-            doc = NetClient.fetchDocument(url)
-            KLog.d("[Forum] Retry after verification: title=${doc.title()}, location=${doc.location()}", TAG)
+        // If still on verification page, log and return as-is
+        if (doc.title().lowercase().contains("age verification")) {
+            KLog.w("[Forum] Still on verification page — POST may not have set the right cookies", TAG)
         }
 
         return doc
@@ -73,11 +62,11 @@ class DefaultForumRepository @Inject constructor() : ForumRepository {
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): List<ForumBoard> {
         val url = "${NetClient.defaultFastUrl}/forum/forum.php"
-        KLog.d("[Forum] loadForumBoards: url=$url, forceRefresh=$forceRefresh", TAG)
+        KLog.d("[Forum] loadForumBoards: url=$url", TAG)
         return CacheLoader.lruCached("forum_boards", forceRefresh) {
             val doc = fetchForumDocument(url)
             val result = parseForumBoards(doc)
-            KLog.d("[Forum] parseForumBoards result: ${result.size} boards", TAG)
+            KLog.d("[Forum] parseForumBoards: ${result.size} boards", TAG)
             result
         }
     }
