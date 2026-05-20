@@ -11,6 +11,8 @@ import android.widget.FrameLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
@@ -33,6 +35,7 @@ private const val TAG = "ForumSession"
 class ForumSessionManager @Inject constructor() {
 
     private val initialized = AtomicBoolean(false)
+    private val mutex = Mutex()
 
     fun isInitialized(): Boolean = initialized.get()
 
@@ -53,7 +56,13 @@ class ForumSessionManager @Inject constructor() {
      */
     suspend fun ensureSession(activity: Activity) {
         if (initialized.get()) return
+        mutex.withLock {
+            if (initialized.get()) return
+            initWithWebView(activity)
+        }
+    }
 
+    private suspend fun initWithWebView(activity: Activity) {
         withTimeout(15_000) {
             withContext(Dispatchers.Main) {
                 val rootView = activity.findViewById<ViewGroup>(android.R.id.content)

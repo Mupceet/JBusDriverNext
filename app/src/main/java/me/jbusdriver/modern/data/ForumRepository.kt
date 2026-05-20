@@ -28,8 +28,10 @@ class DefaultForumRepository @Inject constructor(
 
     private suspend fun ensureForumSession() {
         if (sessionManager.isInitialized()) return
-        val activity = JBusManager.manager.firstOrNull()?.get()
-            ?: throw IllegalStateException("No activity available for forum session init")
+        val activity = JBusManager.manager
+            .mapNotNull { it.get() }
+            .firstOrNull { !it.isFinishing && !it.isDestroyed }
+            ?: throw IllegalStateException("No valid activity available for forum session init")
         sessionManager.ensureSession(activity)
     }
 
