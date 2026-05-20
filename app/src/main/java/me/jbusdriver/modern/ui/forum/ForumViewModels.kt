@@ -87,6 +87,11 @@ class ForumBoardsViewModel @Inject constructor(
             }
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        repository.destroySession()
+    }
 }
 
 @HiltViewModel

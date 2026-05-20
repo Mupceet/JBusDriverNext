@@ -19,6 +19,7 @@ interface ForumRepository {
     suspend fun loadForumBoards(forceRefresh: Boolean = false): List<ForumBoard>
     suspend fun loadThreads(fid: Int, page: Int, typeId: Int? = null, forceRefresh: Boolean = false): ForumThreadPageResult
     suspend fun loadThreadDetail(tid: Int, page: Int = 1, forceRefresh: Boolean = false): ForumThreadDetail
+    fun destroySession()
 }
 
 @Singleton
@@ -37,22 +38,13 @@ class DefaultForumRepository @Inject constructor(
 
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
         ensureForumSession()
-        val doc = NetClient.fetchDocument(url)
+        val doc = sessionManager.fetchDocument(url)
         KLog.d("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}", TAG)
-
-        // If redirected to login page, reset session and retry once
-        if (isLoginRedirect(doc)) {
-            KLog.w("[Forum] Login redirect detected, resetting session", TAG)
-            sessionManager.reset()
-            ensureForumSession()
-            return NetClient.fetchDocument(url)
-        }
         return doc
     }
 
-    private fun isLoginRedirect(doc: org.jsoup.nodes.Document): Boolean {
-        val html = doc.html()
-        return html.contains("member.php") && html.contains("mod=logging")
+    override fun destroySession() {
+        sessionManager.destroy()
     }
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): List<ForumBoard> {
