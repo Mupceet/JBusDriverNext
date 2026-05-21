@@ -133,7 +133,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                     it.copy(
                         threads = result.threads,
                         pageInfo = result.pageInfo,
-                        typeFilters = if (result.typeFilters.isNotEmpty()) result.typeFilters else it.typeFilters,
+                        typeFilters = it.typeFilters.ifEmpty { result.typeFilters },
                         isLoading = false,
                         hasMore = result.pageInfo.hasNext
                     )

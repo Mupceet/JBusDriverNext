@@ -98,7 +98,7 @@ sealed class ContentBlock {
     data class Text(val text: String) : ContentBlock()
 
     @Immutable
-    data class Image(val url: String) : ContentBlock()
+    data class Image(val url: String, val width: Int = 0, val height: Int = 0, val isFullSize: Boolean = false) : ContentBlock()
 
     @Immutable
     data class Quote(val author: String, val content: String) : ContentBlock()
@@ -110,7 +110,12 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         out.beginObject()
         when (value) {
             is ContentBlock.Text -> { out.name("type").value("text").name("text").value(value.text) }
-            is ContentBlock.Image -> { out.name("type").value("image").name("url").value(value.url) }
+            is ContentBlock.Image -> {
+                out.name("type").value("image").name("url").value(value.url)
+                if (value.width > 0) out.name("width").value(value.width)
+                if (value.height > 0) out.name("height").value(value.height)
+                if (value.isFullSize) out.name("fullSize").value(true)
+            }
             is ContentBlock.Quote -> { out.name("type").value("quote").name("author").value(value.author).name("content").value(value.content) }
         }
         out.endObject()
@@ -125,6 +130,9 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         var type = ""
         var text = ""
         var url = ""
+        var width = 0
+        var height = 0
+        var fullSize = false
         var author = ""
         var content = ""
         while (`in`.hasNext()) {
@@ -132,6 +140,9 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
                 "type" -> type = `in`.nextString()
                 "text" -> text = `in`.nextString()
                 "url" -> url = `in`.nextString()
+                "width" -> width = `in`.nextInt()
+                "height" -> height = `in`.nextInt()
+                "fullSize" -> fullSize = `in`.nextBoolean()
                 "author" -> author = `in`.nextString()
                 "content" -> content = `in`.nextString()
                 else -> `in`.skipValue()
@@ -140,7 +151,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         `in`.endObject()
         return when (type) {
             "text" -> ContentBlock.Text(text)
-            "image" -> ContentBlock.Image(url)
+            "image" -> ContentBlock.Image(url, width, height, fullSize)
             "quote" -> ContentBlock.Quote(author, content)
             else -> null
         }

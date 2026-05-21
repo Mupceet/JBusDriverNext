@@ -507,7 +507,7 @@ fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
     val authorName = authorLink?.text()?.trim() ?: ""
     val authorUid = authorLink?.attr("href")
         ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
-    val postTime = doc.select(".nthread_other .mr10").firstOrNull()?.text()?.trim()
+    val postTime = doc.select(".nthread_other span.mr10").firstOrNull()?.text()?.trim()
         ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim() ?: ""
 
     val avatarSrc = doc.select(".nthread_firstpost .post_avatar img[src]").attr("src")
@@ -611,7 +611,10 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
                         val src = node.attr("src").wrapForumImage()
                         if (src.isNotEmpty() && !src.contains("arw_r") && !src.contains("userinfo.gif") && !src.contains("fav.gif") && !src.contains("rec_add")) {
                             flushText()
-                            blocks.add(ContentBlock.Image(src))
+                            val w = node.attr("width").toIntOrNull() ?: 0
+                            val h = node.attr("height").toIntOrNull() ?: 0
+                            val isFullSize = node.hasClass("zoom")
+                            blocks.add(ContentBlock.Image(src, w, h, isFullSize))
                         }
                     }
                     "div" -> {

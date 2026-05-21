@@ -164,7 +164,7 @@ fun ForumThreadDetailScreen(
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
-                            items(count = detail.replies.size, key = { "reply_${detail.replies[it].floor}" }) { index ->
+                            items(count = detail.replies.size, key = { "reply_$it" }) { index ->
                                 ReplyItem(reply = detail.replies[index], onImageClick = onImageClick)
                             }
                         }
@@ -228,16 +228,29 @@ private fun PostContent(
                     )
                 }
                 is ContentBlock.Image -> {
-                    val currentIdx = imageIndex++
-                    AsyncImage(
-                        model = block.url,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onImageClick(imageUrls, currentIdx) },
-                        contentScale = ContentScale.FillWidth
-                    )
+                    if (block.isFullSize) {
+                        val currentIdx = imageIndex++
+                        AsyncImage(
+                            model = block.url,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onImageClick(imageUrls, currentIdx) },
+                            contentScale = ContentScale.FillWidth
+                        )
+                    } else {
+                        val currentIdx = imageIndex++
+                        AsyncImage(
+                            model = block.url,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { onImageClick(imageUrls, currentIdx) },
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
                 is ContentBlock.Quote -> {
                     val accentColor = MaterialTheme.colorScheme.primary
