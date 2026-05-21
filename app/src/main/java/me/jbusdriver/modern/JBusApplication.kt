@@ -3,6 +3,7 @@ package me.jbusdriver.modern
 import android.util.Log
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import coil.decode.GifDecoder
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.NetClient
@@ -46,6 +47,7 @@ class JBusApplication : AppContext(), ImageLoaderFactory {
 
         return ImageLoader.Builder(this)
             .okHttpClient(imageClient)
+            .components { add(GifDecoder.Factory()) }
             .crossfade(true)
             .build()
     }

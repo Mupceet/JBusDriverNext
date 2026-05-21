@@ -1,6 +1,9 @@
 package me.jbusdriver.modern.domain.model
 
 import androidx.compose.runtime.Immutable
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
 
 @Immutable
 data class ForumBoardGroup(
@@ -96,6 +99,45 @@ sealed class ContentBlock {
 
     @Immutable
     data class Quote(val author: String, val content: String) : ContentBlock()
+}
+
+class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
+    override fun write(out: JsonWriter, value: ContentBlock?) {
+        if (value == null) { out.nullValue(); return }
+        out.beginObject()
+        when (value) {
+            is ContentBlock.Text -> { out.name("type").value("text").name("text").value(value.text) }
+            is ContentBlock.Image -> { out.name("type").value("image").name("url").value(value.url) }
+            is ContentBlock.Quote -> { out.name("type").value("quote").name("author").value(value.author).name("content").value(value.content) }
+        }
+        out.endObject()
+    }
+
+    override fun read(`in`: JsonReader): ContentBlock? {
+        `in`.beginObject()
+        var type = ""
+        var text = ""
+        var url = ""
+        var author = ""
+        var content = ""
+        while (`in`.hasNext()) {
+            when (`in`.nextName()) {
+                "type" -> type = `in`.nextString()
+                "text" -> text = `in`.nextString()
+                "url" -> url = `in`.nextString()
+                "author" -> author = `in`.nextString()
+                "content" -> content = `in`.nextString()
+                else -> `in`.skipValue()
+            }
+        }
+        `in`.endObject()
+        return when (type) {
+            "text" -> ContentBlock.Text(text)
+            "image" -> ContentBlock.Image(url)
+            "quote" -> ContentBlock.Quote(author, content)
+            else -> null
+        }
+    }
 }
 
 @Immutable

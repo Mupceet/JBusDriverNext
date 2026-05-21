@@ -10,6 +10,8 @@ import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import java.lang.reflect.Modifier.STATIC
+import me.jbusdriver.modern.domain.model.ContentBlock
+import me.jbusdriver.modern.domain.model.ContentBlockTypeAdapter
 import java.lang.reflect.Modifier.TRANSIENT
 import java.util.Date
 
@@ -44,6 +46,7 @@ val GSON by lazy {
             }
         })
         .registerTypeAdapterFactory(NullSafeFactory)
+        .registerTypeAdapter(ContentBlock::class.java, ContentBlockTypeAdapter())
         .serializeNulls().create()
 }
 
