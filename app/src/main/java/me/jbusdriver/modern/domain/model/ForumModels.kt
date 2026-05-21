@@ -1,7 +1,10 @@
 package me.jbusdriver.modern.domain.model
 
 import androidx.compose.runtime.Immutable
+import com.google.gson.Gson
 import com.google.gson.TypeAdapter
+import com.google.gson.TypeAdapterFactory
+import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 
@@ -114,6 +117,10 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
     }
 
     override fun read(`in`: JsonReader): ContentBlock? {
+        if (`in`.peek() == com.google.gson.stream.JsonToken.NULL) {
+            `in`.nextNull()
+            return null
+        }
         `in`.beginObject()
         var type = ""
         var text = ""
@@ -137,6 +144,14 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
             "quote" -> ContentBlock.Quote(author, content)
             else -> null
         }
+    }
+}
+
+object ContentBlockAdapterFactory : TypeAdapterFactory {
+    override fun <T : Any> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T>? {
+        if (!ContentBlock::class.java.isAssignableFrom(type.rawType)) return null
+        @Suppress("UNCHECKED_CAST")
+        return ContentBlockTypeAdapter() as TypeAdapter<T>
     }
 }
 

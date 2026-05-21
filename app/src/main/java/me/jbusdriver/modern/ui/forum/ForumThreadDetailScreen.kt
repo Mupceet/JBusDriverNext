@@ -59,6 +59,7 @@ import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,7 +138,8 @@ fun ForumThreadDetailScreen(
                             Card(
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                border = CardDefaults.outlinedCardBorder(),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
                                 PostContent(
                                     blocks = detail.contentBlocks,
@@ -292,7 +294,7 @@ private fun ThreadHeader(detail: ForumThreadDetail) {
                     fontSize = 10.sp,
                     modifier = Modifier
                         .background(
-                            runCatching { Color(android.graphics.Color.parseColor(detail.typeColor)) }
+                            runCatching { Color(detail.typeColor.toColorInt()) }
                                 .getOrDefault(Color(0xFF666666)),
                             RoundedCornerShape(3.dp)
                         )
@@ -329,7 +331,8 @@ private fun CommentsSection(comments: List<Comment>) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = CardDefaults.outlinedCardBorder(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -373,7 +376,8 @@ private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Un
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = CardDefaults.outlinedCardBorder(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
