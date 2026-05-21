@@ -3,6 +3,12 @@ package me.jbusdriver.modern.domain.model
 import androidx.compose.runtime.Immutable
 
 @Immutable
+data class ForumBoardGroup(
+    val name: String,
+    val boards: List<ForumBoard>
+)
+
+@Immutable
 data class ForumBoard(
     val id: Int,
     val name: String,
@@ -10,7 +16,8 @@ data class ForumBoard(
     val todayPosts: Int,
     val totalThreads: String,
     val totalPosts: String,
-    val lastPost: LastPost
+    val lastPost: LastPost,
+    val typeId: Int? = null
 )
 
 @Immutable
@@ -54,8 +61,7 @@ data class ForumThreadDetail(
     val authorUid: Int,
     val authorAvatar: String,
     val postTime: String,
-    val content: String,
-    val contentImages: List<String>,
+    val contentBlocks: List<ContentBlock>,
     val comments: List<Comment>,
     val replies: List<ForumReply>,
     val pageInfo: PageInfo
@@ -76,10 +82,21 @@ data class ForumReply(
     val authorUid: Int,
     val authorAvatar: String,
     val authorGroup: String,
-    val content: String,
-    val contentImages: List<String>,
+    val contentBlocks: List<ContentBlock>,
     val postTime: String
 )
+
+@Immutable
+sealed class ContentBlock {
+    @Immutable
+    data class Text(val text: String) : ContentBlock()
+
+    @Immutable
+    data class Image(val url: String) : ContentBlock()
+
+    @Immutable
+    data class Quote(val author: String, val content: String) : ContentBlock()
+}
 
 @Immutable
 data class ForumTypeFilter(

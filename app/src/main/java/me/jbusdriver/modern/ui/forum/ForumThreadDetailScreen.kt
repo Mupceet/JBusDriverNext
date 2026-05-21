@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.forum
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,9 +28,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -38,9 +39,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,8 +54,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.Comment
+import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
+import me.jbusdriver.modern.domain.model.hasNext
+import me.jbusdriver.modern.ui.RouteForumThreadDetail
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,20 +67,23 @@ fun ForumThreadDetailScreen(
     onImageClick: (List<String>, Int) -> Unit,
     onBack: () -> Unit
 ) {
-    val viewModel: ForumThreadDetailViewModel = hiltViewModel()
+    val viewModel: ForumThreadDetailViewModel = hiltViewModel<ForumThreadDetailViewModel, ForumThreadDetailViewModel.Factory>(
+        creationCallback = { factory -> factory.create(RouteForumThreadDetail(tid)) }
+    )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val detail = state.detail
     val listState = rememberLazyListState()
 
     val nearEnd by remember {
         derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= listState.layoutInfo.totalItemsCount - 3
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= layoutInfo.totalItemsCount - 2
         }
     }
 
-    LaunchedEffect(nearEnd, detail?.pageInfo) {
-        if (nearEnd && detail != null && !state.isLoadingMore) {
+    LaunchedEffect(nearEnd, detail?.pageInfo?.nextPage) {
+        if (nearEnd && detail != null && detail.pageInfo.hasNext && !state.isLoadingMore) {
             viewModel.loadMoreReplies()
         }
     }
@@ -119,28 +129,30 @@ fun ForumThreadDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(12.dp)
                     ) {
-                        // Title section
                         item(key = "header") {
                             ThreadHeader(detail)
                         }
 
-                        // Content section
                         item(key = "content") {
-                            ThreadContentSection(
-                                content = detail.content,
-                                images = detail.contentImages,
-                                onImageClick = onImageClick
-                            )
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                PostContent(
+                                    blocks = detail.contentBlocks,
+                                    onImageClick = onImageClick,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
                         }
 
-                        // Comments section
                         if (detail.comments.isNotEmpty()) {
                             item(key = "comments") {
                                 CommentsSection(comments = detail.comments)
                             }
                         }
 
-                        // Replies section
                         if (detail.replies.isNotEmpty()) {
                             item(key = "replies_header") {
                                 Text(
@@ -182,6 +194,83 @@ fun ForumThreadDetailScreen(
 }
 
 @Composable
+private fun PostContent(
+    blocks: List<ContentBlock>,
+    onImageClick: (List<String>, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val imageUrls = remember(blocks) {
+        blocks.filterIsInstance<ContentBlock.Image>().map { it.url }
+    }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        var imageIndex = 0
+        blocks.forEach { block ->
+            when (block) {
+                is ContentBlock.Text -> {
+                    Text(
+                        block.text,
+                        style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                is ContentBlock.Image -> {
+                    val currentIdx = imageIndex++
+                    AsyncImage(
+                        model = block.url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onImageClick(imageUrls, currentIdx) },
+                        contentScale = ContentScale.FillWidth
+                    )
+                }
+                is ContentBlock.Quote -> {
+                    val accentColor = MaterialTheme.colorScheme.primary
+                    Card(
+                        shape = RoundedCornerShape(6.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .drawBehind {
+                                    drawLine(
+                                        color = accentColor,
+                                        start = Offset(0f, 0f),
+                                        end = Offset(0f, size.height),
+                                        strokeWidth = 3.dp.toPx()
+                                    )
+                                }
+                                .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+                        ) {
+                            Column {
+                                if (block.author.isNotEmpty()) {
+                                    Text(
+                                        "${block.author}：",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontStyle = FontStyle.Italic,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Text(
+                                    block.content,
+                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ThreadHeader(detail: ForumThreadDetail) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -192,7 +281,8 @@ private fun ThreadHeader(detail: ForumThreadDetail) {
                     fontSize = 10.sp,
                     modifier = Modifier
                         .background(
-                            Color(android.graphics.Color.parseColor(detail.typeColor)),
+                            runCatching { Color(android.graphics.Color.parseColor(detail.typeColor)) }
+                                .getOrDefault(Color(0xFF666666)),
                             RoundedCornerShape(3.dp)
                         )
                         .padding(horizontal = 4.dp, vertical = 1.dp)
@@ -223,41 +313,9 @@ private fun ThreadHeader(detail: ForumThreadDetail) {
 }
 
 @Composable
-private fun ThreadContentSection(
-    content: String,
-    images: List<String>,
-    onImageClick: (List<String>, Int) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                content,
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            images.forEachIndexed { index, url ->
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onImageClick(images, index) },
-                    contentScale = ContentScale.FillWidth
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun CommentsSection(comments: List<Comment>) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -342,23 +400,11 @@ private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Un
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
-                Text(
-                    reply.content,
-                    style = MaterialTheme.typography.bodySmall,
+                PostContent(
+                    blocks = reply.contentBlocks,
+                    onImageClick = onImageClick,
                     modifier = Modifier.padding(top = 4.dp)
                 )
-                reply.contentImages.forEachIndexed { index, url ->
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onImageClick(reply.contentImages, index) },
-                        contentScale = ContentScale.FillWidth
-                    )
-                }
             }
         }
     }

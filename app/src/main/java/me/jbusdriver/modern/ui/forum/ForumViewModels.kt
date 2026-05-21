@@ -1,8 +1,10 @@
 package me.jbusdriver.modern.ui.forum
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,18 +15,22 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumBoard
+import me.jbusdriver.modern.domain.model.ForumBoardGroup
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
+import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.RouteForumThreadList
 import javax.inject.Inject
 
 private const val TAG = "ForumVM"
 
 data class ForumBoardsUiState(
-    val boards: List<ForumBoard> = emptyList(),
+    val groups: List<ForumBoardGroup> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null
 )
 
@@ -66,9 +72,9 @@ class ForumBoardsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val boards = repository.loadForumBoards()
-                KLog.d("[Forum] loadBoards success: ${boards.size} boards", TAG)
-                _uiState.update { it.copy(boards = boards, isLoading = false) }
+                val groups = repository.loadForumBoards()
+                KLog.d("[Forum] loadBoards success: ${groups.size} groups", TAG)
+                _uiState.update { it.copy(groups = groups, isLoading = false) }
             } catch (e: Exception) {
                 KLog.e("[Forum] loadBoards failed: ${e.message}", e, TAG)
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
@@ -78,12 +84,12 @@ class ForumBoardsViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                val boards = repository.loadForumBoards(forceRefresh = true)
-                _uiState.update { it.copy(boards = boards, isLoading = false) }
+                val groups = repository.loadForumBoards(forceRefresh = true)
+                _uiState.update { it.copy(groups = groups, isRefreshing = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
+                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
             }
         }
     }
@@ -94,19 +100,23 @@ class ForumBoardsViewModel @Inject constructor(
     }
 }
 
-@HiltViewModel
-class ForumThreadListViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = ForumThreadListViewModel.Factory::class)
+class ForumThreadListViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
-    savedStateHandle: SavedStateHandle
+    @Assisted private val navKey: RouteForumThreadList
 ) : ViewModel() {
-    private val fid: Int = savedStateHandle["fid"] ?: 2
+    private val fid: Int = navKey.fid
+    private val initialTypeId: Int? = navKey.typeId
     private var currentPage = 0
 
     private val _uiState = MutableStateFlow(ForumThreadListUiState())
     val uiState: StateFlow<ForumThreadListUiState> = _uiState.asStateFlow()
 
     init {
-        KLog.d("[Forum] ForumThreadListViewModel init: fid=$fid", TAG)
+        KLog.d("[Forum] ForumThreadListViewModel init: fid=$fid, typeId=$initialTypeId", TAG)
+        if (initialTypeId != null) {
+            _uiState.update { it.copy(currentTypeId = initialTypeId) }
+        }
         loadFirstPage()
     }
 
@@ -123,7 +133,7 @@ class ForumThreadListViewModel @Inject constructor(
                     it.copy(
                         threads = result.threads,
                         pageInfo = result.pageInfo,
-                        typeFilters = result.typeFilters,
+                        typeFilters = if (result.typeFilters.isNotEmpty()) result.typeFilters else it.typeFilters,
                         isLoading = false,
                         hasMore = result.pageInfo.hasNext
                     )
@@ -189,14 +199,19 @@ class ForumThreadListViewModel @Inject constructor(
         _uiState.update { it.copy(currentTypeId = typeId, threads = emptyList(), pageInfo = PageInfo()) }
         loadFirstPage()
     }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(navKey: RouteForumThreadList): ForumThreadListViewModel
+    }
 }
 
-@HiltViewModel
-class ForumThreadDetailViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = ForumThreadDetailViewModel.Factory::class)
+class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
-    savedStateHandle: SavedStateHandle
+    @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
-    private val tid: Int = savedStateHandle["tid"] ?: 0
+    private val tid: Int = navKey.tid
     private var currentPage = 1
 
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
@@ -261,5 +276,10 @@ class ForumThreadDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoadingMore = false) }
             }
         }
+    }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(navKey: RouteForumThreadDetail): ForumThreadDetailViewModel
     }
 }

@@ -130,7 +130,7 @@ fun JBusNavigation(
                         backStack.add(RouteSearch(searchType))
                     },
                     onForumBoardClick = { board ->
-                        backStack.add(RouteForumThreadList(board.id, board.name))
+                        backStack.add(RouteForumThreadList(board.id, board.name, board.typeId))
                     },
                     onForumThreadClick = { tid ->
                         backStack.add(RouteForumThreadDetail(tid))
@@ -250,6 +250,7 @@ fun JBusNavigation(
                 ForumThreadListScreen(
                     fid = key.fid,
                     title = key.title,
+                    typeId = key.typeId,
                     onThreadClick = { tid ->
                         backStack.add(RouteForumThreadDetail(tid))
                     },

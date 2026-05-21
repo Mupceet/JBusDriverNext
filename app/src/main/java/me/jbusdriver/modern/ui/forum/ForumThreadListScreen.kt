@@ -53,16 +53,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumThread
+import me.jbusdriver.modern.ui.RouteForumThreadList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForumThreadListScreen(
     fid: Int,
     title: String,
+    typeId: Int? = null,
     onThreadClick: (Int) -> Unit,
     onBack: () -> Unit
 ) {
-    val viewModel: ForumThreadListViewModel = hiltViewModel()
+    val viewModel: ForumThreadListViewModel = hiltViewModel<ForumThreadListViewModel, ForumThreadListViewModel.Factory>(
+        creationCallback = { factory -> factory.create(RouteForumThreadList(fid, title, typeId)) }
+    )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
@@ -202,7 +206,8 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                             fontSize = 10.sp,
                             modifier = Modifier
                                 .background(
-                                    Color(android.graphics.Color.parseColor(thread.typeColor)),
+                                    runCatching { Color(android.graphics.Color.parseColor(thread.typeColor)) }
+                                        .getOrDefault(Color(0xFF666666)),
                                     RoundedCornerShape(3.dp)
                                 )
                                 .padding(horizontal = 4.dp, vertical = 1.dp)

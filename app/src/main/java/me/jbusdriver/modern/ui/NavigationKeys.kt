@@ -33,7 +33,8 @@ data class RouteLinkMovies(
 @Serializable
 data class RouteForumThreadList(
     val fid: Int,
-    val title: String = ""
+    val title: String = "",
+    val typeId: Int? = null
 ) : NavKey
 
 @Serializable

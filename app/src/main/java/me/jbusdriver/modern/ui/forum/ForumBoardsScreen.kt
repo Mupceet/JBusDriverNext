@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,12 +42,12 @@ fun ForumBoardsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     PullToRefreshBox(
-        isRefreshing = state.isLoading,
+        isRefreshing = state.isRefreshing,
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize()
     ) {
         when {
-            state.error != null && state.boards.isEmpty() -> {
+            state.error != null && state.groups.isEmpty() -> {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp),
                     verticalArrangement = Arrangement.Center,
@@ -58,13 +58,23 @@ fun ForumBoardsScreen(
                     TextButton(onClick = { viewModel.loadBoards() }) { Text("重試") }
                 }
             }
-            state.boards.isNotEmpty() -> {
+            state.groups.isNotEmpty() -> {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(state.boards, key = { index, _ -> "board_$index" }) { _, board ->
-                        BoardCard(board = board, onClick = { onBoardClick(board) })
+                    state.groups.forEachIndexed { groupIndex, group ->
+                        item(key = "group_header_$groupIndex") {
+                            Text(
+                                group.name,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp, start = 4.dp)
+                            )
+                        }
+                        items(group.boards, key = { "board_${groupIndex}_${it.id}_${it.typeId}" }) { board ->
+                            BoardCard(board = board, onClick = { onBoardClick(board) })
+                        }
                     }
                 }
             }

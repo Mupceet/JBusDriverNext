@@ -306,18 +306,25 @@ fun parseMovieFilterInfo(doc: Document): MovieFilterInfo? {
 
 // region 论坛解析
 
-fun parseForumBoards(doc: Document): List<ForumBoard> {
-    val boards = mutableListOf<ForumBoard>()
-    val categoryDivs = doc.select("div.fl.bm div[id^=category_]")
-    KLog.d("ForumParse", "parseForumBoards: categoryDivs=${categoryDivs.size}, docTitle=${doc.title()}, htmlLength=${doc.html().length}")
+fun parseForumBoards(doc: Document): List<ForumBoardGroup> {
+    val groups = mutableListOf<ForumBoardGroup>()
+    val sectionDivs = doc.select("div.fl.bm > div.bm.bmw.cl")
+    KLog.d("ForumParse", "parseForumBoards: sectionDivs=${sectionDivs.size}, docTitle=${doc.title()}, htmlLength=${doc.html().length}")
 
-    for (categoryDiv in categoryDivs) {
-        val rows = categoryDiv.select("table.fl_tb > tbody > tr")
+    for (section in sectionDivs) {
+        val groupName = section.select("div.bm_h.cl h2 a").text().trim()
+        if (groupName.isEmpty()) continue
+
+        val categoryDiv = section.select("div[id^=category_]").firstOrNull() ?: continue
+        val rows = categoryDiv.select("table.fl_tb > tbody > tr, table.fl_tb > tr")
+        val boards = mutableListOf<ForumBoard>()
+
         for (row in rows) {
             val nameLink = row.select("td h2 a").firstOrNull() ?: continue
-            val fid = nameLink.attr("href")
-                .let { Regex("fid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+            val href = nameLink.attr("href")
+            val fid = Regex("fid=(\\d+)").find(href)?.groupValues?.get(1)?.toIntOrNull()
                 ?: continue
+            val typeId = Regex("typeid=(\\d+)").find(href)?.groupValues?.get(1)?.toIntOrNull()
 
             val todayText = row.select("em.xw0.xi1").text()
             val todayPosts = Regex("\\((\\d+)\\)").find(todayText)?.groupValues?.get(1)?.toIntOrNull() ?: 0
@@ -327,9 +334,10 @@ fun parseForumBoards(doc: Document): List<ForumBoard> {
             val totalPosts = statsSpans.getOrNull(2)?.text()?.trim() ?: ""
 
             val lastPostDiv = row.select("td.fl_by .forumlist").firstOrNull()
-            val lastPostTitle = lastPostDiv?.select("a.xi2")?.text()?.trim() ?: ""
+            val lastPostTitle = lastPostDiv?.select("a.xi2, a[title]")?.firstOrNull()?.text()?.trim() ?: ""
             val lastPostAuthor = lastPostDiv?.select("cite a")?.text()?.trim() ?: ""
-            val lastPostTime = lastPostDiv?.select("cite span")?.text()?.trim() ?: ""
+            val lastPostTime = lastPostDiv?.select("cite span[title]")?.text()?.trim()
+                ?: lastPostDiv?.select("cite span")?.text()?.trim() ?: ""
 
             boards.add(
                 ForumBoard(
@@ -339,13 +347,17 @@ fun parseForumBoards(doc: Document): List<ForumBoard> {
                     todayPosts = todayPosts,
                     totalThreads = totalThreads,
                     totalPosts = totalPosts,
-                    lastPost = LastPost(lastPostTitle, lastPostAuthor, lastPostTime)
+                    lastPost = LastPost(lastPostTitle, lastPostAuthor, lastPostTime),
+                    typeId = typeId
                 )
             )
         }
+        if (boards.isNotEmpty()) {
+            groups.add(ForumBoardGroup(name = groupName, boards = boards))
+        }
     }
-    KLog.d("ForumParse", "parseForumBoards result: ${boards.size} boards parsed")
-    return boards
+    KLog.d("ForumParse", "parseForumBoards result: ${groups.sumOf { it.boards.size }} boards in ${groups.size} groups")
+    return groups
 }
 
 fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
@@ -458,6 +470,20 @@ private fun parseForumPageInfo(doc: Document): PageInfo {
 
 fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
     KLog.d("ForumParse", "parseForumThreadDetail: docTitle=${doc.title()}, htmlLength=${doc.html().length}")
+
+    // Diagnostic: dump key selector matches
+    KLog.d("ForumParse", "#thread_subject: ${doc.select("#thread_subject").size}")
+    KLog.d("ForumParse", ".nthread_firstpostbox: ${doc.select(".nthread_firstpostbox").size}")
+    KLog.d("ForumParse", "td.t_f: ${doc.select("td.t_f").size}")
+    KLog.d("ForumParse", "#postlist: ${doc.select("#postlist").size}")
+    KLog.d("ForumParse", ".nthread_postbox: ${doc.select(".nthread_postbox").size}")
+    KLog.d("ForumParse", ".pls.favatar: ${doc.select(".pls.favatar").size}")
+    KLog.d("ForumParse", "div[id^=post_]: ${doc.select("div[id^=post_]").size}")
+    KLog.d("ForumParse", "div[id^=postmessage_]: ${doc.select("div[id^=postmessage_]").size}")
+    // Dump first 2000 chars of body for structure analysis
+    val bodyHtml = doc.select("body").html()
+    KLog.d("ForumParse", "bodyHtml first 2000: ${bodyHtml.take(2000)}")
+
     val titleEl = doc.select("#thread_subject").firstOrNull()
     val title = titleEl?.text()?.trim() ?: ""
 
@@ -511,7 +537,7 @@ fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
         val floorEl = postBox.select("a[id^=postnum] em").firstOrNull() ?: return@mapNotNull null
         val floor = floorEl.text().toIntOrNull() ?: return@mapNotNull null
 
-        val replyAuthorLink = postBox.select(".pls a.xw1").firstOrNull()
+        val replyAuthorLink = postBox.select("a.xw1").firstOrNull()
         val replyAuthorUid = replyAuthorLink?.attr("href")
             ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
         val replyAvatar = postBox.select(".favatar .avatar img[src]").attr("src")
@@ -530,8 +556,7 @@ fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
             authorUid = replyAuthorUid,
             authorAvatar = replyAvatar,
             authorGroup = authorGroup,
-            content = replyContentResult.first,
-            contentImages = replyContentResult.second,
+            contentBlocks = replyContentResult,
             postTime = replyTime
         )
     }
@@ -550,45 +575,66 @@ fun parseForumThreadDetail(doc: Document): ForumThreadDetail {
         authorUid = authorUid,
         authorAvatar = avatarSrc,
         postTime = postTime,
-        content = contentResult.first,
-        contentImages = contentResult.second,
+        contentBlocks = contentResult,
         comments = comments,
         replies = replies,
         pageInfo = pageInfo
     )
 }
 
-private fun parsePostContent(td: org.jsoup.nodes.Element?): Pair<String, List<String>> {
-    if (td == null) return "" to emptyList()
+private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
+    if (td == null) return emptyList()
 
-    val textBuilder = StringBuilder()
-    val images = mutableListOf<String>()
+    val blocks = mutableListOf<ContentBlock>()
+    val textBuffer = StringBuilder()
+
+    fun flushText() {
+        val text = textBuffer.toString().trim()
+        if (text.isNotEmpty()) {
+            blocks.add(ContentBlock.Text(text))
+        }
+        textBuffer.clear()
+    }
 
     fun processNode(node: org.jsoup.nodes.Node) {
         when (node) {
             is org.jsoup.nodes.TextNode -> {
-                val text = node.text().trim()
-                if (text.isNotEmpty()) {
-                    if (textBuilder.isNotEmpty()) textBuilder.append("\n")
-                    textBuilder.append(text)
+                val text = node.text()
+                if (text.isNotBlank()) {
+                    textBuffer.append(text)
                 }
             }
             is org.jsoup.nodes.Element -> {
                 when (node.tagName()) {
-                    "br" -> textBuilder.append("\n")
+                    "br" -> textBuffer.append("\n")
                     "img" -> {
                         val src = node.attr("src").wrapForumImage()
                         if (src.isNotEmpty() && !src.contains("arw_r") && !src.contains("userinfo.gif") && !src.contains("fav.gif") && !src.contains("rec_add")) {
-                            images.add(src)
+                            flushText()
+                            blocks.add(ContentBlock.Image(src))
+                        }
+                    }
+                    "div" -> {
+                        if (node.hasClass("quote")) {
+                            flushText()
+                            val blockquote = node.select("blockquote").firstOrNull()
+                            val authorLink = blockquote?.select("a[href]")?.firstOrNull()
+                            val authorName = authorLink?.text()?.trim() ?: ""
+                            val quoteText = blockquote?.let { bq ->
+                                // Remove the author line, keep the rest
+                                val clone = bq.clone()
+                                clone.select("font > a").remove()
+                                clone.text().trim()
+                            } ?: ""
+                            if (quoteText.isNotEmpty()) {
+                                blocks.add(ContentBlock.Quote(authorName, quoteText))
+                            }
+                        } else if (!node.hasClass("modact") && !node.hasClass("locked") && !node.className().contains("cm")) {
+                            node.childNodes().forEach { processNode(it) }
                         }
                     }
                     "font" -> node.childNodes().forEach { processNode(it) }
                     "table" -> node.childNodes().forEach { processNode(it) }
-                    "div" -> {
-                        if (!node.hasClass("modact") && !node.hasClass("locked") && !node.className().contains("cm")) {
-                            node.childNodes().forEach { processNode(it) }
-                        }
-                    }
                     else -> node.childNodes().forEach { processNode(it) }
                 }
             }
@@ -596,8 +642,9 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): Pair<String, List<St
     }
 
     td.childNodes().forEach { processNode(it) }
+    flushText()
 
-    return textBuilder.toString().trim() to images
+    return blocks
 }
 
 // endregion
