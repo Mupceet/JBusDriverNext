@@ -97,7 +97,7 @@ class ForumSessionManager @Inject constructor() {
                 loadPageHtml(wv, url)
             }
         }
-        return Jsoup.parse(html)
+        return Jsoup.parse(html, url)
     }
 
     /**

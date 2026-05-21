@@ -361,10 +361,15 @@ fun parseForumBoards(doc: Document): List<ForumBoardGroup> {
 }
 
 fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
+    val currentPageTypeId = Regex("typeid=(\\d+)").find(doc.location() ?: "")?.groupValues?.get(1)?.toIntOrNull()
     return doc.select("ul#thread_types > li > a").mapNotNull { link ->
         val href = link.attr("href")
+        val li = link.parent()
+        val isAll = li?.id() == "ttp_all"
+        if (isAll) return@mapNotNull null // "全部" is hardcoded in UI
         val typeId = Regex("typeid=(\\d+)").find(href)?.groupValues?.get(1)?.toIntOrNull()
-            ?: return@mapNotNull null
+            ?: if (li?.hasClass("a") == true && currentPageTypeId != null) currentPageTypeId
+            else return@mapNotNull null
         val countText = link.select("span.num").text().trim()
         val count = countText.toIntOrNull() ?: 0
         val name = link.text().trim().removeSuffix(countText).trim()
