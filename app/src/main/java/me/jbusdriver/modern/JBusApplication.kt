@@ -3,7 +3,9 @@ package me.jbusdriver.modern
 import android.util.Log
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import coil.disk.DiskCache
 import coil.decode.GifDecoder
+import coil.memory.MemoryCache
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.NetClient
@@ -47,6 +49,12 @@ class JBusApplication : AppContext(), ImageLoaderFactory {
 
         return ImageLoader.Builder(this)
             .okHttpClient(imageClient)
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(100L * 1024 * 1024)
+                    .build()
+            }
             .components { add(GifDecoder.Factory()) }
             .crossfade(true)
             .build()

@@ -3,8 +3,10 @@ package me.jbusdriver.modern.data
 import android.app.Activity
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.MimeTypeMap
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -25,6 +27,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "ForumSession"
+
+private val BLOCKED_EXTENSIONS = setOf(
+    "css", "js",
+    "woff", "woff2", "ttf", "eot", "otf",
+    "jpg", "jpeg", "png", "gif", "webp", "svg", "ico"
+)
+
+private fun isBlockedResource(url: String): Boolean {
+    val path = url.substringBefore("?").substringBefore("#").lowercase()
+    val ext = path.substringAfterLast('.', "")
+    return ext in BLOCKED_EXTENSIONS
+}
 
 /**
  * WebView-based forum page fetcher.
@@ -148,6 +162,16 @@ class ForumSessionManager @Inject constructor() {
     private suspend fun loadPageUrl(webView: WebView, url: String): String {
         return suspendCancellableCoroutine { cont ->
             webView.webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): WebResourceResponse? {
+                    if (request != null && !request.isForMainFrame && isBlockedResource(request.url.toString())) {
+                        return WebResourceResponse("text/plain", "utf-8", null)
+                    }
+                    return super.shouldInterceptRequest(view, request)
+                }
+
                 override fun onPageFinished(view: WebView?, pageUrl: String?) {
                     if (cont.isActive) {
                         cont.resume(pageUrl ?: url) {}
