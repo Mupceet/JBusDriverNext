@@ -73,7 +73,7 @@ class DefaultForumRepository @Inject constructor(
         val cacheKey = "forum_detail_${tid}_$page"
         val url = "${NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
         KLog.d("[Forum] loadThreadDetail: url=$url", TAG)
-        return CacheLoader.persistentCached(cacheKey) {
+        return CacheLoader.persistentCached(cacheKey, forceRefresh) {
             val doc = fetchForumDocument(url)
             parseForumThreadDetail(doc)
         }

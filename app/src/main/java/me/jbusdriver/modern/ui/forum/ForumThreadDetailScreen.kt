@@ -178,6 +178,17 @@ fun ForumThreadDetailScreen(
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 }
                             }
+                        } else if (detail.replies.isNotEmpty() && !detail.pageInfo.hasNext) {
+                            item(key = "no_more") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                         }
                     }
                 }
