@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.forum
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -38,6 +39,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +56,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumThread
+import me.jbusdriver.modern.ui.components.ScrollToTopButton
+import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 import me.jbusdriver.modern.ui.RouteForumThreadList
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,6 +74,8 @@ fun ForumThreadListScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val showScrollToTop = rememberScrollToTopVisibility(listState)
 
     val nearEnd by remember {
         derivedStateOf {
@@ -95,80 +102,89 @@ fun ForumThreadListScreen(
             )
         }
     ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = { viewModel.refresh() },
-            modifier = Modifier.fillMaxSize().padding(innerPadding)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Type filter chips
-                if (state.typeFilters.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        FilterChip(
-                            selected = state.currentTypeId == null,
-                            onClick = { viewModel.filterByType(null) },
-                            label = { Text("全部", fontSize = 12.sp) }
-                        )
-                        state.typeFilters.forEach { filter ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Type filter chips
+                    if (state.typeFilters.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             FilterChip(
-                                selected = state.currentTypeId == filter.typeId,
-                                onClick = { viewModel.filterByType(filter.typeId) },
-                                label = { Text(filter.name, fontSize = 12.sp) }
+                                selected = state.currentTypeId == null,
+                                onClick = { viewModel.filterByType(null) },
+                                label = { Text("全部", fontSize = 12.sp) }
                             )
-                        }
-                    }
-                }
-
-                when {
-                    state.error != null && state.threads.isEmpty() -> {
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = { viewModel.loadFirstPage() }) { Text("重試") }
-                        }
-                    }
-                    state.threads.isNotEmpty() || state.isLoading -> {
-                        LazyColumn(
-                            state = listState,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(state.threads, key = { it.tid }) { thread ->
-                                ThreadCard(thread = thread, onClick = { onThreadClick(thread.tid) })
+                            state.typeFilters.forEach { filter ->
+                                FilterChip(
+                                    selected = state.currentTypeId == filter.typeId,
+                                    onClick = { viewModel.filterByType(filter.typeId) },
+                                    label = { Text(filter.name, fontSize = 12.sp) }
+                                )
                             }
-                            if (state.isLoadingMore) {
-                                item {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+
+                    when {
+                        state.error != null && state.threads.isEmpty() -> {
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(state.error!!, color = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.height(8.dp))
+                                TextButton(onClick = { viewModel.loadFirstPage() }) { Text("重試") }
+                            }
+                        }
+                        state.threads.isNotEmpty() || state.isLoading -> {
+                            LazyColumn(
+                                state = listState,
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(state.threads, key = { it.tid }) { thread ->
+                                    ThreadCard(thread = thread, onClick = { onThreadClick(thread.tid) })
+                                }
+                                if (state.isLoadingMore) {
+                                    item {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    state.isLoading -> {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) { CircularProgressIndicator() }
+                        state.isLoading -> {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) { CircularProgressIndicator() }
+                        }
                     }
                 }
             }
+            ScrollToTopButton(
+                visible = showScrollToTop,
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 48.dp)
+            )
         }
     }
 }

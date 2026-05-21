@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +60,10 @@ import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.components.ScrollToTopButton
+import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 import androidx.core.graphics.toColorInt
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +78,8 @@ fun ForumThreadDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val detail = state.detail
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val showScrollToTop = rememberScrollToTopVisibility(listState)
 
     val nearEnd by remember {
         derivedStateOf {
@@ -107,16 +113,17 @@ fun ForumThreadDetailScreen(
             )
         }
     ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = { viewModel.refresh() },
-            modifier = Modifier.fillMaxSize().padding(innerPadding)
-        ) {
-            when {
-                state.error != null && detail == null -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    state.error != null && detail == null -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(state.error!!, color = MaterialTheme.colorScheme.error)
@@ -202,8 +209,16 @@ fun ForumThreadDetailScreen(
                     ) { CircularProgressIndicator() }
                 }
             }
+            ScrollToTopButton(
+                visible = showScrollToTop,
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 48.dp)
+            )
         }
     }
+}
 }
 
 @Composable
