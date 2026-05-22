@@ -629,31 +629,42 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
     if (td == null) return emptyList()
 
     val blocks = mutableListOf<ContentBlock>()
-    val textBuffer = StringBuilder()
+    val parts = mutableListOf<TextPart>()
 
-    fun flushText() {
-        val text = textBuffer.toString().trim()
-        if (text.isNotEmpty()) {
-            blocks.add(ContentBlock.RichText(listOf(TextPart.Plain(text))))
+    fun flushParts() {
+        val nonEmpty = parts.toList()
+        parts.clear()
+        if (nonEmpty.isNotEmpty()) {
+            blocks.add(ContentBlock.RichText(nonEmpty))
         }
-        textBuffer.clear()
     }
 
     fun processNode(node: org.jsoup.nodes.Node) {
         when (node) {
             is org.jsoup.nodes.TextNode -> {
                 val text = node.text()
-                if (text.isNotBlank()) {
-                    textBuffer.append(text)
+                if (text.isNotEmpty()) {
+                    parts.add(TextPart.Plain(text))
                 }
             }
             is org.jsoup.nodes.Element -> {
                 when (node.tagName()) {
-                    "br" -> textBuffer.append("\n")
+                    "br" -> {
+                        flushParts()
+                    }
+                    "a" -> {
+                        val href = node.attr("abs:href")
+                        val text = node.text().trim()
+                        if (href.isNotEmpty() && text.isNotEmpty()) {
+                            parts.add(TextPart.Link(text, href))
+                        } else if (text.isNotEmpty()) {
+                            parts.add(TextPart.Plain(text))
+                        }
+                    }
                     "img" -> {
                         val src = node.attr("src").wrapForumImage()
                         if (src.isNotEmpty() && !src.contains("arw_r") && !src.contains("userinfo.gif") && !src.contains("fav.gif") && !src.contains("rec_add")) {
-                            flushText()
+                            flushParts()
                             val w = node.attr("width").toIntOrNull() ?: 0
                             val h = node.attr("height").toIntOrNull() ?: 0
                             val isFullSize = node.hasClass("zoom")
@@ -662,12 +673,11 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
                     }
                     "div" -> {
                         if (node.hasClass("quote")) {
-                            flushText()
+                            flushParts()
                             val blockquote = node.select("blockquote").firstOrNull()
                             val authorLink = blockquote?.select("a[href]")?.firstOrNull()
                             val authorName = authorLink?.text()?.trim() ?: ""
                             val quoteText = blockquote?.let { bq ->
-                                // Remove the author line, keep the rest
                                 val clone = bq.clone()
                                 clone.select("font > a").remove()
                                 clone.text().trim()
@@ -688,7 +698,7 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
     }
 
     td.childNodes().forEach { processNode(it) }
-    flushText()
+    flushParts()
 
     return blocks
 }
