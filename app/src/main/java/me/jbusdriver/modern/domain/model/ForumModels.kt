@@ -15,6 +15,34 @@ data class ForumBoardGroup(
 )
 
 @Immutable
+data class ForumBanner(
+    val tid: Int,
+    val title: String,
+    val imageUrl: String
+)
+
+@Immutable
+data class ForumSummaryThread(
+    val tid: Int,
+    val title: String,
+    val author: String
+)
+
+@Immutable
+data class ForumHomeSummary(
+    val latestThreads: List<ForumSummaryThread> = emptyList(),
+    val latestReplies: List<ForumSummaryThread> = emptyList(),
+    val hotTopics: List<ForumSummaryThread> = emptyList()
+)
+
+@Immutable
+data class ForumHomeData(
+    val banners: List<ForumBanner>,
+    val summary: ForumHomeSummary,
+    val boardGroups: List<ForumBoardGroup>
+)
+
+@Immutable
 data class ForumBoard(
     val id: Int,
     val name: String,

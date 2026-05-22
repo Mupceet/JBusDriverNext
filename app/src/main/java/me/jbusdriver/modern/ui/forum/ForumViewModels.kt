@@ -14,8 +14,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
-import me.jbusdriver.modern.domain.model.ForumBoard
+import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
+import me.jbusdriver.modern.domain.model.ForumHomeSummary
+import me.jbusdriver.modern.domain.model.ForumSummaryThread
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
@@ -28,6 +30,8 @@ import javax.inject.Inject
 private const val TAG = "ForumVM"
 
 data class ForumBoardsUiState(
+    val banners: List<ForumBanner> = emptyList(),
+    val summary: ForumHomeSummary = ForumHomeSummary(),
     val groups: List<ForumBoardGroup> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
@@ -72,9 +76,9 @@ class ForumBoardsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val groups = repository.loadForumBoards()
-                KLog.d("[Forum] loadBoards success: ${groups.size} groups", TAG)
-                _uiState.update { it.copy(groups = groups, isLoading = false) }
+                val data = repository.loadForumBoards()
+                KLog.d("[Forum] loadBoards success: ${data.banners.size} banners, ${data.boardGroups.size} groups", TAG)
+                _uiState.update { it.copy(banners = data.banners, summary = data.summary, groups = data.boardGroups, isLoading = false) }
             } catch (e: Exception) {
                 KLog.e("[Forum] loadBoards failed: ${e.message}", e, TAG)
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
@@ -86,8 +90,8 @@ class ForumBoardsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                val groups = repository.loadForumBoards(forceRefresh = true)
-                _uiState.update { it.copy(groups = groups, isRefreshing = false) }
+                val data = repository.loadForumBoards(forceRefresh = true)
+                _uiState.update { it.copy(banners = data.banners, summary = data.summary, groups = data.boardGroups, isRefreshing = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
             }

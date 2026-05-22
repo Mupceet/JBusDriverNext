@@ -306,6 +306,44 @@ fun parseMovieFilterInfo(doc: Document): MovieFilterInfo? {
 
 // region 论坛解析
 
+fun parseForumHomeData(doc: Document): ForumHomeData {
+    val banners = parseBanners(doc)
+    val summary = parseSummary(doc)
+    val boardGroups = parseForumBoards(doc)
+    KLog.d("ForumParse", "parseForumHomeData: ${banners.size} banners, summary=${summary.latestThreads.size}/${summary.latestReplies.size}/${summary.hotTopics.size}, ${boardGroups.size} board groups")
+    return ForumHomeData(banners, summary, boardGroups)
+}
+
+private fun parseBanners(doc: Document): List<ForumBanner> {
+    return doc.select("ul.slideshow > li").mapNotNull { li ->
+        val img = li.select("a.biaoqicn_imga > img").firstOrNull() ?: return@mapNotNull null
+        val link = li.select("a[href*=viewthread]").firstOrNull() ?: return@mapNotNull null
+        val tid = Regex("tid=(\\d+)").find(link.attr("href"))?.groupValues?.get(1)?.toIntOrNull()
+            ?: return@mapNotNull null
+        val title = li.select("p.biaoqicn_title").text().trim().ifBlank { img.attr("alt") }
+        ForumBanner(tid, title, img.attr("src").wrapForumImage())
+    }
+}
+
+private fun parseSummary(doc: Document): ForumHomeSummary {
+    return ForumHomeSummary(
+        latestThreads = parseSummaryList(doc, "#con_NewOne_1 .sideMenu > h3"),
+        latestReplies = parseSummaryList(doc, "#con_NewOne_2 .sideMenu > h3"),
+        hotTopics = parseSummaryList(doc, "#con_NewOne_3 .sideMenu > h3")
+    )
+}
+
+private fun parseSummaryList(doc: Document, selector: String): List<ForumSummaryThread> {
+    return doc.select(selector).mapNotNull { h3 ->
+        val link = h3.select("a[href*=viewthread]").firstOrNull() ?: return@mapNotNull null
+        val tid = Regex("tid=(\\d+)").find(link.attr("href"))?.groupValues?.get(1)?.toIntOrNull()
+            ?: return@mapNotNull null
+        val author = h3.select("em > a").text().trim()
+        val title = link.attr("title").ifBlank { link.text().trim() }
+        ForumSummaryThread(tid, title, author)
+    }
+}
+
 fun parseForumBoards(doc: Document): List<ForumBoardGroup> {
     val groups = mutableListOf<ForumBoardGroup>()
     val sectionDivs = doc.select("div.fl.bm > div.bm.bmw.cl")

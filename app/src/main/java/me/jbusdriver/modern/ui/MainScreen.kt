@@ -43,6 +43,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
+import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
@@ -52,7 +53,7 @@ import me.jbusdriver.modern.ui.movielist.MovieListViewModel
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import androidx.core.content.edit
 
-enum class BottomNavCategory { MOVIE, ACTRESS, COLLECT, FORUM }
+enum class BottomNavCategory { MOVIE, ACTRESS, FORUM, COLLECT }
 
 private enum class CensorFilter(val label: String) {
     CENSORED("有碼"), UNCENSORED("無碼")
@@ -67,8 +68,8 @@ private data class BottomNavItem(
 private val BottomNavItems = listOf(
     BottomNavItem(BottomNavCategory.MOVIE, "影片", R.drawable.movie_24px),
     BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px),
-    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px),
-    BottomNavItem(BottomNavCategory.FORUM, "论坛", R.drawable.forum_24px)
+    BottomNavItem(BottomNavCategory.FORUM, "论坛", R.drawable.forum_24px),
+    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -177,29 +178,7 @@ fun MainScreen(
                         }
 
                         // Search bar
-                        Surface(
-                            onClick = { onSearchClick("") },
-                            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.search_24px),
-                                    contentDescription = "搜尋",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "搜索影片、演員、類別...",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
+                        SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp))
 
                         // Filter chips
                         Row(
@@ -310,29 +289,7 @@ fun MainScreen(
                         }
 
                         // Search bar
-                        Surface(
-                            onClick = { onSearchClick("") },
-                            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.search_24px),
-                                    contentDescription = "搜尋",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "搜索影片、演員、類別...",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
+                        SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp))
 
                         // Filter chips
                         Row(
@@ -377,9 +334,15 @@ fun MainScreen(
                         onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
                     )
 
-                    BottomNavCategory.FORUM -> ForumBoardsScreen(
-                        onBoardClick = onForumBoardClick
-                    )
+                    BottomNavCategory.FORUM -> {
+                        // Search bar
+                        SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp))
+
+                        ForumBoardsScreen(
+                            onBoardClick = onForumBoardClick,
+                            onThreadClick = onForumThreadClick
+                        )
+                    }
                 }
             }
         }
