@@ -116,13 +116,6 @@ private fun ForumHomeContent(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Insert tabbed summary
-        item(key = "summary_tabs") {
-            SummarySection(
-                summary = state.summary,
-                onThreadClick = onThreadClick
-            )
-        }
         // Carousel
         if (state.banners.isNotEmpty()) {
             item(key = "carousel") {
@@ -131,6 +124,13 @@ private fun ForumHomeContent(
                     onClick = onThreadClick
                 )
             }
+        }
+        // Insert tabbed summary
+        item(key = "summary_tabs") {
+            SummarySection(
+                summary = state.summary,
+                onThreadClick = onThreadClick
+            )
         }
 
         // Board groups with tabbed summary inserted between groups
