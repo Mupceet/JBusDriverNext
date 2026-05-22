@@ -44,6 +44,7 @@ import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.components.SearchBar
+import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
@@ -92,6 +93,9 @@ fun MainScreen(
         isGrid = !isGrid
         uiPrefs.edit { putBoolean("is_grid", isGrid) }
     }
+
+    // Preload forum data — creating the ViewModel triggers init → loadBoards()
+    hiltViewModel<ForumBoardsViewModel>()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
