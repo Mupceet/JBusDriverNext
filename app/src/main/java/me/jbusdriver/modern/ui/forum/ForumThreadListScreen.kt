@@ -115,7 +115,7 @@ fun ForumThreadListScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                                .padding(horizontal = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             FilterChip(
