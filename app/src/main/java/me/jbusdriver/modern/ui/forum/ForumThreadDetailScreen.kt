@@ -70,6 +70,7 @@ import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.components.GifPlaceholder
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 import androidx.core.graphics.toColorInt
@@ -79,13 +80,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun ForumThreadDetailScreen(
     tid: Int,
-    onImageClick: (List<String>, Int) -> Unit,
+    onImageClick: (List<String>, Int, Set<String>) -> Unit,
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel = hiltViewModel<ForumThreadDetailViewModel, ForumThreadDetailViewModel.Factory>(
         creationCallback = { factory -> factory.create(RouteForumThreadDetail(tid)) }
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val loadedGifUrls by remember { derivedStateOf { viewModel.loadedGifUrls } }
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -106,6 +108,10 @@ fun ForumThreadDetailScreen(
     }
 
     val handleLinkClick = rememberLinkClickHandler()
+
+    val imageClickHandler: (List<String>, Int) -> Unit = { images, idx ->
+        onImageClick(images, idx, viewModel.loadedGifUrls)
+    }
 
     Scaffold(
         topBar = {
@@ -162,9 +168,11 @@ fun ForumThreadDetailScreen(
                             ) {
                                 PostContent(
                                     blocks = detail.contentBlocks,
-                                    onImageClick = onImageClick,
+                                    onImageClick = imageClickHandler,
                                     onLinkClick = handleLinkClick,
-                                    modifier = Modifier.padding(12.dp)
+                                    modifier = Modifier.padding(12.dp),
+                                    loadedGifUrls = loadedGifUrls,
+                                    onGifPlaceholderClick = { viewModel.onGifPlaceholderClick(it) }
                                 )
                             }
                         }
@@ -185,7 +193,13 @@ fun ForumThreadDetailScreen(
                                 )
                             }
                             items(count = detail.replies.size, key = { "reply_$it" }) { index ->
-                                ReplyItem(reply = detail.replies[index], onImageClick = onImageClick, onLinkClick = handleLinkClick)
+                                ReplyItem(
+                                    reply = detail.replies[index],
+                                    onImageClick = imageClickHandler,
+                                    onLinkClick = handleLinkClick,
+                                    loadedGifUrls = loadedGifUrls,
+                                    onGifPlaceholderClick = { viewModel.onGifPlaceholderClick(it) }
+                                )
                             }
                         }
 
@@ -347,7 +361,9 @@ private fun PostContent(
     blocks: List<ContentBlock>,
     onImageClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    loadedGifUrls: Set<String> = emptySet(),
+    onGifPlaceholderClick: (String) -> Unit = {}
 ) {
     val imageUrls = remember(blocks) {
         blocks.filterIsInstance<ContentBlock.Image>().map { it.url }
@@ -398,8 +414,17 @@ private fun PostContent(
                         }
                     }
                     is ContentBlock.Image -> {
-                        if (block.isFullSize) {
-                            val currentIdx = imageIndex++
+                        val currentIdx = imageIndex++
+                        if (block.isGif && block.url !in loadedGifUrls) {
+                            GifPlaceholder(
+                                onClick = { onGifPlaceholderClick(block.url) },
+                                modifier = if (block.isFullSize) {
+                                    Modifier.fillMaxWidth().height(180.dp)
+                                } else {
+                                    Modifier.size(48.dp)
+                                }
+                            )
+                        } else if (block.isFullSize) {
                             AsyncImage(
                                 model = block.url,
                                 contentDescription = null,
@@ -410,7 +435,6 @@ private fun PostContent(
                                 contentScale = ContentScale.FillWidth
                             )
                         } else {
-                            val currentIdx = imageIndex++
                             AsyncImage(
                                 model = block.url,
                                 contentDescription = null,
@@ -556,7 +580,13 @@ private fun CommentsSection(comments: List<Comment>) {
 }
 
 @Composable
-private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Unit, onLinkClick: (String) -> Unit = {}) {
+private fun ReplyItem(
+    reply: ForumReply,
+    onImageClick: (List<String>, Int) -> Unit,
+    onLinkClick: (String) -> Unit = {},
+    loadedGifUrls: Set<String> = emptySet(),
+    onGifPlaceholderClick: (String) -> Unit = {}
+) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -603,7 +633,9 @@ private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Un
                     blocks = reply.contentBlocks,
                     onImageClick = onImageClick,
                     onLinkClick = onLinkClick,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
+                    loadedGifUrls = loadedGifUrls,
+                    onGifPlaceholderClick = onGifPlaceholderClick
                 )
             }
         }

@@ -260,7 +260,7 @@ fun JBusNavigation(
             entry<RouteForumThreadDetail> { key ->
                 ForumThreadDetailScreen(
                     tid = key.tid,
-                    onImageClick = { images, startIndex ->
+                    onImageClick = { images, startIndex, _ ->
                         backStack.add(RouteImageViewer(images, startIndex))
                     },
                     onBack = { backStack.removeLastOrNull() }
