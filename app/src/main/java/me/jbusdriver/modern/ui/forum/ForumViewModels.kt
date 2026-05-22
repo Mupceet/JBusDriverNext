@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.assisted.Assisted
@@ -220,6 +221,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
+
+    private val _loadedGifUrls = mutableStateSetOf<String>()
+    val loadedGifUrls: Set<String> get() = _loadedGifUrls
+
+    fun onGifPlaceholderClick(url: String) {
+        _loadedGifUrls.add(url)
+    }
 
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
