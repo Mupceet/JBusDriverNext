@@ -668,7 +668,7 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
                             val w = node.attr("width").toIntOrNull() ?: 0
                             val h = node.attr("height").toIntOrNull() ?: 0
                             val isFullSize = node.hasClass("zoom")
-                            blocks.add(ContentBlock.Image(src, w, h, isFullSize))
+                            blocks.add(ContentBlock.Image(src, w, h, isFullSize, src.isGifUrl()))
                         }
                     }
                     "div" -> {
@@ -725,6 +725,11 @@ fun String.wrapForumImage() = when {
     this.startsWith("//") -> "https:$this"
     this.startsWith("/") -> NetClient.defaultFastUrl + this
     else -> NetClient.defaultFastUrl + "/forum/" + this
+}
+
+private fun String.isGifUrl(): Boolean {
+    val path = this.substringBefore("?").substringBefore("#").lowercase()
+    return path.endsWith(".gif")
 }
 
 // endregion
