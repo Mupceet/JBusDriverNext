@@ -1,15 +1,12 @@
 package me.jbusdriver.modern.data
 
 import android.app.Activity
-import android.view.ViewGroup
 import android.webkit.CookieManager
-import android.webkit.MimeTypeMap
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -75,16 +72,12 @@ class ForumSessionManager @Inject constructor() {
     private suspend fun initWebView(activity: Activity) {
         withTimeout(15_000) {
             withContext(Dispatchers.Main) {
-                val wv = WebView(activity).apply {
+                val wv = WebView(activity.applicationContext).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
-                    visibility = android.view.View.INVISIBLE
                 }
                 CookieManager.getInstance().setAcceptCookie(true)
                 CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
-
-                val rootView = activity.findViewById<ViewGroup>(android.R.id.content)
-                rootView.addView(wv, FrameLayout.LayoutParams(1, 1))
 
                 webView = wv
 
@@ -123,7 +116,6 @@ class ForumSessionManager @Inject constructor() {
         if (wv != null) {
             KLog.d("[Forum] Destroying WebView", TAG)
             wv.stopLoading()
-            (wv.parent as? ViewGroup)?.removeView(wv)
             wv.destroy()
             webView = null
         }
