@@ -5,6 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -349,76 +353,111 @@ private fun PostContent(
         blocks.filterIsInstance<ContentBlock.Image>().map { it.url }
     }
 
+    var selectionMode by remember { mutableStateOf(false) }
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        var imageIndex = 0
-        blocks.forEach { block ->
-            when (block) {
-                is ContentBlock.RichText -> {
-                    RichTextContent(
-                        parts = block.parts,
-                        onLinkClick = onLinkClick
-                    )
-                }
-                is ContentBlock.Image -> {
-                    if (block.isFullSize) {
-                        val currentIdx = imageIndex++
-                        AsyncImage(
-                            model = block.url,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onImageClick(imageUrls, currentIdx) },
-                            contentScale = ContentScale.FillWidth
-                        )
-                    } else {
-                        val currentIdx = imageIndex++
-                        AsyncImage(
-                            model = block.url,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .clickable { onImageClick(imageUrls, currentIdx) },
-                            contentScale = ContentScale.Fit
-                        )
+        if (selectionMode) {
+            Text(
+                "選擇模式 · 點擊空白退出",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { selectionMode = false }
+                    .padding(bottom = 4.dp)
+            )
+        }
+
+        val contentModifier = if (selectionMode) {
+            Modifier.pointerInput(Unit) {
+                detectTapGestures { selectionMode = false }
+            }
+        } else {
+            Modifier.pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { selectionMode = true }
+                )
+            }
+        }
+
+        Column(
+            modifier = contentModifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            var imageIndex = 0
+            blocks.forEach { block ->
+                when (block) {
+                    is ContentBlock.RichText -> {
+                        if (selectionMode) {
+                            SelectableRichTextContent(parts = block.parts)
+                        } else {
+                            RichTextContent(
+                                parts = block.parts,
+                                onLinkClick = onLinkClick
+                            )
+                        }
                     }
-                }
-                is ContentBlock.Quote -> {
-                    val accentColor = MaterialTheme.colorScheme.primary
-                    Card(
-                        shape = RoundedCornerShape(6.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .drawBehind {
-                                    drawLine(
-                                        color = accentColor,
-                                        start = Offset(0f, 0f),
-                                        end = Offset(0f, size.height),
-                                        strokeWidth = 3.dp.toPx()
-                                    )
-                                }
-                                .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+                    is ContentBlock.Image -> {
+                        if (block.isFullSize) {
+                            val currentIdx = imageIndex++
+                            AsyncImage(
+                                model = block.url,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onImageClick(imageUrls, currentIdx) },
+                                contentScale = ContentScale.FillWidth
+                            )
+                        } else {
+                            val currentIdx = imageIndex++
+                            AsyncImage(
+                                model = block.url,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { onImageClick(imageUrls, currentIdx) },
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                    is ContentBlock.Quote -> {
+                        val accentColor = MaterialTheme.colorScheme.primary
+                        Card(
+                            shape = RoundedCornerShape(6.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
-                            Column {
-                                if (block.author.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .drawBehind {
+                                        drawLine(
+                                            color = accentColor,
+                                            start = Offset(0f, 0f),
+                                            end = Offset(0f, size.height),
+                                            strokeWidth = 3.dp.toPx()
+                                        )
+                                    }
+                                    .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+                            ) {
+                                Column {
+                                    if (block.author.isNotEmpty()) {
+                                        Text(
+                                            "${block.author}：",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontStyle = FontStyle.Italic,
+                                                fontWeight = FontWeight.Medium
+                                            ),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                     Text(
-                                        "${block.author}：",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontStyle = FontStyle.Italic,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        color = MaterialTheme.colorScheme.primary
+                                        block.content,
+                                        style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Text(
-                                    block.content,
-                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
                         }
                     }
