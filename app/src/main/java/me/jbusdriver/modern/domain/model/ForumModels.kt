@@ -135,7 +135,7 @@ sealed class ContentBlock {
     data class RichText(val parts: List<TextPart>) : ContentBlock()
 
     @Immutable
-    data class Image(val url: String, val width: Int = 0, val height: Int = 0, val isFullSize: Boolean = false) : ContentBlock()
+    data class Image(val url: String, val width: Int = 0, val height: Int = 0, val isFullSize: Boolean = false, val isGif: Boolean = false) : ContentBlock()
 
     @Immutable
     data class Quote(val author: String, val content: String) : ContentBlock()
@@ -164,6 +164,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
                 if (value.width > 0) out.name("width").value(value.width)
                 if (value.height > 0) out.name("height").value(value.height)
                 if (value.isFullSize) out.name("fullSize").value(true)
+                if (value.isGif) out.name("isGif").value(true)
             }
             is ContentBlock.Quote -> { out.name("type").value("quote").name("author").value(value.author).name("content").value(value.content) }
         }
@@ -182,6 +183,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         var width = 0
         var height = 0
         var fullSize = false
+        var isGif = false
         var author = ""
         var content = ""
         while (`in`.hasNext()) {
@@ -216,6 +218,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
                 "width" -> width = `in`.nextInt()
                 "height" -> height = `in`.nextInt()
                 "fullSize" -> fullSize = `in`.nextBoolean()
+                "isGif" -> isGif = `in`.nextBoolean()
                 "author" -> author = `in`.nextString()
                 "content" -> content = `in`.nextString()
                 else -> `in`.skipValue()
@@ -225,7 +228,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         return when (type) {
             "richtext" -> ContentBlock.RichText(parts)
             "text" -> ContentBlock.RichText(listOf(TextPart.Plain(content)))
-            "image" -> ContentBlock.Image(url, width, height, fullSize)
+            "image" -> ContentBlock.Image(url, width, height, fullSize, isGif)
             "quote" -> ContentBlock.Quote(author, content)
             else -> null
         }
