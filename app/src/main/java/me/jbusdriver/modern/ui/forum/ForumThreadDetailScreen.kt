@@ -1,5 +1,8 @@
 package me.jbusdriver.modern.ui.forum
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +22,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -96,6 +101,8 @@ fun ForumThreadDetailScreen(
         }
     }
 
+    val handleLinkClick = rememberLinkClickHandler()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -152,6 +159,7 @@ fun ForumThreadDetailScreen(
                                 PostContent(
                                     blocks = detail.contentBlocks,
                                     onImageClick = onImageClick,
+                                    onLinkClick = handleLinkClick,
                                     modifier = Modifier.padding(12.dp)
                                 )
                             }
@@ -173,7 +181,7 @@ fun ForumThreadDetailScreen(
                                 )
                             }
                             items(count = detail.replies.size, key = { "reply_$it" }) { index ->
-                                ReplyItem(reply = detail.replies[index], onImageClick = onImageClick)
+                                ReplyItem(reply = detail.replies[index], onImageClick = onImageClick, onLinkClick = handleLinkClick)
                             }
                         }
 
@@ -223,10 +231,119 @@ fun ForumThreadDetailScreen(
 }
 
 @Composable
+private fun RichTextContent(
+    parts: List<TextPart>,
+    onLinkClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val linkStyle = androidx.compose.ui.text.SpanStyle(
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+    )
+    val tag = "URL"
+
+    val annotatedString = buildAnnotatedString(parts, linkStyle, tag)
+
+    ClickableText(
+        text = annotatedString,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            lineHeight = 22.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        ),
+        modifier = modifier,
+        onClick = { offset ->
+            annotatedString.getStringAnnotations(tag, offset, offset)
+                .firstOrNull()
+                ?.let { onLinkClick(it.item) }
+        }
+    )
+}
+
+@Composable
+private fun SelectableRichTextContent(
+    parts: List<TextPart>,
+    modifier: Modifier = Modifier
+) {
+    val fullText = parts.joinToString("") { part ->
+        when (part) {
+            is TextPart.Plain -> part.text
+            is TextPart.Link -> part.text
+        }
+    }
+    SelectionContainer {
+        Text(
+            fullText,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                lineHeight = 22.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = modifier
+        )
+    }
+}
+
+private fun buildAnnotatedString(
+    parts: List<TextPart>,
+    linkStyle: androidx.compose.ui.text.SpanStyle,
+    tag: String
+): androidx.compose.ui.text.AnnotatedString {
+    return androidx.compose.ui.text.buildAnnotatedString {
+        for (part in parts) {
+            when (part) {
+                is TextPart.Plain -> append(part.text)
+                is TextPart.Link -> {
+                    pushStringAnnotation(tag, part.url)
+                    pushStyle(linkStyle)
+                    append(part.text)
+                    pop()
+                    pop()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberLinkClickHandler(
+    onForumThreadClick: (Int) -> Unit = {},
+    onForumBoardClick: (Int) -> Unit = {}
+): (String) -> Unit {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    return remember(context) {
+        { url: String ->
+            val threadMatch = Regex("""tid=(\d+)""").find(url)
+            val fidMatch = Regex("""fid=(\d+)""").find(url)
+
+            when {
+                threadMatch != null -> {
+                    val tid = threadMatch.groupValues[1].toIntOrNull()
+                    if (tid != null) onForumThreadClick(tid)
+                }
+                fidMatch != null -> {
+                    val fid = fidMatch.groupValues[1].toIntOrNull()
+                    if (fid != null) onForumBoardClick(fid)
+                }
+                else -> {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(Intent.createChooser(intent, "選擇瀏覽器"))
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "無法打開鏈接", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PostContent(
     blocks: List<ContentBlock>,
     onImageClick: (List<String>, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLinkClick: (String) -> Unit = {}
 ) {
     val imageUrls = remember(blocks) {
         blocks.filterIsInstance<ContentBlock.Image>().map { it.url }
@@ -237,18 +354,9 @@ private fun PostContent(
         blocks.forEach { block ->
             when (block) {
                 is ContentBlock.RichText -> {
-                    // For now, just concatenate all parts as plain text
-                    // TODO: Task 3 will implement proper link rendering with ClickableText
-                    val text = block.parts.joinToString("") { part ->
-                        when (part) {
-                            is TextPart.Plain -> part.text
-                            is TextPart.Link -> part.text
-                        }
-                    }
-                    Text(
-                        text,
-                        style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
-                        color = MaterialTheme.colorScheme.onSurface
+                    RichTextContent(
+                        parts = block.parts,
+                        onLinkClick = onLinkClick
                     )
                 }
                 is ContentBlock.Image -> {
@@ -409,7 +517,7 @@ private fun CommentsSection(comments: List<Comment>) {
 }
 
 @Composable
-private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Unit) {
+private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Unit, onLinkClick: (String) -> Unit = {}) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -455,6 +563,7 @@ private fun ReplyItem(reply: ForumReply, onImageClick: (List<String>, Int) -> Un
                 PostContent(
                     blocks = reply.contentBlocks,
                     onImageClick = onImageClick,
+                    onLinkClick = onLinkClick,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
