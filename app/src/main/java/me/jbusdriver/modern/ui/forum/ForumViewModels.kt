@@ -1,6 +1,9 @@
 package me.jbusdriver.modern.ui.forum
 
-import androidx.compose.runtime.mutableStateSetOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.assisted.Assisted
@@ -8,10 +11,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
@@ -222,11 +221,12 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
 
-    private val _loadedGifUrls = mutableStateSetOf<String>()
-    val loadedGifUrls: Set<String> get() = _loadedGifUrls
+    private val _loadedGifUrls = MutableStateFlow(emptySet<String>())
+    val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
+    val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
 
     fun onGifPlaceholderClick(url: String) {
-        _loadedGifUrls.add(url)
+        _loadedGifUrls.update { it + url }
     }
 
     init {

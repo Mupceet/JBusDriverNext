@@ -87,7 +87,7 @@ fun ForumThreadDetailScreen(
         creationCallback = { factory -> factory.create(RouteForumThreadDetail(tid)) }
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val loadedGifUrls by remember { derivedStateOf { viewModel.loadedGifUrls } }
+    val loadedGifUrls by viewModel.loadedGifUrlsFlow.collectAsStateWithLifecycle()
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()

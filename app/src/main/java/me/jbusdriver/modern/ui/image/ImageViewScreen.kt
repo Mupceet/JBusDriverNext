@@ -84,8 +84,8 @@ fun ImageViewScreen(
     val context = LocalContext.current
     val isDarkTheme = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
-    var localLoadedGifs by remember(loadedGifUrls) {
-        mutableStateOf(mutableStateSetOf<String>().apply { addAll(loadedGifUrls) })
+    val localLoadedGifs = remember(loadedGifUrls) {
+        mutableStateSetOf<String>().apply { addAll(loadedGifUrls) }
     }
 
     DisposableEffect(isDarkTheme) {
@@ -204,6 +204,7 @@ fun ImageViewScreen(
             ThumbnailStrip(
                 images = images,
                 currentPage = pagerState.currentPage,
+                loadedGifUrls = localLoadedGifs,
                 onPageClick = { page ->
                     scope.launch { pagerState.scrollToPage(page) }
                 },
@@ -222,6 +223,7 @@ fun ImageViewScreen(
 private fun ThumbnailStrip(
     images: List<String>,
     currentPage: Int,
+    loadedGifUrls: Set<String>,
     onPageClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -239,19 +241,28 @@ private fun ThumbnailStrip(
     ) {
         itemsIndexed(images) { index, imageUrl ->
             val isSelected = index == currentPage
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(width = 60.dp, height = 60.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .then(
-                        if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
-                        else Modifier
-                    )
-                    .clickable { onPageClick(index) }
-            )
+            val isGif = imageUrl.substringBefore("?").substringBefore("#").lowercase().endsWith(".gif")
+            val isLoaded = !isGif || imageUrl in loadedGifUrls
+            val thumbModifier = Modifier
+                .size(width = 60.dp, height = 60.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .then(
+                    if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
+                    else Modifier
+                )
+            if (!isLoaded) {
+                GifPlaceholder(
+                    onClick = { onPageClick(index) },
+                    modifier = thumbModifier
+                )
+            } else {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = thumbModifier.clickable { onPageClick(index) }
+                )
+            }
         }
     }
 }
