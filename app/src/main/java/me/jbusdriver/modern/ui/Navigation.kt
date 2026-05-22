@@ -231,7 +231,6 @@ fun JBusNavigation(
                 ImageViewScreen(
                     images = key.images,
                     startIndex = key.startIndex,
-                    loadedGifUrls = key.loadedGifUrls,
                     onBack = { backStack.removeLastOrNull() }
                 )
             }
@@ -261,8 +260,8 @@ fun JBusNavigation(
             entry<RouteForumThreadDetail> { key ->
                 ForumThreadDetailScreen(
                     tid = key.tid,
-                    onImageClick = { images, startIndex, loadedGifs ->
-                        backStack.add(RouteImageViewer(images, startIndex, loadedGifs))
+                    onImageClick = { images, startIndex ->
+                        backStack.add(RouteImageViewer(images, startIndex))
                     },
                     onBack = { backStack.removeLastOrNull() }
                 )

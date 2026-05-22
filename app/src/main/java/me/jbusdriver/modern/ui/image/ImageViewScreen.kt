@@ -42,7 +42,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -70,23 +69,18 @@ import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 import java.io.File
-import me.jbusdriver.modern.ui.components.GifPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageViewScreen(
     images: List<String>,
     startIndex: Int = 0,
-    loadedGifUrls: Set<String> = emptySet(),
     onBack: () -> Unit = {}
 ) {
     val view = LocalView.current
     val context = LocalContext.current
     val isDarkTheme = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
-    val localLoadedGifs = remember(loadedGifUrls) {
-        mutableStateSetOf<String>().apply { addAll(loadedGifUrls) }
-    }
 
     DisposableEffect(isDarkTheme) {
         val window = (view.context as Activity).window
@@ -111,33 +105,22 @@ fun ImageViewScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            val imageUrl = images[page]
-            val isGif = imageUrl.substringBefore("?").substringBefore("#").lowercase().endsWith(".gif")
-            val isLoaded = !isGif || imageUrl in localLoadedGifs
-
-            if (!isLoaded) {
-                GifPlaceholder(
-                    onClick = { localLoadedGifs.add(imageUrl) },
-                    modifier = Modifier.fillMaxSize()
+            var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = images[page],
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))),
+                    onState = { imageState = it }
                 )
-            } else {
-                var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))),
-                        onState = { imageState = it }
+                if (imageState is AsyncImagePainter.State.Loading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.Center)
                     )
-                    if (imageState is AsyncImagePainter.State.Loading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
                 }
             }
         }
@@ -204,7 +187,6 @@ fun ImageViewScreen(
             ThumbnailStrip(
                 images = images,
                 currentPage = pagerState.currentPage,
-                loadedGifUrls = localLoadedGifs,
                 onPageClick = { page ->
                     scope.launch { pagerState.scrollToPage(page) }
                 },
@@ -223,7 +205,6 @@ fun ImageViewScreen(
 private fun ThumbnailStrip(
     images: List<String>,
     currentPage: Int,
-    loadedGifUrls: Set<String>,
     onPageClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -241,28 +222,19 @@ private fun ThumbnailStrip(
     ) {
         itemsIndexed(images) { index, imageUrl ->
             val isSelected = index == currentPage
-            val isGif = imageUrl.substringBefore("?").substringBefore("#").lowercase().endsWith(".gif")
-            val isLoaded = !isGif || imageUrl in loadedGifUrls
-            val thumbModifier = Modifier
-                .size(width = 60.dp, height = 60.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .then(
-                    if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
-                    else Modifier
-                )
-            if (!isLoaded) {
-                GifPlaceholder(
-                    onClick = { onPageClick(index) },
-                    modifier = thumbModifier
-                )
-            } else {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = thumbModifier.clickable { onPageClick(index) }
-                )
-            }
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 60.dp, height = 60.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .then(
+                        if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
+                        else Modifier
+                    )
+                    .clickable { onPageClick(index) }
+            )
         }
     }
 }

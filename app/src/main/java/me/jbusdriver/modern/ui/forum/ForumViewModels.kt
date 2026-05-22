@@ -225,8 +225,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
 
-    fun onGifPlaceholderClick(url: String) {
-        _loadedGifUrls.update { it + url }
+    fun onLoadAllGifs(urls: Collection<String>) {
+        _loadedGifUrls.update { it + urls }
     }
 
     init {

@@ -80,7 +80,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ForumThreadDetailScreen(
     tid: Int,
-    onImageClick: (List<String>, Int, Set<String>) -> Unit,
+    onImageClick: (List<String>, Int) -> Unit,
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel = hiltViewModel<ForumThreadDetailViewModel, ForumThreadDetailViewModel.Factory>(
@@ -108,10 +108,6 @@ fun ForumThreadDetailScreen(
     }
 
     val handleLinkClick = rememberLinkClickHandler()
-
-    val imageClickHandler: (List<String>, Int) -> Unit = { images, idx ->
-        onImageClick(images, idx, viewModel.loadedGifUrls)
-    }
 
     Scaffold(
         topBar = {
@@ -168,11 +164,11 @@ fun ForumThreadDetailScreen(
                             ) {
                                 PostContent(
                                     blocks = detail.contentBlocks,
-                                    onImageClick = imageClickHandler,
+                                    onImageClick = onImageClick,
                                     onLinkClick = handleLinkClick,
                                     modifier = Modifier.padding(12.dp),
                                     loadedGifUrls = loadedGifUrls,
-                                    onGifPlaceholderClick = { viewModel.onGifPlaceholderClick(it) }
+                                    onLoadAllGifs = { viewModel.onLoadAllGifs(it) }
                                 )
                             }
                         }
@@ -195,10 +191,10 @@ fun ForumThreadDetailScreen(
                             items(count = detail.replies.size, key = { "reply_$it" }) { index ->
                                 ReplyItem(
                                     reply = detail.replies[index],
-                                    onImageClick = imageClickHandler,
+                                    onImageClick = onImageClick,
                                     onLinkClick = handleLinkClick,
                                     loadedGifUrls = loadedGifUrls,
-                                    onGifPlaceholderClick = { viewModel.onGifPlaceholderClick(it) }
+                                    onLoadAllGifs = { viewModel.onLoadAllGifs(it) }
                                 )
                             }
                         }
@@ -363,10 +359,15 @@ private fun PostContent(
     modifier: Modifier = Modifier,
     onLinkClick: (String) -> Unit = {},
     loadedGifUrls: Set<String> = emptySet(),
-    onGifPlaceholderClick: (String) -> Unit = {}
+    onLoadAllGifs: (Collection<String>) -> Unit = {}
 ) {
-    val imageUrls = remember(blocks) {
-        blocks.filterIsInstance<ContentBlock.Image>().map { it.url }
+    val allGifUrls = remember(blocks) {
+        blocks.filterIsInstance<ContentBlock.Image>().filter { it.isGif }.map { it.url }
+    }
+    val viewableImageUrls = remember(blocks, loadedGifUrls) {
+        blocks.filterIsInstance<ContentBlock.Image>()
+            .filter { !it.isGif || it.url in loadedGifUrls }
+            .map { it.url }
     }
 
     var selectionMode by remember { mutableStateOf(false) }
@@ -400,7 +401,7 @@ private fun PostContent(
             modifier = contentModifier,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            var imageIndex = 0
+            var viewableIndex = 0
             blocks.forEach { block ->
                 when (block) {
                     is ContentBlock.RichText -> {
@@ -414,36 +415,38 @@ private fun PostContent(
                         }
                     }
                     is ContentBlock.Image -> {
-                        val currentIdx = imageIndex++
                         if (block.isGif && block.url !in loadedGifUrls) {
                             GifPlaceholder(
-                                onClick = { onGifPlaceholderClick(block.url) },
+                                onClick = { onLoadAllGifs(allGifUrls) },
                                 modifier = if (block.isFullSize) {
                                     Modifier.fillMaxWidth().height(180.dp)
                                 } else {
                                     Modifier.size(48.dp)
                                 }
                             )
-                        } else if (block.isFullSize) {
-                            AsyncImage(
-                                model = block.url,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onImageClick(imageUrls, currentIdx) },
-                                contentScale = ContentScale.FillWidth
-                            )
                         } else {
-                            AsyncImage(
-                                model = block.url,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .clickable { onImageClick(imageUrls, currentIdx) },
-                                contentScale = ContentScale.Fit
-                            )
+                            val currentIdx = viewableIndex++
+                            if (block.isFullSize) {
+                                AsyncImage(
+                                    model = block.url,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onImageClick(viewableImageUrls, currentIdx) },
+                                    contentScale = ContentScale.FillWidth
+                                )
+                            } else {
+                                AsyncImage(
+                                    model = block.url,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .clickable { onImageClick(viewableImageUrls, currentIdx) },
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
                         }
                     }
                     is ContentBlock.Quote -> {
@@ -585,7 +588,7 @@ private fun ReplyItem(
     onImageClick: (List<String>, Int) -> Unit,
     onLinkClick: (String) -> Unit = {},
     loadedGifUrls: Set<String> = emptySet(),
-    onGifPlaceholderClick: (String) -> Unit = {}
+    onLoadAllGifs: (Collection<String>) -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -635,7 +638,7 @@ private fun ReplyItem(
                     onLinkClick = onLinkClick,
                     modifier = Modifier.padding(top = 4.dp),
                     loadedGifUrls = loadedGifUrls,
-                    onGifPlaceholderClick = onGifPlaceholderClick
+                    onLoadAllGifs = onLoadAllGifs
                 )
             }
         }
