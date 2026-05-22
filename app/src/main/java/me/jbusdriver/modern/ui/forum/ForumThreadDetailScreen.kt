@@ -58,6 +58,7 @@ import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
+import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
@@ -235,9 +236,17 @@ private fun PostContent(
         var imageIndex = 0
         blocks.forEach { block ->
             when (block) {
-                is ContentBlock.Text -> {
+                is ContentBlock.RichText -> {
+                    // For now, just concatenate all parts as plain text
+                    // TODO: Task 3 will implement proper link rendering with ClickableText
+                    val text = block.parts.joinToString("") { part ->
+                        when (part) {
+                            is TextPart.Plain -> part.text
+                            is TextPart.Link -> part.text
+                        }
+                    }
                     Text(
-                        block.text,
+                        text,
                         style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
                         color = MaterialTheme.colorScheme.onSurface
                     )

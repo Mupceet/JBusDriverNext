@@ -121,9 +121,18 @@ data class ForumReply(
 )
 
 @Immutable
+sealed class TextPart {
+    @Immutable
+    data class Plain(val text: String) : TextPart()
+
+    @Immutable
+    data class Link(val text: String, val url: String) : TextPart()
+}
+
+@Immutable
 sealed class ContentBlock {
     @Immutable
-    data class Text(val text: String) : ContentBlock()
+    data class RichText(val parts: List<TextPart>) : ContentBlock()
 
     @Immutable
     data class Image(val url: String, val width: Int = 0, val height: Int = 0, val isFullSize: Boolean = false) : ContentBlock()
@@ -137,7 +146,19 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         if (value == null) { out.nullValue(); return }
         out.beginObject()
         when (value) {
-            is ContentBlock.Text -> { out.name("type").value("text").name("text").value(value.text) }
+            is ContentBlock.RichText -> {
+                out.name("type").value("richtext")
+                out.name("parts").beginArray()
+                value.parts.forEach { part ->
+                    out.beginObject()
+                    when (part) {
+                        is TextPart.Plain -> { out.name("type").value("plain").name("text").value(part.text) }
+                        is TextPart.Link -> { out.name("type").value("link").name("text").value(part.text).name("url").value(part.url) }
+                    }
+                    out.endObject()
+                }
+                out.endArray()
+            }
             is ContentBlock.Image -> {
                 out.name("type").value("image").name("url").value(value.url)
                 if (value.width > 0) out.name("width").value(value.width)
@@ -156,7 +177,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         }
         `in`.beginObject()
         var type = ""
-        var text = ""
+        var parts = listOf<TextPart>()
         var url = ""
         var width = 0
         var height = 0
@@ -166,7 +187,31 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         while (`in`.hasNext()) {
             when (`in`.nextName()) {
                 "type" -> type = `in`.nextString()
-                "text" -> text = `in`.nextString()
+                "parts" -> {
+                    val list = mutableListOf<TextPart>()
+                    `in`.beginArray()
+                    while (`in`.hasNext()) {
+                        `in`.beginObject()
+                        var partType = ""
+                        var partText = ""
+                        var partUrl = ""
+                        while (`in`.hasNext()) {
+                            when (`in`.nextName()) {
+                                "type" -> partType = `in`.nextString()
+                                "text" -> partText = `in`.nextString()
+                                "url" -> partUrl = `in`.nextString()
+                                else -> `in`.skipValue()
+                            }
+                        }
+                        `in`.endObject()
+                        when (partType) {
+                            "plain" -> list.add(TextPart.Plain(partText))
+                            "link" -> list.add(TextPart.Link(partText, partUrl))
+                        }
+                    }
+                    `in`.endArray()
+                    parts = list
+                }
                 "url" -> url = `in`.nextString()
                 "width" -> width = `in`.nextInt()
                 "height" -> height = `in`.nextInt()
@@ -178,7 +223,8 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
         }
         `in`.endObject()
         return when (type) {
-            "text" -> ContentBlock.Text(text)
+            "richtext" -> ContentBlock.RichText(parts)
+            "text" -> ContentBlock.RichText(listOf(TextPart.Plain(content)))
             "image" -> ContentBlock.Image(url, width, height, fullSize)
             "quote" -> ContentBlock.Quote(author, content)
             else -> null

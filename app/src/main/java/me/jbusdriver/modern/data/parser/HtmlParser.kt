@@ -634,7 +634,7 @@ private fun parsePostContent(td: org.jsoup.nodes.Element?): List<ContentBlock> {
     fun flushText() {
         val text = textBuffer.toString().trim()
         if (text.isNotEmpty()) {
-            blocks.add(ContentBlock.Text(text))
+            blocks.add(ContentBlock.RichText(listOf(TextPart.Plain(text))))
         }
         textBuffer.clear()
     }
