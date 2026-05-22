@@ -336,7 +336,7 @@ fun MainScreen(
 
                     BottomNavCategory.FORUM -> {
                         // Search bar
-                        SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp))
+                        SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 8.dp))
 
                         ForumBoardsScreen(
                             onBoardClick = onForumBoardClick,

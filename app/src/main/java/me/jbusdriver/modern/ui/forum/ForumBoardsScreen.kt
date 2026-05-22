@@ -320,6 +320,15 @@ private fun SummaryThreadItem(
     isLast: Boolean,
     onClick: () -> Unit
 ) {
+    val rank = index + 1
+    val bgColor = when (rank) {
+        1 -> Color(0xFFFF6B6B)
+        2 -> Color(0xFFFF9F43)
+        3 -> Color(0xFFFED330)
+        else -> MaterialTheme.colorScheme.outlineVariant
+    }
+    val contentColor = if (rank <= 3) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -327,14 +336,21 @@ private fun SummaryThreadItem(
             .padding(vertical = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                thread.author,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(70.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Box(
+                modifier = Modifier
+                    .width(22.dp)
+                    .height(22.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(bgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "$rank",
+                    color = contentColor,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    fontSize = 11.sp
+                )
+            }
             Spacer(Modifier.width(8.dp))
             Text(
                 thread.title,
@@ -344,24 +360,14 @@ private fun SummaryThreadItem(
                 modifier = Modifier.weight(1f)
             )
         }
-        if (!isLast) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp)
-                    .height(0.5.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant)
-            )
-        }
     }
 }
 
 @Composable
 private fun BoardCard(board: ForumBoard, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
