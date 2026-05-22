@@ -42,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -69,18 +70,23 @@ import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 import java.io.File
+import me.jbusdriver.modern.ui.components.GifPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageViewScreen(
     images: List<String>,
     startIndex: Int = 0,
+    loadedGifUrls: Set<String> = emptySet(),
     onBack: () -> Unit = {}
 ) {
     val view = LocalView.current
     val context = LocalContext.current
     val isDarkTheme = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
+    var localLoadedGifs by remember(loadedGifUrls) {
+        mutableStateOf(mutableStateSetOf<String>().apply { addAll(loadedGifUrls) })
+    }
 
     DisposableEffect(isDarkTheme) {
         val window = (view.context as Activity).window
@@ -105,22 +111,33 @@ fun ImageViewScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-            Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = images[page],
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))),
-                    onState = { imageState = it }
+            val imageUrl = images[page]
+            val isGif = imageUrl.substringBefore("?").substringBefore("#").lowercase().endsWith(".gif")
+            val isLoaded = !isGif || imageUrl in localLoadedGifs
+
+            if (!isLoaded) {
+                GifPlaceholder(
+                    onClick = { localLoadedGifs.add(imageUrl) },
+                    modifier = Modifier.fillMaxSize()
                 )
-                if (imageState is AsyncImagePainter.State.Loading) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center)
+            } else {
+                var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))),
+                        onState = { imageState = it }
                     )
+                    if (imageState is AsyncImagePainter.State.Loading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
             }
         }

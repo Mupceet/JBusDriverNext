@@ -19,7 +19,8 @@ data class RouteMovieDetail(
 @Serializable
 data class RouteImageViewer(
     val images: List<String>,
-    val startIndex: Int = 0
+    val startIndex: Int = 0,
+    val loadedGifUrls: Set<String> = emptySet()
 ) : NavKey
 
 @Serializable
