@@ -17,10 +17,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import me.jbusdriver.R
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -70,10 +74,12 @@ fun SearchScreen(
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
     onBack: () -> Unit = {},
+    onLabSettingsClick: () -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
+    val showLabEntry by viewModel.showLabEntry.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
@@ -212,6 +218,46 @@ fun SearchScreen(
             !hasResults && uiState.query.isBlank() -> {
                 if (searchHistory.isNotEmpty()) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        if (showLabEntry) {
+                            Card(
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    onLabSettingsClick()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.science_24px),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            "实验室",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            "实验性功能设置",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,

@@ -187,7 +187,8 @@ fun JBusNavigation(
                             )
                         )
                     },
-                    onBack = { backStack.removeLastOrNull() }
+                    onBack = { backStack.removeLastOrNull() },
+                    onLabSettingsClick = { backStack.add(RouteLabSettings) }
                 )
             }
             entry<RouteMovieDetail> { key ->

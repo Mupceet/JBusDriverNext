@@ -4,10 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.domain.model.hasNext
@@ -64,7 +68,8 @@ data class SearchUiState(
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: SearchRepository,
-    private val historyStore: SearchHistoryStore
+    private val historyStore: SearchHistoryStore,
+    private val labSettingsStore: LabSettingsStore
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -76,6 +81,13 @@ class SearchViewModel @Inject constructor(
     /** 搜索历史记录 */
     private val _searchHistory = MutableStateFlow(historyStore.getHistory())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    /** Whether to show the lab settings entry card */
+    val showLabEntry: StateFlow<Boolean> = _uiState.map { state ->
+        state.query.trim().lowercase().let { q ->
+            q == "setting" || q == "settings" || q == "设置"
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     /** 清除搜索历史 */
     fun clearHistory() {
