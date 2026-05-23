@@ -11,6 +11,7 @@ import me.jbusdriver.modern.data.parser.parseForumThreads
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,22 +32,27 @@ class DefaultForumRepository @Inject constructor(
     private val siteConfig: SiteConfig
 ) : ForumRepository {
 
-    private var cookiesPersistedForForum = false
+    private val cookiesPersistedForForum = AtomicBoolean(false)
 
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
         val doc = sessionClient.fetchDocument(url)
         KLog.d("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}", TAG)
         // Persist cookies after first successful forum page fetch
         // to capture Discuz! session cookies (4fJN_2132_*)
-        if (!cookiesPersistedForForum) {
-            sessionManager.persistCookies()
-            cookiesPersistedForForum = true
+        if (cookiesPersistedForForum.compareAndSet(false, true)) {
+            try {
+                sessionManager.persistCookies()
+            } catch (e: Exception) {
+                KLog.e("[Forum] Failed to persist cookies: ${e.message}", TAG)
+                cookiesPersistedForForum.set(false)
+            }
         }
         return doc
     }
 
     override fun destroySession() {
         sessionClient.destroy()
+        cookiesPersistedForForum.set(false)
     }
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData {
