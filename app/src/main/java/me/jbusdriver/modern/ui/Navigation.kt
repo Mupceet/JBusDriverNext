@@ -33,6 +33,7 @@ import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
+import me.jbusdriver.modern.ui.settings.LabSettingsScreen
 
 private const val ANIM_DURATION = 350
 private const val ANIM_DURATION_SEARCH = 400
@@ -265,6 +266,9 @@ fun JBusNavigation(
                     },
                     onBack = { backStack.removeLastOrNull() }
                 )
+            }
+            entry<RouteLabSettings> {
+                LabSettingsScreen(onBack = { backStack.removeLastOrNull() })
             }
         }
     )

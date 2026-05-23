@@ -41,3 +41,6 @@ data class RouteForumThreadList(
 data class RouteForumThreadDetail(
     val tid: Int
 ) : NavKey
+
+@Serializable
+data object RouteLabSettings : NavKey
