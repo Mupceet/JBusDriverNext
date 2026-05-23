@@ -56,17 +56,29 @@ class ForumSessionManager @Inject constructor(
     private var webView: WebView? = null
     private val initialized = AtomicBoolean(false)
     private val mutex = Mutex()
+    private val cookieStore = SessionCookieStore()
 
     fun isInitialized(): Boolean = initialized.get()
 
     /**
-     * Initialize the hidden WebView and warm up the session.
-     * Must be called before [fetchDocument].
+     * Initialize session for forum access.
+     * Tries to restore persisted cookies first; only creates WebView if needed.
      */
     suspend fun ensureSession(activity: Activity) {
         if (initialized.get()) return
         mutex.withLock {
             if (initialized.get()) return
+
+            // Try restoring persisted cookies first
+            val url = siteConfig.referer()
+            if (cookieStore.isSessionValid(url)) {
+                cookieStore.restoreCookies(url)
+                initialized.set(true)
+                KLog.d("[Forum] Session restored from persisted cookies", TAG)
+                return
+            }
+
+            // Fall back to WebView initialization
             initWebView(activity)
         }
     }
@@ -87,6 +99,9 @@ class ForumSessionManager @Inject constructor(
                 val mainUrl = siteConfig.referer()
                 KLog.d("[Forum] Loading main site: $mainUrl", TAG)
                 loadPageUrl(wv, mainUrl)
+
+                // Save cookies for future reuse
+                cookieStore.saveCookies(mainUrl)
 
                 initialized.set(true)
                 KLog.d("[Forum] WebView session initialized", TAG)
@@ -122,6 +137,8 @@ class ForumSessionManager @Inject constructor(
             webView = null
         }
         initialized.set(false)
+        // Note: persisted cookies are NOT cleared here.
+        // They will be restored on next ensureSession() call.
     }
 
     /**
