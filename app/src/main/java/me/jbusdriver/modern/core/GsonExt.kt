@@ -10,9 +10,13 @@ import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import java.lang.reflect.Modifier.STATIC
-import me.jbusdriver.modern.domain.model.ContentBlockAdapterFactory
 import java.lang.reflect.Modifier.TRANSIENT
+import java.text.DateFormat
+import java.text.ParsePosition
+import java.time.Instant
 import java.util.Date
+import java.util.Locale
+import me.jbusdriver.modern.domain.model.ContentBlockAdapterFactory
 
 /**
  * 全局 Gson 实例
@@ -39,7 +43,7 @@ val GSON by lazy {
             }
         }).registerTypeAdapter(Date::class.java, JsonDeserializer { json, _, _ ->
             try {
-                return@JsonDeserializer Date(json.asJsonPrimitive.asString)
+                return@JsonDeserializer parseDateOrNow(json.asJsonPrimitive.asString)
             } catch (e: Exception) {
                 return@JsonDeserializer Date()
             }
@@ -73,15 +77,15 @@ private object NullSafeFactory : TypeAdapterFactory {
 
     private fun fillNullCollections(obj: Any) {
         obj.javaClass.declaredFields.forEach { field ->
-            if (java.util.Collection::class.java.isAssignableFrom(field.type)
-                || java.util.Map::class.java.isAssignableFrom(field.type)
+            if (Collection::class.java.isAssignableFrom(field.type)
+                || Map::class.java.isAssignableFrom(field.type)
             ) {
                 field.isAccessible = true
                 if (field.get(obj) == null) {
                     val empty = when {
-                        java.util.List::class.java.isAssignableFrom(field.type) -> emptyList<Any>()
-                        java.util.Set::class.java.isAssignableFrom(field.type) -> emptySet<Any>()
-                        java.util.Map::class.java.isAssignableFrom(field.type) -> emptyMap<Any, Any>()
+                        List::class.java.isAssignableFrom(field.type) -> emptyList<Any>()
+                        Set::class.java.isAssignableFrom(field.type) -> emptySet<Any>()
+                        Map::class.java.isAssignableFrom(field.type) -> emptyMap<Any, Any>()
                         else -> return@forEach
                     }
                     field.set(obj, empty)
@@ -89,6 +93,29 @@ private object NullSafeFactory : TypeAdapterFactory {
             }
         }
     }
+}
+
+private fun parseDateOrNow(raw: String): Date {
+    raw.toLongOrNull()?.let { return Date(it) }
+
+    runCatching { Date.from(Instant.parse(raw)) }
+        .getOrNull()
+        ?.let { return it }
+
+    val formats = buildList {
+        add(DateFormat.getDateTimeInstance(DateFormat.DEFAULT, DateFormat.DEFAULT, Locale.US))
+        if (Locale.getDefault() != Locale.US) {
+            add(DateFormat.getDateTimeInstance(DateFormat.DEFAULT, DateFormat.DEFAULT))
+        }
+    }
+
+    formats.forEach { format ->
+        val position = ParsePosition(0)
+        val parsed = format.parse(raw, position)
+        if (parsed != null && position.index == raw.length) return parsed
+    }
+
+    return Date()
 }
 
 /**

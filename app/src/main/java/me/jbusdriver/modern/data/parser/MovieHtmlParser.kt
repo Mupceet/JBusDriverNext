@@ -63,7 +63,7 @@ fun parseMovieDetails(doc: Document, baseUrl: String): MovieDetail {
         headers.add(Header(name, value, link))
     }
 
-    val content = doc.select("[name=description]").attr("content")?.trim() ?: ""
+    val content = doc.select("[name=description]").attr("content").trim()
 
     val genres = headersContainer.select(".genre:has(a[href*=genre])").map {
         Genre(it.text(), it.select("a").attr("href"))

@@ -15,7 +15,7 @@ import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
 
 fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
-    val currentPageTypeId = Regex("typeid=(\\d+)").find(doc.location() ?: "")?.groupValues?.get(1)?.toIntOrNull()
+    val currentPageTypeId = Regex("typeid=(\\d+)").find(doc.location())?.groupValues?.get(1)?.toIntOrNull()
     return doc.select("ul#thread_types > li > a").mapNotNull { link ->
         val href = link.attr("href")
         val li = link.parent()
@@ -115,7 +115,7 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
     val typeName = typeLink?.text()?.replace("[", "")?.replace("]", "")?.trim() ?: ""
     val typeColor = typeLink?.select("font")?.attr("color")?.ifBlank { "#666666" } ?: "#666666"
 
-    val tidMatch = Regex("tid=(\\d+)").find(doc.location() ?: "")
+    val tidMatch = Regex("tid=(\\d+)").find(doc.location())
         ?: Regex("tid=(\\d+)").find(doc.html())
 
     val viewCount = doc.select(".xi1").firstOrNull()?.text()?.toIntOrNull() ?: 0

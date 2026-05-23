@@ -177,7 +177,7 @@ class ForumSessionManager @Inject constructor(
                         // evaluateJavascript returns JSON-encoded string
                         val html = unescapeJsonString(result)
                         KLog.d("[Forum] HTML extracted: ${html.length} chars", TAG)
-                        cont.resume(html) {}
+                        cont.resume(html) { _, _, _ -> }
                     } else {
                         cont.resumeWith(Result.failure(IOException("Failed to extract HTML from $url")))
                     }
@@ -204,7 +204,7 @@ class ForumSessionManager @Inject constructor(
 
                 override fun onPageFinished(view: WebView?, pageUrl: String?) {
                     if (cont.isActive) {
-                        cont.resume(pageUrl ?: url) {}
+                        cont.resume(pageUrl ?: url) { _, _, _ -> }
                     }
                 }
 

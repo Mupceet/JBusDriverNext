@@ -85,9 +85,15 @@ android {
         compose = true
     }
 
-    room {
-        schemaDirectory("$projectDir/schemas")
+    packaging {
+        jniLibs {
+            keepDebugSymbols += "**/libandroidx.graphics.path.so"
+        }
     }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 androidComponents {
