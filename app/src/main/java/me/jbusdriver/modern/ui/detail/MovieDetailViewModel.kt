@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
-import me.jbusdriver.modern.data.parser.fetchMagnets
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.ui.MagnetUiModel
@@ -36,7 +36,8 @@ data class MovieDetailUiState(
 @HiltViewModel
 class MovieDetailViewModel @Inject constructor(
     private val repository: MovieDetailRepository,
-    private val collectRepository: CollectRepository
+    private val collectRepository: CollectRepository,
+    private val magnetRepository: MagnetRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -97,7 +98,7 @@ class MovieDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
             try {
                 val magnets = withContext(Dispatchers.IO) {
-                    fetchMagnets(gid, uc).map { it.toUiModel() }
+                    magnetRepository.fetchMagnets(gid, uc).map { it.toUiModel() }
                 }
                 _uiState.update {
                     it.copy(magnets = magnets, isLoadingMagnets = false)

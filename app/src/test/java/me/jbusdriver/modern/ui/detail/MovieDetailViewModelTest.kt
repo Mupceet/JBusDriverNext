@@ -8,10 +8,12 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Header
+import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
 import org.junit.After
@@ -49,6 +51,12 @@ class MovieDetailViewModelTest {
         override suspend fun toggleActressCollect(actress: ActressInfo) = true
         override suspend fun getCollectedMovies(): List<Movie> = emptyList()
         override suspend fun getCollectedActresses(): List<ActressInfo> = emptyList()
+        override suspend fun exportCollectionsJson() = "{}"
+        override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+    }
+
+    private val stubMagnetRepo = object : MagnetRepository {
+        override suspend fun fetchMagnets(gid: String, uc: String): List<Magnet> = emptyList()
     }
 
     @Before
@@ -66,7 +74,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -83,7 +91,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 throw RuntimeException("Network error")
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -99,7 +107,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 testDetail.also { callCount++ }
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -118,7 +126,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detailWithGid
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()

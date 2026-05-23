@@ -1,9 +1,10 @@
 package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.CacheLoader
-import me.jbusdriver.modern.core.JBusManager
-import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.lruCached
+import me.jbusdriver.modern.core.cache.persistentCached
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.parser.parseForumHomeData
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
 import me.jbusdriver.modern.data.parser.parseForumThreads
@@ -24,35 +25,27 @@ interface ForumRepository {
 
 @Singleton
 class DefaultForumRepository @Inject constructor(
-    private val sessionManager: ForumSessionManager
+    private val sessionClient: ForumSessionClient,
+    private val cacheStore: CacheStore,
+    private val siteConfig: SiteConfig
 ) : ForumRepository {
 
-    private suspend fun ensureForumSession() {
-        if (sessionManager.isInitialized()) return
-        val activity = JBusManager.manager
-            .mapNotNull { it.get() }
-            .firstOrNull { !it.isFinishing && !it.isDestroyed }
-            ?: throw IllegalStateException("No valid activity available for forum session init")
-        sessionManager.ensureSession(activity)
-    }
-
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
-        ensureForumSession()
-        val doc = sessionManager.fetchDocument(url)
+        val doc = sessionClient.fetchDocument(url)
         KLog.d("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}", TAG)
         return doc
     }
 
     override fun destroySession() {
-        sessionManager.destroy()
+        sessionClient.destroy()
     }
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData {
-        val url = "${NetClient.defaultFastUrl}/forum/forum.php"
+        val url = "${siteConfig.baseUrl}/forum/forum.php"
         KLog.d("[Forum] loadForumBoards: url=$url", TAG)
-        return CacheLoader.lruCached("forum_boards", forceRefresh) {
+        return cacheStore.lruCached("forum_boards", forceRefresh) {
             val doc = fetchForumDocument(url)
-            val result = parseForumHomeData(doc)
+            val result = parseForumHomeData(doc, siteConfig.baseUrl)
             KLog.d("[Forum] parseForumHomeData: ${result.banners.size} banners, ${result.boardGroups.sumOf { it.boards.size }} boards", TAG)
             result
         }
@@ -60,22 +53,22 @@ class DefaultForumRepository @Inject constructor(
 
     override suspend fun loadThreads(fid: Int, page: Int, typeId: Int?, forceRefresh: Boolean): ForumThreadPageResult {
         val cacheKey = "forum_threads_${fid}_${page}_${typeId ?: "all"}"
-        val baseUrl = "${NetClient.defaultFastUrl}/forum/forum.php?mod=forumdisplay&fid=$fid&page=$page"
+        val baseUrl = "${siteConfig.baseUrl}/forum/forum.php?mod=forumdisplay&fid=$fid&page=$page"
         val url = if (typeId != null) "$baseUrl&filter=typeid&typeid=$typeId" else baseUrl
         KLog.d("[Forum] loadThreads: url=$url", TAG)
-        return CacheLoader.lruCached(cacheKey, forceRefresh) {
+        return cacheStore.lruCached(cacheKey, forceRefresh) {
             val doc = fetchForumDocument(url)
-            parseForumThreads(doc)
+            parseForumThreads(doc, siteConfig.baseUrl)
         }
     }
 
     override suspend fun loadThreadDetail(tid: Int, page: Int, forceRefresh: Boolean): ForumThreadDetail {
         val cacheKey = "forum_detail_${tid}_$page"
-        val url = "${NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
+        val url = "${siteConfig.baseUrl}/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
         KLog.d("[Forum] loadThreadDetail: url=$url", TAG)
-        return CacheLoader.persistentCached(cacheKey, forceRefresh) {
+        return cacheStore.persistentCached(cacheKey, forceRefresh) {
             val doc = fetchForumDocument(url)
-            parseForumThreadDetail(doc)
+            parseForumThreadDetail(doc, siteConfig.baseUrl)
         }
     }
 }

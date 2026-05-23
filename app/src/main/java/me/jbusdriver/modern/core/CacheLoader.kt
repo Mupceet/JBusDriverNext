@@ -3,13 +3,9 @@ package me.jbusdriver.modern.core
 import android.app.Activity
 import android.app.ActivityManager
 import androidx.collection.LruCache
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.CacheLoader.lruCached
-import me.jbusdriver.modern.core.CacheLoader.persistentCached
 import java.io.File
 
 /**
@@ -140,7 +136,7 @@ object CacheLoader {
         val result = fetch()
         val json = GSON.toJson(result)
         lru.put(key, json)
-        CoroutineScope(Dispatchers.IO).launch { fileCache.put(key, json) }
+        withContext(Dispatchers.IO) { fileCache.put(key, json) }
         return result
     }
 
@@ -155,6 +151,18 @@ object CacheLoader {
      * @return 缓存字符串，不存在时返回 null
      */
     suspend fun getString(key: String): String? = withContext(Dispatchers.IO) { fileCache.get(key) }
+
+    fun getLruString(key: String): String? = lru.get(key)
+
+    fun putLruString(key: String, value: String) {
+        lru.put(key, value)
+    }
+
+    suspend fun getDiskString(key: String): String? = withContext(Dispatchers.IO) { fileCache.get(key) }
+
+    suspend fun putDiskString(key: String, value: String) {
+        withContext(Dispatchers.IO) { fileCache.put(key, value) }
+    }
 
     // endregion
 }

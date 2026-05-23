@@ -14,6 +14,35 @@ val gitCommitCount = providers.exec {
     commandLine("git", "rev-list", "--count", "HEAD")
 }.standardOutput.asText.get().trim().toInt()
 
+fun parseLocalProperty(text: String, key: String): String =
+    text.lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") }
+        .firstNotNullOfOrNull { line ->
+            val separator = line.indexOf('=')
+            if (separator <= 0) return@firstNotNullOfOrNull null
+            val name = line.substring(0, separator).trim()
+            if (name == key) line.substring(separator + 1).trim() else null
+        }
+        .orEmpty()
+
+fun String.unquotePropertyValue(): String =
+    trim().removeSurrounding("\"").removeSurrounding("'")
+
+val localJavbusAuthCookie = providers.fileContents(layout.projectDirectory.file("../local.properties"))
+    .asText
+    .map { parseLocalProperty(it, "JAVBUS_AUTH_COOKIE") }
+    .orElse("")
+
+val javbusAuthCookie = providers.gradleProperty("JAVBUS_AUTH_COOKIE")
+    .orElse(providers.environmentVariable("JAVBUS_AUTH_COOKIE"))
+    .orElse(localJavbusAuthCookie)
+    .orElse("")
+    .get()
+    .unquotePropertyValue()
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+
 fun releaseTime(): String? = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
 
 android {
@@ -25,6 +54,7 @@ android {
         minSdk = 28
         versionCode = 10000 + gitCommitCount
         versionName = "1.${releaseTime()}"
+        buildConfigField("String", "JAVBUS_AUTH_COOKIE", "\"$javbusAuthCookie\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

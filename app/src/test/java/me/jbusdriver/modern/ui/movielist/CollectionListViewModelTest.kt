@@ -53,6 +53,8 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = testMovies
             override suspend fun getCollectedActresses() = testActresses
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
         val viewModel = CollectionListViewModel(collectRepo)
 
@@ -79,6 +81,8 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = testMovies
             override suspend fun getCollectedActresses() = testActresses
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
         val viewModel = CollectionListViewModel(collectRepo)
 
@@ -104,6 +108,8 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = throw RuntimeException("DB error")
             override suspend fun getCollectedActresses() = throw RuntimeException("DB error")
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
         val viewModel = CollectionListViewModel(collectRepo)
 

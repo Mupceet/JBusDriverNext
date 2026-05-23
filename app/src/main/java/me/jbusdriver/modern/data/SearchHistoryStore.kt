@@ -8,17 +8,24 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
 
+interface SearchHistoryStore {
+    fun getHistory(): List<String>
+    fun addQuery(query: String)
+    fun removeQuery(query: String)
+    fun clearHistory()
+}
+
 @Singleton
-class SearchHistoryStore @Inject constructor() {
+class DefaultSearchHistoryStore @Inject constructor() : SearchHistoryStore {
     private val prefs: SharedPreferences =
         JBus.getSharedPreferences("search_history", 0)
 
-    fun getHistory(): List<String> {
+    override fun getHistory(): List<String> {
         val json = prefs.getString(KEY_HISTORY, null) ?: return emptyList()
         return GSON.fromJson<List<String>>(json) ?: emptyList()
     }
 
-    fun addQuery(query: String) {
+    override fun addQuery(query: String) {
         if (query.isBlank()) return
         val current = getHistory().toMutableList()
         current.remove(query)
@@ -29,14 +36,14 @@ class SearchHistoryStore @Inject constructor() {
         prefs.edit { putString(KEY_HISTORY, GSON.toJson(current)) }
     }
 
-    fun removeQuery(query: String) {
+    override fun removeQuery(query: String) {
         val current = getHistory().toMutableList()
         if (current.remove(query)) {
             prefs.edit { putString(KEY_HISTORY, GSON.toJson(current)) }
         }
     }
 
-    fun clearHistory() {
+    override fun clearHistory() {
         prefs.edit { remove(KEY_HISTORY) }
     }
 

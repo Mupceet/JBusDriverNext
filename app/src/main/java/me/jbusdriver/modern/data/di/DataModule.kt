@@ -4,16 +4,29 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.DefaultCacheStore
+import me.jbusdriver.modern.core.http.BrowserSessionClient
+import me.jbusdriver.modern.core.http.DefaultHtmlClient
+import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.site.DefaultSiteConfig
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.DefaultCollectRepository
+import me.jbusdriver.modern.data.DefaultForumSessionClient
 import me.jbusdriver.modern.data.DefaultForumRepository
+import me.jbusdriver.modern.data.DefaultMagnetRepository
 import me.jbusdriver.modern.data.DefaultMovieDetailRepository
 import me.jbusdriver.modern.data.DefaultMovieRepository
 import me.jbusdriver.modern.data.DefaultSearchRepository
+import me.jbusdriver.modern.data.DefaultSearchHistoryStore
+import me.jbusdriver.modern.data.ForumSessionClient
 import me.jbusdriver.modern.data.ForumRepository
+import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.SearchRepository
+import me.jbusdriver.modern.data.SearchHistoryStore
 import javax.inject.Singleton
 
 /**
@@ -29,6 +42,18 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DataModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindSiteConfig(impl: DefaultSiteConfig): SiteConfig
+
+    @Binds
+    @Singleton
+    abstract fun bindHtmlClient(impl: DefaultHtmlClient): HtmlClient
+
+    @Binds
+    @Singleton
+    abstract fun bindCacheStore(impl: DefaultCacheStore): CacheStore
 
     /** 绑定 [MovieRepository] 到 [DefaultMovieRepository]。 */
     @Binds
@@ -51,6 +76,12 @@ abstract class DataModule {
         impl: DefaultSearchRepository
     ): SearchRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindSearchHistoryStore(
+        impl: DefaultSearchHistoryStore
+    ): SearchHistoryStore
+
     /** 绑定 [CollectRepository] 到 [DefaultCollectRepository]。 */
     @Binds
     @Singleton
@@ -64,4 +95,22 @@ abstract class DataModule {
     abstract fun bindForumRepository(
         impl: DefaultForumRepository
     ): ForumRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindForumSessionClient(
+        impl: DefaultForumSessionClient
+    ): ForumSessionClient
+
+    @Binds
+    @Singleton
+    abstract fun bindBrowserSessionClient(
+        impl: DefaultForumSessionClient
+    ): BrowserSessionClient
+
+    @Binds
+    @Singleton
+    abstract fun bindMagnetRepository(
+        impl: DefaultMagnetRepository
+    ): MagnetRepository
 }

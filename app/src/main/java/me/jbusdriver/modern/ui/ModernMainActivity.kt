@@ -5,14 +5,22 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation3.runtime.NavKey
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.ui.theme.JBusTheme
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class ModernMainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var browserSessionClient: BrowserSessionClient
 
     private val _deepLink = MutableStateFlow<NavKey?>(null)
     private val deepLink: StateFlow<NavKey?> = _deepLink
@@ -29,6 +37,10 @@ class ModernMainActivity : ComponentActivity() {
                     onDeepLinkConsumed = { _deepLink.value = null }
                 )
             }
+        }
+        lifecycleScope.launch {
+            runCatching { browserSessionClient.warmUp() }
+                .onFailure { KLog.w("Browser session warm-up failed: ${it.message}") }
         }
     }
 

@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -30,6 +31,21 @@ class SearchViewModelTest {
         Movie("Result 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1")
     )
 
+    private fun fakeHistoryStore() = object : SearchHistoryStore {
+        private val history = mutableListOf<String>()
+        override fun getHistory(): List<String> = history.toList()
+        override fun addQuery(query: String) {
+            history.remove(query)
+            history.add(0, query)
+        }
+        override fun removeQuery(query: String) {
+            history.remove(query)
+        }
+        override fun clearHistory() {
+            history.clear()
+        }
+    }
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
@@ -48,7 +64,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository)
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
 
         viewModel.search("test")
         advanceUntilIdle()
@@ -68,7 +84,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository)
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
 
         viewModel.search("test")
         advanceUntilIdle()
@@ -85,7 +101,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 error("Should not be called")
         }
-        val viewModel = SearchViewModel(repository)
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
 
         viewModel.search("")
         advanceUntilIdle()

@@ -30,7 +30,7 @@ object DB {
             JBus,
             JBusDatabase::class.java,
             JBUS_DB_NAME
-        ).allowMainThreadQueries().apply {
+        ).apply {
             if (me.jbusdriver.BuildConfig.DEBUG) {
                 KLog.d("JBusDatabase debug mode enabled")
             }
@@ -52,7 +52,7 @@ object DB {
             context,
             CollectDatabase::class.java,
             COLLECT_DB_NAME
-        ).allowMainThreadQueries().build()
+        ).build()
     }
 
     /** 历史记录 DAO，代理到 [jBusDatabase]。 */

@@ -1,8 +1,11 @@
 package me.jbusdriver.modern.data
 
-import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.lruCached
+import me.jbusdriver.modern.core.cache.persistentCached
+import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.parser.loadMovieFromDoc
 import me.jbusdriver.modern.data.parser.parseActressAttrs
 import me.jbusdriver.modern.data.parser.parseActressList
@@ -12,11 +15,10 @@ import me.jbusdriver.modern.data.parser.parsePageInfo
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.urlPath
-import me.jbusdriver.modern.ui.GenreCategory
-import me.jbusdriver.modern.ui.GenreUiModel
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -71,7 +73,7 @@ interface MovieRepository {
     suspend fun loadGenreCategories(
         type: DataSourceType,
         forceRefresh: Boolean = false
-    ): List<GenreCategory>
+    ): List<GenreGroup>
 
     /**
      * 通过完整 URL 分页加载影片列表（用于分类筛选、类型点击等场景）。
@@ -111,7 +113,11 @@ interface MovieRepository {
  * HTML 解析在 [Dispatchers.Default] 执行，确保不阻塞主线程。
  */
 @Singleton
-class DefaultMovieRepository @Inject constructor() : MovieRepository {
+class DefaultMovieRepository @Inject constructor(
+    private val htmlClient: HtmlClient,
+    private val cacheStore: CacheStore,
+    private val siteConfig: SiteConfig
+) : MovieRepository {
 
     override suspend fun loadPage(
         type: DataSourceType,
@@ -119,7 +125,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val baseUrl = NetClient.defaultFastUrl
+        val baseUrl = siteConfig.baseUrl
         val basePath = when (type) {
             DataSourceType.UNCENSORED -> "/uncensored"
             DataSourceType.XYZ -> "/xyz"
@@ -128,10 +134,10 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         val url = if (page == 1) "$baseUrl$basePath" else "$baseUrl$basePath${type.prefix}$page"
         val cacheKey = "${type.key}_${showAll}_$page"
 
-        return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val doc = NetClient.fetchDocument(url, showAll)
+        return cacheStore.lruCached(cacheKey, forceRefresh) {
+            val doc = htmlClient.fetchDocument(url, showAll)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc)
+            val movies = loadMovieFromDoc(doc, baseUrl)
             val filterInfo = parseMovieFilterInfo(doc)
             MoviePageResult(pageInfo, movies, filterInfo)
         }
@@ -143,15 +149,15 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         forceRefresh: Boolean
     ): Pair<List<ActressInfo>, PageInfo> {
         val baseUrl = when (type) {
-            DataSourceType.UNCENSORED_ACTRESSES -> NetClient.defaultFastUrl + "/uncensored/actresses"
-            else -> NetClient.defaultFastUrl + "/actresses"
+            DataSourceType.UNCENSORED_ACTRESSES -> siteConfig.baseUrl + "/uncensored/actresses"
+            else -> siteConfig.baseUrl + "/actresses"
         }
         val url = if (page == 1) baseUrl else "$baseUrl/$page"
         val cacheKey = "actresses_${type.key}_$page"
 
-        return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val doc = NetClient.fetchDocument(url)
-            val actresses = parseActressList(doc)
+        return cacheStore.lruCached(cacheKey, forceRefresh) {
+            val doc = htmlClient.fetchDocument(url)
+            val actresses = parseActressList(doc, siteConfig.baseUrl)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(
                 activePage = page,
                 nextPage = if (actresses.size >= 20) page + 1 else page
@@ -163,21 +169,17 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     override suspend fun loadGenreCategories(
         type: DataSourceType,
         forceRefresh: Boolean
-    ): List<GenreCategory> {
+    ): List<GenreGroup> {
         val baseUrl = when (type) {
-            DataSourceType.UNCENSORED_GENRE -> NetClient.defaultFastUrl + "/uncensored/genre"
-            else -> NetClient.defaultFastUrl + "/genre"
+            DataSourceType.UNCENSORED_GENRE -> siteConfig.baseUrl + "/uncensored/genre"
+            else -> siteConfig.baseUrl + "/genre"
         }
         val cacheKey = "genres_v2_${type.key}"
 
-        return CacheLoader.persistentCached(cacheKey) {
-            val doc = NetClient.fetchDocument(baseUrl)
-            val allGenres = mutableListOf<GenreUiModel>()
-            val rawCategories = parseGenreCategories(doc).map { (title, genres) ->
-                val items = genres.map { GenreUiModel(it.name, it.link) }
-                allGenres.addAll(items)
-                title to items
-            }
+        return cacheStore.persistentCached(cacheKey, forceRefresh) {
+            val doc = htmlClient.fetchDocument(baseUrl)
+            val rawCategories = parseGenreCategories(doc)
+            val allGenres = rawCategories.flatMap { it.second }
             allGenres.groupBy { it.link }
                 .filter { it.value.size > 1 }
                 .forEach { (link, items) ->
@@ -186,7 +188,7 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
             val seen = mutableSetOf<String>()
             rawCategories.mapNotNull { (title, genres) ->
                 val deduped = genres.filter { seen.add(it.link) }
-                if (deduped.isEmpty()) null else GenreCategory(title, deduped)
+                if (deduped.isEmpty()) null else GenreGroup(title, deduped)
             }
         }
     }
@@ -197,14 +199,14 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
         showAll: Boolean,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val resolvedUrl = if (url.startsWith("http")) url else NetClient.defaultFastUrl + url
+        val resolvedUrl = siteConfig.resolve(url)
         val cacheKey = "page_${resolvedUrl.urlPath}_${showAll}_$page"
 
-        return CacheLoader.lruCached(cacheKey, forceRefresh) {
+        return cacheStore.lruCached(cacheKey, forceRefresh) {
             val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
-            val doc = NetClient.fetchDocument(fullUrl, showAll)
+            val doc = htmlClient.fetchDocument(fullUrl, showAll)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc)
+            val movies = loadMovieFromDoc(doc, siteConfig.baseUrl)
             val filterInfo = parseMovieFilterInfo(doc)
             MoviePageResult(pageInfo, movies, filterInfo)
         }
@@ -213,9 +215,9 @@ class DefaultMovieRepository @Inject constructor() : MovieRepository {
     override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail {
         val cacheKey = "actress_${url.urlPath}"
 
-        return CacheLoader.persistentCached(cacheKey) {
-            val doc = NetClient.fetchDocument(url)
-            val attrs = parseActressAttrs(doc)
+        return cacheStore.persistentCached(cacheKey, forceRefresh) {
+            val doc = htmlClient.fetchDocument(siteConfig.resolve(url))
+            val attrs = parseActressAttrs(doc, siteConfig.baseUrl)
             ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
         }
     }

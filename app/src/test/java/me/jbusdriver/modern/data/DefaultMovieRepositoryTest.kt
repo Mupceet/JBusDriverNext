@@ -8,7 +8,7 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.ActressDetail
-import me.jbusdriver.modern.ui.GenreCategory
+import me.jbusdriver.modern.domain.model.GenreGroup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,7 +31,7 @@ class FakeMovieRepositoryTest {
             emptyList<ActressInfo>() to PageInfo(page, page + 1)
 
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
-            emptyList<GenreCategory>()
+            emptyList<GenreGroup>()
 
         override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(PageInfo(page, page + 1, listOf(page, page + 1)), fakeMovies)

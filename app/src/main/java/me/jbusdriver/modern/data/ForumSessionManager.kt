@@ -15,7 +15,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.site.SiteConfig
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.IOException
@@ -48,7 +48,9 @@ private fun isBlockedResource(url: String): Boolean {
  * [destroy] is called (typically when the user leaves the forum tab).
  */
 @Singleton
-class ForumSessionManager @Inject constructor() {
+class ForumSessionManager @Inject constructor(
+    private val siteConfig: SiteConfig
+) {
 
     @Volatile
     private var webView: WebView? = null
@@ -82,7 +84,7 @@ class ForumSessionManager @Inject constructor() {
                 webView = wv
 
                 // Load main site to establish session
-                val mainUrl = "${NetClient.defaultFastUrl}/"
+                val mainUrl = siteConfig.referer()
                 KLog.d("[Forum] Loading main site: $mainUrl", TAG)
                 loadPageUrl(wv, mainUrl)
 

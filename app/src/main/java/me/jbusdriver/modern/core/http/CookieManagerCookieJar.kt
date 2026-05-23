@@ -33,7 +33,7 @@ class CookieManagerCookieJar : CookieJar {
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val cookieString = cookieManager.getCookie(url.toString())
-        KLog.d("CookieJar", "loadForRequest($url) → ${cookieString ?: "null"}")
+        KLog.d("CookieJar", "loadForRequest($url), cookieLength=${cookieString?.length ?: 0}")
         if (cookieString == null) return emptyList()
         return cookieString.split(";")
             .map { it.trim() }

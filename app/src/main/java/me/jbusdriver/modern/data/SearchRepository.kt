@@ -1,7 +1,9 @@
 package me.jbusdriver.modern.data
 
-import me.jbusdriver.modern.core.CacheLoader
-import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.lruCached
+import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -62,7 +64,11 @@ interface SearchRepository {
  * HTML 解析在 [Dispatchers.Default] 执行，确保不阻塞主线程。
  */
 @Singleton
-class DefaultSearchRepository @Inject constructor() : SearchRepository {
+class DefaultSearchRepository @Inject constructor(
+    private val htmlClient: HtmlClient,
+    private val cacheStore: CacheStore,
+    private val siteConfig: SiteConfig
+) : SearchRepository {
 
     override suspend fun searchMovies(
         type: SearchType,
@@ -70,14 +76,14 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         page: Int,
         forceRefresh: Boolean
     ): MoviePageResult {
-        val baseUrl = NetClient.defaultFastUrl
+        val baseUrl = siteConfig.baseUrl
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        return CacheLoader.lruCached(cacheKey, forceRefresh) {
-            val doc = NetClient.fetchDocument(url)
+        return cacheStore.lruCached(cacheKey, forceRefresh) {
+            val doc = htmlClient.fetchDocument(url)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc)
+            val movies = loadMovieFromDoc(doc, siteConfig.baseUrl)
             MoviePageResult(pageInfo, movies)
         }
     }
@@ -86,15 +92,15 @@ class DefaultSearchRepository @Inject constructor() : SearchRepository {
         query: String,
         page: Int
     ): Pair<PageInfo, List<ActressInfo>> {
-        val baseUrl = NetClient.defaultFastUrl
+        val baseUrl = siteConfig.baseUrl
         val type = SearchType.ACTRESS
         val url = "${baseUrl}${type.urlPathFormater.format(query)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
 
-        return CacheLoader.lruCached(cacheKey) {
-            val doc = NetClient.fetchDocument(url)
+        return cacheStore.lruCached(cacheKey) {
+            val doc = htmlClient.fetchDocument(url)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val actresses = parseActressList(doc)
+            val actresses = parseActressList(doc, siteConfig.baseUrl)
             pageInfo to actresses
         }
     }

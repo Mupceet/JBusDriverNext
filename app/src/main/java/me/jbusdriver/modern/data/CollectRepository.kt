@@ -5,11 +5,12 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
-import me.jbusdriver.modern.data.db.DB
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.convertDBItem
+import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -83,24 +84,27 @@ interface CollectRepository {
  * 线程：所有方法使用 withContext(Dispatchers.IO) 在 IO 线程执行数据库操作
  */
 @Singleton
-class DefaultCollectRepository @Inject constructor() : CollectRepository {
+class DefaultCollectRepository @Inject constructor(
+    private val linkDao: LinkItemDao,
+    private val siteConfig: SiteConfig
+) : CollectRepository {
 
     override suspend fun isCollected(linkItem: LinkItem): Boolean {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.hasByKey(linkItem.dbType, linkItem.key) >= 1
+            linkDao.hasByKey(linkItem.dbType, linkItem.key) >= 1
         }
     }
 
     override suspend fun addCollect(linkItem: LinkItem): Boolean {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.insert(linkItem)
+            linkDao.insert(linkItem)
             true
         }
     }
 
     override suspend fun removeCollect(linkItem: LinkItem): Boolean {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.delete(linkItem.dbType, linkItem.key) > 0
+            linkDao.delete(linkItem.dbType, linkItem.key) > 0
         }
     }
 
@@ -136,13 +140,13 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
 
     override suspend fun getCollectedMovies(): List<Movie> {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.listByType(MovieDBType).mapNotNull { it.toILink() as? Movie }
+            linkDao.listByType(MovieDBType).mapNotNull { it.toILink() as? Movie }
         }
     }
 
     override suspend fun getCollectedActresses(): List<ActressInfo> {
         return withContext(Dispatchers.IO) {
-            DB.linkDao.listByType(ActressDBType).mapNotNull { it.toILink() as? ActressInfo }
+            linkDao.listByType(ActressDBType).mapNotNull { it.toILink() as? ActressInfo }
         }
     }
 
@@ -181,23 +185,23 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
         withContext(Dispatchers.IO) {
             root.getAsJsonArray("movies")?.forEach { element ->
                 val movie = GSON.fromJson(element.toString(), Movie::class.java)
-                    .let { it.copy(imageUrl = it.imageUrl.wrapImage()) }
+                    .let { it.copy(imageUrl = it.imageUrl.wrapImage(siteConfig.baseUrl)) }
                 val item = movie.convertDBItem()
-                if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                     skipped++
                 } else {
-                    DB.linkDao.insert(item)
+                    linkDao.insert(item)
                     imported++
                 }
             }
             root.getAsJsonArray("actresses")?.forEach { element ->
                 val actress = GSON.fromJson(element.toString(), ActressInfo::class.java)
-                    .let { it.copy(avatar = it.avatar.wrapImage()) }
+                    .let { it.copy(avatar = it.avatar.wrapImage(siteConfig.baseUrl)) }
                 val item = actress.convertDBItem()
-                if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                     skipped++
                 } else {
-                    DB.linkDao.insert(item)
+                    linkDao.insert(item)
                     imported++
                 }
             }
@@ -216,23 +220,23 @@ class DefaultCollectRepository @Inject constructor() : CollectRepository {
                 when (type) {
                     MovieDBType -> {
                         val movie = GSON.fromJson(jsonStr, Movie::class.java)
-                            .let { it.copy(imageUrl = it.imageUrl.wrapImage()) }
+                            .let { it.copy(imageUrl = it.imageUrl.wrapImage(siteConfig.baseUrl)) }
                         val item = movie.convertDBItem()
-                        if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                        if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
                         } else {
-                            DB.linkDao.insert(item)
+                            linkDao.insert(item)
                             imported++
                         }
                     }
                     ActressDBType -> {
                         val actress = GSON.fromJson(jsonStr, ActressInfo::class.java)
-                            .let { it.copy(avatar = it.avatar.wrapImage()) }
+                            .let { it.copy(avatar = it.avatar.wrapImage(siteConfig.baseUrl)) }
                         val item = actress.convertDBItem()
-                        if (DB.linkDao.hasByKey(item.dbType, item.key) >= 1) {
+                        if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
                         } else {
-                            DB.linkDao.insert(item)
+                            linkDao.insert(item)
                             imported++
                         }
                     }

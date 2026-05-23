@@ -6,6 +6,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.site.SiteConfigStore
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -31,8 +32,17 @@ import java.util.concurrent.TimeUnit
  */
 object NetClient {
 
+    internal data class HtmlResponse(
+        val finalUrl: String,
+        val body: String
+    )
+
     /** 默认站点 URL */
-    var defaultFastUrl = "https://www.javbus.com"
+    var defaultFastUrl: String
+        get() = SiteConfigStore.baseUrl
+        set(value) {
+            SiteConfigStore.baseUrl = value.trimEnd('/')
+        }
 
     /** 通用 User-Agent，模拟桌面浏览器避免被目标网站拒绝 */
     const val USER_AGENT =
@@ -59,8 +69,11 @@ object NetClient {
                         "existmag=mag"
                     }
                 )
-                append("; ")
-                append("bus_auth=4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO")
+                if (BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()) {
+                    append("; ")
+                    append("bus_auth=")
+                    append(BuildConfig.JAVBUS_AUTH_COOKIE)
+                }
             }
             val mergedCookies = if (existingCookies.isNotBlank()) {
                 "$existingCookies; $extraCookies"
@@ -71,7 +84,7 @@ object NetClient {
                 .header("User-Agent", USER_AGENT)
                 .header("Cookie", mergedCookies)
                 .build()
-            KLog.d("NetClient", "Cookie for ${request.url}: $mergedCookies")
+            KLog.d("NetClient", "Prepared cookies for ${request.url}; auth=${BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()}")
             chain.proceed(request)
         }
     }
@@ -99,6 +112,9 @@ object NetClient {
      * 使用 OkHttp 异步请求获取 URL 的 HTML 内容
      */
     internal suspend fun fetchHtml(url: String, showAll: Boolean = false, referer: String? = null): String =
+        fetchHtmlResponse(url, showAll, referer).body
+
+    internal suspend fun fetchHtmlResponse(url: String, showAll: Boolean = false, referer: String? = null): HtmlResponse =
         suspendCancellableCoroutine { cont ->
             val request = Request.Builder()
                 .url(url)
@@ -116,7 +132,7 @@ object NetClient {
                     try {
                         val body = response.body.string()
                         if (body.isNotBlank()) {
-                            cont.resumeWith(Result.success(body))
+                            cont.resumeWith(Result.success(HtmlResponse(response.request.url.toString(), body)))
                         } else {
                             cont.resumeWith(Result.failure(IllegalStateException("Empty response for $url")))
                         }
@@ -139,7 +155,7 @@ object NetClient {
      */
     suspend fun fetchDocument(url: String, showAll: Boolean = false): Document {
         val html = fetchHtml(url, showAll)
-        return withContext(Dispatchers.Default) { Jsoup.parse(html) }
+        return withContext(Dispatchers.Default) { Jsoup.parse(html, url) }
     }
 
 }

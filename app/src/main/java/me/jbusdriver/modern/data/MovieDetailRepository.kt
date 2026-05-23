@@ -1,7 +1,9 @@
 package me.jbusdriver.modern.data
 
-import me.jbusdriver.modern.core.CacheLoader
-import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.persistentCached
+import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.domain.model.MovieDetail
 import me.jbusdriver.modern.data.parser.parseMovieDetails
@@ -45,14 +47,19 @@ interface MovieDetailRepository {
  * HTML 解析在 [Dispatchers.Default] 执行，确保不阻塞主线程。
  */
 @Singleton
-class DefaultMovieDetailRepository @Inject constructor() : MovieDetailRepository {
+class DefaultMovieDetailRepository @Inject constructor(
+    private val htmlClient: HtmlClient,
+    private val cacheStore: CacheStore,
+    private val siteConfig: SiteConfig
+) : MovieDetailRepository {
 
     override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
         val cacheKey = url.urlPath
 
-        return CacheLoader.persistentCached(cacheKey, forceRefresh) {
-            val doc = NetClient.fetchDocument(url)
-            parseMovieDetails(doc)
+        return cacheStore.persistentCached(cacheKey, forceRefresh) {
+            val resolvedUrl = siteConfig.resolve(url)
+            val doc = htmlClient.fetchDocument(resolvedUrl)
+            parseMovieDetails(doc, siteConfig.baseUrl)
         }
     }
 }

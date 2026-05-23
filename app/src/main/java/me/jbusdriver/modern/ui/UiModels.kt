@@ -3,6 +3,8 @@ package me.jbusdriver.modern.ui
 import androidx.compose.runtime.Immutable
 import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.Genre
+import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
 
@@ -92,6 +94,10 @@ fun Magnet.toUiModel() = MagnetUiModel(name, size, date, link)
 
 /** ActressInfo → ActressUiModel */
 fun ActressInfo.toActressUiModel() = ActressUiModel(name, avatar, link)
+
+fun Genre.toUiModel() = GenreUiModel(name, link)
+
+fun GenreGroup.toUiModel() = GenreCategory(title, genres.map { it.toUiModel() })
 // endregion
 
 /** 演员详情页的 UI 模型 */

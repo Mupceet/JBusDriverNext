@@ -1,7 +1,5 @@
 package me.jbusdriver.modern.domain.model
 
-import me.jbusdriver.modern.core.http.NetClient
-
 /**
  * 分页链接数据类，表示类别列表中的一个分页入口。
  *
@@ -30,12 +28,16 @@ data class PageLink(val page: Int, val title: String, override val link: String)
  * @property type 搜索维度（影片、女优、导演等）
  * @property query 搜索关键词
  */
-data class SearchLink(val type: SearchType, var query: String) : ILink {
+data class SearchLink(
+    val type: SearchType,
+    var query: String,
+    private val baseUrl: String = ""
+) : ILink {
     /** 所属收藏分类 ID，默认关联 [LinkCategory] */
     @Transient
     override var categoryId: Int = LinkCategory.id ?: 10
 
     /** 动态计算的搜索 URL，基于当前生效的服务器地址和搜索路径模板 */
     override val link: String
-        get() = "${NetClient.defaultFastUrl}${type.urlPathFormater.format(query)}"
+        get() = baseUrl.trimEnd('/') + type.urlPathFormater.format(query)
 }

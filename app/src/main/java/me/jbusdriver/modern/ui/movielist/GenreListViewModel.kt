@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreCategory
+import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
 /**
@@ -81,7 +82,7 @@ class GenreListViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val categories = repository.loadGenreCategories(dataSourceType)
+                val categories = repository.loadGenreCategories(dataSourceType).map { it.toUiModel() }
                 _uiState.update {
                     it.copy(
                         genreCategories = categories,
@@ -106,6 +107,7 @@ class GenreListViewModel @Inject constructor(
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val categories = repository.loadGenreCategories(dataSourceType, forceRefresh = true)
+                    .map { it.toUiModel() }
                 _uiState.update {
                     it.copy(
                         genreCategories = categories,

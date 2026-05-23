@@ -11,10 +11,11 @@ import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.Genre
+import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.ui.GenreUiModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,11 +30,11 @@ class GenreListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     private val testGenreCategories = listOf(
-        GenreCategory("热门标签", listOf(GenreUiModel("高清", "/genre/hd"), GenreUiModel("VR", "/genre/vr")))
+        GenreGroup("热门标签", listOf(Genre("高清", "/genre/hd"), Genre("VR", "/genre/vr")))
     )
 
     private fun fullFakeRepo(
-        onLoadGenreCategories: (DataSourceType) -> List<GenreCategory>
+        onLoadGenreCategories: (DataSourceType) -> List<GenreGroup>
     ) = object : MovieRepository {
         override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(PageInfo(), emptyList())

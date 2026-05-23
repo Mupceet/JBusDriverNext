@@ -124,5 +124,9 @@ class CollectRepositoryTest {
         override suspend fun getCollectedMovies() = collectedMovies.values.toList()
 
         override suspend fun getCollectedActresses() = collectedActresses.values.toList()
+
+        override suspend fun exportCollectionsJson() = "{}"
+
+        override suspend fun importCollectionsFromJson(json: String) = 0 to 0
     }
 }

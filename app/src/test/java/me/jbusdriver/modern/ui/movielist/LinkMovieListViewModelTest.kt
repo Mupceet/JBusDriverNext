@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.movielist
 
-import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -14,10 +13,12 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.ui.RouteLinkMovies
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,6 +36,8 @@ class LinkMovieListViewModelTest {
         Movie("Linked Movie", "http://img.jpg", "ABC-001", "2024-01-01", "http://link1")
     )
 
+    private val testNavKey = RouteLinkMovies("")
+
     private val stubCollectRepo = object : CollectRepository {
         override suspend fun isCollected(linkItem: LinkItem) = false
         override suspend fun addCollect(linkItem: LinkItem) = true
@@ -45,6 +48,8 @@ class LinkMovieListViewModelTest {
         override suspend fun toggleActressCollect(actress: ActressInfo) = true
         override suspend fun getCollectedMovies() = emptyList<Movie>()
         override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+        override suspend fun exportCollectionsJson() = "{}"
+        override suspend fun importCollectionsFromJson(json: String) = 0 to 0
     }
 
     private fun fullFakeRepo(
@@ -54,7 +59,7 @@ class LinkMovieListViewModelTest {
             MoviePageResult(PageInfo(), emptyList())
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
-        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
         override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             onLoadPageByUrl(url, page)
         override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
@@ -75,7 +80,7 @@ class LinkMovieListViewModelTest {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, SavedStateHandle())
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
 
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
@@ -90,7 +95,7 @@ class LinkMovieListViewModelTest {
     @Test
     fun setLink_handlesError() = runTest(testDispatcher) {
         val repository = fullFakeRepo { _, _ -> throw RuntimeException("Network error") }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, SavedStateHandle())
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
 
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
@@ -106,7 +111,7 @@ class LinkMovieListViewModelTest {
             callCount++
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, SavedStateHandle())
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
 
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
@@ -127,14 +132,14 @@ class LinkMovieListViewModelTest {
                 MoviePageResult(PageInfo(), emptyList())
             override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
                 emptyList<ActressInfo>() to PageInfo()
-            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
             override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean): MoviePageResult {
                 showAllCapture = showAll
                 return MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies, MovieFilterInfo(5, 10))
             }
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, SavedStateHandle())
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
 
         viewModel.setLink("http://example.com/star/abc")
         advanceUntilIdle()

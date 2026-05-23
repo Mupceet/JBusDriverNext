@@ -8,8 +8,10 @@ import coil.decode.GifDecoder
 import coil.memory.MemoryCache
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
-import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.site.SiteConfig
 import okhttp3.Interceptor
+import javax.inject.Inject
 
 /**
  * 职责：Hilt Application 入口，同时提供 Coil ImageLoader 配置
@@ -21,6 +23,12 @@ import okhttp3.Interceptor
  */
 @HiltAndroidApp
 class JBusApplication : AppContext(), ImageLoaderFactory {
+
+    @Inject
+    lateinit var htmlClient: HtmlClient
+
+    @Inject
+    lateinit var siteConfig: SiteConfig
 
     override fun onCreate() {
         super.onCreate()
@@ -37,11 +45,11 @@ class JBusApplication : AppContext(), ImageLoaderFactory {
      */
     override fun newImageLoader(): ImageLoader {
         // 添加 Referer 头，网站防盗链校验需要
-        val imageClient = NetClient.glideOkHttpClient.newBuilder()
+        val imageClient = htmlClient.imageOkHttpClient.newBuilder()
             .addInterceptor(Interceptor { chain ->
                 val original = chain.request()
                 val request = original.newBuilder()
-                    .header("Referer", "${NetClient.defaultFastUrl}/")
+                    .header("Referer", siteConfig.referer())
                     .build()
                 chain.proceed(request)
             })

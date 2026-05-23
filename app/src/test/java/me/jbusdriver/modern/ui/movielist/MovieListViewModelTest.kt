@@ -15,6 +15,7 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.ActressDetail
+import me.jbusdriver.modern.domain.model.GenreGroup
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,7 +42,7 @@ class MovieListViewModelTest {
             onLoadPage(type, page)
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
-        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
         override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             MoviePageResult(PageInfo(), emptyList())
         override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
@@ -176,7 +177,7 @@ class MovieListViewModelTest {
             }
             override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
                 emptyList<ActressInfo>() to PageInfo()
-            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreCategory>()
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
             override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
                 MoviePageResult(PageInfo(), emptyList())
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
