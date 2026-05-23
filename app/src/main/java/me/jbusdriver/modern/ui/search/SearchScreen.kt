@@ -79,7 +79,6 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
-    val showLabEntry by viewModel.showLabEntry.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
@@ -196,6 +195,51 @@ fun SearchScreen(
             }
         }
 
+        // Lab entry card — appears when searchInput matches keywords
+        val showLabEntry = searchInput.trim().lowercase().let { q ->
+            q == "setting" || q == "settings" || q == "设置"
+        }
+        if (showLabEntry) {
+            Card(
+                onClick = {
+                    focusManager.clearFocus()
+                    onLabSettingsClick()
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painterResource(R.drawable.science_24px),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "实验室",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "实验性功能设置",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
         // Results
         val isActress = uiState.searchType == SearchType.ACTRESS
         val hasResults =
@@ -218,46 +262,6 @@ fun SearchScreen(
             !hasResults && uiState.query.isBlank() -> {
                 if (searchHistory.isNotEmpty()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        if (showLabEntry) {
-                            Card(
-                                onClick = {
-                                    focusManager.clearFocus()
-                                    onLabSettingsClick()
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painterResource(R.drawable.science_24px),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            "实验室",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        Text(
-                                            "实验性功能设置",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
