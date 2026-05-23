@@ -265,13 +265,13 @@ private fun PostContent(
             .map { it.url }
     }
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        var viewableIndex = 0
-        blocks.forEach { block ->
-            when (block) {
-                is ContentBlock.RichText -> {
-                    val text = block.parts.joinToString("") { (it as TextPart.Plain).text }
-                    SelectionContainer {
+    SelectionContainer {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            var viewableIndex = 0
+            blocks.forEach { block ->
+                when (block) {
+                    is ContentBlock.RichText -> {
+                        val text = block.parts.joinToString("") { (it as TextPart.Plain).text }
                         Text(
                             text,
                             style = MaterialTheme.typography.bodyMedium.copy(
@@ -280,7 +280,6 @@ private fun PostContent(
                             )
                         )
                     }
-                }
                 is ContentBlock.Image -> {
                     if (block.isGif && block.url !in loadedGifUrls) {
                         GifPlaceholder(
@@ -346,19 +345,18 @@ private fun PostContent(
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                                SelectionContainer {
-                                    Text(
-                                        block.content,
-                                        style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                Text(
+                                    block.content,
+                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
     }
 }
 
