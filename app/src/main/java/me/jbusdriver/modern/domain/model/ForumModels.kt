@@ -124,9 +124,6 @@ data class ForumReply(
 sealed class TextPart {
     @Immutable
     data class Plain(val text: String) : TextPart()
-
-    @Immutable
-    data class Link(val text: String, val url: String) : TextPart()
 }
 
 @Immutable
@@ -153,7 +150,6 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
                     out.beginObject()
                     when (part) {
                         is TextPart.Plain -> { out.name("type").value("plain").name("text").value(part.text) }
-                        is TextPart.Link -> { out.name("type").value("link").name("text").value(part.text).name("url").value(part.url) }
                     }
                     out.endObject()
                 }
@@ -208,7 +204,7 @@ class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
                         `in`.endObject()
                         when (partType) {
                             "plain" -> list.add(TextPart.Plain(partText))
-                            "link" -> list.add(TextPart.Link(partText, partUrl))
+                            "link" -> list.add(TextPart.Plain(partText))
                         }
                     }
                     `in`.endArray()

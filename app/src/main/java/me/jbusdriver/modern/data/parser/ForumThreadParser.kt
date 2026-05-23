@@ -211,11 +211,8 @@ private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> 
                 when (node.tagName()) {
                     "br" -> flushParts()
                     "a" -> {
-                        val href = node.attr("abs:href")
                         val text = node.text().trim()
-                        if (href.isNotEmpty() && text.isNotEmpty()) {
-                            parts.add(TextPart.Link(text, href))
-                        } else if (text.isNotEmpty()) {
+                        if (text.isNotEmpty()) {
                             parts.add(TextPart.Plain(text))
                         }
                     }

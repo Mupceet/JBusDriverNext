@@ -282,7 +282,6 @@ private fun SelectableRichTextContent(
     val fullText = parts.joinToString("") { part ->
         when (part) {
             is TextPart.Plain -> part.text
-            is TextPart.Link -> part.text
         }
     }
     SelectionContainer {
@@ -306,13 +305,6 @@ private fun buildAnnotatedString(
         for (part in parts) {
             when (part) {
                 is TextPart.Plain -> append(part.text)
-                is TextPart.Link -> {
-                    pushStringAnnotation(tag, part.url)
-                    pushStyle(linkStyle)
-                    append(part.text)
-                    pop()
-                    pop()
-                }
             }
         }
     }
