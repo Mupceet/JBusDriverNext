@@ -26,13 +26,22 @@ interface ForumRepository {
 @Singleton
 class DefaultForumRepository @Inject constructor(
     private val sessionClient: ForumSessionClient,
+    private val sessionManager: ForumSessionManager,
     private val cacheStore: CacheStore,
     private val siteConfig: SiteConfig
 ) : ForumRepository {
 
+    private var cookiesPersistedForForum = false
+
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
         val doc = sessionClient.fetchDocument(url)
         KLog.d("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}", TAG)
+        // Persist cookies after first successful forum page fetch
+        // to capture Discuz! session cookies (4fJN_2132_*)
+        if (!cookiesPersistedForForum) {
+            sessionManager.persistCookies()
+            cookiesPersistedForForum = true
+        }
         return doc
     }
 

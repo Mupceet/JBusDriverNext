@@ -135,6 +135,15 @@ class ForumSessionManager @Inject constructor(
     }
 
     /**
+     * Save current cookies from CookieManager.
+     * Called after a successful forum page fetch to capture Discuz! session cookies
+     * that are only set when /forum/ is first accessed.
+     */
+    fun persistCookies() {
+        cookieStore.saveCookies(siteConfig.referer())
+    }
+
+    /**
      * Destroy the WebView and release resources.
      * Call when the user leaves the forum feature.
      */
