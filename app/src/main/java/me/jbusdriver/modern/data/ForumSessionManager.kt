@@ -8,6 +8,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -94,17 +95,26 @@ class ForumSessionManager @Inject constructor(
                 CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
 
                 webView = wv
+                try {
+                    // Load main site to establish session
+                    val mainUrl = siteConfig.referer()
+                    KLog.d("[Forum] Loading main site: $mainUrl", TAG)
+                    loadPageUrl(wv, mainUrl)
 
-                // Load main site to establish session
-                val mainUrl = siteConfig.referer()
-                KLog.d("[Forum] Loading main site: $mainUrl", TAG)
-                loadPageUrl(wv, mainUrl)
+                    // Wait for JS-based cookie setting to complete
+                    delay(1000)
 
-                // Save cookies for future reuse
-                cookieStore.saveCookies(mainUrl)
+                    // Save cookies for future reuse
+                    cookieStore.saveCookies(mainUrl)
 
-                initialized.set(true)
-                KLog.d("[Forum] WebView session initialized", TAG)
+                    initialized.set(true)
+                    KLog.d("[Forum] WebView session initialized", TAG)
+                } catch (e: Exception) {
+                    KLog.e("[Forum] initWebView failed: ${e.message}", TAG)
+                    wv.destroy()
+                    webView = null
+                    throw e
+                }
             }
         }
     }
