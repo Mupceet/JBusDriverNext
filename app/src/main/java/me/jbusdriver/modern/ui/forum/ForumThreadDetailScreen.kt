@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.forum
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,10 +54,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +69,7 @@ import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
@@ -173,15 +173,15 @@ fun ForumThreadDetailScreen(
 
                     detail != null -> {
                         var dialogBlocks by remember { mutableStateOf<List<ContentBlock>?>(null) }
-                        val clipboardManager = LocalClipboardManager.current
 
                         dialogBlocks?.let { blocks ->
                             FloorContentDialog(
                                 blocks = blocks,
                                 onDismiss = { dialogBlocks = null },
                                 onCopyAll = {
-                                    val text = buildPlainText(blocks)
-                                    clipboardManager.setText(AnnotatedString(text))
+                                    context.copy(buildPlainText(blocks))
+                                    Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
+                                    dialogBlocks = null
                                 }
                             )
                         }

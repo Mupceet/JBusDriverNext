@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.res.painterResource
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.copy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,9 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -56,7 +55,6 @@ fun ActressAvatar(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
 
     Box(
         modifier = modifier
@@ -97,7 +95,7 @@ fun ActressAvatar(
             text = { SelectionContainer { Text(contentDescription) } },
             confirmButton = {
                 TextButton(onClick = {
-                    clipboardManager.setText(AnnotatedString(contentDescription))
+                    ctx.copy(contentDescription)
                     Toast.makeText(ctx, "已複製", Toast.LENGTH_SHORT).show()
                     showDialog = false
                 }) { Text("複製") }
