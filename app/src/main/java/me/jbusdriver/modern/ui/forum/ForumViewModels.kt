@@ -12,6 +12,9 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.content.SharedPreferences
+import androidx.core.content.edit
+import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumBanner
@@ -221,12 +224,24 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
 
-    private val _loadedGifUrls = MutableStateFlow(emptySet<String>())
+    private val gifPrefs: SharedPreferences = JBus.getSharedPreferences("gif_loaded_urls", 0)
+
+    private val _loadedGifUrls = MutableStateFlow(loadPersistedGifUrls())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
 
-    fun onLoadAllGifs(urls: Collection<String>) {
-        _loadedGifUrls.update { it + urls }
+    fun onLoadGif(url: String) {
+        _loadedGifUrls.update { it + url }
+        persistGifUrls(_loadedGifUrls.value)
+    }
+
+    private fun loadPersistedGifUrls(): Set<String> {
+        return gifPrefs.getStringSet("urls", emptySet()) ?: emptySet()
+    }
+
+    private fun persistGifUrls(urls: Set<String>) {
+        val trimmed = if (urls.size > MAX_GIF_CACHE) urls.toList().takeLast(MAX_GIF_CACHE).toSet() else urls
+        gifPrefs.edit { putStringSet("urls", trimmed) }
     }
 
     init {
@@ -293,5 +308,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(navKey: RouteForumThreadDetail): ForumThreadDetailViewModel
+    }
+
+    companion object {
+        private const val MAX_GIF_CACHE = 50
     }
 }

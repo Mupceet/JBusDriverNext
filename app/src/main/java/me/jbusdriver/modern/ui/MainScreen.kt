@@ -70,7 +70,7 @@ private data class BottomNavItem(
 private val BottomNavItems = listOf(
     BottomNavItem(BottomNavCategory.MOVIE, "影片", R.drawable.movie_24px),
     BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px),
-    BottomNavItem(BottomNavCategory.FORUM, "论坛", R.drawable.forum_24px),
+    BottomNavItem(BottomNavCategory.FORUM, "論壇", R.drawable.forum_24px),
     BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px)
 )
 

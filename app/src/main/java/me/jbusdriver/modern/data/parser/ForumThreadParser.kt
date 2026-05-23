@@ -204,7 +204,7 @@ private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> 
     fun processNode(node: Node) {
         when (node) {
             is TextNode -> {
-                val text = node.text()
+                val text = node.text().trim()
                 if (text.isNotEmpty()) parts.add(TextPart.Plain(text))
             }
             is Element -> {
@@ -212,7 +212,7 @@ private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> 
                     "br" -> flushParts()
                     "a" -> {
                         val text = node.text().trim()
-                        if (text.isNotEmpty()) {
+                        if (text.isNotBlank()) {
                             parts.add(TextPart.Plain(text))
                         }
                     }

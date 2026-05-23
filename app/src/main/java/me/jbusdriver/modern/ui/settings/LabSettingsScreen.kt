@@ -57,7 +57,7 @@ fun LabSettingsScreen(
                 )
             }
             Text(
-                "实验室",
+                "實驗室",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f)
             )
@@ -71,7 +71,7 @@ fun LabSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "实验性功能可能不稳定",
+                "實驗性功能可能不穩定",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -93,7 +93,7 @@ fun LabSettingsScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "论坛功能",
+                            "論壇功能",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -101,7 +101,7 @@ fun LabSettingsScreen(
 
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "浏览论坛版块、阅读和参与帖子讨论",
+                        "瀏覽論壇版塊、閱讀和參與帖子討論",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -113,7 +113,7 @@ fun LabSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("启用", style = MaterialTheme.typography.bodyMedium)
+                        Text("啟用", style = MaterialTheme.typography.bodyMedium)
                         Switch(
                             checked = forumEnabled,
                             onCheckedChange = { labSettingsStore.setForumEnabled(it) }
@@ -129,7 +129,7 @@ fun LabSettingsScreen(
                 )
             ) {
                 Text(
-                    "更多实验功能即将推出…",
+                    "更多實驗功能即將推出…",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier

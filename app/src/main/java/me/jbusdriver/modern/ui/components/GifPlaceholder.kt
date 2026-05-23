@@ -42,7 +42,7 @@ fun GifPlaceholder(
                 modifier = Modifier.size(36.dp)
             )
             Text(
-                text = "點擊加載",
+                text = "點擊載入",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

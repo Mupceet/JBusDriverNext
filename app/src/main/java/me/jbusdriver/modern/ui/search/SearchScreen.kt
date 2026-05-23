@@ -197,7 +197,9 @@ fun SearchScreen(
 
         // Lab entry card — appears when searchInput matches keywords
         val showLabEntry = searchInput.trim().lowercase().let { q ->
-            q == "setting" || q == "settings" || q == "设置"
+            q == "setting" || q == "settings" ||
+                    q == "设置" || q == "实验室" || q == "论坛" ||
+                    q == "設置" || q == "實驗室" || q == "論壇"
         }
         if (showLabEntry) {
             Card(
@@ -226,12 +228,12 @@ fun SearchScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            "实验室",
+                            "實驗室",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "实验性功能设置",
+                            "實驗性功能設置",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

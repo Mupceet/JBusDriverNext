@@ -60,7 +60,7 @@ class JBusApplication : AppContext(), ImageLoaderFactory {
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(100L * 1024 * 1024)
+                    .maxSizeBytes(800L * 1024 * 1024)
                     .build()
             }
             .components { add(GifDecoder.Factory()) }
