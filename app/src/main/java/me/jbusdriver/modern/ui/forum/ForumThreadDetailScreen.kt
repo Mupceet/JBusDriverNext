@@ -171,7 +171,7 @@ fun ForumThreadDetailScreen(
                                 PostContent(
                                     blocks = detail.contentBlocks,
                                     onImageClick = onImageClick,
-                                    modifier = Modifier.padding(12.dp),
+                                    modifier = Modifier.padding(10.dp),
                                     loadedGifUrls = loadedGifUrls,
                                     onLoadAllGifs = { viewModel.onLoadAllGifs(it) }
                                 )
@@ -266,7 +266,7 @@ private fun PostContent(
     }
 
     SelectionContainer {
-        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             var viewableIndex = 0
             blocks.forEach { block ->
                 when (block) {
@@ -332,7 +332,7 @@ private fun PostContent(
                                         strokeWidth = 3.dp.toPx()
                                     )
                                 }
-                                .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+                                .padding(start = 10.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
                         ) {
                             Column {
                                 if (block.author.isNotEmpty()) {
