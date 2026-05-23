@@ -44,6 +44,8 @@ class SessionCookieStore {
             val json = GSON.toJson(entries)
             prefs.edit { putString(prefsKey(url), json) }
             KLog.d("[SessionCookieStore] Saved ${entries.size} cookies for $url", TAG)
+        } else {
+            KLog.d("[SessionCookieStore] No tracked cookies found for $url", TAG)
         }
     }
 
@@ -53,17 +55,19 @@ class SessionCookieStore {
      */
     fun restoreCookies(url: String) {
         val json = prefs.getString(prefsKey(url), null) ?: return
-        val entries = GSON.fromJson<Map<String, PersistedCookie>>(json) ?: return
+        val entries = tryParse(json) ?: return
         val now = System.currentTimeMillis() / 1000
         val cookieManager = CookieManager.getInstance()
+        var restored = 0
 
         for ((name, cookie) in entries) {
             if (cookie.expiresAt == 0L || cookie.expiresAt > now) {
                 cookieManager.setCookie(url, "$name=${cookie.value}; path=/")
+                restored++
             }
         }
-        cookieManager.flush()
-        KLog.d("[SessionCookieStore] Restored cookies for $url", TAG)
+        if (restored > 0) cookieManager.flush()
+        KLog.d("[SessionCookieStore] Restored $restored/${entries.size} cookies for $url", TAG)
     }
 
     /**
@@ -72,7 +76,7 @@ class SessionCookieStore {
      */
     fun isSessionValid(url: String): Boolean {
         val json = prefs.getString(prefsKey(url), null) ?: return false
-        val entries = GSON.fromJson<Map<String, PersistedCookie>>(json) ?: return false
+        val entries = tryParse(json) ?: return false
         val now = System.currentTimeMillis() / 1000
 
         for (name in CRITICAL_COOKIES) {
@@ -94,6 +98,10 @@ class SessionCookieStore {
     private fun prefsKey(url: String): String {
         val host = url.substringAfter("://").substringBefore("/")
         return "session_cookies_$host"
+    }
+
+    private fun tryParse(json: String): Map<String, PersistedCookie>? {
+        return try { GSON.fromJson<Map<String, PersistedCookie>>(json) } catch (_: Exception) { null }
     }
 
     private fun parseCookieString(cookieString: String): Map<String, String> {
