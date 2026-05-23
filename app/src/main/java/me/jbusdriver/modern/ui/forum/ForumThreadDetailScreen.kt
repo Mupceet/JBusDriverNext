@@ -1,11 +1,8 @@
 package me.jbusdriver.modern.ui.forum
 
 import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,8 +46,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +86,7 @@ fun ForumThreadDetailScreen(
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val showScrollToTop = rememberScrollToTopVisibility(listState)
 
     val nearEnd by remember {
@@ -107,8 +103,6 @@ fun ForumThreadDetailScreen(
         }
     }
 
-    val handleLinkClick = rememberLinkClickHandler()
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -122,6 +116,18 @@ fun ForumThreadDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        val url = "${me.jbusdriver.modern.core.http.NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, url)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "分享帖子"))
+                    }) {
+                        Icon(painterResource(R.drawable.share_24px), contentDescription = "分享")
                     }
                 }
             )
@@ -165,7 +171,6 @@ fun ForumThreadDetailScreen(
                                 PostContent(
                                     blocks = detail.contentBlocks,
                                     onImageClick = onImageClick,
-                                    onLinkClick = handleLinkClick,
                                     modifier = Modifier.padding(12.dp),
                                     loadedGifUrls = loadedGifUrls,
                                     onLoadAllGifs = { viewModel.onLoadAllGifs(it) }
@@ -192,7 +197,6 @@ fun ForumThreadDetailScreen(
                                 ReplyItem(
                                     reply = detail.replies[index],
                                     onImageClick = onImageClick,
-                                    onLinkClick = handleLinkClick,
                                     loadedGifUrls = loadedGifUrls,
                                     onLoadAllGifs = { viewModel.onLoadAllGifs(it) }
                                 )
@@ -245,111 +249,10 @@ fun ForumThreadDetailScreen(
 }
 
 @Composable
-private fun RichTextContent(
-    parts: List<TextPart>,
-    onLinkClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val linkStyle = androidx.compose.ui.text.SpanStyle(
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
-    )
-    val tag = "URL"
-
-    val annotatedString = buildAnnotatedString(parts, linkStyle, tag)
-
-    ClickableText(
-        text = annotatedString,
-        style = MaterialTheme.typography.bodyMedium.copy(
-            lineHeight = 22.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        ),
-        modifier = modifier,
-        onClick = { offset ->
-            annotatedString.getStringAnnotations(tag, offset, offset)
-                .firstOrNull()
-                ?.let { onLinkClick(it.item) }
-        }
-    )
-}
-
-@Composable
-private fun SelectableRichTextContent(
-    parts: List<TextPart>,
-    modifier: Modifier = Modifier
-) {
-    val fullText = parts.joinToString("") { part ->
-        when (part) {
-            is TextPart.Plain -> part.text
-        }
-    }
-    SelectionContainer {
-        Text(
-            fullText,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                lineHeight = 22.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = modifier
-        )
-    }
-}
-
-private fun buildAnnotatedString(
-    parts: List<TextPart>,
-    linkStyle: androidx.compose.ui.text.SpanStyle,
-    tag: String
-): androidx.compose.ui.text.AnnotatedString {
-    return androidx.compose.ui.text.buildAnnotatedString {
-        for (part in parts) {
-            when (part) {
-                is TextPart.Plain -> append(part.text)
-            }
-        }
-    }
-}
-
-@Composable
-private fun rememberLinkClickHandler(
-    onForumThreadClick: (Int) -> Unit = {},
-    onForumBoardClick: (Int) -> Unit = {}
-): (String) -> Unit {
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    return remember(context) {
-        { url: String ->
-            val threadMatch = Regex("""tid=(\d+)""").find(url)
-            val fidMatch = Regex("""fid=(\d+)""").find(url)
-
-            when {
-                threadMatch != null -> {
-                    val tid = threadMatch.groupValues[1].toIntOrNull()
-                    if (tid != null) onForumThreadClick(tid)
-                }
-                fidMatch != null -> {
-                    val fid = fidMatch.groupValues[1].toIntOrNull()
-                    if (fid != null) onForumBoardClick(fid)
-                }
-                else -> {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        context.startActivity(Intent.createChooser(intent, "選擇瀏覽器"))
-                    } catch (_: Exception) {
-                        Toast.makeText(context, "無法打開鏈接", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PostContent(
     blocks: List<ContentBlock>,
     onImageClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
-    onLinkClick: (String) -> Unit = {},
     loadedGifUrls: Set<String> = emptySet(),
     onLoadAllGifs: (Collection<String>) -> Unit = {}
 ) {
@@ -362,115 +265,88 @@ private fun PostContent(
             .map { it.url }
     }
 
-    var selectionMode by remember { mutableStateOf(false) }
-
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (selectionMode) {
-            Text(
-                "選擇模式 · 點擊空白退出",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { selectionMode = false }
-                    .padding(bottom = 4.dp)
-            )
-        }
-
-        val contentModifier = if (selectionMode) {
-            Modifier.pointerInput(Unit) {
-                detectTapGestures { selectionMode = false }
-            }
-        } else {
-            Modifier.pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = { selectionMode = true }
-                )
-            }
-        }
-
-        Column(
-            modifier = contentModifier,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            var viewableIndex = 0
-            blocks.forEach { block ->
-                when (block) {
-                    is ContentBlock.RichText -> {
-                        if (selectionMode) {
-                            SelectableRichTextContent(parts = block.parts)
-                        } else {
-                            RichTextContent(
-                                parts = block.parts,
-                                onLinkClick = onLinkClick
+        var viewableIndex = 0
+        blocks.forEach { block ->
+            when (block) {
+                is ContentBlock.RichText -> {
+                    val text = block.parts.joinToString("") { (it as TextPart.Plain).text }
+                    SelectionContainer {
+                        Text(
+                            text,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                lineHeight = 22.sp,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                        }
+                        )
                     }
-                    is ContentBlock.Image -> {
-                        if (block.isGif && block.url !in loadedGifUrls) {
-                            GifPlaceholder(
-                                onClick = { onLoadAllGifs(allGifUrls) },
-                                modifier = if (block.isFullSize) {
-                                    Modifier.fillMaxWidth().height(180.dp)
-                                } else {
-                                    Modifier.size(48.dp)
-                                }
-                            )
-                        } else {
-                            val currentIdx = viewableIndex++
-                            if (block.isFullSize) {
-                                AsyncImage(
-                                    model = block.url,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { onImageClick(viewableImageUrls, currentIdx) },
-                                    contentScale = ContentScale.FillWidth
-                                )
+                }
+                is ContentBlock.Image -> {
+                    if (block.isGif && block.url !in loadedGifUrls) {
+                        GifPlaceholder(
+                            onClick = { onLoadAllGifs(allGifUrls) },
+                            modifier = if (block.isFullSize) {
+                                Modifier.fillMaxWidth().height(180.dp)
                             } else {
-                                AsyncImage(
-                                    model = block.url,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .clickable { onImageClick(viewableImageUrls, currentIdx) },
-                                    contentScale = ContentScale.Fit
-                                )
+                                Modifier.size(48.dp)
                             }
+                        )
+                    } else {
+                        val currentIdx = viewableIndex++
+                        if (block.isFullSize) {
+                            AsyncImage(
+                                model = block.url,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onImageClick(viewableImageUrls, currentIdx) },
+                                contentScale = ContentScale.FillWidth
+                            )
+                        } else {
+                            AsyncImage(
+                                model = block.url,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { onImageClick(viewableImageUrls, currentIdx) },
+                                contentScale = ContentScale.Fit
+                            )
                         }
                     }
-                    is ContentBlock.Quote -> {
-                        val accentColor = MaterialTheme.colorScheme.primary
-                        Card(
-                            shape = RoundedCornerShape(6.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                }
+                is ContentBlock.Quote -> {
+                    val accentColor = MaterialTheme.colorScheme.primary
+                    Card(
+                        shape = RoundedCornerShape(6.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .drawBehind {
+                                    drawLine(
+                                        color = accentColor,
+                                        start = Offset(0f, 0f),
+                                        end = Offset(0f, size.height),
+                                        strokeWidth = 3.dp.toPx()
+                                    )
+                                }
+                                .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .drawBehind {
-                                        drawLine(
-                                            color = accentColor,
-                                            start = Offset(0f, 0f),
-                                            end = Offset(0f, size.height),
-                                            strokeWidth = 3.dp.toPx()
-                                        )
-                                    }
-                                    .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
-                            ) {
-                                Column {
-                                    if (block.author.isNotEmpty()) {
-                                        Text(
-                                            "${block.author}：",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontStyle = FontStyle.Italic,
-                                                fontWeight = FontWeight.Medium
-                                            ),
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                            Column {
+                                if (block.author.isNotEmpty()) {
+                                    Text(
+                                        "${block.author}：",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontStyle = FontStyle.Italic,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                SelectionContainer {
                                     Text(
                                         block.content,
                                         style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
@@ -578,7 +454,6 @@ private fun CommentsSection(comments: List<Comment>) {
 private fun ReplyItem(
     reply: ForumReply,
     onImageClick: (List<String>, Int) -> Unit,
-    onLinkClick: (String) -> Unit = {},
     loadedGifUrls: Set<String> = emptySet(),
     onLoadAllGifs: (Collection<String>) -> Unit = {}
 ) {
@@ -627,7 +502,6 @@ private fun ReplyItem(
                 PostContent(
                     blocks = reply.contentBlocks,
                     onImageClick = onImageClick,
-                    onLinkClick = onLinkClick,
                     modifier = Modifier.padding(top = 4.dp),
                     loadedGifUrls = loadedGifUrls,
                     onLoadAllGifs = onLoadAllGifs
