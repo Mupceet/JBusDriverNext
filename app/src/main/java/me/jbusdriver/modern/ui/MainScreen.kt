@@ -44,9 +44,7 @@ import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.components.SearchBar
-import me.jbusdriver.modern.data.ForumMode
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
-import me.jbusdriver.modern.ui.forum.ForumWebViewScreen
 import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
@@ -99,7 +97,6 @@ fun MainScreen(
 
     val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
     val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
-    val forumMode by labSettingsStore.forumMode.collectAsStateWithLifecycle()
 
     // Auto-switch away from Forum tab when disabled
     LaunchedEffect(forumEnabled) {
@@ -108,7 +105,7 @@ fun MainScreen(
         }
     }
 
-    // Preload forum data — creating the ViewModel triggers init → loadBoards()
+    // Preload forum data when enabled
     if (forumEnabled) hiltViewModel<ForumBoardsViewModel>()
 
     Scaffold(
@@ -356,15 +353,10 @@ fun MainScreen(
                     BottomNavCategory.FORUM -> {
                         SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 8.dp))
 
-                        when (forumMode) {
-                            ForumMode.NATIVE -> ForumBoardsScreen(
-                                onBoardClick = onForumBoardClick,
-                                onThreadClick = onForumThreadClick
-                            )
-                            ForumMode.WEBVIEW -> ForumWebViewScreen(
-                                onThreadClick = onForumThreadClick
-                            )
-                        }
+                        ForumBoardsScreen(
+                            onBoardClick = onForumBoardClick,
+                            onThreadClick = onForumThreadClick
+                        )
                     }
                 }
             }

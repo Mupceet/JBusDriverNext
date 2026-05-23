@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,21 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.ForumMode
 import me.jbusdriver.modern.data.LabSettingsStore
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabSettingsScreen(
     onBack: () -> Unit,
     labSettingsStore: LabSettingsStore = hiltViewModel<LabSettingsViewModel>().store
 ) {
     val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
-    val forumMode by labSettingsStore.forumMode.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -124,32 +119,6 @@ fun LabSettingsScreen(
                             onCheckedChange = { labSettingsStore.setForumEnabled(it) }
                         )
                     }
-
-                    if (forumEnabled) {
-                        Spacer(Modifier.height(12.dp))
-                        Text("渲染模式", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            ModeChip(
-                                label = "原生渲染",
-                                subtitle = if (forumMode == ForumMode.NATIVE) "✓ 当前" else "",
-                                selected = forumMode == ForumMode.NATIVE,
-                                onClick = { labSettingsStore.setForumMode(ForumMode.NATIVE) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            ModeChip(
-                                label = "WebView",
-                                subtitle = if (forumMode == ForumMode.WEBVIEW) "✓ 当前" else "网页模式",
-                                selected = forumMode == ForumMode.WEBVIEW,
-                                onClick = { labSettingsStore.setForumMode(ForumMode.WEBVIEW) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
                 }
             }
 
@@ -167,51 +136,6 @@ fun LabSettingsScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                         .height(24.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModeChip(
-    label: String,
-    subtitle: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            }
-        ),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
-            )
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
