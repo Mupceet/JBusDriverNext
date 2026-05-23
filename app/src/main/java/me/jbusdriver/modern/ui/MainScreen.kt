@@ -44,7 +44,10 @@ import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.components.SearchBar
+import me.jbusdriver.modern.data.ForumMode
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
+import me.jbusdriver.modern.ui.forum.ForumWebViewScreen
+import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
@@ -94,14 +97,26 @@ fun MainScreen(
         uiPrefs.edit { putBoolean("is_grid", isGrid) }
     }
 
+    val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
+    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
+    val forumMode by labSettingsStore.forumMode.collectAsStateWithLifecycle()
+
+    // Auto-switch away from Forum tab when disabled
+    LaunchedEffect(forumEnabled) {
+        if (!forumEnabled && selectedCategory == BottomNavCategory.FORUM) {
+            selectedCategory = BottomNavCategory.MOVIE
+        }
+    }
+
     // Preload forum data — creating the ViewModel triggers init → loadBoards()
-    hiltViewModel<ForumBoardsViewModel>()
+    if (forumEnabled) hiltViewModel<ForumBoardsViewModel>()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             NavigationBar(modifier = Modifier.height(64.dp)) {
                 BottomNavItems.forEach { item ->
+                    if (item.category == BottomNavCategory.FORUM && !forumEnabled) return@forEach
                     NavigationBarItem(
                         selected = selectedCategory == item.category,
                         onClick = { selectedCategory = item.category },
@@ -339,13 +354,17 @@ fun MainScreen(
                     )
 
                     BottomNavCategory.FORUM -> {
-                        // Search bar
                         SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 8.dp))
 
-                        ForumBoardsScreen(
-                            onBoardClick = onForumBoardClick,
-                            onThreadClick = onForumThreadClick
-                        )
+                        when (forumMode) {
+                            ForumMode.NATIVE -> ForumBoardsScreen(
+                                onBoardClick = onForumBoardClick,
+                                onThreadClick = onForumThreadClick
+                            )
+                            ForumMode.WEBVIEW -> ForumWebViewScreen(
+                                onThreadClick = onForumThreadClick
+                            )
+                        }
                     }
                 }
             }
