@@ -133,7 +133,8 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
     val avatarSrc = doc.select(".nthread_firstpost .post_avatar img[src]").attr("src")
         .ifBlank { doc.select(".pls.favatar .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
 
-    val contentBlocks = parsePostContent(firstPost?.select("td.t_f")?.firstOrNull(), baseUrl)
+    val typeOptionBlocks = parsePostContent(firstPost?.select("div.typeoption")?.firstOrNull(), baseUrl)
+    val contentBlocks = typeOptionBlocks + parsePostContent(firstPost?.select("td.t_f")?.firstOrNull(), baseUrl)
 
     val comments = firstPost?.select("div.cm div.pstl")?.map { pstl ->
         Comment(
