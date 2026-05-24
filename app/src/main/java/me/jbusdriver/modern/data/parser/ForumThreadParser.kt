@@ -131,6 +131,7 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim() ?: ""
 
     val avatarSrc = doc.select(".nthread_firstpost .post_avatar img[src]").attr("src")
+        .ifBlank { doc.select("div.viewthread_authorinfo .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
         .ifBlank { doc.select(".pls.favatar .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
 
     val typeOptionBlocks = parsePostContent(firstPost?.select("div.typeoption")?.firstOrNull(), baseUrl)

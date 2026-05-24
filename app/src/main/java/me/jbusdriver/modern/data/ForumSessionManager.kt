@@ -13,6 +13,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.ByteArrayInputStream
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
@@ -32,10 +33,31 @@ private val BLOCKED_EXTENSIONS = setOf(
     "jpg", "jpeg", "png", "gif", "webp", "svg", "ico"
 )
 
+private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp", "svg", "ico")
+
+/** 1x1 transparent PNG — returned for blocked images to prevent onerror from rewriting src. */
+private val TRANSPARENT_PNG = byteArrayOf(
+    0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15.toByte(), 0xC4.toByte(),
+    0x89.toByte(), 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+    0x54, 0x08, 0xD7.toByte(), 0x63, 0x00, 0x01,
+    0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE2.toByte(), 0x21, 0xBC.toByte(),
+    0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+    0x44, 0xAE.toByte(), 0x42, 0x60, 0x82.toByte()
+)
+
 private fun isBlockedResource(url: String): Boolean {
     val path = url.substringBefore("?").substringBefore("#").lowercase()
     val ext = path.substringAfterLast('.', "")
     return ext in BLOCKED_EXTENSIONS
+}
+
+private fun isImageResource(url: String): Boolean {
+    val path = url.substringBefore("?").substringBefore("#").lowercase()
+    val ext = path.substringAfterLast('.', "")
+    return ext in IMAGE_EXTENSIONS
 }
 
 /**
@@ -196,8 +218,17 @@ class ForumSessionManager @Inject constructor(
                     view: WebView?,
                     request: WebResourceRequest?
                 ): WebResourceResponse? {
-                    if (request != null && !request.isForMainFrame && isBlockedResource(request.url.toString())) {
-                        return WebResourceResponse("text/plain", "utf-8", null)
+                    if (request != null && !request.isForMainFrame) {
+                        val url = request.url.toString()
+                        if (isBlockedResource(url)) {
+                            return if (isImageResource(url)) {
+                                // Return a valid 1x1 transparent PNG so the <img> loads
+                                // "successfully" — prevents onerror from overwriting src.
+                                WebResourceResponse("image/png", "utf-8", ByteArrayInputStream(TRANSPARENT_PNG))
+                            } else {
+                                WebResourceResponse("text/plain", "utf-8", null)
+                            }
+                        }
                     }
                     return super.shouldInterceptRequest(view, request)
                 }
