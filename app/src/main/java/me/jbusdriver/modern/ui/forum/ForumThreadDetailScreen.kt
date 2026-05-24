@@ -275,6 +275,17 @@ fun ForumThreadDetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) { CircularProgressIndicator() }
                     }
+                    else -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().clickable { viewModel.refresh() },
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("內容為空", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(8.dp))
+                            Text("點擊刷新", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
                 ScrollToTopButton(
                     visible = showScrollToTop,
