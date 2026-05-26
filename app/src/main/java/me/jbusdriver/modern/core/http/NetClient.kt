@@ -158,4 +158,21 @@ object NetClient {
         return withContext(Dispatchers.Default) { Jsoup.parse(html, url) }
     }
 
+    /**
+     * Check if a URL is reachable via HEAD request.
+     * Returns true if the server responds with a successful status code.
+     */
+    suspend fun checkReachable(url: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .head()
+                .header("User-Agent", USER_AGENT)
+                .build()
+            okHttpClient.newCall(request).execute().use { it.isSuccessful }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
 }
