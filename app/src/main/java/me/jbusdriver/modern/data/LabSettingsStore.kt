@@ -7,12 +7,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.http.WebViewHelper
+import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
+import me.jbusdriver.modern.core.http.WebViewHelper.loadUrlAwait
+import me.jbusdriver.modern.core.http.WebViewHelper.unescapeJsString
+import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -68,9 +73,30 @@ class LabSettingsStore @Inject constructor() {
         NetClient.defaultFastUrl = trimmed
     }
 
-    private val mirrorUrlRegex =
-        """(?:防屏蔽地址|永久域名)[：:]\s*</strong>\s*<a\s+href="(https?://[^"]+)"""".toRegex()
+    /**
+     * JavaScript to extract mirror URLs from the rendered DOM.
+     */
+    private val extractMirrorJs = """
+        (function() {
+            var urls = [];
+            document.querySelectorAll('strong').forEach(function(el) {
+                var text = el.textContent;
+                if (text.indexOf('防屏蔽地址') !== -1 || text.indexOf('永久域名') !== -1) {
+                    var parent = el.parentElement;
+                    var link = parent ? parent.querySelector('a[href]') : null;
+                    if (link && link.href && link.href.indexOf('http') === 0) {
+                        urls.push(link.href);
+                    }
+                }
+            });
+            return JSON.stringify(urls);
+        })()
+    """
 
+    /**
+     * Scan mirror URLs by loading pages in a WebView (JS-rendered content)
+     * and recursively discovering mirror addresses.
+     */
     suspend fun scanMirrorUrls(
         state: MutableStateFlow<ScanState>,
         seedUrl: String
@@ -83,33 +109,40 @@ class LabSettingsStore @Inject constructor() {
 
         state.value = ScanState(isScanning = true, phase = ScanPhase.DISCOVERING)
 
-        // Phase 1: Discover URLs by crawling
-        while (queue.isNotEmpty()) {
-            coroutineContext.ensureActive()
-            val url = queue.removeFirst()
-            if (url in scanned) continue
-            scanned.add(url)
-
-            state.value = state.value.copy(
-                scannedCount = scanned.size,
-                totalCount = discovered.size,
-                currentUrl = url
-            )
-
+        // Phase 1: Discover URLs via WebView
+        withContext(Dispatchers.Main) {
+            val webView = WebViewHelper.createWebView()
             try {
-                val html = NetClient.fetchHtml(url)
-                val matches = mirrorUrlRegex.findAll(html)
-                for (match in matches) {
-                    val found = match.groupValues[1].trimEnd('/')
-                    if (found !in discovered) {
-                        discovered.add(found)
-                        queue.add(found)
+                while (queue.isNotEmpty()) {
+                    if (!coroutineContext.isActive) break
+                    val url = queue.removeFirst()
+                    if (url in scanned) continue
+                    scanned.add(url)
+
+                    state.value = state.value.copy(
+                        scannedCount = scanned.size,
+                        totalCount = discovered.size,
+                        currentUrl = url
+                    )
+
+                    try {
+                        val mirrorUrls = loadAndExtractMirrorUrls(webView, url)
+                        for (found in mirrorUrls) {
+                            val trimmed = found.trimEnd('/')
+                            if (trimmed !in discovered) {
+                                discovered.add(trimmed)
+                                queue.add(trimmed)
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        KLog.d("Scan failed for $url: ${e.message}")
                     }
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                KLog.d("Scan failed for $url: ${e.message}")
+            } finally {
+                webView.stopLoading()
+                webView.destroy()
             }
         }
 
@@ -118,7 +151,7 @@ class LabSettingsStore @Inject constructor() {
         val verified = mutableListOf<MirrorUrl>()
 
         for ((index, url) in urlList.withIndex()) {
-            coroutineContext.ensureActive()
+            if (!coroutineContext.isActive) break
             state.value = state.value.copy(
                 phase = ScanPhase.VERIFYING,
                 scannedCount = index + 1,
@@ -139,6 +172,28 @@ class LabSettingsStore @Inject constructor() {
             phase = ScanPhase.DONE,
             discoveredUrls = verified
         )
+    }
+
+    /**
+     * Load a URL in the WebView, wait for JS to render,
+     * then extract mirror URLs from the DOM.
+     */
+    private suspend fun loadAndExtractMirrorUrls(webView: android.webkit.WebView, url: String): List<String> {
+        webView.loadUrlAwait(url)
+
+        val result = webView.evaluateJs(extractMirrorJs)
+        if (result == null || result == "null") return emptyList()
+
+        return try {
+            val jsonStr = unescapeJsString(result)
+            val arr = JSONArray(jsonStr)
+            val urls = (0 until arr.length()).map { arr.getString(it) }
+            KLog.d("Mirror scan found ${urls.size} URLs from $url")
+            urls
+        } catch (e: Exception) {
+            KLog.d("Mirror JS extraction failed: ${e.message}")
+            emptyList()
+        }
     }
 
     companion object {

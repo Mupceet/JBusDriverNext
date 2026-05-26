@@ -1,12 +1,9 @@
 package me.jbusdriver.modern.data
 
 import android.app.Activity
-import android.webkit.CookieManager
-import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -17,6 +14,10 @@ import java.io.ByteArrayInputStream
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.http.WebViewHelper
+import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
+import me.jbusdriver.modern.core.http.WebViewHelper.loadUrlAwait
+import me.jbusdriver.modern.core.http.WebViewHelper.unescapeJsString
 import me.jbusdriver.modern.core.site.SiteConfig
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -35,7 +36,6 @@ private val BLOCKED_EXTENSIONS = setOf(
 
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp", "svg", "ico")
 
-/** 1x1 transparent PNG — returned for blocked images to prevent onerror from rewriting src. */
 private val TRANSPARENT_PNG = byteArrayOf(
     0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
     0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
@@ -83,16 +83,11 @@ class ForumSessionManager @Inject constructor(
 
     fun isInitialized(): Boolean = initialized.get()
 
-    /**
-     * Initialize session for forum access.
-     * Tries to restore persisted cookies first; only creates WebView if needed.
-     */
     suspend fun ensureSession(activity: Activity) {
         if (initialized.get()) return
         mutex.withLock {
             if (initialized.get()) return
 
-            // Try restoring persisted cookies first
             val url = siteConfig.referer()
             if (cookieStore.isSessionValid(url)) {
                 cookieStore.restoreCookies(url)
@@ -101,7 +96,6 @@ class ForumSessionManager @Inject constructor(
                 return
             }
 
-            // Fall back to WebView initialization
             initWebView(activity)
         }
     }
@@ -109,26 +103,16 @@ class ForumSessionManager @Inject constructor(
     private suspend fun initWebView(activity: Activity) {
         withTimeout(15_000) {
             withContext(Dispatchers.Main) {
-                val wv = WebView(activity.applicationContext).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                }
-                CookieManager.getInstance().setAcceptCookie(true)
-                CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
-
+                val wv = WebViewHelper.createWebView()
                 webView = wv
                 try {
-                    // Load main site to establish session
                     val mainUrl = siteConfig.referer()
                     KLog.d("[Forum] Loading main site: $mainUrl", TAG)
-                    loadPageUrl(wv, mainUrl)
+                    loadPageWithBlockedResources(wv, mainUrl)
 
-                    // Wait for JS-based cookie setting to complete
                     delay(1000)
 
-                    // Save cookies for future reuse
                     cookieStore.saveCookies(mainUrl)
-
                     initialized.set(true)
                     KLog.d("[Forum] WebView session initialized", TAG)
                 } catch (e: Exception) {
@@ -141,34 +125,26 @@ class ForumSessionManager @Inject constructor(
         }
     }
 
-    /**
-     * Fetch a forum page URL and return the parsed Jsoup Document.
-     * The page is loaded in the WebView, HTML is extracted via JS,
-     * then parsed with Jsoup.
-     */
     suspend fun fetchDocument(url: String): Document {
         val wv = webView ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
         val html = withContext(Dispatchers.Main) {
             withTimeout(20_000) {
-                loadPageHtml(wv, url)
+                loadPageWithBlockedResources(wv, url)
+                KLog.d("[Forum] Page loaded: $url", TAG)
+                val raw = wv.evaluateJs("document.documentElement.outerHTML")
+                    ?: throw IOException("Failed to extract HTML from $url")
+                val html = unescapeJsString(raw)
+                KLog.d("[Forum] HTML extracted: ${html.length} chars", TAG)
+                html
             }
         }
         return Jsoup.parse(html, url)
     }
 
-    /**
-     * Save current cookies from CookieManager.
-     * Called after a successful forum page fetch to capture Discuz! session cookies
-     * that are only set when /forum/ is first accessed.
-     */
     fun persistCookies() {
         cookieStore.saveCookies(siteConfig.referer())
     }
 
-    /**
-     * Destroy the WebView and release resources.
-     * Call when the user leaves the forum feature.
-     */
     fun destroy() {
         val wv = webView
         if (wv != null) {
@@ -178,123 +154,50 @@ class ForumSessionManager @Inject constructor(
             webView = null
         }
         initialized.set(false)
-        // Note: persisted cookies are NOT cleared here.
-        // They will be restored on next ensureSession() call.
     }
 
     /**
-     * Load a URL in the WebView, wait for onPageFinished,
-     * then extract the full HTML via evaluateJavascript.
+     * Load a URL with resource blocking (CSS/JS/images) for faster forum page loading.
      */
-    private suspend fun loadPageHtml(webView: WebView, url: String): String {
-        // First wait for page to load
-        val pageUrl = loadPageUrl(webView, url)
-        KLog.d("[Forum] Page loaded: $pageUrl (requested: $url)", TAG)
-
-        // Then extract HTML
-        return suspendCancellableCoroutine { cont ->
-            webView.evaluateJavascript("document.documentElement.outerHTML") { result ->
-                if (cont.isActive) {
-                    if (result != null) {
-                        // evaluateJavascript returns JSON-encoded string
-                        val html = unescapeJsonString(result)
-                        KLog.d("[Forum] HTML extracted: ${html.length} chars", TAG)
-                        cont.resume(html) { _, _, _ -> }
-                    } else {
-                        cont.resumeWith(Result.failure(IOException("Failed to extract HTML from $url")))
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Load a URL and wait for onPageFinished. Returns the final URL.
-     */
-    private suspend fun loadPageUrl(webView: WebView, url: String): String {
-        return suspendCancellableCoroutine { cont ->
-            webView.webViewClient = object : WebViewClient() {
-                override fun shouldInterceptRequest(
-                    view: WebView?,
-                    request: WebResourceRequest?
-                ): WebResourceResponse? {
-                    if (request != null && !request.isForMainFrame) {
-                        val url = request.url.toString()
-                        if (isBlockedResource(url)) {
-                            return if (isImageResource(url)) {
-                                // Return a valid 1x1 transparent PNG so the <img> loads
-                                // "successfully" — prevents onerror from overwriting src.
-                                WebResourceResponse("image/png", "utf-8", ByteArrayInputStream(TRANSPARENT_PNG))
-                            } else {
-                                WebResourceResponse("text/plain", "utf-8", null)
+    private suspend fun loadPageWithBlockedResources(webView: WebView, url: String): String {
+        return withTimeout(20_000) {
+            suspendCancellableCoroutine { cont ->
+                webView.webViewClient = object : android.webkit.WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        if (request != null && !request.isForMainFrame) {
+                            val reqUrl = request.url.toString()
+                            if (isBlockedResource(reqUrl)) {
+                                return if (isImageResource(reqUrl)) {
+                                    WebResourceResponse("image/png", "utf-8", ByteArrayInputStream(TRANSPARENT_PNG))
+                                } else {
+                                    WebResourceResponse("text/plain", "utf-8", null)
+                                }
                             }
                         }
+                        return super.shouldInterceptRequest(view, request)
                     }
-                    return super.shouldInterceptRequest(view, request)
-                }
 
-                override fun onPageFinished(view: WebView?, pageUrl: String?) {
-                    if (cont.isActive) {
-                        cont.resume(pageUrl ?: url) { _, _, _ -> }
-                    }
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                    error: WebResourceError?
-                ) {
-                    if (request?.isForMainFrame == true && cont.isActive) {
-                        KLog.e("[Forum] WebView error: ${error?.description}", TAG)
-                        cont.resumeWith(
-                            Result.failure(
-                                IOException("WebView error loading $url: ${error?.description}")
-                            )
-                        )
-                    }
-                }
-            }
-            webView.loadUrl(url)
-        }
-    }
-}
-
-/**
- * Unescape a JSON-encoded string returned by evaluateJavascript.
- * Removes surrounding quotes and converts escape sequences.
- */
-private fun unescapeJsonString(s: String): String {
-    if (s.length < 2 || s[0] != '"') return s
-    val raw = s.substring(1, s.length - 1)
-    val sb = StringBuilder(raw.length)
-    var i = 0
-    while (i < raw.length) {
-        if (raw[i] == '\\' && i + 1 < raw.length) {
-            when (raw[i + 1]) {
-                'n' -> { sb.append('\n'); i += 2 }
-                'r' -> { sb.append('\r'); i += 2 }
-                't' -> { sb.append('\t'); i += 2 }
-                '"' -> { sb.append('"'); i += 2 }
-                '\\' -> { sb.append('\\'); i += 2 }
-                '/' -> { sb.append('/'); i += 2 }
-                'u' -> {
-                    if (i + 5 < raw.length) {
-                        val hex = raw.substring(i + 2, i + 6)
-                        try {
-                            sb.append(hex.toInt(16).toChar())
-                            i += 6
-                        } catch (_: NumberFormatException) {
-                            sb.append(raw[i]); i++
+                    override fun onPageFinished(view: WebView?, pageUrl: String?) {
+                        if (cont.isActive) {
+                            cont.resume(pageUrl ?: url) { _, _, _ -> }
                         }
-                    } else {
-                        sb.append(raw[i]); i++
+                    }
+
+                    override fun onReceivedError(
+                        view: WebView?,
+                        request: WebResourceRequest?,
+                        error: android.webkit.WebResourceError?
+                    ) {
+                        if (request?.isForMainFrame == true && cont.isActive) {
+                            cont.resumeWith(Result.failure(IOException("WebView error: ${error?.description}")))
+                        }
                     }
                 }
-                else -> { sb.append(raw[i]); i++ }
+                webView.loadUrl(url)
             }
-        } else {
-            sb.append(raw[i]); i++
         }
     }
-    return sb.toString()
 }
