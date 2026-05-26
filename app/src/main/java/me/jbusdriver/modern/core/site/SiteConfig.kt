@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.core.site
 
+import me.jbusdriver.modern.JBus
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,7 +14,17 @@ interface SiteConfig {
 
 internal object SiteConfigStore {
     @Volatile
-    var baseUrl: String = "https://www.javbus.com"
+    var baseUrl: String = loadPersistedUrl()
+        internal set
+
+    private fun loadPersistedUrl(): String {
+        return try {
+            val prefs = JBus.getSharedPreferences("lab_settings", 0)
+            prefs.getString("selected_base_url", null) ?: "https://www.javbus.com"
+        } catch (_: Exception) {
+            "https://www.javbus.com"
+        }
+    }
 }
 
 @Singleton
