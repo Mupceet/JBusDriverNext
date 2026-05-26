@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,36 +11,49 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.LabSettingsStore
+import me.jbusdriver.modern.data.MirrorUrl
+import me.jbusdriver.modern.data.ScanPhase
+import me.jbusdriver.modern.data.ScanState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabSettingsScreen(
     onBack: () -> Unit,
-    labSettingsStore: LabSettingsStore = hiltViewModel<LabSettingsViewModel>().store
+    viewModel: LabSettingsViewModel = hiltViewModel()
 ) {
-    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
+    val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle()
+    val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle()
+    val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -60,7 +74,8 @@ fun LabSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
@@ -109,27 +124,165 @@ fun LabSettingsScreen(
                         Text("啟用", style = MaterialTheme.typography.bodyMedium)
                         Switch(
                             checked = forumEnabled,
-                            onCheckedChange = { labSettingsStore.setForumEnabled(it) }
+                            onCheckedChange = { viewModel.store.setForumEnabled(it) }
                         )
                     }
                 }
             }
 
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            // URL selection card
+            UrlSelectionCard(
+                selectedBaseUrl = selectedBaseUrl,
+                cachedUrls = cachedMirrorUrls,
+                scanState = scanState,
+                onScan = { viewModel.startScan() },
+                onCancel = { viewModel.cancelScan() },
+                onSelect = { viewModel.selectUrl(it) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun UrlSelectionCard(
+    selectedBaseUrl: String,
+    cachedUrls: List<String>,
+    scanState: ScanState,
+    onScan: () -> Unit,
+    onCancel: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "網址選擇",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "當前：${selectedBaseUrl}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Scan button
+            if (scanState.isScanning) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("取消掃描")
+                }
+            } else {
+                Button(
+                    onClick = onScan,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (scanState.phase == ScanPhase.DONE) "重新掃描" else "掃描網址")
+                }
+            }
+
+            // Progress
+            if (scanState.isScanning) {
+                Spacer(Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
                 )
-            ) {
+                Spacer(Modifier.height(4.dp))
+                val phaseText = when (scanState.phase) {
+                    ScanPhase.DISCOVERING -> "正在掃描 ${scanState.scannedCount}/${scanState.totalCount}…"
+                    ScanPhase.VERIFYING -> "正在驗證 ${scanState.scannedCount}/${scanState.totalCount}…"
+                    else -> ""
+                }
                 Text(
-                    "更多實驗功能即將推出…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(24.dp)
+                    phaseText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (scanState.currentUrl.isNotBlank()) {
+                    Text(
+                        scanState.currentUrl,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Error
+            if (scanState.error != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    scanState.error ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            // URL list
+            val urls = if (scanState.phase == ScanPhase.DONE) {
+                scanState.discoveredUrls
+            } else if (!scanState.isScanning && cachedUrls.isNotEmpty()) {
+                cachedUrls.map { MirrorUrl(it, true) }
+            } else {
+                emptyList()
+            }
+
+            if (urls.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                urls.forEach { mirror ->
+                    val isSelected = mirror.url == selectedBaseUrl
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = mirror.isReachable) { onSelect(mirror.url) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painterResource(
+                                if (isSelected) R.drawable.radio_button_checked_24px
+                                else R.drawable.radio_button_unchecked_24px
+                            ),
+                            contentDescription = null,
+                            tint = if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            mirror.url,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(if (!mirror.isReachable) Modifier.alpha(0.4f) else Modifier),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!mirror.isReachable) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "不可達",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
             }
         }
     }
