@@ -17,10 +17,10 @@ import androidx.core.content.edit
 import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
+import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
 import me.jbusdriver.modern.domain.model.ForumHomeSummary
-import me.jbusdriver.modern.domain.model.ForumSummaryThread
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
@@ -216,6 +216,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
 @HiltViewModel(assistedFactory = ForumThreadDetailViewModel.Factory::class)
 class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
+    private val labSettingsStore: LabSettingsStore,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
     private val tid: Int = navKey.tid
@@ -229,6 +230,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _loadedGifUrls = MutableStateFlow(loadPersistedGifUrls())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
+    val autoLoadGifs: StateFlow<Boolean> = labSettingsStore.autoLoadGifs
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }

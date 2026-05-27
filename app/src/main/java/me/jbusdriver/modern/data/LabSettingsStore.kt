@@ -60,6 +60,14 @@ class LabSettingsStore @Inject constructor() {
         _forumEnabled.value = enabled
     }
 
+    private val _autoLoadGifs = MutableStateFlow(prefs.getBoolean(KEY_AUTO_LOAD_GIFS, false))
+    val autoLoadGifs: StateFlow<Boolean> = _autoLoadGifs.asStateFlow()
+
+    fun setAutoLoadGifs(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_AUTO_LOAD_GIFS, enabled) }
+        _autoLoadGifs.value = enabled
+    }
+
     private val _selectedBaseUrl = MutableStateFlow(
         prefs.getString(KEY_SELECTED_BASE_URL, null) ?: DEFAULT_BASE_URL
     )
@@ -261,6 +269,7 @@ class LabSettingsStore @Inject constructor() {
     companion object {
         private const val PREFS_NAME = "lab_settings"
         private const val KEY_FORUM_ENABLED = "forum_enabled"
+        private const val KEY_AUTO_LOAD_GIFS = "auto_load_gifs"
         private const val KEY_SELECTED_BASE_URL = "selected_base_url"
         private const val KEY_CACHED_MIRROR_URLS = "cached_mirror_urls"
         const val DEFAULT_BASE_URL = "https://www.javbus.com"

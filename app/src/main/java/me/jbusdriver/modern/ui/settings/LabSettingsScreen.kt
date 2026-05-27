@@ -58,6 +58,7 @@ fun LabSettingsScreen(
     viewModel: LabSettingsViewModel = hiltViewModel()
 ) {
     val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle()
+    val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle()
     val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle()
     val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
@@ -101,50 +102,12 @@ fun LabSettingsScreen(
             )
 
             // Forum card
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painterResource(R.drawable.forum_24px),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "論壇功能",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "瀏覽論壇版塊、閱讀和參與帖子討論",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("啟用", style = MaterialTheme.typography.bodyMedium)
-                        Switch(
-                            checked = forumEnabled,
-                            onCheckedChange = { viewModel.store.setForumEnabled(it) }
-                        )
-                    }
-                }
-            }
+            ForumCard(
+                forumEnabled = forumEnabled,
+                autoLoadGifs = autoLoadGifs,
+                onForumEnabledChange = { viewModel.store.setForumEnabled(it) },
+                onAutoLoadGifsChange = { viewModel.store.setAutoLoadGifs(it) }
+            )
 
             // URL selection card
             UrlSelectionCard(
@@ -157,6 +120,80 @@ fun LabSettingsScreen(
                 onVerify = { viewModel.startVerify() },
                 onSelect = { viewModel.selectUrl(it) }
             )
+        }
+    }
+}
+
+@Composable
+private fun ForumCard(
+    forumEnabled: Boolean,
+    autoLoadGifs: Boolean,
+    onForumEnabledChange: (Boolean) -> Unit,
+    onAutoLoadGifsChange: (Boolean) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(R.drawable.forum_24px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "論壇功能",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "瀏覽論壇版塊、閱讀和參與帖子討論",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("啟用", style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = forumEnabled,
+                    onCheckedChange = onForumEnabledChange
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("自動載入動圖", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "論壇帖中的 GIF 圖片無需點擊直接播放",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = autoLoadGifs,
+                    onCheckedChange = onAutoLoadGifsChange
+                )
+            }
         }
     }
 }

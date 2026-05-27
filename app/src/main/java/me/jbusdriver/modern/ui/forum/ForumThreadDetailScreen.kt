@@ -94,6 +94,7 @@ fun ForumThreadDetailScreen(
         )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val loadedGifUrls by viewModel.loadedGifUrlsFlow.collectAsStateWithLifecycle()
+    val autoLoadGifs by viewModel.autoLoadGifs.collectAsStateWithLifecycle()
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -207,6 +208,7 @@ fun ForumThreadDetailScreen(
                                         onImageClick = onImageClick,
                                         modifier = Modifier.padding(10.dp),
                                         loadedGifUrls = loadedGifUrls,
+                                        autoLoadGifs = autoLoadGifs,
                                         onLoadGif = { viewModel.onLoadGif(it) },
                                         onLongClick = { dialogBlocks = detail.contentBlocks }
                                     )
@@ -233,6 +235,7 @@ fun ForumThreadDetailScreen(
                                         reply = detail.replies[index],
                                         onImageClick = onImageClick,
                                         loadedGifUrls = loadedGifUrls,
+                                        autoLoadGifs = autoLoadGifs,
                                         onLoadGif = { viewModel.onLoadGif(it) },
                                         onLongClick = { dialogBlocks = detail.replies[index].contentBlocks }
                                     )
@@ -306,12 +309,13 @@ private fun PostContent(
     onImageClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
     loadedGifUrls: Set<String> = emptySet(),
+    autoLoadGifs: Boolean = false,
     onLoadGif: (String) -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
-    val viewableImageUrls = remember(blocks, loadedGifUrls) {
+    val viewableImageUrls = remember(blocks, loadedGifUrls, autoLoadGifs) {
         blocks.filterIsInstance<ContentBlock.Image>()
-            .filter { !it.isGif || it.url in loadedGifUrls }
+            .filter { !it.isGif || autoLoadGifs || it.url in loadedGifUrls }
             .map { it.url }
     }
 
@@ -339,7 +343,7 @@ private fun PostContent(
                 }
 
                 is ContentBlock.Image -> {
-                    if (block.isGif && block.url !in loadedGifUrls) {
+                    if (block.isGif && !autoLoadGifs && block.url !in loadedGifUrls) {
                         GifPlaceholder(
                             onClick = { onLoadGif(block.url) },
                             modifier = if (block.isFullSize) {
@@ -526,6 +530,7 @@ private fun ReplyItem(
     reply: ForumReply,
     onImageClick: (List<String>, Int) -> Unit,
     loadedGifUrls: Set<String> = emptySet(),
+    autoLoadGifs: Boolean = false,
     onLoadGif: (String) -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
@@ -576,6 +581,7 @@ private fun ReplyItem(
                     onImageClick = onImageClick,
                     modifier = Modifier.padding(top = 4.dp),
                     loadedGifUrls = loadedGifUrls,
+                    autoLoadGifs = autoLoadGifs,
                     onLoadGif = onLoadGif,
                     onLongClick = onLongClick
                 )
