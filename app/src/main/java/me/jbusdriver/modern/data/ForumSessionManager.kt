@@ -91,12 +91,22 @@ class ForumSessionManager @Inject constructor(
             val url = siteConfig.referer()
             if (cookieStore.isSessionValid(url)) {
                 cookieStore.restoreCookies(url)
+                ensureWebViewCreated()
                 initialized.set(true)
                 KLog.d("[Forum] Session restored from persisted cookies", TAG)
                 return
             }
 
             initWebView(activity)
+        }
+    }
+
+    private suspend fun ensureWebViewCreated() {
+        if (webView != null) return
+        withContext(Dispatchers.Main) {
+            if (webView == null) {
+                webView = WebViewHelper.createWebView()
+            }
         }
     }
 
@@ -182,6 +192,7 @@ class ForumSessionManager @Inject constructor(
 
                     override fun onPageFinished(view: WebView?, pageUrl: String?) {
                         if (cont.isActive) {
+                            webView.webViewClient = android.webkit.WebViewClient()
                             cont.resume(pageUrl ?: url) { _, _, _ -> }
                         }
                     }
@@ -192,8 +203,15 @@ class ForumSessionManager @Inject constructor(
                         error: android.webkit.WebResourceError?
                     ) {
                         if (request?.isForMainFrame == true && cont.isActive) {
+                            webView.webViewClient = android.webkit.WebViewClient()
                             cont.resumeWith(Result.failure(IOException("WebView error: ${error?.description}")))
                         }
+                    }
+                }
+                cont.invokeOnCancellation {
+                    webView.post {
+                        webView.stopLoading()
+                        webView.webViewClient = android.webkit.WebViewClient()
                     }
                 }
                 webView.loadUrl(url)

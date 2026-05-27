@@ -31,6 +31,7 @@ object WebViewHelper {
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, pageUrl: String?) {
                         if (cont.isActive) {
+                            webViewClient = WebViewClient()
                             cont.resume(pageUrl ?: url) { _, _, _ -> }
                         }
                     }
@@ -41,10 +42,17 @@ object WebViewHelper {
                         error: WebResourceError?
                     ) {
                         if (request?.isForMainFrame == true && cont.isActive) {
+                            webViewClient = WebViewClient()
                             cont.resumeWith(
                                 Result.failure(IOException("WebView error: ${error?.description}"))
                             )
                         }
+                    }
+                }
+                cont.invokeOnCancellation {
+                    post {
+                        stopLoading()
+                        webViewClient = WebViewClient()
                     }
                 }
                 loadUrl(url)
@@ -55,6 +63,11 @@ object WebViewHelper {
     suspend fun WebView.evaluateJs(js: String): String? {
         return withTimeout(10_000) {
             suspendCancellableCoroutine { cont ->
+                cont.invokeOnCancellation {
+                    post {
+                        stopLoading()
+                    }
+                }
                 evaluateJavascript(js) { result ->
                     if (cont.isActive) {
                         cont.resume(result) { _, _, _ -> }
