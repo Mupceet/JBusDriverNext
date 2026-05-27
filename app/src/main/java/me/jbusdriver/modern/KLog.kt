@@ -1,6 +1,7 @@
 package me.jbusdriver.modern
 
 import android.util.Log
+import me.jbusdriver.BuildConfig
 
 /**
  * 职责：全局日志工具，封装 Android Log API
@@ -10,10 +11,11 @@ import android.util.Log
  */
 object KLog {
     private const val DEFAULT_TAG = "JBus"
+    internal val isDebug = BuildConfig.DEBUG
 
     /** 调试级别日志 */
     fun d(msg: String, tag: String = DEFAULT_TAG) {
-        Log.d(tag, msg)
+        if (isDebug) Log.d(tag, msg)
     }
 
     /** 信息级别日志 */
@@ -53,7 +55,7 @@ object KLog {
  */
 class TagLogger(private val tag: String) {
     fun d(msg: String) {
-        Log.d(tag, msg)
+        if (KLog.isDebug) Log.d(tag, msg)
     }
 
     fun i(msg: String) {
