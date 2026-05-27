@@ -66,7 +66,12 @@ fun LabSettingsScreen(
     val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
         scanState.discoveredUrls
     } else if (!scanState.isScanning && cachedMirrorUrls.isNotEmpty()) {
-        cachedMirrorUrls.map { MirrorUrl(it, true) }
+        val defaultHost = "www.javbus.com"
+        cachedMirrorUrls.map { MirrorUrl(it, true) }.sortedWith(
+            compareBy<MirrorUrl> { it.url.contains(defaultHost, ignoreCase = true).not() }
+                .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
+                .thenBy { it.url }
+        )
     } else {
         emptyList()
     }
