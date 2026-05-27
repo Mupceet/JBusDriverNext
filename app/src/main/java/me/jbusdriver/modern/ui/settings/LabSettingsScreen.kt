@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,16 +17,20 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,7 +44,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
@@ -62,25 +62,14 @@ fun LabSettingsScreen(
     val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
-    // Determine available URLs for the dialog
-    val dialogUrls = if (scanState.phase == ScanPhase.DONE) {
+    val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
         scanState.discoveredUrls
     } else if (!scanState.isScanning && cachedMirrorUrls.isNotEmpty()) {
         cachedMirrorUrls.map { MirrorUrl(it, true) }
     } else {
         emptyList()
     }
-    val hasCachedUrls = dialogUrls.isNotEmpty() || cachedMirrorUrls.isNotEmpty()
-    var showUrlDialog by remember { mutableStateOf(false) }
-
-    if (showUrlDialog && dialogUrls.isNotEmpty()) {
-        MirrorUrlDialog(
-            urls = dialogUrls,
-            selectedUrl = selectedBaseUrl,
-            onSelect = { viewModel.selectUrl(it) },
-            onDismiss = { showUrlDialog = false }
-        )
-    }
+    val hasCachedUrls = mirrorUrls.isNotEmpty() || cachedMirrorUrls.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -160,117 +149,29 @@ fun LabSettingsScreen(
             // URL selection card
             UrlSelectionCard(
                 selectedBaseUrl = selectedBaseUrl,
+                mirrorUrls = mirrorUrls,
                 scanState = scanState,
                 hasCachedUrls = hasCachedUrls,
                 onScan = { viewModel.startScan() },
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
-                onShowUrls = { showUrlDialog = true }
+                onSelect = { viewModel.selectUrl(it) }
             )
         }
     }
 }
 
-@Composable
-private fun MirrorUrlDialog(
-    urls: List<MirrorUrl>,
-    selectedUrl: String,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "選擇網址",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.5f)
-                ) {
-                    items(urls, key = { it.url }) { mirror ->
-                        val isSelected = mirror.url == selectedUrl
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = mirror.isReachable) {
-                                    onSelect(mirror.url)
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painterResource(
-                                    if (isSelected) R.drawable.radio_button_checked_24px
-                                    else R.drawable.radio_button_unchecked_24px
-                                ),
-                                contentDescription = null,
-                                tint = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                mirror.url,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .then(if (!mirror.isReachable) Modifier.alpha(0.4f) else Modifier),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (!mirror.isReachable) {
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "不可達",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            } else if (mirror.latencyMs >= 0) {
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "${mirror.latencyMs} ms",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text("確認")
-                }
-            }
-        }
-    }
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UrlSelectionCard(
     selectedBaseUrl: String,
+    mirrorUrls: List<MirrorUrl>,
     scanState: ScanState,
     hasCachedUrls: Boolean,
     onScan: () -> Unit,
     onCancel: () -> Unit,
     onVerify: () -> Unit,
-    onShowUrls: () -> Unit
+    onSelect: (String) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -288,19 +189,88 @@ private fun UrlSelectionCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "直達網址",
+                    "選擇網址",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "當前：${selectedBaseUrl}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Dropdown spinner for URL selection
+            var expanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = expanded && mirrorUrls.isNotEmpty(),
+                onExpandedChange = { if (mirrorUrls.isNotEmpty()) expanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedBaseUrl,
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    trailingIcon = {
+                        if (mirrorUrls.isNotEmpty()) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        }
+                    },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+
+                if (mirrorUrls.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        mirrorUrls.forEach { mirror ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            mirror.url,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .then(if (!mirror.isReachable) Modifier.alpha(0.4f) else Modifier),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (!mirror.isReachable) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "不可達",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        } else if (mirror.latencyMs >= 0) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "${mirror.latencyMs} ms",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    if (mirror.isReachable) {
+                                        onSelect(mirror.url)
+                                    }
+                                    expanded = false
+                                },
+                                enabled = mirror.isReachable
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
 
@@ -336,17 +306,6 @@ private fun UrlSelectionCard(
                     ) {
                         Text("檢測連通")
                     }
-                }
-            }
-
-            if (hasCachedUrls) {
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onShowUrls,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !scanState.isScanning
-                ) {
-                    Text("選擇網址")
                 }
             }
 
