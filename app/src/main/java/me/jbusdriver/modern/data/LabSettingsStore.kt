@@ -74,7 +74,10 @@ class LabSettingsStore @Inject constructor() {
     val selectedBaseUrl: StateFlow<String> = _selectedBaseUrl.asStateFlow()
 
     private val _cachedMirrorUrls = MutableStateFlow(
-        prefs.getStringSet(KEY_CACHED_MIRROR_URLS, null)?.toList() ?: emptyList()
+        prefs.getStringSet(KEY_CACHED_MIRROR_URLS, null)?.toList()
+            ?: PRESET_MIRROR_URLS.also {
+                prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, it.toSet()) }
+            }
     )
     val cachedMirrorUrls: StateFlow<List<String>> = _cachedMirrorUrls.asStateFlow()
 
@@ -113,84 +116,78 @@ class LabSettingsStore @Inject constructor() {
         state: MutableStateFlow<ScanState>,
         seedUrl: String
     ) {
-        val discovered = mutableSetOf<String>()
-        val scanned = mutableSetOf<String>()
-        val queue = ArrayDeque<String>()
-        queue.add(seedUrl.trimEnd('/'))
-        discovered.add(seedUrl.trimEnd('/'))
+        val allSeeds = mutableSetOf<String>()
+        allSeeds.add(seedUrl.trimEnd('/'))
+        for (url in _cachedMirrorUrls.value) {
+            allSeeds.add(url.trimEnd('/'))
+        }
 
         state.value = ScanState(isScanning = true, phase = ScanPhase.DISCOVERING)
 
-        // Pre-check cached URLs for reachability, use reachable ones as extra seeds
-        val cachedUrls = _cachedMirrorUrls.value
-        if (cachedUrls.isNotEmpty()) {
-            val reachableSeeds = cachedUrls.filter { url ->
-                url.trimEnd('/') !in discovered && try {
-                    NetClient.checkReachable(url) >= 0
-                } catch (_: Exception) {
-                    false
-                }
-            }
-            for (url in reachableSeeds) {
-                val trimmed = url.trimEnd('/')
-                if (trimmed !in discovered) {
-                    discovered.add(trimmed)
-                    queue.add(trimmed)
-                }
-            }
-            KLog.d("[Mirror] Pre-checked ${cachedUrls.size} cached URLs, ${reachableSeeds.size} reachable as extra seeds")
-        }
+        try {
+            // Phase 1: Discover URLs from all seeds in parallel via WebView
+            val discovered = mutableSetOf<String>()
+            discovered.addAll(allSeeds)
 
-        // Phase 1: Discover URLs via WebView
-        withContext(Dispatchers.Main) {
-            val webView = WebViewHelper.createWebView()
-            try {
-                while (queue.isNotEmpty()) {
-                    if (!coroutineContext.isActive) break
-                    val url = queue.removeFirst()
-                    if (url in scanned) continue
-                    scanned.add(url)
-
-                    state.value = state.value.copy(
-                        scannedCount = scanned.size,
-                        totalCount = discovered.size,
-                        currentUrl = url
-                    )
-
-                    try {
-                        val mirrorUrls = loadAndExtractMirrorUrls(webView, url)
-                        for (found in mirrorUrls) {
-                            val trimmed = found.trimEnd('/')
-                            if (trimmed !in discovered) {
-                                discovered.add(trimmed)
-                                queue.add(trimmed)
+            withContext(Dispatchers.Main) {
+                val webView = WebViewHelper.createWebView()
+                try {
+                    val seeds = allSeeds.toList()
+                    val completed = java.util.concurrent.atomic.AtomicInteger(0)
+                    // Process seeds sequentially (WebView is single-threaded),
+                    // skipping failures gracefully
+                    for (url in seeds) {
+                        if (!coroutineContext.isActive) break
+                        state.value = ScanState(
+                            isScanning = true,
+                            phase = ScanPhase.DISCOVERING,
+                            scannedCount = completed.incrementAndGet(),
+                            totalCount = seeds.size,
+                            currentUrl = url
+                        )
+                        try {
+                            val mirrorUrls = loadAndExtractMirrorUrls(webView, url)
+                            for (found in mirrorUrls) {
+                                val trimmed = found.trimEnd('/')
+                                if (trimmed !in discovered) {
+                                    discovered.add(trimmed)
+                                }
                             }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            KLog.d("[Mirror] Seed $url failed, skipping: ${e.message}")
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        KLog.d("Scan failed for $url: ${e.message}")
                     }
+                } finally {
+                    webView.stopLoading()
+                    webView.destroy()
                 }
-            } finally {
-                webView.stopLoading()
-                webView.destroy()
             }
+
+            // Phase 2: Verify reachability in parallel
+            val urlList = discovered.toList()
+            val verified = verifyUrlsParallel(urlList, state)
+
+            // Cache all discovered URLs (regardless of reachability)
+            prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, urlList.toSet()) }
+            _cachedMirrorUrls.value = urlList
+
+            state.value = ScanState(
+                isScanning = false,
+                phase = ScanPhase.DONE,
+                discoveredUrls = sortMirrorUrls(verified)
+            )
+        } catch (e: CancellationException) {
+            // Save whatever was discovered before cancellation
+            if (allSeeds.size > 1) {
+                prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, allSeeds.toSet()) }
+                _cachedMirrorUrls.value = allSeeds.toList()
+                KLog.d("[Mirror] Scan cancelled, saved ${allSeeds.size} seeds")
+            }
+            state.value = ScanState()
+            throw e
         }
-
-        // Phase 2: Verify reachability in parallel
-        val urlList = discovered.toList()
-        val verified = verifyUrlsParallel(urlList, state)
-
-        // Cache all discovered URLs (regardless of reachability)
-        prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, urlList.toSet()) }
-        _cachedMirrorUrls.value = urlList
-
-        state.value = ScanState(
-            isScanning = false,
-            phase = ScanPhase.DONE,
-            discoveredUrls = sortMirrorUrls(verified)
-        )
     }
 
     /**
@@ -273,5 +270,11 @@ class LabSettingsStore @Inject constructor() {
         private const val KEY_SELECTED_BASE_URL = "selected_base_url"
         private const val KEY_CACHED_MIRROR_URLS = "cached_mirror_urls"
         const val DEFAULT_BASE_URL = "https://www.javbus.com"
+        private val PRESET_MIRROR_URLS = listOf(
+            "https://www.javbus.com",
+            "https://www.cdnbus.bond",
+            "https://www.cdnbus.cyou",
+            "https://www.seejav.cyou"
+        )
     }
 }
