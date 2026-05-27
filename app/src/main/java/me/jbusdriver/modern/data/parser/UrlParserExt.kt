@@ -19,3 +19,20 @@ internal fun String.isGifUrl(): Boolean {
     val path = substringBefore("?").substringBefore("#").lowercase()
     return path.endsWith(".gif")
 }
+
+fun String.stripToPath(): String = when {
+    isBlank() -> ""
+    startsWith("http") -> {
+        val afterScheme = indexOf("://")
+        if (afterScheme < 0) this
+        else {
+            val pathStart = indexOf('/', afterScheme + 3)
+            if (pathStart < 0) "/" else substring(pathStart)
+        }
+    }
+    startsWith("//") -> {
+        val pathStart = indexOf('/', 2)
+        if (pathStart < 0) "/" else substring(pathStart)
+    }
+    else -> this
+}

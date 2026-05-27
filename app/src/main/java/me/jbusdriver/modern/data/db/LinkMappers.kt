@@ -4,8 +4,11 @@ import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.toJsonString
+import me.jbusdriver.modern.core.site.SiteConfigStore
 import me.jbusdriver.modern.data.db.entity.History
 import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.data.parser.stripToPath
+import me.jbusdriver.modern.data.parser.wrapImage
 import me.jbusdriver.modern.domain.model.*
 
 /**
@@ -54,16 +57,19 @@ val ILink.uniqueKey: String
  *
  * @return 可直接插入数据库的 [LinkItem] 实体
  */
-fun ILink.convertDBItem() = LinkItem(
-    dbType = this.DBtype,
-    createTime = System.currentTimeMillis(),
-    key = this.uniqueKey,
-    jsonStr = this.toJsonString(),
-    categoryId = when {
-        this.categoryId > 0 -> categoryId
-        else -> AllFirstParentDBCategoryGroup[this.DBtype]?.id ?: LinkCategory.id ?: -1
-    }
-)
+fun ILink.convertDBItem(): LinkItem {
+    val stripped = stripUrlFields(this)
+    return LinkItem(
+        dbType = this.DBtype,
+        createTime = System.currentTimeMillis(),
+        key = stripped.uniqueKey,
+        jsonStr = stripped.toJsonString(),
+        categoryId = when {
+            this.categoryId > 0 -> categoryId
+            else -> AllFirstParentDBCategoryGroup[this.DBtype]?.id ?: LinkCategory.id ?: -1
+        }
+    )
+}
 
 /**
  * 将 [History] 实体反序列化为对应的 [ILink] 领域对象。
@@ -89,7 +95,8 @@ fun History.toILink(): ILink = when (dbType) {
  */
 fun LinkItem.toILink(): ILink? {
     return kotlin.runCatching {
-        val link = deserializeLink(dbType, jsonStr)
+        val raw = deserializeLink(dbType, jsonStr)
+        val link = restoreUrlFields(raw)
         link.categoryId = this.categoryId
         link
     }.onFailure {
@@ -113,4 +120,37 @@ private fun deserializeLink(type: Int, jsonStr: String): ILink = when (type) {
     SearchLinkDBType -> GSON.fromJson<SearchLink>(jsonStr)!!
     PageLinkDBType -> GSON.fromJson<PageLink>(jsonStr)!!
     else -> error("$type : $jsonStr has no matched class")
+}
+
+private fun stripUrlFields(link: ILink): ILink {
+    return when (link) {
+        is Movie -> link.copy(
+            link = link.link.stripToPath(),
+            imageUrl = link.imageUrl.stripToPath()
+        )
+        is ActressInfo -> link.copy(
+            link = link.link.stripToPath(),
+            avatar = link.avatar.stripToPath()
+        )
+        is Header -> link.copy(link = link.link.stripToPath())
+        is Genre -> link.copy(link = link.link.stripToPath())
+        else -> link
+    }
+}
+
+private fun restoreUrlFields(link: ILink): ILink {
+    val baseUrl = SiteConfigStore.baseUrl
+    return when (link) {
+        is Movie -> link.copy(
+            link = link.link.wrapImage(baseUrl),
+            imageUrl = link.imageUrl.wrapImage(baseUrl)
+        )
+        is ActressInfo -> link.copy(
+            link = link.link.wrapImage(baseUrl),
+            avatar = link.avatar.wrapImage(baseUrl)
+        )
+        is Header -> link.copy(link = link.link.wrapImage(baseUrl))
+        is Genre -> link.copy(link = link.link.wrapImage(baseUrl))
+        else -> link
+    }
 }
