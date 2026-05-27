@@ -160,18 +160,20 @@ object NetClient {
 
     /**
      * Check if a URL is reachable via HEAD request.
-     * Returns true if the server responds with a successful status code.
+     * Returns response latency in ms, or -1 if unreachable.
      */
-    suspend fun checkReachable(url: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun checkReachable(url: String): Long = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(url)
                 .head()
                 .header("User-Agent", USER_AGENT)
                 .build()
-            okHttpClient.newCall(request).execute().use { it.isSuccessful }
+            val start = System.currentTimeMillis()
+            val success = okHttpClient.newCall(request).execute().use { it.isSuccessful }
+            if (success) System.currentTimeMillis() - start else -1L
         } catch (e: Exception) {
-            false
+            -1L
         }
     }
 

@@ -70,6 +70,7 @@ fun LabSettingsScreen(
     } else {
         emptyList()
     }
+    val hasCachedUrls = dialogUrls.isNotEmpty() || cachedMirrorUrls.isNotEmpty()
     var showUrlDialog by remember { mutableStateOf(false) }
 
     if (showUrlDialog && dialogUrls.isNotEmpty()) {
@@ -160,9 +161,10 @@ fun LabSettingsScreen(
             UrlSelectionCard(
                 selectedBaseUrl = selectedBaseUrl,
                 scanState = scanState,
-                hasCachedUrls = dialogUrls.isNotEmpty(),
+                hasCachedUrls = hasCachedUrls,
                 onScan = { viewModel.startScan() },
                 onCancel = { viewModel.cancelScan() },
+                onVerify = { viewModel.startVerify() },
                 onShowUrls = { showUrlDialog = true }
             )
         }
@@ -235,6 +237,13 @@ private fun MirrorUrlDialog(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error
                                 )
+                            } else if (mirror.latencyMs >= 0) {
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "${mirror.latencyMs} ms",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
                             }
                         }
                     }
@@ -260,6 +269,7 @@ private fun UrlSelectionCard(
     hasCachedUrls: Boolean,
     onScan: () -> Unit,
     onCancel: () -> Unit,
+    onVerify: () -> Unit,
     onShowUrls: () -> Unit
 ) {
     Card(
@@ -269,11 +279,20 @@ private fun UrlSelectionCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "網址選擇",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(R.drawable.public_24px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "直達網址",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 "當前：${selectedBaseUrl}",
@@ -298,7 +317,7 @@ private fun UrlSelectionCard(
                             contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("取消掃描")
+                        Text("取消")
                     }
                 } else {
                     Button(
@@ -311,11 +330,23 @@ private fun UrlSelectionCard(
 
                 if (hasCachedUrls) {
                     OutlinedButton(
-                        onClick = onShowUrls,
-                        modifier = Modifier.weight(1f)
+                        onClick = onVerify,
+                        modifier = Modifier.weight(1f),
+                        enabled = !scanState.isScanning
                     ) {
-                        Text("選擇網址")
+                        Text("檢測連通")
                     }
+                }
+            }
+
+            if (hasCachedUrls) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onShowUrls,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !scanState.isScanning
+                ) {
+                    Text("選擇網址")
                 }
             }
 

@@ -7,7 +7,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import me.jbusdriver.modern.JBus
@@ -23,7 +26,8 @@ import javax.inject.Singleton
 
 data class MirrorUrl(
     val url: String,
-    val isReachable: Boolean = false
+    val isReachable: Boolean = false,
+    val latencyMs: Long = -1L
 )
 
 data class ScanState(
@@ -109,6 +113,26 @@ class LabSettingsStore @Inject constructor() {
 
         state.value = ScanState(isScanning = true, phase = ScanPhase.DISCOVERING)
 
+        // Pre-check cached URLs for reachability, use reachable ones as extra seeds
+        val cachedUrls = _cachedMirrorUrls.value
+        if (cachedUrls.isNotEmpty()) {
+            val reachableSeeds = cachedUrls.filter { url ->
+                url.trimEnd('/') !in discovered && try {
+                    NetClient.checkReachable(url) >= 0
+                } catch (_: Exception) {
+                    false
+                }
+            }
+            for (url in reachableSeeds) {
+                val trimmed = url.trimEnd('/')
+                if (trimmed !in discovered) {
+                    discovered.add(trimmed)
+                    queue.add(trimmed)
+                }
+            }
+            KLog.d("[Mirror] Pre-checked ${cachedUrls.size} cached URLs, ${reachableSeeds.size} reachable as extra seeds")
+        }
+
         // Phase 1: Discover URLs via WebView
         withContext(Dispatchers.Main) {
             val webView = WebViewHelper.createWebView()
@@ -146,31 +170,69 @@ class LabSettingsStore @Inject constructor() {
             }
         }
 
-        // Phase 2: Verify reachability
+        // Phase 2: Verify reachability in parallel
         val urlList = discovered.toList()
-        val verified = mutableListOf<MirrorUrl>()
+        val verified = verifyUrlsParallel(urlList, state)
 
-        for ((index, url) in urlList.withIndex()) {
-            if (!coroutineContext.isActive) break
-            state.value = state.value.copy(
-                phase = ScanPhase.VERIFYING,
-                scannedCount = index + 1,
-                totalCount = urlList.size,
-                currentUrl = url
-            )
-            val reachable = NetClient.checkReachable(url)
-            verified.add(MirrorUrl(url, reachable))
-        }
-
-        // Cache and complete
-        val reachableUrls = verified.filter { it.isReachable }.map { it.url }.toSet()
-        prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, reachableUrls) }
-        _cachedMirrorUrls.value = reachableUrls.toList()
+        // Cache all discovered URLs (regardless of reachability)
+        prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, urlList.toSet()) }
+        _cachedMirrorUrls.value = urlList
 
         state.value = ScanState(
             isScanning = false,
             phase = ScanPhase.DONE,
-            discoveredUrls = verified
+            discoveredUrls = sortMirrorUrls(verified)
+        )
+    }
+
+    /**
+     * Re-verify reachability of cached URLs without re-scanning.
+     */
+    suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>) {
+        val urls = _cachedMirrorUrls.value
+        if (urls.isEmpty()) return
+
+        state.value = ScanState(isScanning = true, phase = ScanPhase.VERIFYING)
+        val verified = verifyUrlsParallel(urls, state)
+
+        state.value = ScanState(
+            isScanning = false,
+            phase = ScanPhase.DONE,
+            discoveredUrls = sortMirrorUrls(verified)
+        )
+    }
+
+    /**
+     * Verify reachability of URLs in parallel (concurrency = 6).
+     */
+    private suspend fun verifyUrlsParallel(
+        urls: List<String>,
+        state: MutableStateFlow<ScanState>
+    ): List<MirrorUrl> = coroutineScope {
+        val completed = java.util.concurrent.atomic.AtomicInteger(0)
+        val deferreds = urls.mapIndexed { _, url ->
+            async(Dispatchers.IO) {
+                val latency = NetClient.checkReachable(url)
+                val done = completed.incrementAndGet()
+                state.value = ScanState(
+                    isScanning = true,
+                    phase = ScanPhase.VERIFYING,
+                    scannedCount = done,
+                    totalCount = urls.size,
+                    currentUrl = url
+                )
+                MirrorUrl(url, latency >= 0, latency)
+            }
+        }
+        deferreds.awaitAll()
+    }
+
+    private fun sortMirrorUrls(urls: List<MirrorUrl>): List<MirrorUrl> {
+        val defaultHost = "www.javbus.com"
+        return urls.sortedWith(
+            compareBy<MirrorUrl> { it.url.contains(defaultHost, ignoreCase = true).not() }
+                .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
+                .thenBy { it.url }
         )
     }
 

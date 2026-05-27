@@ -41,6 +41,17 @@ class LabSettingsViewModel @Inject constructor(
         _scanState.value = ScanState()
     }
 
+    fun startVerify() {
+        if (scanJob?.isActive == true) return
+        scanJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                store.verifyMirrorUrls(_scanState)
+            } catch (e: Exception) {
+                _scanState.value = ScanState(error = e.message ?: "檢測失敗")
+            }
+        }
+    }
+
     fun selectUrl(url: String) {
         store.selectUrl(url)
     }
