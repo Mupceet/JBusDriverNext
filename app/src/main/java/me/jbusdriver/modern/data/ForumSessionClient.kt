@@ -6,9 +6,7 @@ import org.jsoup.nodes.Document
 import javax.inject.Inject
 import javax.inject.Singleton
 
-interface ForumSessionClient : BrowserSessionClient {
-    fun destroy()
-}
+interface ForumSessionClient : BrowserSessionClient
 
 @Singleton
 class DefaultForumSessionClient @Inject constructor(

@@ -44,6 +44,11 @@ class ModernMainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        browserSessionClient.destroy()
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)

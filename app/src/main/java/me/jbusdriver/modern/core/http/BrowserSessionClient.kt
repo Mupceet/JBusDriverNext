@@ -5,4 +5,5 @@ import org.jsoup.nodes.Document
 interface BrowserSessionClient {
     suspend fun warmUp()
     suspend fun fetchDocument(url: String): Document
+    fun destroy()
 }
