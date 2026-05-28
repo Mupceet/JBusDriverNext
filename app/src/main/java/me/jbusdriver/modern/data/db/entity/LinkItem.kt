@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey
  *
  * 职责：将用户收藏的影片、演员、类型等以 JSON 字符串持久化。
  * 反序列化逻辑见 [me.jbusdriver.modern.data.db.toILink] 扩展函数。
- * 通过 [key] 字段的唯一索引实现收藏去重。
+ * 通过 ([dbType], [key]) 联合唯一索引实现收藏去重。
  *
  * 使用场景：用户点击"收藏"按钮时写入；收藏列表页按分类读取展示。
  *
@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "t_link",
-    indices = [Index(value = ["key"], unique = true)]
+    indices = [Index(value = ["dbType", "key"], unique = true)]
 )
 data class LinkItem(
     /** 主键，自增。 */

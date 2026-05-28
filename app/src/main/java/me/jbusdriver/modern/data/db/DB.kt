@@ -2,6 +2,8 @@ package me.jbusdriver.modern.data.db
 
 import android.annotation.SuppressLint
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.db.DB.collectDatabase
@@ -40,6 +42,14 @@ object DB {
     /** 收藏数据库的文件名。 */
     private const val COLLECT_DB_NAME = "collect.db"
 
+    /** 收藏数据库 1→2 迁移：将唯一索引从仅 [key] 扩展为 ([dbType], [key]) 联合索引。 */
+    private val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS `index_t_link_key`")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_t_link_dbType_key` ON `t_link` (`dbType`, `key`)")
+        }
+    }
+
     /**
      * 收藏数据库，存储在 SD 卡的独立目录下以确保应用卸载后数据不丢失。
      * 通过 [SDCardDatabaseContext] 将数据库文件重定向到外部存储。
@@ -52,7 +62,7 @@ object DB {
             context,
             CollectDatabase::class.java,
             COLLECT_DB_NAME
-        ).build()
+        ).addMigrations(COLLECT_MIGRATION_1_2).build()
     }
 
     /** 历史记录 DAO，代理到 [jBusDatabase]。 */

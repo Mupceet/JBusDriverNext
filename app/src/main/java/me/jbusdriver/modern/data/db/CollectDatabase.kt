@@ -17,7 +17,7 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
  *
  * 线程：Room 保证数据库实例本身线程安全；DAO 操作的线程安全由调用方保证。
  */
-@Database(entities = [Category::class, LinkItem::class], version = 1, exportSchema = true)
+@Database(entities = [Category::class, LinkItem::class], version = 2, exportSchema = true)
 abstract class CollectDatabase : RoomDatabase() {
     /** 提供分类表的增删改查操作。 */
     abstract fun categoryDao(): CategoryDao
