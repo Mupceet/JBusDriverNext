@@ -72,11 +72,11 @@ fun CollectCategoryScreen(
 
     val movieVm: CollectionListViewModel = hiltViewModel(key = "collect_0")
     val actressVm: CollectionListViewModel = hiltViewModel(key = "collect_1")
+    val actionVm: CollectCategoryViewModel = hiltViewModel()
     val countState by movieVm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
-    val repo = movieVm.collectRepository
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -84,7 +84,7 @@ fun CollectCategoryScreen(
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
             try {
-                val json = withContext(Dispatchers.IO) { repo.exportCollectionsJson() }
+                val json = actionVm.exportCollectionsJson()
                 context.contentResolver.openOutputStream(uri)?.use { os ->
                     os.write(json.toByteArray(Charsets.UTF_8))
                 }
@@ -105,13 +105,16 @@ fun CollectCategoryScreen(
                     context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                         ?: throw IllegalStateException("無法讀取檔案")
                 }
-                val (imported, skipped) = withContext(Dispatchers.IO) {
-                    repo.importCollectionsFromJson(json)
-                }
-                val msg = if (skipped > 0) "導入 $imported 項，跳過 $skipped 項" else "導入 $imported 項"
-                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                movieVm.loadCollection(MovieDBType)
-                actressVm.loadCollection(ActressDBType)
+                actionVm.importCollectionsJson(
+                    json,
+                    onDone = {
+                        movieVm.loadCollection(MovieDBType)
+                        actressVm.loadCollection(ActressDBType)
+                    },
+                    onError = { e ->
+                        Toast.makeText(context, "導入失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                )
             } catch (e: Exception) {
                 Toast.makeText(context, "導入失敗: ${e.message}", Toast.LENGTH_SHORT).show()
             }
