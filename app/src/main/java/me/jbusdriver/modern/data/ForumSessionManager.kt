@@ -72,14 +72,14 @@ private fun isImageResource(url: String): Boolean {
  */
 @Singleton
 class ForumSessionManager @Inject constructor(
-    private val siteConfig: SiteConfig
+    private val siteConfig: SiteConfig,
+    private val cookieStore: SessionCookieStore
 ) {
 
     @Volatile
     private var webView: WebView? = null
     private val initialized = AtomicBoolean(false)
     private val mutex = Mutex()
-    private val cookieStore = SessionCookieStore()
 
     fun isInitialized(): Boolean = initialized.get()
 

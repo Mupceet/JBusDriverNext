@@ -53,7 +53,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
 
 private val gridPrefs by lazy {
-    me.jbusdriver.modern.JBus.getSharedPreferences("ui_prefs", 0)
+    me.jbusdriver.modern.JBus.getSharedPreferences(me.jbusdriver.modern.data.AppPreferences.UI_PREFS, 0)
 }
 
 /**

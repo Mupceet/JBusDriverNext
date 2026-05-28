@@ -1,11 +1,13 @@
 package me.jbusdriver.modern.data
 
+import android.content.SharedPreferences
 import android.webkit.CookieManager
 import androidx.core.content.edit
-import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
+import me.jbusdriver.modern.data.di.SessionCookiePrefs
+import javax.inject.Inject
 
 /**
  * Persists session cookies from CookieManager to SharedPreferences.
@@ -13,11 +15,9 @@ import me.jbusdriver.modern.core.fromJson
  * Stores critical cookies (age verification, Discuz! session) with their expiry
  * timestamps so they can be restored on next app launch without creating a WebView.
  */
-class SessionCookieStore {
-
-    private val prefs by lazy {
-        JBus.getSharedPreferences(PREFS_NAME, 0)
-    }
+class SessionCookieStore @Inject constructor(
+    @SessionCookiePrefs private val prefs: SharedPreferences
+) {
 
     /**
      * Save all cookies for the given URL from CookieManager to SharedPreferences.
@@ -121,7 +121,6 @@ class SessionCookieStore {
     )
 
     companion object {
-        private const val PREFS_NAME = "session_cookies"
         private const val TAG = "SessionCookie"
 
         /** Cookies to persist. */

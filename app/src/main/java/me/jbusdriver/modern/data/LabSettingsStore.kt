@@ -13,7 +13,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
-import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.http.WebViewHelper
@@ -48,9 +47,9 @@ enum class ScanPhase {
 }
 
 @Singleton
-class LabSettingsStore @Inject constructor() {
-    private val prefs: SharedPreferences =
-        JBus.getSharedPreferences(PREFS_NAME, 0)
+class LabSettingsStore @Inject constructor(
+    @me.jbusdriver.modern.data.di.LabSettingsPrefs private val prefs: SharedPreferences
+) {
 
     private val _forumEnabled = MutableStateFlow(prefs.getBoolean(KEY_FORUM_ENABLED, false))
     val forumEnabled: StateFlow<Boolean> = _forumEnabled.asStateFlow()
@@ -264,7 +263,6 @@ class LabSettingsStore @Inject constructor() {
     }
 
     companion object {
-        private const val PREFS_NAME = "lab_settings"
         private const val KEY_FORUM_ENABLED = "forum_enabled"
         private const val KEY_AUTO_LOAD_GIFS = "auto_load_gifs"
         private const val KEY_SELECTED_BASE_URL = "selected_base_url"

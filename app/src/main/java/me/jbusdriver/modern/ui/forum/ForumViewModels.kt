@@ -14,7 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.LabSettingsStore
@@ -217,6 +216,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
 class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
     private val labSettingsStore: LabSettingsStore,
+    @me.jbusdriver.modern.data.di.GifPrefs private val gifPrefs: SharedPreferences,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
     private val tid: Int = navKey.tid
@@ -224,8 +224,6 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
-
-    private val gifPrefs: SharedPreferences = JBus.getSharedPreferences("gif_loaded_urls", 0)
 
     private val _loadedGifUrls = MutableStateFlow(loadPersistedGifUrls())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls

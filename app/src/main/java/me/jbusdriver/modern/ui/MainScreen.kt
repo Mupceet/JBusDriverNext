@@ -86,7 +86,7 @@ fun MainScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
-    val uiPrefs = remember { JBus.getSharedPreferences("ui_prefs", 0) }
+    val uiPrefs = remember { JBus.getSharedPreferences(me.jbusdriver.modern.data.AppPreferences.UI_PREFS, 0) }
     var isGrid by rememberSaveable {
         mutableStateOf(uiPrefs.getBoolean("is_grid", false))
     }

@@ -1,9 +1,9 @@
 package me.jbusdriver.modern.data
 
 import android.content.SharedPreferences
-import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
+import me.jbusdriver.modern.data.di.SearchHistoryPrefs
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.content.edit
@@ -16,9 +16,9 @@ interface SearchHistoryStore {
 }
 
 @Singleton
-class DefaultSearchHistoryStore @Inject constructor() : SearchHistoryStore {
-    private val prefs: SharedPreferences =
-        JBus.getSharedPreferences("search_history", 0)
+class DefaultSearchHistoryStore @Inject constructor(
+    @SearchHistoryPrefs private val prefs: SharedPreferences
+) : SearchHistoryStore {
 
     override fun getHistory(): List<String> {
         val json = prefs.getString(KEY_HISTORY, null) ?: return emptyList()
