@@ -62,13 +62,7 @@ class MovieDetailViewModel @Inject constructor(
                     )
                 }
                 loadMagnets()
-                val movie = Movie(
-                    title = detail.title,
-                    imageUrl = detail.cover,
-                    code = detail.headers.firstOrNull()?.value ?: "",
-                    date = detail.headers.firstOrNull { it.name == "日期" }?.value ?: "",
-                    link = url
-                )
+                val movie = detail.toUiModel().toCollectionMovie(url)
                 val collected = collectRepository.isMovieCollected(movie)
                 _uiState.update { it.copy(isCollected = collected) }
             } catch (e: Exception) {
@@ -117,15 +111,18 @@ class MovieDetailViewModel @Inject constructor(
         val detail = _uiState.value.movieDetail ?: return
         val url = currentUrl
         viewModelScope.launch {
-            val movie = Movie(
-                title = detail.title,
-                imageUrl = detail.cover,
-                code = detail.headers.firstOrNull()?.value ?: "",
-                date = detail.headers.firstOrNull { it.name == "發行日期" }?.value ?: "",
-                link = url
-            )
+            val movie = detail.toCollectionMovie(url)
             val newState = collectRepository.toggleMovieCollect(movie)
             _uiState.update { it.copy(isCollected = newState) }
         }
     }
 }
+
+private fun MovieDetailUiModel.toCollectionMovie(link: String): Movie =
+    Movie(
+        title = title,
+        imageUrl = cover,
+        code = headers.firstOrNull()?.value ?: "",
+        date = headers.firstOrNull { it.name == "發行日期" || it.name == "日期" || it.name == "发行日期" }?.value ?: "",
+        link = link
+    )

@@ -121,6 +121,32 @@ class MovieDetailViewModelTest {
     }
 
     @Test
+    fun loadDetail_usesReleaseDateHeaderWhenCheckingCollection() = runTest(testDispatcher) {
+        var capturedMovie: Movie? = null
+        val detail = testDetail.copy(
+            headers = listOf(
+                Header("番号", "ABC-001", ""),
+                Header("發行日期", "2024-01-01", "")
+            )
+        )
+        val collectRepo = object : CollectRepository by stubCollectRepo {
+            override suspend fun isMovieCollected(movie: Movie): Boolean {
+                capturedMovie = movie
+                return false
+            }
+        }
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detail
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, collectRepo, stubMagnetRepo)
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+
+        assertEquals("2024-01-01", capturedMovie?.date)
+    }
+
+    @Test
     fun loadDetail_storesGidAndUc() = runTest(testDispatcher) {
         val detailWithGid = testDetail.copy(gid = "12345", uc = "67890")
         val detailRepo = object : MovieDetailRepository {
