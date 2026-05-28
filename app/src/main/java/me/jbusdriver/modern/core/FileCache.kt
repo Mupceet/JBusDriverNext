@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.core
 
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * 极简磁盘缓存，仅支持 String 键值对的读写删除。
@@ -21,7 +22,7 @@ class FileCache(
     private val maxSizeBytes: Long = 50 * 1024 * 1024
 ) {
 
-    /** 将 [value] 写入以 [key] 的 hashCode 命名的文件。 */
+    /** 将 [value] 写入以 [key] 的 SHA-256 哈希命名的文件。 */
     fun put(key: String, value: String) {
         cacheDir.mkdirs()
         file(key).writeText(value)
@@ -31,15 +32,25 @@ class FileCache(
     /** 读取 [key] 对应的文件内容，文件不存在时返回 null。 */
     fun get(key: String): String? {
         val f = file(key)
-        return if (f.exists()) f.readText() else null
+        if (f.exists()) return f.readText()
+        val legacy = legacyFile(key)
+        return if (legacy.exists()) legacy.readText() else null
     }
 
     /** 删除 [key] 对应的缓存文件。 */
     fun remove(key: String) {
         file(key).let { if (it.exists()) it.delete() }
+        legacyFile(key).let { if (it.exists()) it.delete() }
     }
 
-    private fun file(key: String): File = File(cacheDir, key.hashCode().toString())
+    private fun file(key: String): File = File(cacheDir, key.sha256())
+
+    private fun legacyFile(key: String): File = File(cacheDir, key.hashCode().toString())
+
+    private fun String.sha256(): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(toByteArray(Charsets.UTF_8))
+        return bytes.joinToString(separator = "") { "%02x".format(it) }
+    }
 
     /** 超过上限时按最后修改时间删除最旧的文件，回退到 75% 容量。 */
     private fun trim() {
