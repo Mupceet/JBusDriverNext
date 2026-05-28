@@ -68,10 +68,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            manifestPlaceholders["allowBackup"] = "false"
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
         debug {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
+            manifestPlaceholders["allowBackup"] = "true"
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
     }
 

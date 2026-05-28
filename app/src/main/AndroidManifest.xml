@@ -8,8 +8,8 @@
 
     <application
         android:name="me.jbusdriver.modern.JBusApplication"
-        android:allowBackup="true"
-        android:usesCleartextTraffic="true"
+        android:allowBackup="${allowBackup}"
+        android:usesCleartextTraffic="${usesCleartextTraffic}"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
