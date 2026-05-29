@@ -11,6 +11,9 @@ local.properties
 # Claude Code (user-specific settings)
 .claude/
 
+# Local worktrees
+.worktrees/
+
 # OS
 .DS_Store
 Thumbs.db
