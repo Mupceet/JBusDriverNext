@@ -5,37 +5,106 @@
 -dontwarn kotlinx.**
 
 # ============================================================
-# Gson – reflection-based serialization
+# Gson - reflection-based serialization
 # ============================================================
 -keepattributes Signature
--keepattributes *Annotation*
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
-# Only keep internal reflection infrastructure (ConstructorConstructor,
-# ReflectiveTypeAdapterFactory, UnsafeAllocator, etc.).
-# Let R8 shrink unused TypeAdapters (Locale, URL, UUID, BigDecimal, etc.)
--keep class com.google.gson.internal.** { *; }
-
--keep class * implements com.google.gson.TypeAdapterFactory
--keep class * implements com.google.gson.JsonSerializer
--keep class * implements com.google.gson.JsonDeserializer
-
-# Keep all model classes used in Gson serialization.
-# Gson maps JSON keys to field names by reflection – R8 must not rename them.
--keep class me.jbusdriver.modern.domain.model.** { <fields>; }
-# GenreCategory has List<GenreUiModel> — R8 must preserve generic type signatures
--keep,allowobfuscation class me.jbusdriver.modern.ui.movielist.GenreCategory { *; }
--keep,allowobfuscation class me.jbusdriver.modern.ui.GenreUiModel { *; }
-# Keep all UI data models that may be serialized via Gson or Bundle
--keep class me.jbusdriver.modern.ui.**UiModel { <fields>; }
-
-# Keep the global Gson instance and extension helpers
--keep class me.jbusdriver.modern.core.GsonExtKt { *; }
+# Gson 2.14 ships consumer rules for TypeToken, @SerializedName, @JsonAdapter
+# and adapter constructors. App rules only preserve JSON field names for data
+# that is persisted, exported, or restored from cache across releases.
+-keepclassmembers class me.jbusdriver.modern.domain.model.Movie {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ActressInfo {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.Header {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.Genre {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.SearchLink {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.PageLink {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.MoviePageResult {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.MovieFilterInfo {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.PageInfo {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.MovieDetail {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ImageSample {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ActressAttrs {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ActressDetail {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.GenreGroup {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumBoardGroup {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumBanner {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumSummaryThread {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumHomeSummary {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumHomeData {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumBoard {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.LastPost {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumThread {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumThreadDetail {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.Comment {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumReply {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumTypeFilter {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.ForumThreadPageResult {
+    !static !transient <fields>;
+}
+-keepclassmembers enum me.jbusdriver.modern.domain.model.SearchType {
+    *;
+}
+-keepclassmembers class me.jbusdriver.modern.data.SessionCookieStore$PersistedCookie {
+    !static !transient <fields>;
+}
 
 # ============================================================
 # Room
 # ============================================================
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class *
+# Room runtime and compiler artifacts provide their own consumer rules.
 -dontwarn androidx.room.paging.**
 
 # ============================================================
@@ -47,36 +116,15 @@
 # ============================================================
 # Jsoup
 # ============================================================
-# No keep rules needed — Jsoup doesn't use reflection. All classes are
-# reachable via direct method calls from NetClient, HtmlParser, and magnet loaders.
+# No keep rules needed; Jsoup does not use app-side reflection here.
 -dontwarn org.jsoup.**
-
-# ============================================================
-# Serializable (ILink extends Serializable)
-# ============================================================
--keepclassmembers class * implements java.io.Serializable {
-    static final long serialVersionUID;
-    private static final java.io.ObjectStreamField[] serialPersistentFields;
-    !static !transient <fields>;
-    private void writeObject(java.io.ObjectOutputStream);
-    private void readObject(java.io.ObjectInputStream);
-    java.lang.Object writeReplace();
-    java.lang.Object readResolve();
-}
 
 # ============================================================
 # Hilt / Dagger
 # ============================================================
--dontwarn dagger.hilt.**
--keep class dagger.hilt.** { *; }
--keep class javax.inject.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
-
-# Keep Hilt entry points
--keep @dagger.hilt.android.lifecycle.HiltViewModel class * { *; }
--keep @dagger.hilt.android.AndroidEntryPoint class * { *; }
+# Hilt and Dagger provide consumer rules through their runtime artifacts.
 
 # ============================================================
-# Compose – runtime needs only
+# Compose - runtime only
 # ============================================================
 -dontwarn androidx.compose.**
