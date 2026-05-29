@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -282,6 +283,7 @@ private fun DetailContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(coverAspectRatio)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onImageClick(allImages, 0) }
                     .onSizeChanged { size -> coverHeight.value = size.height },
                 onSuccess = { result ->
@@ -544,6 +546,7 @@ private fun ImageSampleSection(
                         .width(100.dp)
                         .aspectRatio(4f / 3f)
                         .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable {
                             onImageClick(allImages, index + 1)
                         },
@@ -643,7 +646,8 @@ private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movie
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(4.dp)),
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentScale = ContentScale.Crop
                     )
                     Spacer(Modifier.height(4.dp))

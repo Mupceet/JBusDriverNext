@@ -113,6 +113,7 @@ fun ImageViewScreen(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(Color.Black)
                         .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))),
                     onState = { imageState = it }
                 )
@@ -229,6 +230,7 @@ private fun ThumbnailStrip(
                 modifier = Modifier
                     .size(width = 60.dp, height = 60.dp)
                     .clip(RoundedCornerShape(4.dp))
+                    .background(Color.DarkGray)
                     .then(
                         if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(4.dp))
                         else Modifier

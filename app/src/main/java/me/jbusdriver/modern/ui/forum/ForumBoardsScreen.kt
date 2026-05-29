@@ -199,7 +199,9 @@ private fun BannerCarousel(
                 AsyncImage(
                     model = banner.imageUrl,
                     contentDescription = banner.title,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentScale = ContentScale.Crop
                 )
             }

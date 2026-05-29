@@ -221,6 +221,7 @@ fun MovieItem(
                     .height(90.dp)
                     .aspectRatio(3f / 4f)
                     .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
                 contentScale = ContentScale.Crop
             )
@@ -307,6 +308,7 @@ fun MovieGridItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(3f / 4f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
                 contentScale = ContentScale.Crop
             )
@@ -392,7 +394,8 @@ fun CompactMovieItem(
                 modifier = Modifier
                     .width(52.dp)
                     .height(70.dp)
-                    .clip(RoundedCornerShape(4.dp)),
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
 

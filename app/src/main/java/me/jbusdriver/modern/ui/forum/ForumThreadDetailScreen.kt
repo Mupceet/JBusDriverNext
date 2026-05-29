@@ -384,6 +384,7 @@ private fun PostContent(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .clickable { onImageClick(viewableImageUrls, currentIdx) },
                                 contentScale = ContentScale.Fit
                             )

@@ -84,6 +84,7 @@ fun ActressAvatar(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             )
         }
     }
