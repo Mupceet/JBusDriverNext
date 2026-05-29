@@ -83,8 +83,12 @@ fun parseMovieDetails(doc: Document, baseUrl: String): MovieDetail {
         )
     }
 
-    val relatedMovies = doc.select("#related-waterfall .movie-box").map {
+    val relatedMovies = doc.select("#related-waterfall .movie-box").mapNotNull {
         val url = it.attr("href")
+        val path = java.net.URL(url).path.orEmpty().trimEnd('/')
+        val lastSegment = path.substringAfterLast('/')
+        // Skip forum/thread links – only keep movie pages (code-like last segment)
+        if (lastSegment.contains("thread") || lastSegment.contains("forum") || lastSegment.contains(".")) return@mapNotNull null
         Movie(
             it.attr("title"),
             it.select("img").attr("src").wrapImage(baseUrl),
