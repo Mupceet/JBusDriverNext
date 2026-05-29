@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build signed APK and publish GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Validate signing secrets
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing secret::$name is not configured"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Decode release keystore
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          keystore_path="$RUNNER_TEMP/release-keystore.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          echo "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE=$keystore_path" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        shell: bash
+        env:
+          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Locate release APK
+        id: apk
+        shell: bash
+        run: |
+          mapfile -t apks < <(find app/build/outputs/apk/release -maxdepth 1 -type f -name 'jbus_release_v*.apk' | sort)
+
+          if [ "${#apks[@]}" -ne 1 ]; then
+            echo "::error title=Release APK lookup failed::Expected 1 release APK, found ${#apks[@]}"
+            printf '%s\n' "${apks[@]}"
+            exit 1
+          fi
+
+          apk_path="${apks[0]}"
+          asset_name="$(basename "$apk_path")"
+
+          if [[ ! "$asset_name" =~ ^jbus_release_v(.+)\.apk$ ]]; then
+            echo "::error title=Version parse failed::Unexpected APK name: $asset_name"
+            exit 1
+          fi
+
+          version_name="${BASH_REMATCH[1]}"
+          tag_name="v$version_name"
+
+          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
+          echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
+      - name: Move release tag
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.apk.outputs.tag_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --force "$TAG_NAME" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG_NAME" --force
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.apk.outputs.tag_name }}
+          APK_PATH: ${{ steps.apk.outputs.apk_path }}
+          ASSET_NAME: ${{ steps.apk.outputs.asset_name }}
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" --title "$TAG_NAME" --target "$GITHUB_SHA"
+          else
+            gh release create "$TAG_NAME" --title "$TAG_NAME" --target "$GITHUB_SHA" --notes "Release $TAG_NAME"
+          fi
+
+          if gh release view "$TAG_NAME" --json assets --jq '.assets[].name' | grep -Fxq "$ASSET_NAME"; then
+            gh release delete-asset "$TAG_NAME" "$ASSET_NAME" --yes
+          fi
+
+          gh release upload "$TAG_NAME" "$APK_PATH" --clobber
