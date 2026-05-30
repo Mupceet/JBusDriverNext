@@ -1,31 +1,39 @@
 package me.jbusdriver.modern.data
 
-import android.content.SharedPreferences
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
-import me.jbusdriver.modern.data.di.SearchHistoryPrefs
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.content.edit
 
 interface SearchHistoryStore {
-    fun getHistory(): List<String>
-    fun addQuery(query: String)
-    fun removeQuery(query: String)
-    fun clearHistory()
+    suspend fun getHistory(): List<String>
+    suspend fun addQuery(query: String)
+    suspend fun removeQuery(query: String)
+    suspend fun clearHistory()
 }
+
+private val Context.searchHistoryDataStore by preferencesDataStore("search_history")
 
 @Singleton
 class DefaultSearchHistoryStore @Inject constructor(
-    @SearchHistoryPrefs private val prefs: SharedPreferences
+    @ApplicationContext private val context: Context
 ) : SearchHistoryStore {
 
-    override fun getHistory(): List<String> {
-        val json = prefs.getString(KEY_HISTORY, null) ?: return emptyList()
+    private val dataStore = context.searchHistoryDataStore
+
+    override suspend fun getHistory(): List<String> {
+        val json = dataStore.data.map { it[KEY_HISTORY] }.first() ?: return emptyList()
         return GSON.fromJson<List<String>>(json) ?: emptyList()
     }
 
-    override fun addQuery(query: String) {
+    override suspend fun addQuery(query: String) {
         if (query.isBlank()) return
         val current = getHistory().toMutableList()
         current.remove(query)
@@ -33,22 +41,22 @@ class DefaultSearchHistoryStore @Inject constructor(
         if (current.size > MAX_HISTORY) {
             current.removeAt(current.lastIndex)
         }
-        prefs.edit { putString(KEY_HISTORY, GSON.toJson(current)) }
+        dataStore.edit { it[KEY_HISTORY] = GSON.toJson(current) }
     }
 
-    override fun removeQuery(query: String) {
+    override suspend fun removeQuery(query: String) {
         val current = getHistory().toMutableList()
         if (current.remove(query)) {
-            prefs.edit { putString(KEY_HISTORY, GSON.toJson(current)) }
+            dataStore.edit { it[KEY_HISTORY] = GSON.toJson(current) }
         }
     }
 
-    override fun clearHistory() {
-        prefs.edit { remove(KEY_HISTORY) }
+    override suspend fun clearHistory() {
+        dataStore.edit { it.remove(KEY_HISTORY) }
     }
 
     companion object {
-        private const val KEY_HISTORY = "search_history_queries"
+        private val KEY_HISTORY = stringPreferencesKey("search_history_queries")
         private const val MAX_HISTORY = 20
     }
 }
