@@ -56,6 +56,7 @@ fun CollectCategoryScreen(
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit,
     modifier: Modifier = Modifier,
+    isGrid: Boolean = false,
     onGoHome: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -193,6 +194,7 @@ fun CollectCategoryScreen(
                 active = true,
                 onMovieClick = onMovieClick,
                 onActressClick = onActressClick,
+                isGrid = isGrid,
                 viewModel = vm
             )
         }

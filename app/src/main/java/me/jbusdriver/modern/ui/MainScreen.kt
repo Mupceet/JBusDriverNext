@@ -344,6 +344,7 @@ fun MainScreen(
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
+                        isGrid = isGrid,
                         onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
                     )
 

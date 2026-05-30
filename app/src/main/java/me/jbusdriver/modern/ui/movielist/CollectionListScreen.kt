@@ -27,6 +27,7 @@ fun CollectionListScreen(
     active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
+    isGrid: Boolean = false,
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,6 +64,7 @@ fun CollectionListScreen(
                     onMovieClick = onMovieClick,
                     isCollected = { true },
                     onToggleCollect = { viewModel.removeMovie(it) },
+                    isGrid = isGrid,
                     modifier = modifier
                 )
             }
