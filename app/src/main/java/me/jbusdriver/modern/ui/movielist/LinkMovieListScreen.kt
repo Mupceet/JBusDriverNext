@@ -31,6 +31,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
@@ -81,6 +83,7 @@ fun LinkMovieListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val isGrid by hiltViewModel<LabSettingsViewModel>().uiPrefsStore.isGrid.collectAsStateWithLifecycle(false)
 
     LaunchedEffect(linkUrl) {
         viewModel.setLink(linkUrl, type, avatarUrl)
@@ -215,6 +218,7 @@ fun LinkMovieListScreen(
                         isLoadingMore = uiState.isLoadingMore,
                         onLoadMore = { viewModel.loadMore() },
                         onMovieClick = onMovieClick,
+                        isGrid = isGrid,
                         modifier = Modifier.fillMaxSize(),
                         header = header
                     )

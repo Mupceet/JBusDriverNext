@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,6 +80,7 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
+    val isGrid by hiltViewModel<LabSettingsViewModel>().uiPrefsStore.isGrid.collectAsStateWithLifecycle(false)
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
@@ -359,6 +361,7 @@ fun SearchScreen(
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
                 onMovieClick = onMovieClick,
+                isGrid = isGrid,
                 modifier = dismissKeyboardModifier
             )
         }
