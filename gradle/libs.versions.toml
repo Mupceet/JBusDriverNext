@@ -24,6 +24,7 @@ coroutines = "1.10.2"
 coil = "2.7.0"
 telephoto = "0.19.0"
 lottie = "6.7.1"
+datastore = "1.1.4"
 
 [libraries]
 # AndroidX
@@ -79,6 +80,7 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil" }
 telephoto-zoomable-image = { group = "me.saket.telephoto", name = "zoomable-image", version.ref = "telephoto" }
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
+datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
