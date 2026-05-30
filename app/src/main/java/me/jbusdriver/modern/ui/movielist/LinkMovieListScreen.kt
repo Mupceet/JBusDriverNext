@@ -83,7 +83,7 @@ fun LinkMovieListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle(false)
+    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
 
     LaunchedEffect(linkUrl) {
         viewModel.setLink(linkUrl, type, avatarUrl)

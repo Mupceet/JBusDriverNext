@@ -80,7 +80,7 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
-    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle(false)
+    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }

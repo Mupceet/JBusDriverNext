@@ -34,7 +34,7 @@ fun MovieListScreen(
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle(false)
+    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
 
     LaunchedEffect(dataSourceType, active) {
         if (active) {

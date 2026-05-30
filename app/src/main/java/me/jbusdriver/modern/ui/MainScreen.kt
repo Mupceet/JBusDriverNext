@@ -89,7 +89,7 @@ fun MainScreen(
     val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
     val uiPrefsStore = hiltViewModel<UiPrefsViewModel>().store
     val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle(false)
-    val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle(false)
+    val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val toggleGrid: () -> Unit = {
         coroutineScope.launch { uiPrefsStore.setGrid(!isGrid) }
