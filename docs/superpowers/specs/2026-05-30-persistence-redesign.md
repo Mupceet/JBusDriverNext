@@ -11,10 +11,11 @@ The current persistence layer has several issues:
 2. **6 scattered SharedPreferences files**: `lab_settings`, `search_history`, `session_cookies`, `ui_prefs`, `gif_loaded_urls`, `cover_stats` — some bypass Hilt entirely via `JBus.getSharedPreferences()`.
 3. **Manual StateFlow sync**: `LabSettingsStore` manually mirrors every SP write to a `MutableStateFlow`, creating boilerplate.
 4. **Dual-entry reads**: `SiteConfigStore` reads `selected_base_url` directly from the `lab_settings` SP file, bypassing `LabSettingsStore`.
+5. **Synchronous blocking I/O**: All Store methods are synchronous, forcing `runBlocking` or blocking the main thread when backed by DataStore.
 
 ## Scope
 
-- **In scope**: Replace all SharedPreferences with Preferences DataStore; remove SD card hack; centralize SP access points into proper Store classes.
+- **In scope**: Replace all SharedPreferences with Preferences DataStore; remove SD card hack; centralize SP access points into proper Store classes; migrate all Store interfaces to `suspend` functions.
 - **Out of scope**: Room databases (`JBusDatabase`, `CollectDatabase`) remain unchanged — they are the right tool for structured data. No uninstall-survival requirement since the project has not launched.
 
 ## Decision: Preferences DataStore (not Proto)
@@ -49,9 +50,9 @@ No data migration needed — project has not launched.
 | `PreferencesModule` (5 `@Qualifier` SP providers) | **Deleted** |
 | `AppPreferences` (string constants) | **Deleted** — constants move into Store companion objects |
 | `LabSettingsStore` (manual MutableStateFlow sync) | DataStore-backed Flow properties |
-| `SearchHistoryStore` (SP + JSON) | DataStore + JSON (same serialization) |
-| `SessionCookieStore` (SP + JSON) | DataStore + JSON (same serialization) |
-| `CoverStats` (direct `JBus.getSharedPreferences()`) | Self-owned DataStore, no global ref |
+| `SearchHistoryStore` (SP + JSON, sync interface) | DataStore + JSON, **all methods → `suspend`** |
+| `SessionCookieStore` (SP + JSON, sync interface) | DataStore + JSON, **all methods → `suspend`** |
+| `CoverStats` (direct `JBus.getSharedPreferences()`) | **Deleted** — dead code, no consumers |
 | `MainScreen.kt` / `MovieList.kt` (direct SP read) | New `UiPrefsStore` injected |
 | `ForumThreadDetailViewModel` (`@GifPrefs` SP) | New `GifLoadTracker` injected |
 
@@ -90,11 +91,33 @@ class LabSettingsStore @Inject constructor(
 
 ### §4 SearchHistoryStore
 
-Interface unchanged. Internal `SharedPreferences` → DataStore. JSON serialization logic stays the same (DataStore only supports primitives).
+Interface changes — all methods become `suspend`:
+
+```kotlin
+interface SearchHistoryStore {
+    suspend fun getHistory(): List<String>
+    suspend fun addQuery(query: String)
+    suspend fun removeQuery(query: String)
+    suspend fun clearHistory()
+}
+```
+
+Internal `SharedPreferences` → DataStore. JSON serialization logic stays the same (DataStore only supports primitives).
+
+**Consumer**: `SearchViewModel` already operates in `viewModelScope`, so callers just add `suspend` naturally.
 
 ### §5 SessionCookieStore
 
-Same pattern. Interface unchanged, internal SP → DataStore. JSON serialization for `PersistedCookie` map stays.
+All public methods become `suspend`:
+
+```kotlin
+suspend fun saveCookies(url: String)
+suspend fun restoreCookies(url: String)
+suspend fun isSessionValid(url: String): Boolean
+suspend fun clear()
+```
+
+**Consumer**: `ForumSessionManager` already operates in coroutine scope, so callers just add `suspend` naturally.
 
 ### §6 UiPrefsStore (new)
 
@@ -113,7 +136,7 @@ class UiPrefsStore @Inject constructor(
 
 ### §7 GifLoadTracker (new)
 
-Extracts the GIF URL set tracking currently in `ForumThreadDetailViewModel` via `@GifPrefs SharedPreferences`.
+Extracts the GIF URL set tracking currently in `ForumThreadDetailViewModel` via `@GifPrefs SharedPreferences`. All methods are `suspend`.
 
 ```kotlin
 @Singleton
@@ -121,15 +144,15 @@ class GifLoadTracker @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val dataStore = context.dataStore("gif_loaded_urls")
-    fun loadedUrls(): Set<String> // runBlocking for sync callers
+    suspend fun loadedUrls(): Set<String>
     suspend fun markLoaded(url: String)
     suspend fun clearAll()
 }
 ```
 
-### §8 CoverStats
+### §8 CoverStats — Deleted
 
-Replace direct `JBus.getSharedPreferences("cover_stats", 0)` with a self-owned DataStore. Remains an `object` singleton since it's a fire-and-forget stats collector.
+`CoverStats` has zero consumers (no import references found). Delete `CoverStats.kt` entirely.
 
 ### §9 Consumer Changes
 
@@ -139,7 +162,10 @@ Replace direct `JBus.getSharedPreferences("cover_stats", 0)` with a self-owned D
 | `MovieList.kt` | Inject `UiPrefsStore`, replace direct SP access |
 | `ForumViewModels.kt` | Inject `GifLoadTracker`, remove `@GifPrefs` parameter |
 | `SiteConfigStore.kt` | Inject `LabSettingsStore`, stop reading SP directly |
-| All consumers of `LabSettingsStore` | `StateFlow<T>` → `Flow<T>`, add `collectAsStateWithLifecycle()` |
+| `SearchViewModel.kt` | `historyStore.xxx()` calls now suspend — already in `viewModelScope` |
+| `ForumSessionManager.kt` | `cookieStore.xxx()` calls now suspend — already in coroutine scope |
+| `SearchViewModelTest.kt` | Test fake's methods add `suspend` |
+| All consumers of `LabSettingsStore` | `StateFlow<T>` → `Flow<T>`, use `collectAsStateWithLifecycle()` |
 
 ### §10 Dependency Changes
 
@@ -162,6 +188,7 @@ implementation(libs.datastore.preferences)
 - `app/src/main/java/me/jbusdriver/modern/data/di/PreferencesModule.kt`
 - `app/src/main/java/me/jbusdriver/modern/data/AppPreferences.kt`
 - `app/src/main/java/me/jbusdriver/modern/data/db/SDCardDatabaseContext.kt`
+- `app/src/main/java/me/jbusdriver/modern/core/CoverStats.kt`
 
 ### Files to Create
 
@@ -174,11 +201,12 @@ implementation(libs.datastore.preferences)
 - `app/build.gradle.kts` — add datastore implementation
 - `DB.kt` — remove SDCardDatabaseContext usage
 - `LabSettingsStore.kt` — SP → DataStore, remove MutableStateFlow boilerplate
-- `SearchHistoryStore.kt` — SP → DataStore
-- `SessionCookieStore.kt` — SP → DataStore
-- `CoverStats.kt` — SP → DataStore
+- `SearchHistoryStore.kt` — SP → DataStore, all methods → suspend
+- `SessionCookieStore.kt` — SP → DataStore, all methods → suspend
 - `SiteConfigStore.kt` — inject LabSettingsStore instead of direct SP read
 - `MainScreen.kt` — inject UiPrefsStore
 - `MovieList.kt` — inject UiPrefsStore
 - `ForumViewModels.kt` — inject GifLoadTracker
-- `data/di/DataModule.kt` — remove any SP-related bindings if present
+- `SearchViewModel.kt` — adapt to suspend Store methods
+- `ForumSessionManager.kt` — adapt to suspend Store methods
+- `SearchViewModelTest.kt` — test fake methods → suspend
