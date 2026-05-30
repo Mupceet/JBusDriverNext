@@ -94,7 +94,7 @@ fun ForumThreadDetailScreen(
         )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val loadedGifUrls by viewModel.loadedGifUrlsFlow.collectAsStateWithLifecycle()
-    val autoLoadGifs by viewModel.autoLoadGifs.collectAsStateWithLifecycle(initialValue = false)
+    val autoLoadGifs by viewModel.autoLoadGifs.collectAsStateWithLifecycle()
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()

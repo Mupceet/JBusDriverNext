@@ -88,7 +88,7 @@ fun MainScreen(
     val saveableStateHolder = rememberSaveableStateHolder()
     val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
     val uiPrefsStore = hiltViewModel<UiPrefsViewModel>().store
-    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle(false)
+    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
     val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val toggleGrid: () -> Unit = {

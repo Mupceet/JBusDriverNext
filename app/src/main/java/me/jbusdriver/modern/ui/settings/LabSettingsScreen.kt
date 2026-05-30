@@ -60,10 +60,10 @@ fun LabSettingsScreen(
     onBack: () -> Unit,
     viewModel: LabSettingsViewModel = hiltViewModel()
 ) {
-    val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle(initialValue = false)
-    val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle(initialValue = false)
-    val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle(initialValue = LabSettingsStore.DEFAULT_BASE_URL)
-    val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle(initialValue = emptyList())
+    val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle()
+    val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle()
+    val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle()
+    val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 

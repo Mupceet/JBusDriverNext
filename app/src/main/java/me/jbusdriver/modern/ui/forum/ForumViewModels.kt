@@ -227,7 +227,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
-    val autoLoadGifs: Flow<Boolean> = labSettingsStore.autoLoadGifs
+    val autoLoadGifs: StateFlow<Boolean> = labSettingsStore.autoLoadGifs
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }

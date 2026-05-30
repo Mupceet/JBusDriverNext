@@ -8,12 +8,17 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
@@ -61,26 +66,29 @@ class LabSettingsStore @Inject constructor(
 ) {
 
     private val dataStore = context.labSettingsDataStore
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val forumEnabled: Flow<Boolean> = dataStore.data.map { it[KEY_FORUM_ENABLED] ?: false }
+    val forumEnabled: StateFlow<Boolean> = dataStore.data.map { it[KEY_FORUM_ENABLED] ?: false }
+        .stateIn(scope, SharingStarted.Eagerly, false)
 
     suspend fun setForumEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_FORUM_ENABLED] = enabled }
     }
 
-    val autoLoadGifs: Flow<Boolean> = dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
+    val autoLoadGifs: StateFlow<Boolean> = dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
+        .stateIn(scope, SharingStarted.Eagerly, false)
 
     suspend fun setAutoLoadGifs(enabled: Boolean) {
         dataStore.edit { it[KEY_AUTO_LOAD_GIFS] = enabled }
     }
 
-    val selectedBaseUrl: Flow<String> = dataStore.data.map {
+    val selectedBaseUrl: StateFlow<String> = dataStore.data.map {
         it[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
-    }
+    }.stateIn(scope, SharingStarted.Eagerly, DEFAULT_BASE_URL)
 
-    val cachedMirrorUrls: Flow<List<String>> = dataStore.data.map {
+    val cachedMirrorUrls: StateFlow<List<String>> = dataStore.data.map {
         it[KEY_CACHED_MIRROR_URLS]?.toList() ?: PRESET_MIRROR_URLS
-    }
+    }.stateIn(scope, SharingStarted.Eagerly, PRESET_MIRROR_URLS)
 
     suspend fun selectUrl(url: String) {
         val trimmed = url.trimEnd('/')
