@@ -19,13 +19,16 @@ class DefaultSiteConfig @Inject constructor(
     private val labSettingsStore: LabSettingsStore
 ) : SiteConfig {
     @Volatile
-    override var baseUrl: String = runBlocking {
+    private var _baseUrl: String = runBlocking {
         labSettingsStore.selectedBaseUrl.first()
     }
-        private set
+
+    override var baseUrl: String
+        get() = _baseUrl
+        set(value) { _baseUrl = value.trimEnd('/') }
 
     suspend fun updateBaseUrl(url: String) {
-        baseUrl = url.trimEnd('/')
+        _baseUrl = url.trimEnd('/')
     }
 
     override fun resolve(pathOrUrl: String): String {

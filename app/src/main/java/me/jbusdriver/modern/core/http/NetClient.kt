@@ -6,7 +6,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.site.SiteConfigStore
+import me.jbusdriver.modern.core.site.SiteConfig
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -32,6 +32,9 @@ import java.util.concurrent.TimeUnit
  */
 object NetClient {
 
+    /** Hilt-managed SiteConfig, set once during app initialization */
+    lateinit var siteConfig: SiteConfig
+
     internal data class HtmlResponse(
         val finalUrl: String,
         val body: String
@@ -39,9 +42,9 @@ object NetClient {
 
     /** 默认站点 URL */
     var defaultFastUrl: String
-        get() = SiteConfigStore.baseUrl
+        get() = siteConfig.baseUrl
         set(value) {
-            SiteConfigStore.baseUrl = value.trimEnd('/')
+            siteConfig.baseUrl = value.trimEnd('/')
         }
 
     /** 通用 User-Agent，模拟桌面浏览器避免被目标网站拒绝 */

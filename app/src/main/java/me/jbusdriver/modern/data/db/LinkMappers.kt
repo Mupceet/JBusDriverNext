@@ -3,8 +3,8 @@ package me.jbusdriver.modern.data.db
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
+import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.toJsonString
-import me.jbusdriver.modern.core.site.SiteConfigStore
 import me.jbusdriver.modern.data.db.entity.History
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.parser.stripToPath
@@ -139,7 +139,7 @@ private fun stripUrlFields(link: ILink): ILink {
 }
 
 private fun restoreUrlFields(link: ILink): ILink {
-    val baseUrl = SiteConfigStore.baseUrl
+    val baseUrl = NetClient.siteConfig.baseUrl
     return when (link) {
         is Movie -> link.copy(
             link = link.link.wrapImage(baseUrl),

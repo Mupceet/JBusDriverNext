@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -226,7 +227,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
-    val autoLoadGifs: StateFlow<Boolean> = labSettingsStore.autoLoadGifs
+    val autoLoadGifs: Flow<Boolean> = labSettingsStore.autoLoadGifs
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }

@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,7 +47,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.data.MirrorUrl
 import me.jbusdriver.modern.data.ScanPhase
 import me.jbusdriver.modern.data.ScanState
@@ -57,11 +60,12 @@ fun LabSettingsScreen(
     onBack: () -> Unit,
     viewModel: LabSettingsViewModel = hiltViewModel()
 ) {
-    val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle()
-    val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle()
-    val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle()
-    val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
+    val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle(initialValue = false)
+    val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle(initialValue = false)
+    val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle(initialValue = LabSettingsStore.DEFAULT_BASE_URL)
+    val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle(initialValue = emptyList())
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
         scanState.discoveredUrls
@@ -110,8 +114,8 @@ fun LabSettingsScreen(
             ForumCard(
                 forumEnabled = forumEnabled,
                 autoLoadGifs = autoLoadGifs,
-                onForumEnabledChange = { viewModel.store.setForumEnabled(it) },
-                onAutoLoadGifsChange = { viewModel.store.setAutoLoadGifs(it) }
+                onForumEnabledChange = { scope.launch { viewModel.store.setForumEnabled(it) } },
+                onAutoLoadGifsChange = { scope.launch { viewModel.store.setAutoLoadGifs(it) } }
             )
 
             // URL selection card
