@@ -151,7 +151,7 @@ class ForumSessionManager @Inject constructor(
         return Jsoup.parse(html, url)
     }
 
-    fun persistCookies() {
+    suspend fun persistCookies() {
         cookieStore.saveCookies(siteConfig.referer())
     }
 
