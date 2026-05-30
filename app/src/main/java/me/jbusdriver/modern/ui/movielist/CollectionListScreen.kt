@@ -19,6 +19,7 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
 @Composable
 fun CollectionListScreen(
@@ -27,10 +28,10 @@ fun CollectionListScreen(
     active: Boolean = true,
     onMovieClick: (MovieUiModel) -> Unit = {},
     onActressClick: (ActressUiModel) -> Unit = {},
-    isGrid: Boolean = false,
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle(false)
 
     LaunchedEffect(dbType, active) {
         if (active) {

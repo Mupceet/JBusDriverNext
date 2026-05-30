@@ -19,6 +19,7 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,10 +31,10 @@ fun MovieListScreen(
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
-    isGrid: Boolean = false,
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle(false)
 
     LaunchedEffect(dataSourceType, active) {
         if (active) {

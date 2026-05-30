@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
+import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
@@ -83,7 +83,7 @@ fun LinkMovieListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val isGrid by hiltViewModel<LabSettingsViewModel>().uiPrefsStore.isGrid.collectAsStateWithLifecycle(false)
+    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle(false)
 
     LaunchedEffect(linkUrl) {
         viewModel.setLink(linkUrl, type, avatarUrl)

@@ -46,6 +46,7 @@ import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
 import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
+import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
@@ -85,9 +86,8 @@ fun MainScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
-    val labVm = hiltViewModel<LabSettingsViewModel>()
-    val labSettingsStore = labVm.store
-    val uiPrefsStore = labVm.uiPrefsStore
+    val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
+    val uiPrefsStore = hiltViewModel<UiPrefsViewModel>().store
     val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle(false)
     val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle(false)
     val coroutineScope = rememberCoroutineScope()
@@ -265,7 +265,6 @@ fun MainScreen(
                                 MovieListScreen(
                                     active = true,
                                     onMovieClick = onMovieClick,
-                                    isGrid = isGrid,
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = genreVm
                                 )
@@ -279,7 +278,6 @@ fun MainScreen(
                                     dataSourceType = dataSourceType,
                                     active = true,
                                     onMovieClick = onMovieClick,
-                                    isGrid = isGrid,
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = vm
                                 )
@@ -344,7 +342,6 @@ fun MainScreen(
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
-                        isGrid = isGrid,
                         onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
                     )
 

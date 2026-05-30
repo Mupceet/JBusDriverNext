@@ -12,13 +12,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.data.ScanState
-import me.jbusdriver.modern.data.UiPrefsStore
 import javax.inject.Inject
 
 @HiltViewModel
 class LabSettingsViewModel @Inject constructor(
-    val store: LabSettingsStore,
-    val uiPrefsStore: UiPrefsStore
+    val store: LabSettingsStore
 ) : ViewModel() {
 
     private val _scanState = MutableStateFlow(ScanState())
