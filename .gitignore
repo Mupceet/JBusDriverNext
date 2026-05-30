@@ -8,6 +8,10 @@ local.properties
 *.aab
 *.dm
 
+# Signing keys
+*.jks
+*.keystore
+
 # Claude Code (user-specific settings)
 .claude/
 

@@ -43,11 +43,38 @@ val javbusAuthCookie = providers.gradleProperty("JAVBUS_AUTH_COOKIE")
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
 
+val releaseStoreFile = providers.gradleProperty("RELEASE_STORE_FILE")
+    .map { it.unquotePropertyValue() }
+val releaseStorePassword = providers.gradleProperty("RELEASE_STORE_PASSWORD")
+    .map { it.unquotePropertyValue() }
+val releaseKeyAlias = providers.gradleProperty("RELEASE_KEY_ALIAS")
+    .map { it.unquotePropertyValue() }
+val releaseKeyPassword = providers.gradleProperty("RELEASE_KEY_PASSWORD")
+    .map { it.unquotePropertyValue() }
+
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.orNull.isNullOrBlank() }
+
 fun releaseTime(): String? = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
 
 android {
     namespace = "me.jbusdriver"
     compileSdk = 37
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile.get())
+                storePassword = releaseStorePassword.get()
+                keyAlias = releaseKeyAlias.get()
+                keyPassword = releaseKeyPassword.get()
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "me.jbus"
@@ -62,6 +89,9 @@ android {
     buildTypes {
         release {
             applicationIdSuffix = ".release"
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
