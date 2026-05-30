@@ -1,12 +1,19 @@
 package me.jbusdriver.modern.data
 
-import android.content.SharedPreferences
-import androidx.core.content.edit
+import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
@@ -46,44 +53,38 @@ enum class ScanPhase {
     DONE
 }
 
+private val Context.labSettingsDataStore by preferencesDataStore("lab_settings")
+
 @Singleton
 class LabSettingsStore @Inject constructor(
-    @me.jbusdriver.modern.data.di.LabSettingsPrefs private val prefs: SharedPreferences
+    @ApplicationContext private val context: Context
 ) {
 
-    private val _forumEnabled = MutableStateFlow(prefs.getBoolean(KEY_FORUM_ENABLED, false))
-    val forumEnabled: StateFlow<Boolean> = _forumEnabled.asStateFlow()
+    private val dataStore = context.labSettingsDataStore
 
-    fun setForumEnabled(enabled: Boolean) {
-        prefs.edit { putBoolean(KEY_FORUM_ENABLED, enabled) }
-        _forumEnabled.value = enabled
+    val forumEnabled: Flow<Boolean> = dataStore.data.map { it[KEY_FORUM_ENABLED] ?: false }
+
+    suspend fun setForumEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_FORUM_ENABLED] = enabled }
     }
 
-    private val _autoLoadGifs = MutableStateFlow(prefs.getBoolean(KEY_AUTO_LOAD_GIFS, false))
-    val autoLoadGifs: StateFlow<Boolean> = _autoLoadGifs.asStateFlow()
+    val autoLoadGifs: Flow<Boolean> = dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
 
-    fun setAutoLoadGifs(enabled: Boolean) {
-        prefs.edit { putBoolean(KEY_AUTO_LOAD_GIFS, enabled) }
-        _autoLoadGifs.value = enabled
+    suspend fun setAutoLoadGifs(enabled: Boolean) {
+        dataStore.edit { it[KEY_AUTO_LOAD_GIFS] = enabled }
     }
 
-    private val _selectedBaseUrl = MutableStateFlow(
-        prefs.getString(KEY_SELECTED_BASE_URL, null) ?: DEFAULT_BASE_URL
-    )
-    val selectedBaseUrl: StateFlow<String> = _selectedBaseUrl.asStateFlow()
+    val selectedBaseUrl: Flow<String> = dataStore.data.map {
+        it[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
+    }
 
-    private val _cachedMirrorUrls = MutableStateFlow(
-        prefs.getStringSet(KEY_CACHED_MIRROR_URLS, null)?.toList()
-            ?: PRESET_MIRROR_URLS.also {
-                prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, it.toSet()) }
-            }
-    )
-    val cachedMirrorUrls: StateFlow<List<String>> = _cachedMirrorUrls.asStateFlow()
+    val cachedMirrorUrls: Flow<List<String>> = dataStore.data.map {
+        it[KEY_CACHED_MIRROR_URLS]?.toList() ?: PRESET_MIRROR_URLS
+    }
 
-    fun selectUrl(url: String) {
+    suspend fun selectUrl(url: String) {
         val trimmed = url.trimEnd('/')
-        prefs.edit { putString(KEY_SELECTED_BASE_URL, trimmed) }
-        _selectedBaseUrl.value = trimmed
+        dataStore.edit { it[KEY_SELECTED_BASE_URL] = trimmed }
         NetClient.defaultFastUrl = trimmed
     }
 
@@ -117,7 +118,8 @@ class LabSettingsStore @Inject constructor(
     ) {
         val allSeeds = mutableSetOf<String>()
         allSeeds.add(seedUrl.trimEnd('/'))
-        for (url in _cachedMirrorUrls.value) {
+        val currentCached = cachedMirrorUrls.first()
+        for (url in currentCached) {
             allSeeds.add(url.trimEnd('/'))
         }
 
@@ -169,8 +171,7 @@ class LabSettingsStore @Inject constructor(
             val verified = verifyUrlsParallel(urlList, state)
 
             // Cache all discovered URLs (regardless of reachability)
-            prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, urlList.toSet()) }
-            _cachedMirrorUrls.value = urlList
+            dataStore.edit { it[KEY_CACHED_MIRROR_URLS] = urlList.toSet() }
 
             state.value = ScanState(
                 isScanning = false,
@@ -180,8 +181,7 @@ class LabSettingsStore @Inject constructor(
         } catch (e: CancellationException) {
             // Save whatever was discovered before cancellation
             if (allSeeds.size > 1) {
-                prefs.edit { putStringSet(KEY_CACHED_MIRROR_URLS, allSeeds.toSet()) }
-                _cachedMirrorUrls.value = allSeeds.toList()
+                dataStore.edit { it[KEY_CACHED_MIRROR_URLS] = allSeeds.toSet() }
                 KLog.d("[Mirror] Scan cancelled, saved ${allSeeds.size} seeds")
             }
             state.value = ScanState()
@@ -193,7 +193,7 @@ class LabSettingsStore @Inject constructor(
      * Re-verify reachability of cached URLs without re-scanning.
      */
     suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>) {
-        val urls = _cachedMirrorUrls.value
+        val urls = cachedMirrorUrls.first()
         if (urls.isEmpty()) return
 
         state.value = ScanState(isScanning = true, phase = ScanPhase.VERIFYING)
@@ -263,10 +263,10 @@ class LabSettingsStore @Inject constructor(
     }
 
     companion object {
-        private const val KEY_FORUM_ENABLED = "forum_enabled"
-        private const val KEY_AUTO_LOAD_GIFS = "auto_load_gifs"
-        private const val KEY_SELECTED_BASE_URL = "selected_base_url"
-        private const val KEY_CACHED_MIRROR_URLS = "cached_mirror_urls"
+        private val KEY_FORUM_ENABLED = booleanPreferencesKey("forum_enabled")
+        private val KEY_AUTO_LOAD_GIFS = booleanPreferencesKey("auto_load_gifs")
+        private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")
+        private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
         const val DEFAULT_BASE_URL = "https://www.javbus.com"
         private val PRESET_MIRROR_URLS = listOf(
             "https://www.javbus.com",

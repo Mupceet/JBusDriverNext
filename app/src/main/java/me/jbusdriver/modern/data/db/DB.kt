@@ -8,7 +8,6 @@ import me.jbusdriver.modern.JBus
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.db.DB.collectDatabase
 import me.jbusdriver.modern.data.db.DB.jBusDatabase
-import java.io.File
 
 /**
  * 数据库全局入口单例，提供 [JBusDatabase] 和 [CollectDatabase] 的延迟初始化实例及 DAO 访问。
@@ -50,16 +49,9 @@ object DB {
         }
     }
 
-    /**
-     * 收藏数据库，存储在 SD 卡的独立目录下以确保应用卸载后数据不丢失。
-     * 通过 [SDCardDatabaseContext] 将数据库文件重定向到外部存储。
-     */
     val collectDatabase: CollectDatabase by lazy {
-        val context = object : SDCardDatabaseContext(JBus) {
-            override val dir: String = JBus.packageName + File.separator + "collect"
-        }
         Room.databaseBuilder(
-            context,
+            JBus,
             CollectDatabase::class.java,
             COLLECT_DB_NAME
         ).addMigrations(COLLECT_MIGRATION_1_2).build()

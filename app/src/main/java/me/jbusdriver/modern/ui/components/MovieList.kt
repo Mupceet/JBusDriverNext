@@ -34,7 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.launch
@@ -51,10 +50,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
-
-private val gridPrefs by lazy {
-    me.jbusdriver.modern.JBus.getSharedPreferences(me.jbusdriver.modern.data.AppPreferences.UI_PREFS, 0)
-}
 
 /**
  * 可复用的影片列表组件。
@@ -75,7 +70,7 @@ fun MovieList(
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
     header: (@Composable () -> Unit)? = null
 ) {
-    val useGrid = isGrid ?: remember { gridPrefs.getBoolean("is_grid", false) }
+    val useGrid = isGrid ?: false
     if (useGrid) {
         val gridState = rememberLazyGridState()
         val scope = rememberCoroutineScope()

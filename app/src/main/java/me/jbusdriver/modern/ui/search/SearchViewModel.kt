@@ -74,19 +74,27 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     /** 搜索历史记录 */
-    private val _searchHistory = MutableStateFlow(historyStore.getHistory())
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    init {
+        viewModelScope.launch { _searchHistory.value = historyStore.getHistory() }
+    }
 
     /** 清除搜索历史 */
     fun clearHistory() {
-        historyStore.clearHistory()
-        _searchHistory.value = emptyList()
+        viewModelScope.launch {
+            historyStore.clearHistory()
+            _searchHistory.value = emptyList()
+        }
     }
 
     /** 删除单条搜索历史 */
     fun removeHistoryItem(query: String) {
-        historyStore.removeQuery(query)
-        _searchHistory.value = historyStore.getHistory()
+        viewModelScope.launch {
+            historyStore.removeQuery(query)
+            _searchHistory.value = historyStore.getHistory()
+        }
     }
 
     /** 清空搜索内容，恢复空状态 */
@@ -117,8 +125,10 @@ class SearchViewModel @Inject constructor(
     fun search(query: String, type: SearchType? = null) {
         if (query.isBlank()) return
         val searchType = type ?: _uiState.value.searchType
-        historyStore.addQuery(query)
-        _searchHistory.value = historyStore.getHistory()
+        viewModelScope.launch {
+            historyStore.addQuery(query)
+            _searchHistory.value = historyStore.getHistory()
+        }
         viewModelScope.launch {
             _uiState.update {
                 it.copy(

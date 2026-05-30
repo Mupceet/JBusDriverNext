@@ -164,6 +164,9 @@ dependencies {
     // Animation
     implementation(libs.lottie.compose)
 
+    // DataStore
+    implementation(libs.datastore.preferences)
+
     // Debug
     debugImplementation(libs.leakcanary)
 

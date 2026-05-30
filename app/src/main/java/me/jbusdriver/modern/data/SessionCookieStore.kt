@@ -1,65 +1,51 @@
 package me.jbusdriver.modern.data
 
-import android.content.SharedPreferences
+import android.content.Context
 import android.webkit.CookieManager
-import androidx.core.content.edit
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
-import me.jbusdriver.modern.data.di.SessionCookiePrefs
 import javax.inject.Inject
 
-/**
- * Persists session cookies from CookieManager to SharedPreferences.
- *
- * Stores critical cookies (age verification, Discuz! session) with their expiry
- * timestamps so they can be restored on next app launch without creating a WebView.
- */
-class SessionCookieStore @Inject constructor(
-    @SessionCookiePrefs private val prefs: SharedPreferences
-) {
+private val Context.sessionCookieDataStore by preferencesDataStore("session_cookies")
 
-    /**
-     * Save all cookies for the given URL from CookieManager to SharedPreferences.
-     * Only saves cookies whose names are in [TRACKED_COOKIES].
-     */
-    fun saveCookies(url: String) {
+class SessionCookieStore @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    private val dataStore = context.sessionCookieDataStore
+
+    suspend fun saveCookies(url: String) {
         val cookieString = CookieManager.getInstance().getCookie(url) ?: return
         val cookies = parseCookieString(cookieString)
         val entries = mutableMapOf<String, PersistedCookie>()
-
         for ((name, value) in cookies) {
             if (name in TRACKED_COOKIES) {
                 val ttlSeconds = COOKIE_TTL[name] ?: 0L
-                val expiresAt = if (ttlSeconds > 0) {
-                    System.currentTimeMillis() / 1000 + ttlSeconds
-                } else {
-                    0L // session cookie
-                }
+                val expiresAt = if (ttlSeconds > 0) System.currentTimeMillis() / 1000 + ttlSeconds else 0L
                 entries[name] = PersistedCookie(value, expiresAt)
             }
         }
-
         if (entries.isNotEmpty()) {
             val json = GSON.toJson(entries)
-            prefs.edit { putString(prefsKey(url), json) }
+            dataStore.edit { it[prefsKey(url)] = json }
             KLog.d("[SessionCookieStore] Saved ${entries.size} cookies for $url", TAG)
         } else {
             KLog.d("[SessionCookieStore] No tracked cookies found for $url", TAG)
         }
     }
 
-    /**
-     * Restore persisted cookies for the given URL back into CookieManager.
-     * Only restores non-expired cookies.
-     */
-    fun restoreCookies(url: String) {
-        val json = prefs.getString(prefsKey(url), null) ?: return
+    suspend fun restoreCookies(url: String) {
+        val json = dataStore.data.map { it[prefsKey(url)] }.first() ?: return
         val entries = tryParse(json) ?: return
         val now = System.currentTimeMillis() / 1000
         val cookieManager = CookieManager.getInstance()
         var restored = 0
-
         for ((name, cookie) in entries) {
             if (cookie.expiresAt == 0L || cookie.expiresAt > now) {
                 cookieManager.setCookie(url, "$name=${cookie.value}; path=/")
@@ -70,15 +56,10 @@ class SessionCookieStore @Inject constructor(
         KLog.d("[SessionCookieStore] Restored $restored/${entries.size} cookies for $url", TAG)
     }
 
-    /**
-     * Check if critical cookies exist and are not expired.
-     * Returns true if [CRITICAL_COOKIES] are all present and valid.
-     */
-    fun isSessionValid(url: String): Boolean {
-        val json = prefs.getString(prefsKey(url), null) ?: return false
+    suspend fun isSessionValid(url: String): Boolean {
+        val json = dataStore.data.map { it[prefsKey(url)] }.first() ?: return false
         val entries = tryParse(json) ?: return false
         val now = System.currentTimeMillis() / 1000
-
         for (name in CRITICAL_COOKIES) {
             val cookie = entries[name] ?: return false
             if (cookie.expiresAt != 0L && cookie.expiresAt <= now) {
@@ -89,15 +70,14 @@ class SessionCookieStore @Inject constructor(
         return true
     }
 
-    /** Remove persisted cookie data. */
-    fun clear() {
-        prefs.edit { clear() }
+    suspend fun clear() {
+        dataStore.edit { it.clear() }
         KLog.d("[SessionCookieStore] Cleared all persisted cookies", TAG)
     }
 
-    private fun prefsKey(url: String): String {
+    private fun prefsKey(url: String): androidx.datastore.preferences.core.Preferences.Key<String> {
         val host = url.substringAfter("://").substringBefore("/")
-        return "session_cookies_$host"
+        return stringPreferencesKey("session_cookies_$host")
     }
 
     private fun tryParse(json: String): Map<String, PersistedCookie>? {
@@ -105,41 +85,18 @@ class SessionCookieStore @Inject constructor(
     }
 
     private fun parseCookieString(cookieString: String): Map<String, String> {
-        return cookieString.split(";")
-            .map { it.trim() }
-            .filter { it.contains("=") }
-            .associate {
-                val parts = it.split("=", limit = 2)
-                parts[0].trim() to parts[1].trim()
-            }
+        return cookieString.split(";").map { it.trim() }.filter { it.contains("=") }.associate {
+            val parts = it.split("=", limit = 2)
+            parts[0].trim() to parts[1].trim()
+        }
     }
 
-    internal data class PersistedCookie(
-        val value: String,
-        /** Unix timestamp (seconds) when this cookie expires. 0 = session cookie. */
-        val expiresAt: Long
-    )
+    internal data class PersistedCookie(val value: String, val expiresAt: Long)
 
     companion object {
         private const val TAG = "SessionCookie"
-
-        /** Cookies to persist. */
-        private val TRACKED_COOKIES = setOf(
-            "age", "PHPSESSID",
-            "4fJN_2132_saltkey", "4fJN_2132_sid",
-            "4fJN_2132_lastvisit", "4fJN_2132_lastact"
-        )
-
-        /** Cookies that must be present for session to be considered valid. */
+        private val TRACKED_COOKIES = setOf("age", "PHPSESSID", "4fJN_2132_saltkey", "4fJN_2132_sid", "4fJN_2132_lastvisit", "4fJN_2132_lastact")
         private val CRITICAL_COOKIES = setOf("age", "4fJN_2132_saltkey")
-
-        /** TTL in seconds for each cookie type, used when saving. */
-        private val COOKIE_TTL = mapOf(
-            "age" to 30 * 24 * 3600L,           // 30 days
-            "4fJN_2132_saltkey" to 30 * 24 * 3600L,  // 30 days
-            "4fJN_2132_sid" to 24 * 3600L,      // 1 day
-            "4fJN_2132_lastvisit" to 30 * 24 * 3600L,
-            "4fJN_2132_lastact" to 24 * 3600L
-        )
+        private val COOKIE_TTL = mapOf("age" to 30*24*3600L, "4fJN_2132_saltkey" to 30*24*3600L, "4fJN_2132_sid" to 24*3600L, "4fJN_2132_lastvisit" to 30*24*3600L, "4fJN_2132_lastact" to 24*3600L)
     }
 }

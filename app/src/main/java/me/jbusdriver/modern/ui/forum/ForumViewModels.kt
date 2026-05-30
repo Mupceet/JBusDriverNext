@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,8 +13,6 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import android.content.SharedPreferences
-import androidx.core.content.edit
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.LabSettingsStore
@@ -216,7 +215,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
 class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
     private val labSettingsStore: LabSettingsStore,
-    @me.jbusdriver.modern.data.di.GifPrefs private val gifPrefs: SharedPreferences,
+    private val gifLoadTracker: me.jbusdriver.modern.data.GifLoadTracker,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
     private val tid: Int = navKey.tid
@@ -225,27 +224,27 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
 
-    private val _loadedGifUrls = MutableStateFlow(loadPersistedGifUrls())
+    private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
-    val autoLoadGifs: StateFlow<Boolean> = labSettingsStore.autoLoadGifs
+    val autoLoadGifs: Flow<Boolean> = labSettingsStore.autoLoadGifs
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }
-        persistGifUrls(_loadedGifUrls.value)
+        viewModelScope.launch { persistGifUrls(setOf(url)) }
     }
 
-    private fun loadPersistedGifUrls(): Set<String> {
-        return gifPrefs.getStringSet("urls", emptySet()) ?: emptySet()
+    private suspend fun loadPersistedGifUrls(): Set<String> {
+        return gifLoadTracker.loadedUrls()
     }
 
-    private fun persistGifUrls(urls: Set<String>) {
-        val trimmed = if (urls.size > MAX_GIF_CACHE) urls.toList().takeLast(MAX_GIF_CACHE).toSet() else urls
-        gifPrefs.edit { putStringSet("urls", trimmed) }
+    private suspend fun persistGifUrls(urls: Set<String>) {
+        for (url in urls) gifLoadTracker.markLoaded(url)
     }
 
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
+        viewModelScope.launch { _loadedGifUrls.value = loadPersistedGifUrls() }
         loadDetail()
     }
 
@@ -308,9 +307,5 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(navKey: RouteForumThreadDetail): ForumThreadDetailViewModel
-    }
-
-    companion object {
-        private const val MAX_GIF_CACHE = 50
     }
 }

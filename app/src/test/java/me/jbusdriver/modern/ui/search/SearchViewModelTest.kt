@@ -33,15 +33,15 @@ class SearchViewModelTest {
 
     private fun fakeHistoryStore() = object : SearchHistoryStore {
         private val history = mutableListOf<String>()
-        override fun getHistory(): List<String> = history.toList()
-        override fun addQuery(query: String) {
+        override suspend fun getHistory(): List<String> = history.toList()
+        override suspend fun addQuery(query: String) {
             history.remove(query)
             history.add(0, query)
         }
-        override fun removeQuery(query: String) {
+        override suspend fun removeQuery(query: String) {
             history.remove(query)
         }
-        override fun clearHistory() {
+        override suspend fun clearHistory() {
             history.clear()
         }
     }

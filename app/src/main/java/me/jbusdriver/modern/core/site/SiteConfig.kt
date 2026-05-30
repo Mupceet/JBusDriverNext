@@ -1,6 +1,8 @@
 package me.jbusdriver.modern.core.site
 
-import me.jbusdriver.modern.JBus
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import me.jbusdriver.modern.data.LabSettingsStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,28 +14,22 @@ interface SiteConfig {
     fun referer(): String = "${baseUrl.trimEnd('/')}/"
 }
 
-internal object SiteConfigStore {
-    @Volatile
-    var baseUrl: String = loadPersistedUrl()
-        internal set
-
-    private fun loadPersistedUrl(): String {
-        return try {
-            val prefs = JBus.getSharedPreferences("lab_settings", 0)
-            prefs.getString("selected_base_url", null) ?: "https://www.javbus.com"
-        } catch (_: Exception) {
-            "https://www.javbus.com"
-        }
-    }
-}
-
 @Singleton
-class DefaultSiteConfig @Inject constructor() : SiteConfig {
+class DefaultSiteConfig @Inject constructor(
+    private val labSettingsStore: LabSettingsStore
+) : SiteConfig {
+    @Volatile
+    private var _baseUrl: String = runBlocking {
+        labSettingsStore.selectedBaseUrl.first()
+    }
+
     override var baseUrl: String
-        get() = SiteConfigStore.baseUrl
-        set(value) {
-            SiteConfigStore.baseUrl = value.trimEnd('/')
-        }
+        get() = _baseUrl
+        set(value) { _baseUrl = value.trimEnd('/') }
+
+    suspend fun updateBaseUrl(url: String) {
+        _baseUrl = url.trimEnd('/')
+    }
 
     override fun resolve(pathOrUrl: String): String {
         if (pathOrUrl.startsWith("http")) return pathOrUrl

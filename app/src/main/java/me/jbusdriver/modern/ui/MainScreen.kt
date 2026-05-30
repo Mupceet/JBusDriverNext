@@ -28,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -40,7 +39,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.JBus
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
 import me.jbusdriver.modern.ui.components.SearchBar
@@ -53,7 +53,6 @@ import me.jbusdriver.modern.ui.movielist.GenreListViewModel
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListViewModel
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
-import androidx.core.content.edit
 
 enum class BottomNavCategory { MOVIE, ACTRESS, FORUM, COLLECT }
 
@@ -86,17 +85,15 @@ fun MainScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
-    val uiPrefs = remember { JBus.getSharedPreferences(me.jbusdriver.modern.data.AppPreferences.UI_PREFS, 0) }
-    var isGrid by rememberSaveable {
-        mutableStateOf(uiPrefs.getBoolean("is_grid", false))
+    val labVm = hiltViewModel<LabSettingsViewModel>()
+    val labSettingsStore = labVm.store
+    val uiPrefsStore = labVm.uiPrefsStore
+    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle(false)
+    val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle(false)
+    val coroutineScope = rememberCoroutineScope()
+    val toggleGrid: () -> Unit = {
+        coroutineScope.launch { uiPrefsStore.setGrid(!isGrid) }
     }
-    val toggleGrid = {
-        isGrid = !isGrid
-        uiPrefs.edit { putBoolean("is_grid", isGrid) }
-    }
-
-    val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
-    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
 
     // Auto-switch away from Forum tab when disabled
     LaunchedEffect(forumEnabled) {
