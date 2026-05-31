@@ -64,6 +64,9 @@ interface CollectRepository {
     /** 获取所有收藏的演员列表 */
     suspend fun getCollectedActresses(): List<ActressInfo>
 
+    /** 获取指定类型的原始收藏数据（包含 createTime），用于筛选和排序 */
+    suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem>
+
     /** Export all collected movies and actresses as a JSON string (new format v1) */
     suspend fun exportCollectionsJson(): String
 
@@ -147,6 +150,12 @@ class DefaultCollectRepository @Inject constructor(
     override suspend fun getCollectedActresses(): List<ActressInfo> {
         return withContext(Dispatchers.IO) {
             linkDao.listByType(ActressDBType).mapNotNull { it.toILink() as? ActressInfo }
+        }
+    }
+
+    override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> {
+        return withContext(Dispatchers.IO) {
+            linkDao.listByType(dbType)
         }
     }
 
