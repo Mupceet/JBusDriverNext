@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -57,7 +58,7 @@ fun CollectionFilterSheet(
     onFilterChange: (CollectionFilterState) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -77,7 +78,7 @@ fun CollectionFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "筛选",
+                    "篩選",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -105,7 +106,7 @@ fun CollectionFilterSheet(
             ) {
                 // ── Censor filter (movie only) ──
                 if (dbType == MovieDBType) {
-                    FilterSectionLabel("内容类型")
+                    FilterSectionLabel("內容類型")
                     Spacer(Modifier.padding(top = 6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CensorChip(
@@ -128,7 +129,7 @@ fun CollectionFilterSheet(
                     Spacer(Modifier.padding(top = 16.dp))
 
                     // ── Publish date (movie only) ──
-                    FilterSectionLabel("发布日期")
+                    FilterSectionLabel("發佈日期")
                     Spacer(Modifier.padding(top = 6.dp))
                     YearChipRow(
                         selectedYear = filterState.publishYear,
@@ -153,7 +154,7 @@ fun CollectionFilterSheet(
                 }
 
                 // ── Collect time (both) ──
-                FilterSectionLabel("收藏时间")
+                FilterSectionLabel("收藏時間")
                 Spacer(Modifier.padding(top = 6.dp))
                 YearChipRow(
                     selectedYear = filterState.collectYear,
@@ -246,10 +247,10 @@ private fun SortDropdown(
     val options = if (dbType == MovieDBType) SortOption.movieOptions else SortOption.actressOptions
 
     Box {
-        OutlinedButton(onClick = { expanded = true }) {
-            Text(current.label, fontSize = 13.sp)
+        OutlinedButton(onClick = { expanded = true }, contentPadding = PaddingValues(horizontal = 12.dp)) {
+            Text(current.label, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.width(2.dp))
-            Text("▾", fontSize = 10.sp)
+            Text("▾", fontSize = 20.sp)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->

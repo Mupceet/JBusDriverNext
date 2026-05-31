@@ -191,9 +191,9 @@ fun CollectCategoryScreen(
                 onClick = { showFilterSheet = true },
                 label = {
                     if (activeFilterState.filterState.hasActiveFilters) {
-                        Text("筛选 (${activeFilterState.filterState.activeFilterCount})", fontSize = 12.sp)
+                        Text("篩選 (${activeFilterState.filterState.activeFilterCount})", fontSize = 12.sp)
                     } else {
-                        Text("筛选", fontSize = 12.sp)
+                        Text("篩選", fontSize = 12.sp)
                     }
                 },
                 trailingIcon = {

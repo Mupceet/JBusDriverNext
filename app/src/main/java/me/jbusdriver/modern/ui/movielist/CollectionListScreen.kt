@@ -61,7 +61,7 @@ fun CollectionListScreen(
             if (uiState.movies.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (hasItems) "没有匹配的筛选结果" else "還沒有收藏",
+                        if (hasItems) "沒有匹配的篩選結果" else "還沒有收藏",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -81,7 +81,7 @@ fun CollectionListScreen(
             if (uiState.actresses.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (hasItems) "没有匹配的筛选结果" else "還沒有收藏",
+                        if (hasItems) "沒有匹配的篩選結果" else "還沒有收藏",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

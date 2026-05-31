@@ -7,9 +7,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.UiPrefsStore
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem
@@ -51,7 +53,8 @@ data class CollectionListUiState(
  */
 @HiltViewModel
 class CollectionListViewModel @Inject constructor(
-    val collectRepository: CollectRepository
+    val collectRepository: CollectRepository,
+    private val uiPrefsStore: UiPrefsStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionListUiState())
@@ -62,6 +65,8 @@ class CollectionListViewModel @Inject constructor(
     /** 未筛选的原始演员数据 */
     private var allActresses: List<ActressUiModel> = emptyList()
     private var currentDbType: Int = MovieDBType
+    /** 是否已从持久化加载排序设定 */
+    private var sortRestored = false
 
     /**
      * 加载指定类型的收藏列表。
@@ -73,6 +78,18 @@ class CollectionListViewModel @Inject constructor(
         currentDbType = dbType
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, error = null) }
+
+            // Restore persisted sort option on first load
+            if (!sortRestored) {
+                val savedSort = try {
+                    val store = uiPrefsStore
+                    val flow = if (dbType == MovieDBType) store.movieSortOption else store.actressSortOption
+                    SortOption.valueOf(flow.first())
+                } catch (_: Exception) { SortOption.COLLECT_DESC }
+                _uiState.update { it.copy(filterState = it.filterState.copy(sortOption = savedSort)) }
+                sortRestored = true
+            }
+
             try {
                 val movieItems = collectRepository.getCollectedLinkItems(MovieDBType)
                 val actressItems = collectRepository.getCollectedLinkItems(ActressDBType)
@@ -98,6 +115,13 @@ class CollectionListViewModel @Inject constructor(
      * 更新筛选/排序条件，立即重新计算展示列表。
      */
     fun updateFilter(filterState: CollectionFilterState) {
+        // Persist sort option if it changed
+        val oldSort = _uiState.value.filterState.sortOption
+        if (filterState.sortOption != oldSort) {
+            viewModelScope.launch {
+                uiPrefsStore.setSortOption(currentDbType, filterState.sortOption.name)
+            }
+        }
         _uiState.update { it.copy(filterState = filterState) }
         applyFilterAndSort()
     }

@@ -1,22 +1,22 @@
 package me.jbusdriver.modern.ui.movielist
 
 /**
- * 内容类型筛选（有码/无码）
+ * 內容類型篩選（有碼/無碼）
  */
 enum class CensorFilter { ALL, CENSORED, UNCENSORED }
 
 /**
- * 排序选项。
+ * 排序選項。
  *
- * [label] 为 Bottom Sheet 排序下拉中显示的文本。
- * [movieOptions] 影片列表可用的排序选项。
- * [actressOptions] 演员列表可用的排序选项（仅收藏时间）。
+ * [label] 為 Bottom Sheet 排序下拉中顯示的文本。
+ * [movieOptions] 影片列表可用的排序選項。
+ * [actressOptions] 演員列表可用的排序選項（僅收藏時間）。
  */
 enum class SortOption(val label: String) {
-    COLLECT_DESC("收藏时间倒序"),
-    COLLECT_ASC("收藏时间正序"),
-    PUBLISH_DESC("发布时间倒序"),
-    PUBLISH_ASC("发布时间正序");
+    COLLECT_DESC("收藏時間倒序"),
+    COLLECT_ASC("收藏時間正序"),
+    PUBLISH_DESC("發佈時間倒序"),
+    PUBLISH_ASC("發佈時間正序");
 
     companion object {
         val movieOptions: List<SortOption> = entries

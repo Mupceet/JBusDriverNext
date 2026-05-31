@@ -3,6 +3,7 @@ package me.jbusdriver.modern.data
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,24 @@ class UiPrefsStore @Inject constructor(
         dataStore.edit { it[IS_GRID] = isGrid }
     }
 
+    /** Persisted sort option for movie collection */
+    val movieSortOption: StateFlow<String> = dataStore.data
+        .map { it[MOVIE_SORT] ?: "COLLECT_DESC" }
+        .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
+
+    /** Persisted sort option for actress collection */
+    val actressSortOption: StateFlow<String> = dataStore.data
+        .map { it[ACTRESS_SORT] ?: "COLLECT_DESC" }
+        .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
+
+    suspend fun setSortOption(dbType: Int, optionName: String) {
+        val key = if (dbType == 1) MOVIE_SORT else ACTRESS_SORT // 1 = MovieDBType
+        dataStore.edit { it[key] = optionName }
+    }
+
     companion object {
         private val IS_GRID = booleanPreferencesKey("is_grid")
+        private val MOVIE_SORT = stringPreferencesKey("movie_sort_option")
+        private val ACTRESS_SORT = stringPreferencesKey("actress_sort_option")
     }
 }
