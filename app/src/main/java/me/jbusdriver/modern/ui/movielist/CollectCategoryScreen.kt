@@ -74,7 +74,8 @@ fun CollectCategoryScreen(
     val movieVm: CollectionListViewModel = hiltViewModel(key = "collect_0")
     val actressVm: CollectionListViewModel = hiltViewModel(key = "collect_1")
     val actionVm: CollectCategoryViewModel = hiltViewModel()
-    val countState by movieVm.uiState.collectAsStateWithLifecycle()
+    val movieState by movieVm.uiState.collectAsStateWithLifecycle()
+    val actressState by actressVm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
@@ -176,13 +177,13 @@ fun CollectCategoryScreen(
             FilterChip(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                label = { Text("影片 (${countState.movieCount})", fontSize = 12.sp) }
+                label = { Text("影片 (${movieState.movies.size})", fontSize = 12.sp) }
             )
             Spacer(Modifier.width(6.dp))
             FilterChip(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                label = { Text("演員 (${countState.actressCount})", fontSize = 12.sp) }
+                label = { Text("演員 (${actressState.actresses.size})", fontSize = 12.sp) }
             )
             Spacer(Modifier.weight(1f))
             FilterChip(
