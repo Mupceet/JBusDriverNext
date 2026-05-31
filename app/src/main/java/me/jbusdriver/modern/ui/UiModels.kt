@@ -23,7 +23,8 @@ data class MovieUiModel(
     val code: String,
     val date: String,
     val link: String,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val createTime: Long = 0L
 )
 
 /** 电影详情页的 UI 模型 */
@@ -50,7 +51,7 @@ data class GenreUiModel(val name: String = "", val link: String = "")
 
 /** 演员的 UI 模型 */
 @Immutable
-data class ActressUiModel(val name: String, val avatar: String, val link: String)
+data class ActressUiModel(val name: String, val avatar: String, val link: String, val createTime: Long = 0L)
 
 /** 截图画册的 UI 模型 */
 @Immutable
