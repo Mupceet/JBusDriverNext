@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -77,6 +78,12 @@ fun CollectCategoryScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
+
+    // Active tab's ViewModel and state for filter sheet
+    val activeVm = if (selectedTab == 0) movieVm else actressVm
+    val activeFilterState by activeVm.uiState.collectAsStateWithLifecycle()
+    val activeDbType = if (selectedTab == 0) MovieDBType else ActressDBType
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -177,6 +184,25 @@ fun CollectCategoryScreen(
                 onClick = { selectedTab = 1 },
                 label = { Text("演員 (${countState.actressCount})", fontSize = 12.sp) }
             )
+            Spacer(Modifier.weight(1f))
+            FilterChip(
+                selected = activeFilterState.filterState.hasActiveFilters,
+                onClick = { showFilterSheet = true },
+                label = {
+                    if (activeFilterState.filterState.hasActiveFilters) {
+                        Text("筛选 (${activeFilterState.filterState.activeFilterCount})", fontSize = 12.sp)
+                    } else {
+                        Text("筛选", fontSize = 12.sp)
+                    }
+                },
+                trailingIcon = {
+                    Icon(
+                        painterResource(R.drawable.filter_alt_24px),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
         }
 
         HorizontalPager(
@@ -196,5 +222,16 @@ fun CollectCategoryScreen(
                 viewModel = vm
             )
         }
+    }
+
+    // Filter Bottom Sheet
+    if (showFilterSheet) {
+        CollectionFilterSheet(
+            dbType = activeDbType,
+            filterState = activeFilterState.filterState,
+            availableYears = activeFilterState.availableYears,
+            onFilterChange = { activeVm.updateFilter(it) },
+            onDismiss = { showFilterSheet = false }
+        )
     }
 }

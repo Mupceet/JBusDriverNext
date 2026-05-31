@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,8 +39,8 @@ import me.jbusdriver.modern.data.db.MovieDBType
 /**
  * 收藏筛选 Bottom Sheet。
  *
- * 首行：重置按钮（左，仅在有筛选条件时显示）+ 排序下拉（右）。
- * 主区域：筛选 Chip，点击即时生效。
+ * 布局参考 CategoryBottomSheet：高度限制 0.618f，标题居左，重置+排序居右。
+ * 筛选 Chip 点击即时生效。
  *
  * @param dbType 当前列表类型（MovieDBType 或 ActressDBType），决定显示哪些筛选维度
  * @param filterState 当前筛选/排序状态
@@ -62,90 +66,103 @@ fun CollectionFilterSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 32.dp)
+                .fillMaxHeight(0.618f)
         ) {
-            // ── Top row: Reset + Sort dropdown ──
+            // ── Header: title (left) + reset + sort (right) ──
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (filterState.hasActiveFilters) {
-                    TextButton(onClick = { onFilterChange(CollectionFilterState()) }) {
-                        Text("重置")
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                SortDropdown(
-                    dbType = dbType,
-                    current = filterState.sortOption,
-                    onSelect = { onFilterChange(filterState.copy(sortOption = it)) }
+                Text(
+                    "筛选",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (filterState.hasActiveFilters) {
+                        TextButton(onClick = { onFilterChange(CollectionFilterState()) }) {
+                            Text("重置", fontSize = 12.sp)
+                        }
+                    }
+                    SortDropdown(
+                        dbType = dbType,
+                        current = filterState.sortOption,
+                        onSelect = { onFilterChange(filterState.copy(sortOption = it)) }
+                    )
+                }
             }
 
-            Spacer(Modifier.padding(top = 16.dp))
-
-            // ── Censor filter (movie only) ──
-            if (dbType == MovieDBType) {
-                FilterSectionLabel("内容类型")
-                Spacer(Modifier.padding(top = 6.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CensorChip(
-                        label = "全部",
-                        selected = filterState.censorFilter == CensorFilter.ALL,
-                        onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.ALL)) }
-                    )
-                    CensorChip(
-                        label = "有碼",
-                        selected = filterState.censorFilter == CensorFilter.CENSORED,
-                        onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.CENSORED)) }
-                    )
-                    CensorChip(
-                        label = "無碼",
-                        selected = filterState.censorFilter == CensorFilter.UNCENSORED,
-                        onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.UNCENSORED)) }
-                    )
-                }
-
-                Spacer(Modifier.padding(top = 16.dp))
-
-                // ── Publish date (movie only) ──
-                FilterSectionLabel("发布日期")
-                Spacer(Modifier.padding(top = 6.dp))
-                YearChipRow(
-                    selectedYear = filterState.publishYear,
-                    years = availableYears.publishYears,
-                    onSelect = { year ->
-                        onFilterChange(filterState.copy(publishYear = year, publishMonth = null))
+            // ── Scrollable content ──
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                // ── Censor filter (movie only) ──
+                if (dbType == MovieDBType) {
+                    FilterSectionLabel("内容类型")
+                    Spacer(Modifier.padding(top = 6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CensorChip(
+                            label = "全部",
+                            selected = filterState.censorFilter == CensorFilter.ALL,
+                            onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.ALL)) }
+                        )
+                        CensorChip(
+                            label = "有碼",
+                            selected = filterState.censorFilter == CensorFilter.CENSORED,
+                            onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.CENSORED)) }
+                        )
+                        CensorChip(
+                            label = "無碼",
+                            selected = filterState.censorFilter == CensorFilter.UNCENSORED,
+                            onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.UNCENSORED)) }
+                        )
                     }
-                )
 
-                // Month row: only show when a specific year is selected (not "全部" or "更早")
-                if (filterState.publishYear != null && filterState.publishYear > 0) {
-                    Spacer(Modifier.padding(top = 8.dp))
-                    MonthChipRow(
-                        selectedMonth = filterState.publishMonth,
-                        onSelect = { month ->
-                            onFilterChange(filterState.copy(publishMonth = month))
+                    Spacer(Modifier.padding(top = 16.dp))
+
+                    // ── Publish date (movie only) ──
+                    FilterSectionLabel("发布日期")
+                    Spacer(Modifier.padding(top = 6.dp))
+                    YearChipRow(
+                        selectedYear = filterState.publishYear,
+                        years = availableYears.publishYears,
+                        onSelect = { year ->
+                            onFilterChange(filterState.copy(publishYear = year, publishMonth = null))
                         }
                     )
+
+                    // Month row: only show when a specific year is selected
+                    if (filterState.publishYear != null && filterState.publishYear > 0) {
+                        Spacer(Modifier.padding(top = 8.dp))
+                        MonthChipRow(
+                            selectedMonth = filterState.publishMonth,
+                            onSelect = { month ->
+                                onFilterChange(filterState.copy(publishMonth = month))
+                            }
+                        )
+                    }
+
+                    Spacer(Modifier.padding(top = 16.dp))
                 }
 
-                Spacer(Modifier.padding(top = 16.dp))
+                // ── Collect time (both) ──
+                FilterSectionLabel("收藏时间")
+                Spacer(Modifier.padding(top = 6.dp))
+                YearChipRow(
+                    selectedYear = filterState.collectYear,
+                    years = availableYears.collectYears,
+                    onSelect = { year ->
+                        onFilterChange(filterState.copy(collectYear = year))
+                    }
+                )
             }
-
-            // ── Collect time (both) ──
-            FilterSectionLabel("收藏时间")
-            Spacer(Modifier.padding(top = 6.dp))
-            YearChipRow(
-                selectedYear = filterState.collectYear,
-                years = availableYears.collectYears,
-                onSelect = { year ->
-                    onFilterChange(filterState.copy(collectYear = year))
-                }
-            )
-
-            Spacer(Modifier.padding(top = 32.dp))
         }
     }
 }
