@@ -18,7 +18,7 @@
 
 | 筛选/排序维度 | 数据来源 | 存储位置 |
 |--------------|---------|---------|
-| 有码/无码 | URL 路径前缀（`/uncensored/` = 无码，`/xyz/` = 欧美，其余 = 有码） | `LinkItem.key` |
+| 有码/无码 | URL 路径前缀（`/uncensored/` = 无码，其余 = 有码） | `LinkItem.key` |
 | 发布日期 | Movie 的 `date` 字段 | `LinkItem.jsonStr` → 反序列化 |
 | 收藏时间 | 收藏时间戳 | `LinkItem.createTime` |
 
