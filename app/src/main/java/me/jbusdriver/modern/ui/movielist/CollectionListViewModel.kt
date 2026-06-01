@@ -97,7 +97,7 @@ class CollectionListViewModel @Inject constructor(
 
                 allMovies = movieItems.mapNotNull { item ->
                     ((item.toILink() as? Movie)?.toUiModel())
-                        ?.copy(createTime = item.createTime)
+                        ?.copy(createTime = item.createTime, categoryId = item.categoryId)
                 }
                 allActresses = actressItems.mapNotNull { item ->
                     ((item.toILink() as? ActressInfo)?.toActressUiModel())
@@ -234,8 +234,8 @@ class CollectionListViewModel @Inject constructor(
 private fun List<MovieUiModel>.filterByCensor(censor: CensorFilter): List<MovieUiModel> =
     when (censor) {
         CensorFilter.ALL -> this
-        CensorFilter.CENSORED -> filter { "/uncensored/" !in it.link }
-        CensorFilter.UNCENSORED -> filter { "/uncensored/" in it.link }
+        CensorFilter.CENSORED -> filter { it.categoryId != 3 }
+        CensorFilter.UNCENSORED -> filter { it.categoryId == 3 }
     }
 
 private fun List<MovieUiModel>.filterByPublishYear(

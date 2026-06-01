@@ -15,6 +15,7 @@ import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.toUiModel
@@ -44,11 +45,13 @@ class MovieDetailViewModel @Inject constructor(
     val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
 
     private var currentUrl: String = ""
+    private var censorType: String? = null
 
-    fun loadDetail(url: String) {
+    fun loadDetail(url: String, censorType: String? = null) {
         if (currentUrl == url && _uiState.value.movieDetail != null) return
         if (_uiState.value.isLoading) return
         currentUrl = url
+        this.censorType = censorType
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
@@ -110,8 +113,14 @@ class MovieDetailViewModel @Inject constructor(
     fun toggleCollect() {
         val detail = _uiState.value.movieDetail ?: return
         val url = currentUrl
+        val isUncensored = censorType == "UNCENSORED" ||
+            detail.genres.any { "無碼" in it.name }
         viewModelScope.launch {
-            val movie = detail.toCollectionMovie(url)
+            val movie = detail.toCollectionMovie(url).apply {
+                if (isUncensored) {
+                    categoryId = UncensoredMovieCategory.id ?: 3
+                }
+            }
             val newState = collectRepository.toggleMovieCollect(movie)
             _uiState.update { it.copy(isCollected = newState) }
         }

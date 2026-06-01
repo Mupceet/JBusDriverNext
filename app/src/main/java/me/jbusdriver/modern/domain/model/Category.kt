@@ -49,6 +49,9 @@ data class Category(val name: String, val pid: Int = -1, val tree: String, var o
 /** 影片收藏分类，ID = 1 */
 val MovieCategory = Category("預設電影分類", -1, "1/", Int.MAX_VALUE).apply { id = 1 }
 
+/** 無碼影片收藏分类，ID = 3 */
+val UncensoredMovieCategory = Category("無碼影片分類", -1, "3/", Int.MAX_VALUE).apply { id = 3 }
+
 /** 女优收藏分类，ID = 2 */
 val ActressCategory = Category("預設演員分類", -1, "2/", Int.MAX_VALUE).apply { id = 2 }
 

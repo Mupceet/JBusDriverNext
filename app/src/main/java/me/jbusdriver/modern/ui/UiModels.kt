@@ -24,7 +24,8 @@ data class MovieUiModel(
     val date: String,
     val link: String,
     val tags: List<String> = emptyList(),
-    val createTime: Long = 0L
+    val createTime: Long = 0L,
+    val categoryId: Int = 1
 )
 
 /** 电影详情页的 UI 模型 */

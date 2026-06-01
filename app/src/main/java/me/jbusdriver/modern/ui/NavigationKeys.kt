@@ -13,7 +13,8 @@ data class RouteSearch(
 
 @Serializable
 data class RouteMovieDetail(
-    val movieUrl: String
+    val movieUrl: String,
+    val censorType: String? = null
 ) : NavKey
 
 @Serializable
