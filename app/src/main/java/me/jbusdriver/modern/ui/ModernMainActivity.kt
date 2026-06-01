@@ -77,6 +77,8 @@ class ModernMainActivity : ComponentActivity() {
     private fun resolveJavbusRoute(url: String): NavKey {
         val path = java.net.URL(url).path.orEmpty().trimEnd('/')
         val segments = path.split("/").filter { it.isNotBlank() }
+        val isUncensored = "/uncensored/" in url || path.startsWith("/uncensored")
+        val censorType = if (isUncensored) "UNCENSORED" else null
 
         if (segments.isEmpty() || segments.singleOrNull() in listOf("uncensored", "xyz")) {
             return RouteMain
@@ -85,7 +87,7 @@ class ModernMainActivity : ComponentActivity() {
             return RouteMain
         }
         if (segments.size == 1) {
-            return RouteMovieDetail(movieUrl = url)
+            return RouteMovieDetail(movieUrl = url, censorType = censorType)
         }
 
         val subPath = if (segments[0] in listOf("uncensored", "xyz")) segments[1] else segments[0]
@@ -96,7 +98,7 @@ class ModernMainActivity : ComponentActivity() {
                 else -> "header"
             }
             val title = segments.last()
-            return RouteLinkMovies(linkUrl = url, title = title, type = type)
+            return RouteLinkMovies(linkUrl = url, title = title, type = type, censorType = censorType)
         }
 
         return RouteMain

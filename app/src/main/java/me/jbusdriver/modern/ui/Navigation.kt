@@ -109,22 +109,23 @@ fun JBusNavigation(
         entryProvider = entryProvider {
             entry<RouteMain> {
                 MainScreen(
-                    onMovieClick = { movie ->
-                        backStack.add(RouteMovieDetail(movie.link))
+                    onMovieClick = { movie, censorType ->
+                        backStack.add(RouteMovieDetail(movie.link, censorType))
                     },
-                    onActressClick = { actress ->
+                    onActressClick = { actress, censorType ->
                         backStack.add(
                             RouteLinkMovies(
                                 actress.link,
                                 actress.name,
                                 type = "actress",
-                                avatar = actress.avatar
+                                avatar = actress.avatar,
+                                censorType = censorType
                             )
                         )
                     },
-                    onGenreClick = { genre ->
+                    onGenreClick = { genre, censorType ->
                         backStack.add(
-                            RouteLinkMovies(genre.link, genre.name, type = "genre")
+                            RouteLinkMovies(genre.link, genre.name, type = "genre", censorType = censorType)
                         )
                     },
                     onSearchClick = { searchType ->
@@ -174,16 +175,17 @@ fun JBusNavigation(
             ) { key ->
                 SearchScreen(
                     defaultSearchType = key.defaultSearchType,
-                    onMovieClick = { movie ->
-                        backStack.add(RouteMovieDetail(movie.link))
+                    onMovieClick = { movie, censorType ->
+                        backStack.add(RouteMovieDetail(movie.link, censorType))
                     },
-                    onActressClick = { actress ->
+                    onActressClick = { actress, censorType ->
                         backStack.add(
                             RouteLinkMovies(
                                 actress.link,
                                 actress.name,
                                 type = "actress",
-                                avatar = actress.avatar
+                                avatar = actress.avatar,
+                                censorType = censorType
                             )
                         )
                     },
@@ -194,34 +196,37 @@ fun JBusNavigation(
             entry<RouteMovieDetail> { key ->
                 MovieDetailScreen(
                     movieUrl = key.movieUrl,
-                    onMovieClick = { movie ->
-                        backStack.add(RouteMovieDetail(movie.link))
+                    censorType = key.censorType,
+                    onMovieClick = { movie, censorType ->
+                        backStack.add(RouteMovieDetail(movie.link, censorType))
                     },
                     onImageClick = { images, startIndex ->
                         backStack.add(RouteImageViewer(images, startIndex))
                     },
-                    onActressClick = { actress ->
+                    onActressClick = { actress, censorType ->
                         backStack.add(
                             RouteLinkMovies(
                                 actress.link,
                                 actress.name,
                                 type = "actress",
-                                avatar = actress.avatar
+                                avatar = actress.avatar,
+                                censorType = censorType
                             )
                         )
                     },
-                    onGenreClick = { genre ->
+                    onGenreClick = { genre, censorType ->
                         backStack.add(
-                            RouteLinkMovies(genre.link, genre.name, type = "genre")
+                            RouteLinkMovies(genre.link, genre.name, type = "genre", censorType = censorType)
                         )
                     },
-                    onHeaderClick = { header ->
+                    onHeaderClick = { header, censorType ->
                         if (header.link.isNotBlank()) {
                             backStack.add(
                                 RouteLinkMovies(
                                     header.link,
                                     header.name + ": " + header.value,
-                                    type = "header"
+                                    type = "header",
+                                    censorType = censorType
                                 )
                             )
                         }
@@ -242,8 +247,9 @@ fun JBusNavigation(
                     title = key.title,
                     type = key.type,
                     avatarUrl = key.avatar,
-                    onMovieClick = { movie ->
-                        backStack.add(RouteMovieDetail(movie.link))
+                    censorType = key.censorType,
+                    onMovieClick = { movie, censorType ->
+                        backStack.add(RouteMovieDetail(movie.link, censorType))
                     },
                     onBack = { backStack.removeLastOrNull() }
                 )

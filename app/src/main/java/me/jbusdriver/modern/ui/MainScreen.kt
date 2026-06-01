@@ -77,9 +77,9 @@ private val BottomNavItems = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    onMovieClick: (MovieUiModel) -> Unit,
-    onActressClick: (ActressUiModel) -> Unit = {},
-    onGenreClick: (GenreUiModel) -> Unit = {},
+    onMovieClick: (MovieUiModel, String?) -> Unit,
+    onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
+    onGenreClick: (GenreUiModel, String?) -> Unit = { _, _ -> },
     onSearchClick: (String) -> Unit = {},
     onForumBoardClick: (me.jbusdriver.modern.domain.model.ForumBoard) -> Unit = {},
     onForumThreadClick: (Int) -> Unit = {}
@@ -250,6 +250,10 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize()
                         ) { page ->
                             val filter = CensorFilter.entries[page]
+                            val censorType = when (filter) {
+                                CensorFilter.UNCENSORED -> "UNCENSORED"
+                                else -> null
+                            }
                             val pageLinks = if (filter == censorFilter) selectedGenreLinks else (genreLinkMemory[filter.name] ?: emptySet())
                             val genreUrl = if (pageLinks.isNotEmpty()) {
                                 pageLinks.joinToString("-") { it.trimEnd('/').substringAfterLast("/") }
@@ -264,7 +268,7 @@ fun MainScreen(
                                 LaunchedEffect(genreUrl) { genreVm.setGenreUrl(genreUrl) }
                                 MovieListScreen(
                                     active = true,
-                                    onMovieClick = onMovieClick,
+                                    onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = genreVm
                                 )
@@ -277,7 +281,7 @@ fun MainScreen(
                                 MovieListScreen(
                                     dataSourceType = dataSourceType,
                                     active = true,
-                                    onMovieClick = onMovieClick,
+                                    onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = vm
                                 )
@@ -324,6 +328,10 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize()
                         ) { page ->
                             val filter = CensorFilter.entries[page]
+                            val actressCensorType = when (filter) {
+                                CensorFilter.UNCENSORED -> "UNCENSORED"
+                                else -> null
+                            }
                             val actressType = when (filter) {
                                 CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_ACTRESSES
                                 else -> DataSourceType.ACTRESSES
@@ -332,7 +340,7 @@ fun MainScreen(
                             ActressListScreen(
                                 dataSourceType = actressType,
                                 active = true,
-                                onActressClick = onActressClick,
+                                onActressClick = { actress, _ -> onActressClick(actress, actressCensorType) },
                                 modifier = Modifier.fillMaxSize(),
                                 viewModel = vm
                             )

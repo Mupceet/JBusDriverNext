@@ -218,7 +218,7 @@ fun LinkMovieListScreen(
                         hasMore = uiState.hasMore,
                         isLoadingMore = uiState.isLoadingMore,
                         onLoadMore = { viewModel.loadMore() },
-                        onMovieClick = { movie -> onMovieClick(movie, censorType) },
+                        onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                         isGrid = isGrid,
                         modifier = Modifier.fillMaxSize(),
                         header = header

@@ -355,7 +355,7 @@ fun SearchScreen(
                 hasMore = uiState.hasMore,
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
-                onActressClick = { actress -> onActressClick(actress, censorType) },
+                onActressClick = { actress, _ -> onActressClick(actress, censorType) },
                 modifier = dismissKeyboardModifier
             )
 
@@ -364,7 +364,7 @@ fun SearchScreen(
                 hasMore = uiState.hasMore,
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
-                onMovieClick = { movie -> onMovieClick(movie, censorType) },
+                onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                 isGrid = isGrid,
                 modifier = dismissKeyboardModifier
             )
