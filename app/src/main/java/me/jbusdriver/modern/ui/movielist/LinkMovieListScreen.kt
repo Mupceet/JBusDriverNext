@@ -75,7 +75,8 @@ fun LinkMovieListScreen(
     title: String = "",
     type: String = "",
     avatarUrl: String = "",
-    onMovieClick: (MovieUiModel) -> Unit = {},
+    censorType: String? = null,
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
     viewModel: LinkMovieListViewModel = hiltViewModel<LinkMovieListViewModel, LinkMovieListViewModel.Factory>(
         creationCallback = { factory -> factory.create(RouteLinkMovies(linkUrl, title, type, avatarUrl)) }
@@ -217,7 +218,7 @@ fun LinkMovieListScreen(
                         hasMore = uiState.hasMore,
                         isLoadingMore = uiState.isLoadingMore,
                         onLoadMore = { viewModel.loadMore() },
-                        onMovieClick = onMovieClick,
+                        onMovieClick = { movie -> onMovieClick(movie, censorType) },
                         isGrid = isGrid,
                         modifier = Modifier.fillMaxSize(),
                         header = header

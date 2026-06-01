@@ -72,13 +72,17 @@ import me.jbusdriver.modern.ui.components.MovieList
 fun SearchScreen(
     modifier: Modifier = Modifier,
     defaultSearchType: String = "",
-    onMovieClick: (MovieUiModel) -> Unit = {},
-    onActressClick: (ActressUiModel) -> Unit = {},
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
+    onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
     onLabSettingsClick: () -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val censorType = when (uiState.searchType) {
+        SearchType.UNCENSORED -> "UNCENSORED"
+        else -> null
+    }
     val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
     val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -351,7 +355,7 @@ fun SearchScreen(
                 hasMore = uiState.hasMore,
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
-                onActressClick = onActressClick,
+                onActressClick = { actress -> onActressClick(actress, censorType) },
                 modifier = dismissKeyboardModifier
             )
 
@@ -360,7 +364,7 @@ fun SearchScreen(
                 hasMore = uiState.hasMore,
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
-                onMovieClick = onMovieClick,
+                onMovieClick = { movie -> onMovieClick(movie, censorType) },
                 isGrid = isGrid,
                 modifier = dismissKeyboardModifier
             )

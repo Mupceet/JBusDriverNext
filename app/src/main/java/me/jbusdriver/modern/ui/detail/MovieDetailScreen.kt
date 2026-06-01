@@ -104,11 +104,12 @@ import androidx.core.net.toUri
 @Composable
 fun MovieDetailScreen(
     movieUrl: String,
-    onMovieClick: (MovieUiModel) -> Unit = {},
-    onActressClick: (ActressUiModel) -> Unit = {},
-    onGenreClick: (GenreUiModel) -> Unit = {},
+    censorType: String? = null,
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
+    onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
+    onGenreClick: (GenreUiModel, String?) -> Unit = { _, _ -> },
     onImageClick: (List<String>, Int) -> Unit = { _, _ -> },
-    onHeaderClick: (HeaderUiModel) -> Unit = {},
+    onHeaderClick: (HeaderUiModel, String?) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
@@ -116,8 +117,8 @@ fun MovieDetailScreen(
     val context = LocalContext.current
     var showMagnetSheet by remember { mutableStateOf(false) }
 
-    LaunchedEffect(movieUrl) {
-        viewModel.loadDetail(movieUrl)
+    LaunchedEffect(movieUrl, censorType) {
+        viewModel.loadDetail(movieUrl, censorType)
     }
 
     val detail = uiState.movieDetail
@@ -195,7 +196,7 @@ fun MovieDetailScreen(
                 uiState.error != null -> {
                     ErrorView(
                         message = "載入失敗，請重試",
-                        onRetry = { viewModel.loadDetail(movieUrl) }
+                        onRetry = { viewModel.loadDetail(movieUrl, censorType) }
                     )
                 }
 
@@ -203,10 +204,10 @@ fun MovieDetailScreen(
                     DetailContent(
                         detail = detail,
                         padding = PaddingValues(),
-                        onMovieClick = onMovieClick,
-                        onActressClick = onActressClick,
-                        onGenreClick = onGenreClick,
-                        onHeaderClick = onHeaderClick,
+                        onMovieClick = { movie -> onMovieClick(movie, censorType) },
+                        onActressClick = { actress -> onActressClick(actress, censorType) },
+                        onGenreClick = { genre -> onGenreClick(genre, censorType) },
+                        onHeaderClick = { header -> onHeaderClick(header, censorType) },
                         onImageClick = onImageClick,
                         onMagnetClick = {
                             showMagnetSheet = true
