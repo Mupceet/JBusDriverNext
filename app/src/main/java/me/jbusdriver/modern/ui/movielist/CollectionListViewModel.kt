@@ -40,7 +40,8 @@ data class CollectionListUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val filterState: CollectionFilterState = CollectionFilterState(),
-    val availableYears: AvailableYears = AvailableYears()
+    val availableYears: AvailableYears = AvailableYears(),
+    val availablePublishMonths: Set<Int> = emptySet()
 )
 
 /**
@@ -191,6 +192,14 @@ class CollectionListViewModel @Inject constructor(
         val filter = _uiState.value.filterState
         val years = _uiState.value.availableYears
 
+        // Compute available publish months for the selected year
+        val availableMonths = if (filter.publishYear != null && filter.publishYear > 0) {
+            allMovies
+                .filter { it.date.take(4).toIntOrNull() == filter.publishYear }
+                .mapNotNull { if (it.date.length >= 7) it.date.substring(5, 7).toIntOrNull() else null }
+                .toSet()
+        } else emptySet()
+
         val filteredMovies = allMovies
             .filterByCensor(filter.censorFilter)
             .filterByPublishYear(filter.publishYear, years.publishYears)
@@ -211,6 +220,7 @@ class CollectionListViewModel @Inject constructor(
                 actresses = filteredActresses,
                 movieCount = allMovies.size,
                 actressCount = allActresses.size,
+                availablePublishMonths = availableMonths,
                 isLoading = false
             )
         }
@@ -224,8 +234,8 @@ class CollectionListViewModel @Inject constructor(
 private fun List<MovieUiModel>.filterByCensor(censor: CensorFilter): List<MovieUiModel> =
     when (censor) {
         CensorFilter.ALL -> this
-        CensorFilter.CENSORED -> filter { !it.link.urlPath.startsWith("/uncensored/") }
-        CensorFilter.UNCENSORED -> filter { it.link.urlPath.startsWith("/uncensored/") }
+        CensorFilter.CENSORED -> filter { "/uncensored/" !in it.link }
+        CensorFilter.UNCENSORED -> filter { "/uncensored/" in it.link }
     }
 
 private fun List<MovieUiModel>.filterByPublishYear(

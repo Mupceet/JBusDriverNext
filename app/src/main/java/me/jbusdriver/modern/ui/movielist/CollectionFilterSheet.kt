@@ -38,16 +38,10 @@ import androidx.compose.ui.unit.sp
 import me.jbusdriver.modern.data.db.MovieDBType
 
 /**
- * 收藏筛选 Bottom Sheet。
+ * 收藏篩選 Bottom Sheet。
  *
- * 布局参考 CategoryBottomSheet：高度限制 0.618f，标题居左，重置+排序居右。
- * 筛选 Chip 点击即时生效。
- *
- * @param dbType 当前列表类型（MovieDBType 或 ActressDBType），决定显示哪些筛选维度
- * @param filterState 当前筛选/排序状态
- * @param availableYears 从数据中提取的可用年份
- * @param onFilterChange 筛选变更回调（即时生效）
- * @param onDismiss 关闭回调
+ * 佈局參考 CategoryBottomSheet：高度限制 0.618f，標題居左，重置+排序居右。
+ * 篩選 Chip 點擊即時生效。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -55,6 +49,7 @@ fun CollectionFilterSheet(
     dbType: Int,
     filterState: CollectionFilterState,
     availableYears: AvailableYears,
+    availablePublishMonths: Set<Int>,
     onFilterChange: (CollectionFilterState) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -108,7 +103,7 @@ fun CollectionFilterSheet(
                 if (dbType == MovieDBType) {
                     FilterSectionLabel("內容類型")
                     Spacer(Modifier.padding(top = 6.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         CensorChip(
                             label = "全部",
                             selected = filterState.censorFilter == CensorFilter.ALL,
@@ -144,8 +139,11 @@ fun CollectionFilterSheet(
                         Spacer(Modifier.padding(top = 8.dp))
                         MonthChipRow(
                             selectedMonth = filterState.publishMonth,
+                            availableMonths = availablePublishMonths,
                             onSelect = { month ->
-                                onFilterChange(filterState.copy(publishMonth = month))
+                                if (month == null || month in availablePublishMonths) {
+                                    onFilterChange(filterState.copy(publishMonth = month))
+                                }
                             }
                         )
                     }
@@ -182,7 +180,7 @@ private fun FilterSectionLabel(text: String) {
 
 @Composable
 private fun CensorChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(selected = selected, onClick = onClick, label = { Text(label, fontSize = 14.sp) })
+    FilterChip(selected = selected, onClick = onClick, label = { Text(label, fontSize = 12.sp) })
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -192,24 +190,24 @@ private fun YearChipRow(
     years: List<Int>,
     onSelect: (Int?) -> Unit
 ) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         FilterChip(
             selected = selectedYear == null,
             onClick = { onSelect(null) },
-            label = { Text("全部", fontSize = 13.sp) }
+            label = { Text("全部", fontSize = 12.sp) }
         )
         years.forEach { year ->
             FilterChip(
                 selected = selectedYear == year,
                 onClick = { onSelect(year) },
-                label = { Text(year.toString(), fontSize = 13.sp) }
+                label = { Text(year.toString(), fontSize = 12.sp) }
             )
         }
         if (years.isNotEmpty()) {
             FilterChip(
                 selected = selectedYear == -1,
                 onClick = { onSelect(-1) },
-                label = { Text("更早", fontSize = 13.sp) }
+                label = { Text("更早", fontSize = 12.sp) }
             )
         }
     }
@@ -219,6 +217,7 @@ private fun YearChipRow(
 @Composable
 private fun MonthChipRow(
     selectedMonth: Int?,
+    availableMonths: Set<Int>,
     onSelect: (Int?) -> Unit
 ) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -228,10 +227,19 @@ private fun MonthChipRow(
             label = { Text("全部", fontSize = 12.sp) }
         )
         (1..12).forEach { month ->
+            val available = month in availableMonths
             FilterChip(
                 selected = selectedMonth == month,
-                onClick = { onSelect(month) },
-                label = { Text("${month}月", fontSize = 12.sp) }
+                onClick = { if (available) onSelect(month) },
+                label = {
+                    Text(
+                        "${month}月",
+                        fontSize = 12.sp,
+                        color = if (available) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                },
+                enabled = available
             )
         }
     }
