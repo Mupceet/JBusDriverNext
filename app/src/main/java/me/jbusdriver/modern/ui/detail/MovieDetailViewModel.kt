@@ -113,8 +113,7 @@ class MovieDetailViewModel @Inject constructor(
     fun toggleCollect() {
         val detail = _uiState.value.movieDetail ?: return
         val url = currentUrl
-        val isUncensored = censorType == "UNCENSORED" ||
-            detail.genres.any { "無碼" in it.name }
+        val isUncensored = censorType == "UNCENSORED"
         viewModelScope.launch {
             val movie = detail.toCollectionMovie(url).apply {
                 if (isUncensored) {
