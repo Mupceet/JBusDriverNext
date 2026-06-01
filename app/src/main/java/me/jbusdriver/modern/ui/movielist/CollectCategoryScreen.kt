@@ -54,8 +54,8 @@ import java.util.Locale
 
 @Composable
 fun CollectCategoryScreen(
-    onMovieClick: (MovieUiModel) -> Unit,
-    onActressClick: (ActressUiModel) -> Unit,
+    onMovieClick: (MovieUiModel, String?) -> Unit,
+    onActressClick: (ActressUiModel, String?) -> Unit,
     modifier: Modifier = Modifier,
     onGoHome: () -> Unit = {}
 ) {

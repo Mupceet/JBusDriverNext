@@ -1,0 +1,35 @@
+<h2>↕ 排序 Bottom Sheet</h2>
+<p class="subtitle">从收藏列表顶部点击「排序」按钮弹出 — 简洁的单选列表</p>
+
+<div class="section">
+  <div style="display: flex; flex-direction: column; gap: 4px;">
+    <div class="option" data-choice="sort-collect-desc" onclick="toggleSelect(this)" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; border: 2px solid #444; cursor: pointer; background: var(--card-bg);">
+      <div>
+        <div style="font-size: 15px; font-weight: 500;">收藏时间 新→旧</div>
+        <div style="font-size: 12px; color: #888; margin-top: 2px;">最近收藏的排在前面</div>
+      </div>
+      <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #6750A4;"></div>
+    </div>
+    <div class="option" data-choice="sort-collect-asc" onclick="toggleSelect(this)" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; border: 2px solid #444; cursor: pointer; background: var(--card-bg);">
+      <div>
+        <div style="font-size: 15px; font-weight: 500;">收藏时间 旧→新</div>
+        <div style="font-size: 12px; color: #888; margin-top: 2px;">最早收藏的排在前面</div>
+      </div>
+      <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #555;"></div>
+    </div>
+    <div class="option" data-choice="sort-pub-desc" onclick="toggleSelect(this)" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; border: 2px solid #444; cursor: pointer; background: var(--card-bg);">
+      <div>
+        <div style="font-size: 15px; font-weight: 500;">发布日期 新→旧</div>
+        <div style="font-size: 12px; color: #888; margin-top: 2px;">最新发布的排在前面</div>
+      </div>
+      <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #555;"></div>
+    </div>
+    <div class="option" data-choice="sort-pub-asc" onclick="toggleSelect(this)" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; border: 2px solid #444; cursor: pointer; background: var(--card-bg);">
+      <div>
+        <div style="font-size: 15px; font-weight: 500;">发布日期 旧→新</div>
+        <div style="font-size: 12px; color: #888; margin-top: 2px;">最早发布的排在前面</div>
+      </div>
+      <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #555;"></div>
+    </div>
+  </div>
+</div>

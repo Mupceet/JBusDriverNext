@@ -49,7 +49,7 @@ fun ActressGrid(
     hasMore: Boolean = true,
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
-    onActressClick: (ActressUiModel) -> Unit = {},
+    onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     onActressLongClick: ((ActressUiModel) -> Unit)? = null,
     header: (@Composable () -> Unit)? = null
 ) {
@@ -82,7 +82,7 @@ fun ActressGrid(
             itemsIndexed(actresses, key = { _, actress -> actress.link }) { _, actress ->
                 ActressGridItem(
                     actress = actress,
-                    onClick = { onActressClick(actress) },
+                    onClick = { onActressClick(actress, null) },
                     onLongClick = if (onActressLongClick != null) {{ onActressLongClick(actress) }} else null
                 )
             }

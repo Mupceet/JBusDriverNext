@@ -1,0 +1,83 @@
+<h2>收藏筛选 & 排序 — Bottom Sheet 设计</h2>
+<p class="subtitle">影片列表的完整筛选面板，点击可选中选项</p>
+
+<div class="section">
+  <div class="label">内容类型</div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+    <div class="option" data-choice="type-all" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 20px; border-radius: 20px; border: 2px solid #444; cursor: pointer; font-size: 14px; background: var(--card-bg);">
+      全部
+    </div>
+    <div class="option" data-choice="type-censored" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 20px; border-radius: 20px; border: 2px solid #444; cursor: pointer; font-size: 14px; background: var(--card-bg);">
+      有碼
+    </div>
+    <div class="option" data-choice="type-uncensored" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 20px; border-radius: 20px; border: 2px solid #444; cursor: pointer; font-size: 14px; background: var(--card-bg);">
+      無碼
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="label">发布日期</div>
+  <div style="margin-top: 8px;">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+      <div style="font-size: 12px; color: #999; width: 100%; margin-bottom: 4px;">年份</div>
+      <div class="option" data-choice="pub-2026" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2026</div>
+      <div class="option" data-choice="pub-2025" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2025</div>
+      <div class="option" data-choice="pub-2024" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2024</div>
+      <div class="option" data-choice="pub-2023" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2023</div>
+      <div class="option" data-choice="pub-older" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">更早</div>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="font-size: 12px; color: #999; width: 100%; margin-bottom: 4px;">月份（可选）</div>
+      <div class="option" data-choice="pub-m-all" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">全部</div>
+      <div class="option" data-choice="pub-m1" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">1月</div>
+      <div class="option" data-choice="pub-m2" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">2月</div>
+      <div class="option" data-choice="pub-m3" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">3月</div>
+      <div class="option" data-choice="pub-m4" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">4月</div>
+      <div class="option" data-choice="pub-m5" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">5月</div>
+      <div class="option" data-choice="pub-m6" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">6月</div>
+      <div class="option" data-choice="pub-m7" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">7月</div>
+      <div class="option" data-choice="pub-m8" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">8月</div>
+      <div class="option" data-choice="pub-m9" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">9月</div>
+      <div class="option" data-choice="pub-m10" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">10月</div>
+      <div class="option" data-choice="pub-m11" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">11月</div>
+      <div class="option" data-choice="pub-m12" onclick="toggleSelect(this)" style="display: inline-flex; padding: 4px 12px; border-radius: 12px; border: 1px solid #555; cursor: pointer; font-size: 12px; background: var(--card-bg);">12月</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="label">收藏时间</div>
+  <div style="margin-top: 8px;">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+      <div style="font-size: 12px; color: #999; width: 100%; margin-bottom: 4px;">年份</div>
+      <div class="option" data-choice="col-2026" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2026</div>
+      <div class="option" data-choice="col-2025" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2025</div>
+      <div class="option" data-choice="col-2024" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">2024</div>
+      <div class="option" data-choice="col-older" onclick="toggleSelect(this)" style="display: inline-flex; padding: 6px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">更早</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="label">排序方式</div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+    <div class="option" data-choice="sort-collect-desc" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">
+      收藏时间 ↓ 新→旧
+    </div>
+    <div class="option" data-choice="sort-collect-asc" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">
+      收藏时间 ↑ 旧→新
+    </div>
+    <div class="option" data-choice="sort-pub-desc" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">
+      发布日期 ↓ 新→旧
+    </div>
+    <div class="option" data-choice="sort-pub-asc" onclick="toggleSelect(this)" style="display: inline-flex; padding: 8px 16px; border-radius: 16px; border: 2px solid #444; cursor: pointer; font-size: 13px; background: var(--card-bg);">
+      发布日期 ↑ 旧→新
+    </div>
+  </div>
+</div>
+
+<div style="display: flex; gap: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid #333;">
+  <button style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #555; background: transparent; color: #ccc; cursor: pointer; font-size: 15px;">重置</button>
+  <button style="flex: 2; padding: 12px; border-radius: 12px; border: none; background: #6750A4; color: white; cursor: pointer; font-size: 15px;">应用筛选</button>
+</div>

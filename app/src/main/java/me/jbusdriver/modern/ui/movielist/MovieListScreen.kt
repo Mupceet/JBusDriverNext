@@ -27,7 +27,7 @@ fun MovieListScreen(
     modifier: Modifier = Modifier,
     dataSourceType: DataSourceType = DataSourceType.CENSORED,
     active: Boolean = true,
-    onMovieClick: (MovieUiModel) -> Unit = {},
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,

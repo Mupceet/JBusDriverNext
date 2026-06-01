@@ -26,8 +26,8 @@ fun CollectionListScreen(
     dbType: Int,
     modifier: Modifier = Modifier,
     active: Boolean = true,
-    onMovieClick: (MovieUiModel) -> Unit = {},
-    onActressClick: (ActressUiModel) -> Unit = {},
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
+    onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

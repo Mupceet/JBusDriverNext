@@ -63,7 +63,7 @@ fun MovieList(
     hasMore: Boolean = true,
     isLoadingMore: Boolean = false,
     onLoadMore: () -> Unit = {},
-    onMovieClick: (MovieUiModel) -> Unit = {},
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     isGrid: Boolean? = null,
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
@@ -98,7 +98,7 @@ fun MovieList(
                     item(span = { GridItemSpan(maxLineSpan) }) { header() }
                 }
                 itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                    MovieGridItem(movie = movie, onClick = { onMovieClick(movie) })
+                    MovieGridItem(movie = movie, onClick = { onMovieClick(movie, null) })
                 }
                 if (isLoadingMore) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -152,12 +152,12 @@ fun MovieList(
                     if (compact) {
                         CompactMovieItem(
                             movie = movie,
-                            onClick = { onMovieClick(movie) },
+                            onClick = { onMovieClick(movie, null) },
                             isCollected = isCollected?.invoke(movie) == true,
                             onToggleCollect = if (onToggleCollect != null) {{ onToggleCollect(movie) }} else null
                         )
                     } else {
-                        MovieItem(movie = movie, onClick = { onMovieClick(movie) })
+                        MovieItem(movie = movie, onClick = { onMovieClick(movie, null) })
                     }
                 }
                 if (isLoadingMore) {

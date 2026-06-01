@@ -28,7 +28,8 @@ data class RouteLinkMovies(
     val linkUrl: String,
     val title: String = "",
     val type: String = "",
-    val avatar: String = ""
+    val avatar: String = "",
+    val censorType: String? = null
 ) : NavKey
 
 @Serializable

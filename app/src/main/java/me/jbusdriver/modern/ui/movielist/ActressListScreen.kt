@@ -30,7 +30,7 @@ fun ActressListScreen(
     dataSourceType: DataSourceType,
     modifier: Modifier = Modifier,
     active: Boolean = true,
-    onActressClick: (ActressUiModel) -> Unit = {},
+    onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     header: (@Composable () -> Unit)? = null,
     viewModel: ActressListViewModel = hiltViewModel()
 ) {

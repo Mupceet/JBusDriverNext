@@ -1,0 +1,72 @@
+<h2>筛选 & 排序 — 两个独立入口</h2>
+<p class="subtitle">收藏列表顶部入口 + 各自的 Bottom Sheet 面板</p>
+
+<!-- Entry Point Mockup -->
+<div class="mockup">
+  <div class="mockup-header">收藏页面顶部 — 入口按钮</div>
+  <div class="mockup-body" style="padding: 16px;">
+    <!-- App bar area -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #333;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 18px; font-weight: 600;">收藏</span>
+        <span style="font-size: 13px; color: #999;">128 部影片</span>
+      </div>
+      <div style="display: flex; gap: 4px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; border: 1px solid #555; display: flex; align-items: center; justify-content: center; background: var(--card-bg);">
+          <span style="font-size: 18px;">⚙</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display: flex; gap: 0; margin: 12px 0;">
+      <div style="flex: 1; text-align: center; padding: 8px; border-bottom: 2px solid #6750A4; color: #6750A4; font-size: 14px;">影片</div>
+      <div style="flex: 1; text-align: center; padding: 8px; border-bottom: 1px solid #333; color: #888; font-size: 14px;">演員</div>
+    </div>
+
+    <!-- Active filter chips bar -->
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; border: 1.5px solid #6750A4; background: rgba(103,80,164,0.15); cursor: pointer; font-size: 13px; color: #D0BCFF;">
+        <span>🔽</span> 筛选
+        <span style="background: #6750A4; color: white; border-radius: 10px; padding: 1px 6px; font-size: 11px;">2</span>
+      </div>
+      <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; border: 1.5px solid #555; background: var(--card-bg); cursor: pointer; font-size: 13px; color: #ccc;">
+        <span>↕</span> 排序
+      </div>
+    </div>
+
+    <!-- Active filter tags -->
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+      <span style="padding: 3px 10px; border-radius: 12px; background: rgba(103,80,164,0.2); color: #D0BCFF; font-size: 11px;">有碼</span>
+      <span style="padding: 3px 10px; border-radius: 12px; background: rgba(103,80,164,0.2); color: #D0BCFF; font-size: 11px;">发布: 2025</span>
+      <span style="cursor: pointer; padding: 3px 10px; border-radius: 12px; border: 1px solid #555; color: #999; font-size: 11px;">✕ 清除筛选</span>
+    </div>
+
+    <!-- Movie list placeholder -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <div class="placeholder" style="height: 140px; border-radius: 8px;">影片卡片</div>
+      <div class="placeholder" style="height: 140px; border-radius: 8px;">影片卡片</div>
+      <div class="placeholder" style="height: 140px; border-radius: 8px;">影片卡片</div>
+      <div class="placeholder" style="height: 140px; border-radius: 8px;">影片卡片</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 32px;">
+  <h3>点击下方卡片查看两个 Bottom Sheet 的内容</h3>
+</div>
+
+<div class="cards" style="margin-top: 16px;">
+  <div class="card" data-choice="filter-sheet" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>🔽 筛选 Bottom Sheet</h3>
+      <p>内容类型（有碼/無碼）、发布日期、收藏时间</p>
+    </div>
+  </div>
+  <div class="card" data-choice="sort-sheet" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>↕ 排序 Bottom Sheet</h3>
+      <p>收藏时间、发布日期的正序/倒序切换</p>
+    </div>
+  </div>
+</div>
