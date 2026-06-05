@@ -4,8 +4,8 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -197,6 +197,7 @@ fun ForumThreadDetailScreen(
                                         loadedGifUrls = loadedGifUrls,
                                         autoLoadGifs = autoLoadGifs,
                                         onLoadGif = { viewModel.onLoadGif(it) },
+                                        onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                         onLongClick = { dialogBlocks = detail.contentBlocks }
                                     )
                                 }
@@ -224,6 +225,7 @@ fun ForumThreadDetailScreen(
                                         loadedGifUrls = loadedGifUrls,
                                         autoLoadGifs = autoLoadGifs,
                                         onLoadGif = { viewModel.onLoadGif(it) },
+                                        onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                         onLongClick = { dialogBlocks = detail.replies[index].contentBlocks }
                                     )
                                 }
@@ -307,6 +309,7 @@ private fun PostContent(
     loadedGifUrls: Set<String> = emptySet(),
     autoLoadGifs: Boolean = false,
     onLoadGif: (String) -> Unit = {},
+    onLoadAllGifs: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
     val viewableImageUrls = remember(blocks, loadedGifUrls, autoLoadGifs) {
@@ -342,6 +345,7 @@ private fun PostContent(
                     if (block.isGif && !autoLoadGifs && block.url !in loadedGifUrls) {
                         GifPlaceholder(
                             onClick = { onLoadGif(block.url) },
+                            onLoadAllGifs = onLoadAllGifs,
                             modifier = if (block.isFullSize) {
                                 Modifier
                                     .fillMaxWidth()
@@ -529,6 +533,7 @@ private fun ReplyItem(
     loadedGifUrls: Set<String> = emptySet(),
     autoLoadGifs: Boolean = false,
     onLoadGif: (String) -> Unit = {},
+    onLoadAllGifs: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
     Card(
@@ -580,6 +585,7 @@ private fun ReplyItem(
                     loadedGifUrls = loadedGifUrls,
                     autoLoadGifs = autoLoadGifs,
                     onLoadGif = onLoadGif,
+                    onLoadAllGifs = onLoadAllGifs,
                     onLongClick = onLongClick
                 )
             }

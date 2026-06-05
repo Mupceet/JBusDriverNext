@@ -234,6 +234,24 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         viewModelScope.launch { persistGifUrls(setOf(url)) }
     }
 
+    fun onLoadAllGifs() {
+        val detail = _uiState.value.detail ?: return
+        val allGifUrls = collectUnloadedGifUrls(detail)
+        if (allGifUrls.isEmpty()) return
+        _loadedGifUrls.update { it + allGifUrls }
+        viewModelScope.launch { persistGifUrls(allGifUrls) }
+    }
+
+    private fun collectUnloadedGifUrls(detail: ForumThreadDetail): Set<String> {
+        val loaded = _loadedGifUrls.value
+        val allBlocks = detail.contentBlocks + detail.replies.flatMap { it.contentBlocks }
+        return allBlocks
+            .filterIsInstance<me.jbusdriver.modern.domain.model.ContentBlock.Image>()
+            .map { it.url }
+            .filter { it !in loaded }
+            .toSet()
+    }
+
     private suspend fun loadPersistedGifUrls(): Set<String> {
         return gifLoadTracker.loadedUrls()
     }
