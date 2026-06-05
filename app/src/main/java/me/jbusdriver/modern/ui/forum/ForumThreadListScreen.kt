@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -134,18 +134,7 @@ fun ForumThreadListScreen(
                     }
 
                     when {
-                        state.error != null && state.threads.isEmpty() -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize().padding(16.dp),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                                Spacer(Modifier.height(8.dp))
-                                TextButton(onClick = { viewModel.loadFirstPage() }) { Text("重試") }
-                            }
-                        }
-                        state.threads.isNotEmpty() || state.isLoading -> {
+                        state.threads.isNotEmpty() -> {
                             LazyColumn(
                                 state = listState,
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -170,20 +159,29 @@ fun ForumThreadListScreen(
                         }
                         state.isLoading -> {
                             Column(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) { CircularProgressIndicator() }
                         }
                         else -> {
                             Column(
-                                modifier = Modifier.fillMaxSize().clickable { viewModel.refresh() },
+                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("內容為空", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    state.error ?: "內容為空",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (state.error != null) MaterialTheme.colorScheme.error
+                                           else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 Spacer(Modifier.height(8.dp))
-                                Text("點擊刷新", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    "下拉刷新重試",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }

@@ -158,20 +158,6 @@ fun ForumThreadDetailScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {
-                    state.error != null && detail == null -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(state.error!!, color = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = { viewModel.loadDetail() }) { Text("重試") }
-                        }
-                    }
-
                     detail != null -> {
                         var dialogBlocks by remember { mutableStateOf<List<ContentBlock>?>(null) }
 
@@ -188,6 +174,7 @@ fun ForumThreadDetailScreen(
                         }
 
                         LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(12.dp)
@@ -273,20 +260,29 @@ fun ForumThreadDetailScreen(
 
                     state.isLoading -> {
                         Column(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) { CircularProgressIndicator() }
                     }
                     else -> {
                         Column(
-                            modifier = Modifier.fillMaxSize().clickable { viewModel.refresh() },
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("內容為空", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                state.error ?: "內容為空",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (state.error != null) MaterialTheme.colorScheme.error
+                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Spacer(Modifier.height(8.dp))
-                            Text("點擊刷新", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            Text(
+                                "下拉刷新重試",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }
