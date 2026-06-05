@@ -66,6 +66,7 @@ import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -378,15 +379,21 @@ private fun PostContent(
                                 }
                             )
                         } else {
+                            var imgState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
                             AsyncImage(
                                 model = block.url,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .then(
+                                        if (imgState is AsyncImagePainter.State.Loading || imgState is AsyncImagePainter.State.Empty)
+                                            Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                                        else Modifier
+                                    )
                                     .clickable { onImageClick(viewableImageUrls, currentIdx) },
-                                contentScale = ContentScale.Fit
+                                contentScale = ContentScale.Fit,
+                                onState = { imgState = it }
                             )
                         }
                     }

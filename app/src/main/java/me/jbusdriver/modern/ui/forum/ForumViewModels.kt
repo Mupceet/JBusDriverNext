@@ -163,7 +163,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                 val result = repository.loadThreads(fid, nextPage, state.currentTypeId)
                 _uiState.update {
                     it.copy(
-                        threads = it.threads + result.threads,
+                        threads = (it.threads + result.threads).distinctBy { it.tid },
                         pageInfo = result.pageInfo,
                         isLoadingMore = false,
                         hasMore = result.pageInfo.hasNext
