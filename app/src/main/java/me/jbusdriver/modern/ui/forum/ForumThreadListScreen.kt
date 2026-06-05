@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -111,19 +111,27 @@ fun ForumThreadListScreen(
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Type filter chips
                     if (state.typeFilters.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 12.dp),
+                        val chipListState = rememberLazyListState()
+                        val selectedFilterIndex = state.typeFilters.indexOfFirst { it.typeId == state.currentTypeId }
+                        LaunchedEffect(state.typeFilters) {
+                            if (selectedFilterIndex >= 0) {
+                                // +1 because "全部" chip is at index 0
+                                chipListState.scrollToItem(selectedFilterIndex + 1)
+                            }
+                        }
+                        LazyRow(
+                            state = chipListState,
+                            contentPadding = PaddingValues(horizontal = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FilterChip(
-                                selected = state.currentTypeId == null,
-                                onClick = { viewModel.filterByType(null) },
-                                label = { Text("全部", fontSize = 12.sp) }
-                            )
-                            state.typeFilters.forEach { filter ->
+                            item {
+                                FilterChip(
+                                    selected = state.currentTypeId == null,
+                                    onClick = { viewModel.filterByType(null) },
+                                    label = { Text("全部", fontSize = 12.sp) }
+                                )
+                            }
+                            items(state.typeFilters, key = { it.typeId }) { filter ->
                                 FilterChip(
                                     selected = state.currentTypeId == filter.typeId,
                                     onClick = { viewModel.filterByType(filter.typeId) },
