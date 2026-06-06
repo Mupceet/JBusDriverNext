@@ -75,7 +75,6 @@ import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
-import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.GifPlaceholder
@@ -330,7 +329,9 @@ private fun PostContent(
         blocks.forEach { block ->
             when (block) {
                 is ContentBlock.RichText -> {
-                    val text = block.parts.joinToString("") { (it as TextPart.Plain).text }
+                    val text = block.paragraphs.joinToString("\n") { paragraph ->
+                        paragraph.parts.joinToString("") { it.text }
+                    }
                     if (text.isNotBlank()) {
                         Text(
                             text,
@@ -438,6 +439,9 @@ private fun PostContent(
                         }
                     }
                 }
+
+                is ContentBlock.ListBlock -> { /* Rendered by the rich-content UI task. */ }
+                is ContentBlock.RestrictedNotice -> { /* Rendered by the rich-content UI task. */ }
             }
         }
     }
@@ -630,7 +634,9 @@ private fun FloorContentDialog(
                         blocks.forEach { block ->
                             when (block) {
                                 is ContentBlock.RichText -> {
-                                    val text = block.parts.joinToString("") { (it as TextPart.Plain).text }
+                                    val text = block.paragraphs.joinToString("\n") { paragraph ->
+                                        paragraph.parts.joinToString("") { it.text }
+                                    }
                                     if (text.isNotBlank()) {
                                         Text(
                                             text,
@@ -683,6 +689,8 @@ private fun FloorContentDialog(
                                 }
 
                                 is ContentBlock.Image -> { /* skip images in dialog */ }
+                                is ContentBlock.ListBlock -> { /* Rendered by the rich-content UI task. */ }
+                                is ContentBlock.RestrictedNotice -> { /* Rendered by the rich-content UI task. */ }
                             }
                         }
                     }
@@ -709,12 +717,16 @@ private fun FloorContentDialog(
 private fun buildPlainText(blocks: List<ContentBlock>): String {
     return blocks.mapNotNull { block ->
         when (block) {
-            is ContentBlock.RichText -> block.parts.joinToString("") { (it as TextPart.Plain).text }
+            is ContentBlock.RichText -> block.paragraphs.joinToString("\n") { paragraph ->
+                paragraph.parts.joinToString("") { it.text }
+            }
             is ContentBlock.Quote -> {
                 val prefix = if (block.author.isNotEmpty()) "${block.author}：" else ""
                 "$prefix${block.content}"
             }
-            else -> null
+            is ContentBlock.Image -> null
+            is ContentBlock.ListBlock -> null
+            is ContentBlock.RestrictedNotice -> null
         }
     }.joinToString("\n")
 }

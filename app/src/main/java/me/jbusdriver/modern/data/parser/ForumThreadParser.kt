@@ -8,6 +8,7 @@ import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.RichParagraph
 import me.jbusdriver.modern.domain.model.TextPart
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -199,7 +200,7 @@ private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> 
         val nonEmpty = parts.toList()
         parts.clear()
         if (nonEmpty.isNotEmpty()) {
-            blocks.add(ContentBlock.RichText(nonEmpty))
+            blocks.add(ContentBlock.RichText(listOf(RichParagraph(nonEmpty))))
         }
     }
 
@@ -207,7 +208,7 @@ private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> 
         when (node) {
             is TextNode -> {
                 val text = node.text().trim()
-                if (text.isNotEmpty()) parts.add(TextPart.Plain(text))
+                if (text.isNotEmpty()) parts.add(TextPart(text))
             }
             is Element -> {
                 when (node.tagName()) {
@@ -215,7 +216,7 @@ private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> 
                     "a" -> {
                         val text = node.text().trim()
                         if (text.isNotBlank()) {
-                            parts.add(TextPart.Plain(text))
+                            parts.add(TextPart(text))
                         }
                     }
                     "img" -> {

@@ -1,11 +1,52 @@
 package me.jbusdriver.modern.domain.model
 
+import com.google.gson.JsonParser
 import me.jbusdriver.modern.core.GSON
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ContentBlockTypeAdapterTest {
+    @Test
+    fun `content block hierarchy is sealed`() {
+        assertTrue(ContentBlock::class.java.isSealed)
+    }
+
+    @Test
+    fun `rich text JSON uses richtext discriminator and paragraphs payload`() {
+        val json = serialize(ContentBlock.RichText(listOf(paragraph("Body"))))
+
+        assertEquals(setOf("type", "paragraphs"), json.keySet())
+        assertEquals("richtext", json["type"].asString)
+        assertTrue(json["paragraphs"].isJsonArray)
+    }
+
+    @Test
+    fun `list JSON uses list discriminator and list payload`() {
+        val json = serialize(
+            ContentBlock.ListBlock(
+                RichList(
+                    ordered = false,
+                    items = listOf(RichListItem(listOf(paragraph("Item"))))
+                )
+            )
+        )
+
+        assertEquals(setOf("type", "list"), json.keySet())
+        assertEquals("list", json["type"].asString)
+        assertTrue(json["list"].isJsonObject)
+    }
+
+    @Test
+    fun `restricted JSON uses restricted discriminator and message payload`() {
+        val json = serialize(ContentBlock.RestrictedNotice("Restricted"))
+
+        assertEquals(setOf("type", "message"), json.keySet())
+        assertEquals("restricted", json["type"].asString)
+        assertEquals("Restricted", json["message"].asString)
+    }
+
     @Test
     fun `styled rich text paragraph round trips`() {
         val block = ContentBlock.RichText(
@@ -140,6 +181,9 @@ class ContentBlockTypeAdapterTest {
     }
 
     private fun paragraph(text: String) = RichParagraph(listOf(TextPart(text)))
+
+    private fun serialize(block: ContentBlock) =
+        JsonParser.parseString(GSON.toJson(block, ContentBlock::class.java)).asJsonObject
 
     private fun roundTrip(block: ContentBlock): ContentBlock {
         val json = GSON.toJson(block, ContentBlock::class.java)

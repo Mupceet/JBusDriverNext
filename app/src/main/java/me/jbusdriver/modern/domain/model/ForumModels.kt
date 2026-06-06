@@ -140,9 +140,7 @@ data class TextPart(
     val color: String? = null,
     val size: ForumTextSize = ForumTextSize.BODY,
     val isLink: Boolean = false
-) {
-    typealias Plain = TextPart
-}
+)
 
 @Immutable
 data class RichParagraph(val parts: List<TextPart>)
@@ -161,14 +159,9 @@ data class RichList(
 )
 
 @Immutable
-abstract class ContentBlock {
+sealed class ContentBlock {
     @Immutable
-    data class RichText(val paragraphs: List<RichParagraph>) : ContentBlock() {
-        constructor(parts: Collection<TextPart>) : this(listOf(RichParagraph(parts.toList())))
-
-        val parts: List<TextPart>
-            get() = paragraphs.flatMap(RichParagraph::parts)
-    }
+    data class RichText(val paragraphs: List<RichParagraph>) : ContentBlock()
 
     @Immutable
     data class ListBlock(val list: RichList) : ContentBlock()
