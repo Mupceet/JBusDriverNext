@@ -54,6 +54,7 @@ import me.jbusdriver.modern.domain.model.RichList
 import me.jbusdriver.modern.domain.model.RichParagraph
 import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.ui.components.GifPlaceholder
+import kotlin.math.abs
 import kotlin.math.max
 
 @Composable
@@ -181,13 +182,90 @@ private fun readableColor(value: String?, background: Color, fallback: Color): C
     if (value.isNullOrBlank()) return fallback
     val candidate = runCatching { Color(parseColor(value)).copy(alpha = 1f) }.getOrNull()
         ?: return fallback
-    return if (contrastRatio(candidate, background) >= MIN_TEXT_CONTRAST) candidate else fallback
+    return adaptForumTextColor(candidate, background)
 }
 
-private fun contrastRatio(foreground: Color, background: Color): Float {
+internal fun adaptForumTextColor(source: Color, background: Color): Color {
+    val opaqueSource = source.copy(alpha = 1f)
+    if (forumContrastRatio(opaqueSource, background) >= MIN_TEXT_CONTRAST) return opaqueSource
+
+    val hsl = opaqueSource.toHsl()
+    val darker = findReadableLightness(hsl, background, lighter = false)
+    val lighter = findReadableLightness(hsl, background, lighter = true)
+    return when {
+        darker == null -> lighter ?: opaqueSource
+        lighter == null -> darker
+        abs(darker.toHsl().lightness - hsl.lightness) <=
+            abs(lighter.toHsl().lightness - hsl.lightness) -> darker
+        else -> lighter
+    }
+}
+
+internal fun forumContrastRatio(foreground: Color, background: Color): Float {
     val lighter = max(foreground.luminance(), background.luminance())
     val darker = minOf(foreground.luminance(), background.luminance())
     return (lighter + 0.05f) / (darker + 0.05f)
+}
+
+private fun findReadableLightness(
+    source: HslColor,
+    background: Color,
+    lighter: Boolean
+): Color? {
+    var low = if (lighter) source.lightness else 0f
+    var high = if (lighter) 1f else source.lightness
+    val endpoint = source.copy(lightness = if (lighter) 1f else 0f).toColor()
+    if (forumContrastRatio(endpoint, background) < MIN_TEXT_CONTRAST) return null
+
+    repeat(COLOR_SEARCH_ITERATIONS) {
+        val middle = (low + high) / 2f
+        val candidate = source.copy(lightness = middle).toColor()
+        val readable = forumContrastRatio(candidate, background) >= MIN_TEXT_CONTRAST
+        if (lighter) {
+            if (readable) high = middle else low = middle
+        } else {
+            if (readable) low = middle else high = middle
+        }
+    }
+    return source.copy(lightness = if (lighter) high else low).toColor()
+}
+
+private data class HslColor(
+    val hue: Float,
+    val saturation: Float,
+    val lightness: Float
+) {
+    fun toColor(): Color {
+        val chroma = (1f - abs(2f * lightness - 1f)) * saturation
+        val segment = hue / 60f
+        val secondary = chroma * (1f - abs(segment % 2f - 1f))
+        val (red, green, blue) = when {
+            segment < 1f -> Triple(chroma, secondary, 0f)
+            segment < 2f -> Triple(secondary, chroma, 0f)
+            segment < 3f -> Triple(0f, chroma, secondary)
+            segment < 4f -> Triple(0f, secondary, chroma)
+            segment < 5f -> Triple(secondary, 0f, chroma)
+            else -> Triple(chroma, 0f, secondary)
+        }
+        val match = lightness - chroma / 2f
+        return Color(red + match, green + match, blue + match, 1f)
+    }
+}
+
+private fun Color.toHsl(): HslColor {
+    val maximum = maxOf(red, green, blue)
+    val minimum = minOf(red, green, blue)
+    val delta = maximum - minimum
+    val lightness = (maximum + minimum) / 2f
+    if (delta == 0f) return HslColor(0f, 0f, lightness)
+
+    val saturation = delta / (1f - abs(2f * lightness - 1f))
+    val rawHue = when (maximum) {
+        red -> 60f * (((green - blue) / delta) % 6f)
+        green -> 60f * ((blue - red) / delta + 2f)
+        else -> 60f * ((red - green) / delta + 4f)
+    }
+    return HslColor(if (rawHue < 0f) rawHue + 360f else rawHue, saturation, lightness)
 }
 
 @Composable
@@ -361,5 +439,6 @@ private fun RichList.toPlainLines(depth: Int): List<String> = items.flatMapIndex
 }
 
 private const val MIN_TEXT_CONTRAST = 4.5f
+private const val COLOR_SEARCH_ITERATIONS = 24
 private const val MAX_LIST_DEPTH = 2
 private const val LIST_INDENT_DP = 16
