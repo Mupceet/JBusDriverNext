@@ -151,8 +151,7 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
     } ?: emptyList()
 
     val replies = doc.select(".nthread_postbox").filter { !it.hasClass("nthread_firstpostbox") }.mapNotNull { postBox ->
-        val floor = postBox.select("a[id^=postnum] em").firstOrNull()?.text()?.toIntOrNull()
-            ?: return@mapNotNull null
+        val floor = parseReplyFloor(postBox) ?: return@mapNotNull null
         val replyAuthorLink = postBox.select("a.xw1").firstOrNull()
         val replyAuthorUid = replyAuthorLink?.attr("href")
             ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
@@ -160,14 +159,15 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
             .ifBlank { postBox.select(".pls .avatar img[src]").attr("src") }
 
         ForumReply(
-            floor = floor,
+            floor = floor.number,
             author = replyAuthorLink?.text()?.trim() ?: "",
             authorUid = replyAuthorUid,
             authorAvatar = replyAvatar,
             authorGroup = postBox.select(".pls em a").text().trim(),
-            contentBlocks = parsePostContent(postBox.select("td.t_f").firstOrNull(), baseUrl),
+            contentBlocks = parseReplyContent(postBox, baseUrl),
             postTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
-                .ifBlank { postBox.select("em[id^=authorposton]").text().trim() }
+                .ifBlank { postBox.select("em[id^=authorposton]").text().trim() },
+            isPinned = floor.isPinned
         )
     }
 
@@ -188,6 +188,24 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         replies = replies,
         pageInfo = parseForumPageInfo(doc)
     )
+}
+
+private data class ReplyFloor(val number: Int, val isPinned: Boolean)
+
+private fun parseReplyFloor(postBox: Element): ReplyFloor? {
+    val anchor = postBox.selectFirst("a[id^=postnum]") ?: return null
+    val number = anchor.selectFirst("em")?.text()?.trim()?.toIntOrNull()
+        ?: Regex("(\\d+)\\s*#").find(anchor.text())?.groupValues?.get(1)?.toIntOrNull()
+        ?: return null
+    val isPinned = anchor.select("img[title*=置頂], img[src*=settop]").isNotEmpty() ||
+        anchor.text().contains("來自")
+    return ReplyFloor(number, isPinned)
+}
+
+private fun parseReplyContent(postBox: Element, baseUrl: String): List<ContentBlock> {
+    val restricted = postBox.selectFirst(".locked")?.text()?.trim().orEmpty()
+    if (restricted.isNotEmpty()) return listOf(ContentBlock.RestrictedNotice(restricted))
+    return parsePostContent(postBox.selectFirst("td.t_f"), baseUrl)
 }
 
 private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> {
