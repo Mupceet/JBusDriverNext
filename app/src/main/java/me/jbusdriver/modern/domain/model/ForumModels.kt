@@ -2,11 +2,17 @@ package me.jbusdriver.modern.domain.model
 
 import androidx.compose.runtime.Immutable
 import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.google.gson.TypeAdapter
 import com.google.gson.TypeAdapterFactory
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
+import java.lang.reflect.Type
+
+private val RICH_PARAGRAPHS_TYPE: Type = object : TypeToken<List<RichParagraph>>() {}.type
+private val RICH_LIST_TYPE: Type = object : TypeToken<RichList>() {}.type
 
 @Immutable
 data class ForumBoardGroup(
@@ -117,117 +123,151 @@ data class ForumReply(
     val authorAvatar: String,
     val authorGroup: String,
     val contentBlocks: List<ContentBlock>,
-    val postTime: String
+    val postTime: String,
+    val isPinned: Boolean = false
 )
 
 @Immutable
-sealed class TextPart {
-    @Immutable
-    data class Plain(val text: String) : TextPart()
+enum class ForumTextSize { BODY, EMPHASIS, HEADING }
+
+@Immutable
+data class TextPart(
+    val text: String,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val strikethrough: Boolean = false,
+    val color: String? = null,
+    val size: ForumTextSize = ForumTextSize.BODY,
+    val isLink: Boolean = false
+) {
+    typealias Plain = TextPart
 }
 
 @Immutable
-sealed class ContentBlock {
+data class RichParagraph(val parts: List<TextPart>)
+
+@Immutable
+data class RichListItem(
+    val paragraphs: List<RichParagraph>,
+    val children: List<RichList> = emptyList()
+)
+
+@Immutable
+data class RichList(
+    val ordered: Boolean,
+    val start: Int = 1,
+    val items: List<RichListItem>
+)
+
+@Immutable
+abstract class ContentBlock {
     @Immutable
-    data class RichText(val parts: List<TextPart>) : ContentBlock()
+    data class RichText(val paragraphs: List<RichParagraph>) : ContentBlock() {
+        constructor(parts: Collection<TextPart>) : this(listOf(RichParagraph(parts.toList())))
+
+        val parts: List<TextPart>
+            get() = paragraphs.flatMap(RichParagraph::parts)
+    }
+
+    @Immutable
+    data class ListBlock(val list: RichList) : ContentBlock()
 
     @Immutable
     data class Image(val url: String, val width: Int = 0, val height: Int = 0, val isFullSize: Boolean = false, val isGif: Boolean = false) : ContentBlock()
 
     @Immutable
     data class Quote(val author: String, val content: String) : ContentBlock()
+
+    @Immutable
+    data class RestrictedNotice(val message: String) : ContentBlock()
 }
 
-class ContentBlockTypeAdapter : TypeAdapter<ContentBlock>() {
+class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock>() {
     override fun write(out: JsonWriter, value: ContentBlock?) {
-        if (value == null) { out.nullValue(); return }
-        out.beginObject()
+        if (value == null) {
+            out.nullValue()
+            return
+        }
+        val json = JsonObject()
         when (value) {
             is ContentBlock.RichText -> {
-                out.name("type").value("richtext")
-                out.name("parts").beginArray()
-                value.parts.forEach { part ->
-                    out.beginObject()
-                    when (part) {
-                        is TextPart.Plain -> { out.name("type").value("plain").name("text").value(part.text) }
-                    }
-                    out.endObject()
-                }
-                out.endArray()
+                json.addProperty("type", "richtext")
+                json.add("paragraphs", gson.toJsonTree(value.paragraphs, RICH_PARAGRAPHS_TYPE))
+            }
+            is ContentBlock.ListBlock -> {
+                json.addProperty("type", "list")
+                json.add("list", gson.toJsonTree(value.list, RICH_LIST_TYPE))
             }
             is ContentBlock.Image -> {
-                out.name("type").value("image").name("url").value(value.url)
-                if (value.width > 0) out.name("width").value(value.width)
-                if (value.height > 0) out.name("height").value(value.height)
-                if (value.isFullSize) out.name("fullSize").value(true)
-                if (value.isGif) out.name("isGif").value(true)
+                json.addProperty("type", "image")
+                json.addProperty("url", value.url)
+                if (value.width > 0) json.addProperty("width", value.width)
+                if (value.height > 0) json.addProperty("height", value.height)
+                if (value.isFullSize) json.addProperty("fullSize", true)
+                if (value.isGif) json.addProperty("isGif", true)
             }
-            is ContentBlock.Quote -> { out.name("type").value("quote").name("author").value(value.author).name("content").value(value.content) }
+            is ContentBlock.Quote -> {
+                json.addProperty("type", "quote")
+                json.addProperty("author", value.author)
+                json.addProperty("content", value.content)
+            }
+            is ContentBlock.RestrictedNotice -> {
+                json.addProperty("type", "restricted")
+                json.addProperty("message", value.message)
+            }
         }
-        out.endObject()
+        gson.toJson(json, out)
     }
 
     override fun read(`in`: JsonReader): ContentBlock? {
-        if (`in`.peek() == com.google.gson.stream.JsonToken.NULL) {
-            `in`.nextNull()
-            return null
-        }
-        `in`.beginObject()
-        var type = ""
-        var parts = listOf<TextPart>()
-        var url = ""
-        var width = 0
-        var height = 0
-        var fullSize = false
-        var isGif = false
-        var author = ""
-        var content = ""
-        while (`in`.hasNext()) {
-            when (`in`.nextName()) {
-                "type" -> type = `in`.nextString()
-                "parts" -> {
-                    val list = mutableListOf<TextPart>()
-                    `in`.beginArray()
-                    while (`in`.hasNext()) {
-                        `in`.beginObject()
-                        var partType = ""
-                        var partText = ""
-                        var partUrl = ""
-                        while (`in`.hasNext()) {
-                            when (`in`.nextName()) {
-                                "type" -> partType = `in`.nextString()
-                                "text" -> partText = `in`.nextString()
-                                "url" -> partUrl = `in`.nextString()
-                                else -> `in`.skipValue()
-                            }
-                        }
-                        `in`.endObject()
-                        when (partType) {
-                            "plain" -> list.add(TextPart.Plain(partText))
-                            "link" -> list.add(TextPart.Plain(partText))
-                        }
-                    }
-                    `in`.endArray()
-                    parts = list
-                }
-                "url" -> url = `in`.nextString()
-                "width" -> width = `in`.nextInt()
-                "height" -> height = `in`.nextInt()
-                "fullSize" -> fullSize = `in`.nextBoolean()
-                "isGif" -> isGif = `in`.nextBoolean()
-                "author" -> author = `in`.nextString()
-                "content" -> content = `in`.nextString()
-                else -> `in`.skipValue()
-            }
-        }
-        `in`.endObject()
-        return when (type) {
-            "richtext" -> ContentBlock.RichText(parts)
-            "text" -> ContentBlock.RichText(listOf(TextPart.Plain(content)))
-            "image" -> ContentBlock.Image(url, width, height, fullSize, isGif)
-            "quote" -> ContentBlock.Quote(author, content)
+        val element = JsonParser.parseReader(`in`)
+        if (element.isJsonNull || !element.isJsonObject) return null
+        val json = element.asJsonObject
+        return when (json.string("type")) {
+            "richtext" -> readRichText(json)
+            "text" -> ContentBlock.RichText(listOf(RichParagraph(listOf(TextPart(json.string("content"))))))
+            "list" -> json["list"]
+                ?.takeUnless { it.isJsonNull }
+                ?.let { ContentBlock.ListBlock(gson.fromJson(it, RICH_LIST_TYPE)) }
+            "image" -> ContentBlock.Image(
+                url = json.string("url"),
+                width = json.int("width"),
+                height = json.int("height"),
+                isFullSize = json.boolean("fullSize"),
+                isGif = json.boolean("isGif")
+            )
+            "quote" -> ContentBlock.Quote(json.string("author"), json.string("content"))
+            "restricted" -> ContentBlock.RestrictedNotice(json.string("message"))
             else -> null
         }
+    }
+
+    private fun readRichText(json: JsonObject): ContentBlock.RichText {
+        json["paragraphs"]
+            ?.takeUnless { it.isJsonNull }
+            ?.let { paragraphs ->
+                return ContentBlock.RichText(
+                    gson.fromJson<List<RichParagraph>>(paragraphs, RICH_PARAGRAPHS_TYPE)
+                )
+            }
+
+        val parts = json["parts"]
+            ?.takeUnless { it.isJsonNull }
+            ?.asJsonArray
+            ?.mapNotNull { element ->
+                if (!element.isJsonObject) return@mapNotNull null
+                val part = element.asJsonObject
+                when (val type = part.string("type")) {
+                    "plain", "link" -> TextPart(
+                        text = part.string("text"),
+                        isLink = type == "link"
+                    )
+                    else -> null
+                }
+            }
+            .orEmpty()
+        return ContentBlock.RichText(listOf(RichParagraph(parts)))
     }
 }
 
@@ -235,9 +275,18 @@ object ContentBlockAdapterFactory : TypeAdapterFactory {
     override fun <T : Any> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T>? {
         if (!ContentBlock::class.java.isAssignableFrom(type.rawType)) return null
         @Suppress("UNCHECKED_CAST")
-        return ContentBlockTypeAdapter() as TypeAdapter<T>
+        return ContentBlockTypeAdapter(gson) as TypeAdapter<T>
     }
 }
+
+private fun JsonObject.string(name: String): String =
+    get(name)?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+
+private fun JsonObject.int(name: String): Int =
+    get(name)?.takeUnless { it.isJsonNull }?.asInt ?: 0
+
+private fun JsonObject.boolean(name: String): Boolean =
+    get(name)?.takeUnless { it.isJsonNull }?.asBoolean ?: false
 
 @Immutable
 data class ForumTypeFilter(
