@@ -8,12 +8,8 @@ import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.domain.model.RichParagraph
-import me.jbusdriver.modern.domain.model.TextPart
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
 
 fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
     val currentPageTypeId = Regex("typeid=(\\d+)").find(doc.location())?.groupValues?.get(1)?.toIntOrNull()
@@ -135,8 +131,8 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         .ifBlank { doc.select("div.viewthread_authorinfo .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
         .ifBlank { doc.select(".pls.favatar .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
 
-    val typeOptionBlocks = parsePostContent(firstPost?.select("div.typeoption")?.firstOrNull(), baseUrl)
-    val contentBlocks = typeOptionBlocks + parsePostContent(firstPost?.select("td.t_f")?.firstOrNull(), baseUrl)
+    val typeOptionBlocks = parseForumPostContent(firstPost?.selectFirst("div.typeoption"), baseUrl)
+    val contentBlocks = typeOptionBlocks + parseForumPostContent(firstPost?.selectFirst("td.t_f"), baseUrl)
 
     val comments = firstPost?.select("div.cm div.pstl")?.map { pstl ->
         Comment(
@@ -205,78 +201,5 @@ private fun parseReplyFloor(postBox: Element): ReplyFloor? {
 private fun parseReplyContent(postBox: Element, baseUrl: String): List<ContentBlock> {
     val restricted = postBox.selectFirst(".locked")?.text()?.trim().orEmpty()
     if (restricted.isNotEmpty()) return listOf(ContentBlock.RestrictedNotice(restricted))
-    return parsePostContent(postBox.selectFirst("td.t_f"), baseUrl)
-}
-
-private fun parsePostContent(td: Element?, baseUrl: String): List<ContentBlock> {
-    if (td == null) return emptyList()
-
-    val blocks = mutableListOf<ContentBlock>()
-    val parts = mutableListOf<TextPart>()
-
-    fun flushParts() {
-        val nonEmpty = parts.toList()
-        parts.clear()
-        if (nonEmpty.isNotEmpty()) {
-            blocks.add(ContentBlock.RichText(listOf(RichParagraph(nonEmpty))))
-        }
-    }
-
-    fun processNode(node: Node) {
-        when (node) {
-            is TextNode -> {
-                val text = node.text().trim()
-                if (text.isNotEmpty()) parts.add(TextPart(text))
-            }
-            is Element -> {
-                when (node.tagName()) {
-                    "br" -> flushParts()
-                    "a" -> {
-                        val text = node.text().trim()
-                        if (text.isNotBlank()) {
-                            parts.add(TextPart(text))
-                        }
-                    }
-                    "img" -> {
-                        val src = node.attr("src").wrapForumImage(baseUrl)
-                        if (src.isNotEmpty() &&
-                            !src.contains("arw_r") &&
-                            !src.contains("userinfo.gif") &&
-                            !src.contains("fav.gif") &&
-                            !src.contains("rec_add")
-                        ) {
-                            flushParts()
-                            val width = node.attr("width").toIntOrNull() ?: 0
-                            val height = node.attr("height").toIntOrNull() ?: 0
-                            blocks.add(ContentBlock.Image(src, width, height, node.hasClass("zoom"), src.isGifUrl()))
-                        }
-                    }
-                    "div" -> {
-                        if (node.hasClass("quote")) {
-                            flushParts()
-                            val blockquote = node.select("blockquote").firstOrNull()
-                            val authorName = blockquote?.select("a[href]")?.firstOrNull()?.text()?.trim() ?: ""
-                            val quoteText = blockquote?.let { bq ->
-                                val clone = bq.clone()
-                                clone.select("font > a").remove()
-                                clone.text().trim()
-                            } ?: ""
-                            if (quoteText.isNotEmpty()) {
-                                blocks.add(ContentBlock.Quote(authorName, quoteText))
-                            }
-                        } else if (!node.hasClass("modact") && !node.hasClass("locked") && !node.className().contains("cm")) {
-                            node.childNodes().forEach { processNode(it) }
-                        }
-                    }
-                    "font", "table" -> node.childNodes().forEach { processNode(it) }
-                    else -> node.childNodes().forEach { processNode(it) }
-                }
-            }
-        }
-    }
-
-    td.childNodes().forEach { processNode(it) }
-    flushParts()
-
-    return blocks
+    return parseForumPostContent(postBox.selectFirst("td.t_f"), baseUrl)
 }
