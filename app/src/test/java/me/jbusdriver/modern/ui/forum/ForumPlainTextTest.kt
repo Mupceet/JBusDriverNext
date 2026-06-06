@@ -10,6 +10,21 @@ import org.junit.Test
 
 class ForumPlainTextTest {
     @Test
+    fun `pinned floor label includes pinned prefix`() {
+        assertEquals("置頂 · 2#", forumFloorLabel(floor = 2, isPinned = true))
+        assertEquals("5#", forumFloorLabel(floor = 5, isPinned = false))
+    }
+
+    @Test
+    fun `list indentation stops increasing after three visual levels`() {
+        assertEquals(0, forumListIndentStep(depth = 0))
+        assertEquals(16, forumListIndentStep(depth = 1))
+        assertEquals(16, forumListIndentStep(depth = 2))
+        assertEquals(0, forumListIndentStep(depth = 3))
+        assertEquals(0, forumListIndentStep(depth = 4))
+    }
+
+    @Test
     fun `formats paragraphs lists quotes and restrictions`() {
         val blocks = listOf<ContentBlock>(
             ContentBlock.RichText(listOf(RichParagraph(listOf(TextPart("intro"))))),

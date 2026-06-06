@@ -2,10 +2,7 @@ package me.jbusdriver.modern.ui.forum
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,13 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,8 +60,6 @@ import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
@@ -77,7 +69,6 @@ import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
-import me.jbusdriver.modern.ui.components.GifPlaceholder
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
@@ -166,7 +157,7 @@ fun ForumThreadDetailScreen(
                                 blocks = blocks,
                                 onDismiss = { dialogBlocks = null },
                                 onCopyAll = {
-                                    context.copy(buildPlainText(blocks))
+                                    context.copy(buildForumPlainText(blocks))
                                     Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
                                     dialogBlocks = null
                                 }
@@ -190,7 +181,7 @@ fun ForumThreadDetailScreen(
                                     border = CardDefaults.outlinedCardBorder(),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                                 ) {
-                                    PostContent(
+                                    ForumPostContent(
                                         blocks = detail.contentBlocks,
                                         onImageClick = onImageClick,
                                         modifier = Modifier.padding(10.dp),
@@ -299,154 +290,6 @@ fun ForumThreadDetailScreen(
         }
     }
 }
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun PostContent(
-    blocks: List<ContentBlock>,
-    onImageClick: (List<String>, Int) -> Unit,
-    modifier: Modifier = Modifier,
-    loadedGifUrls: Set<String> = emptySet(),
-    autoLoadGifs: Boolean = false,
-    onLoadGif: (String) -> Unit = {},
-    onLoadAllGifs: () -> Unit = {},
-    onLongClick: () -> Unit = {}
-) {
-    val viewableImageUrls = remember(blocks, loadedGifUrls, autoLoadGifs) {
-        blocks.filterIsInstance<ContentBlock.Image>()
-            .filter { !it.isGif || autoLoadGifs || it.url in loadedGifUrls }
-            .map { it.url }
-    }
-
-    Column(
-        modifier = modifier.combinedClickable(
-            onClick = {},
-            onLongClick = onLongClick
-        ),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        var viewableIndex = 0
-        blocks.forEach { block ->
-            when (block) {
-                is ContentBlock.RichText -> {
-                    val text = block.paragraphs.joinToString("\n") { paragraph ->
-                        paragraph.parts.joinToString("") { it.text }
-                    }
-                    if (text.isNotBlank()) {
-                        Text(
-                            text,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                lineHeight = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                    }
-                }
-
-                is ContentBlock.Image -> {
-                    if (block.isGif && !autoLoadGifs && block.url !in loadedGifUrls) {
-                        GifPlaceholder(
-                            onClick = { onLoadGif(block.url) },
-                            onLoadAllGifs = onLoadAllGifs,
-                            modifier = if (block.isFullSize) {
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(180.dp)
-                            } else {
-                                Modifier.size(48.dp)
-                            }
-                        )
-                    } else {
-                        val currentIdx = viewableIndex++
-                        if (block.isFullSize) {
-                            SubcomposeAsyncImage(
-                                model = block.url,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onImageClick(viewableImageUrls, currentIdx) },
-                                contentScale = ContentScale.FillWidth,
-                                loading = {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().height(180.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    }
-                                }
-                            )
-                        } else {
-                            var imgState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-                            AsyncImage(
-                                model = block.url,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .then(
-                                        if (imgState is AsyncImagePainter.State.Loading || imgState is AsyncImagePainter.State.Empty)
-                                            Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
-                                        else Modifier
-                                    )
-                                    .clickable { onImageClick(viewableImageUrls, currentIdx) },
-                                contentScale = ContentScale.Fit,
-                                onState = { imgState = it }
-                            )
-                        }
-                    }
-                }
-
-                is ContentBlock.Quote -> {
-                    val accentColor = MaterialTheme.colorScheme.primary
-                    Card(
-                        shape = RoundedCornerShape(6.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .drawBehind {
-                                    drawLine(
-                                        color = accentColor,
-                                        start = Offset(0f, 0f),
-                                        end = Offset(0f, size.height),
-                                        strokeWidth = 3.dp.toPx()
-                                    )
-                                }
-                                .padding(start = 10.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
-                        ) {
-                            Column {
-                                if (block.author.isNotEmpty()) {
-                                    Text(
-                                        "${block.author}：",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontStyle = FontStyle.Italic,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                Text(
-                                    block.content,
-                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-
-                is ContentBlock.ListBlock -> { /* Rendered by the rich-content UI task. */ }
-                is ContentBlock.RestrictedNotice -> { /* Rendered by the rich-content UI task. */ }
-            }
-        }
-    }
-}
-
 @Composable
 private fun ThreadHeader(detail: ForumThreadDetail) {
     Column {
@@ -576,7 +419,7 @@ private fun ReplyItem(
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        "${reply.floor}# · ${reply.postTime}",
+                        "${forumFloorLabel(reply.floor, reply.isPinned)} · ${reply.postTime}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -589,7 +432,7 @@ private fun ReplyItem(
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
-                PostContent(
+                ForumPostContent(
                     blocks = reply.contentBlocks,
                     onImageClick = onImageClick,
                     modifier = Modifier.padding(top = 4.dp),
@@ -630,70 +473,11 @@ private fun FloorContentDialog(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp, vertical = 4.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        blocks.forEach { block ->
-                            when (block) {
-                                is ContentBlock.RichText -> {
-                                    val text = block.paragraphs.joinToString("\n") { paragraph ->
-                                        paragraph.parts.joinToString("") { it.text }
-                                    }
-                                    if (text.isNotBlank()) {
-                                        Text(
-                                            text,
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                lineHeight = 26.sp,
-                                                fontSize = 16.sp
-                                            )
-                                        )
-                                    }
-                                }
-
-                                is ContentBlock.Quote -> {
-                                    val accentColor = MaterialTheme.colorScheme.primary
-                                    Card(
-                                        shape = RoundedCornerShape(6.dp),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .drawBehind {
-                                                    drawLine(
-                                                        color = accentColor,
-                                                        start = Offset(0f, 0f),
-                                                        end = Offset(0f, size.height),
-                                                        strokeWidth = 3.dp.toPx()
-                                                    )
-                                                }
-                                                .padding(start = 10.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
-                                        ) {
-                                            Column {
-                                                if (block.author.isNotEmpty()) {
-                                                    Text(
-                                                        "${block.author}：",
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontStyle = FontStyle.Italic,
-                                                            fontWeight = FontWeight.Medium
-                                                        ),
-                                                        color = MaterialTheme.colorScheme.primary
-                                                    )
-                                                }
-                                                Text(
-                                                    block.content,
-                                                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                is ContentBlock.Image -> { /* skip images in dialog */ }
-                                is ContentBlock.ListBlock -> { /* Rendered by the rich-content UI task. */ }
-                                is ContentBlock.RestrictedNotice -> { /* Rendered by the rich-content UI task. */ }
-                            }
-                        }
-                    }
+                    ForumPostContent(
+                        blocks = blocks,
+                        onImageClick = { _, _ -> },
+                        showImages = false
+                    )
                 }
 
                 Row(
@@ -712,21 +496,4 @@ private fun FloorContentDialog(
             }
         }
     }
-}
-
-private fun buildPlainText(blocks: List<ContentBlock>): String {
-    return blocks.mapNotNull { block ->
-        when (block) {
-            is ContentBlock.RichText -> block.paragraphs.joinToString("\n") { paragraph ->
-                paragraph.parts.joinToString("") { it.text }
-            }
-            is ContentBlock.Quote -> {
-                val prefix = if (block.author.isNotEmpty()) "${block.author}：" else ""
-                "$prefix${block.content}"
-            }
-            is ContentBlock.Image -> null
-            is ContentBlock.ListBlock -> null
-            is ContentBlock.RestrictedNotice -> null
-        }
-    }.joinToString("\n")
 }

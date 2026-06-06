@@ -78,7 +78,7 @@ class DefaultForumRepository @Inject constructor(
     }
 
     override suspend fun loadThreadDetail(tid: Int, page: Int, forceRefresh: Boolean): ForumThreadDetail {
-        val cacheKey = "forum_detail_${tid}_$page"
+        val cacheKey = "forum_detail_v2_${tid}_$page"
         val url = "${siteConfig.baseUrl}/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
         KLog.d("[Forum] loadThreadDetail: url=$url", TAG)
         return cacheStore.persistentCached(cacheKey, forceRefresh) {

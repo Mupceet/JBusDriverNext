@@ -189,6 +189,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.foundation)
     debugImplementation(libs.compose.ui.tooling)
+    androidTestImplementation(composeBom)
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 
     // Lifecycle + ViewModel + Navigation 3
     implementation(libs.activity.compose)
