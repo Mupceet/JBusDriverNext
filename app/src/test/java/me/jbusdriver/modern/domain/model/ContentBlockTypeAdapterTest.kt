@@ -129,7 +129,7 @@ class ContentBlockTypeAdapterTest {
                     RichParagraph(
                         listOf(
                             TextPart("Hello "),
-                            TextPart("world", isLink = true)
+                            TextPart("world")
                         )
                     )
                 )

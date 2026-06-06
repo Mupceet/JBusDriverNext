@@ -251,11 +251,8 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
             ?.mapNotNull { element ->
                 if (!element.isJsonObject) return@mapNotNull null
                 val part = element.asJsonObject
-                when (val type = part.string("type")) {
-                    "plain", "link" -> TextPart(
-                        text = part.string("text"),
-                        isLink = type == "link"
-                    )
+                when (part.string("type")) {
+                    "plain", "link" -> TextPart(text = part.string("text"))
                     else -> null
                 }
             }
