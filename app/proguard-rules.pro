@@ -97,6 +97,21 @@
 -keepclassmembers enum me.jbusdriver.modern.domain.model.SearchType {
     *;
 }
+-keepclassmembers class me.jbusdriver.modern.domain.model.TextPart {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.RichParagraph {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.RichList {
+    !static !transient <fields>;
+}
+-keepclassmembers class me.jbusdriver.modern.domain.model.RichListItem {
+    !static !transient <fields>;
+}
+-keepclassmembers enum me.jbusdriver.modern.domain.model.ForumTextSize {
+    *;
+}
 -keepclassmembers class me.jbusdriver.modern.data.SessionCookieStore$PersistedCookie {
     !static !transient <fields>;
 }
