@@ -176,6 +176,7 @@ fun ForumThreadDetailScreen(
 
                             item(key = "content") {
                                 Card(
+                                    modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     border = CardDefaults.outlinedCardBorder(),
@@ -391,6 +392,7 @@ private fun ReplyItem(
     onLongClick: () -> Unit = {}
 ) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = CardDefaults.outlinedCardBorder(),
