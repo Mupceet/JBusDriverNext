@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -44,7 +43,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -230,37 +228,22 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                 contentScale = ContentScale.Crop
             )
             Column(modifier = Modifier.weight(1f)) {
-                // Type tag + digest/pin badge
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (thread.typeName.isNotEmpty()) {
-                        Text(
-                            thread.typeName,
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            modifier = Modifier
-                                .background(
-                                    runCatching { Color(android.graphics.Color.parseColor(thread.typeColor)) }
-                                        .getOrDefault(Color(0xFF666666)),
-                                    RoundedCornerShape(3.dp)
-                                )
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
+                val trailingLabels = buildList {
                     if (thread.isDigest) {
-                        Text("精華", color = MaterialTheme.colorScheme.error, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.width(4.dp))
+                        add(ForumInlineLabel("\u7cbe\u83ef", MaterialTheme.colorScheme.error))
                     }
                     if (thread.isPinned) {
-                        Text("置頂", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        add(ForumInlineLabel("\u7f6e\u9802", MaterialTheme.colorScheme.primary))
                     }
                 }
-                Text(
-                    thread.title,
+                ForumThreadTitle(
+                    title = thread.title,
+                    typeName = thread.typeName,
+                    typeColor = thread.typeColor,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
+                    trailingLabels = trailingLabels
                 )
                 // Thumbnails
                 if (thread.images.isNotEmpty()) {

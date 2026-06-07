@@ -46,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -55,7 +54,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -293,25 +291,12 @@ fun ForumThreadDetailScreen(
 @Composable
 private fun ThreadHeader(detail: ForumThreadDetail) {
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (detail.typeName.isNotEmpty()) {
-                Text(
-                    detail.typeName,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    modifier = Modifier
-                        .background(
-                            runCatching { Color(detail.typeColor.toColorInt()) }
-                                .getOrDefault(Color(0xFF666666)),
-                            RoundedCornerShape(3.dp)
-                        )
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                )
-            }
-        }
-        Text(
-            detail.title,
+        ForumThreadTitle(
+            title = detail.title,
+            typeName = detail.typeName,
+            typeColor = detail.typeColor,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            badgeFontSize = 14.sp,
             modifier = Modifier.padding(top = 4.dp)
         )
         Row(
