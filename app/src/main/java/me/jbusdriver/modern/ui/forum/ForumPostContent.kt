@@ -354,6 +354,7 @@ private fun QuoteContent(block: ContentBlock.Quote) {
                         strokeWidth = 3.dp.toPx()
                     )
                 }
+                .fillMaxWidth()
                 .padding(start = 10.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
         ) {
             Column {
