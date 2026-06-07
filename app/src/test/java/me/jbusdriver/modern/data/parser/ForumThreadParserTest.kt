@@ -100,6 +100,35 @@ class ForumThreadParserTest {
         assertTrue(text.contains("fallback list text"))
     }
 
+    @Test
+    fun `smilie images remain inline with surrounding text`() {
+        val post = Jsoup.parseBodyFragment(
+            """
+                <table><tr>
+                <td class="t_f" id="postmessage_4764803">
+                车神牛B，现在的里番真的毫无欲望，连雷火剑监督都不咋样了<img src="/static/image/smiley/3.png" smilieid="108" border="0" alt="">，以前我是片都不看就爱看里番。
+                </td>
+                </tr></table>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/"
+        ).selectFirst("td.t_f")
+
+        assertTrue(post?.selectFirst("img")?.hasAttr("smilieid") == true)
+        val blocks = parseForumPostContent(post, "https://www.javbus.com")
+
+        assertEquals(1, blocks.size)
+        assertTrue(blocks.none { it is ContentBlock.Image })
+        val parts = blocks.filterIsInstance<ContentBlock.RichText>()
+            .flatMap { it.paragraphs }
+            .flatMap { it.parts }
+        assertEquals(
+            "https://www.javbus.com/static/image/smiley/3.png",
+            parts.single { it.inlineImageUrl.isNotEmpty() }.inlineImageUrl
+        )
+        val text = parts.joinToString("") { it.text }
+        assertEquals("车神牛B，现在的里番真的毫无欲望，连雷火剑监督都不咋样了，以前我是片都不看就爱看里番。", text)
+    }
+
     private fun parsedPinnedReply(floor: Int) = parseForumThreadDetail(
         fixture(
             "pinned-rich-replies.html",

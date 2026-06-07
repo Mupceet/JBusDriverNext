@@ -62,7 +62,7 @@ private class PostContentParser(private val baseUrl: String) {
                     size = element.inlineSize(style.size)
                 )
             )
-            "img" -> appendImage(element)
+            "img" -> appendImage(element, style)
             "ol", "ul" -> {
                 flushRichText()
                 val list = parseList(element, 1)
@@ -135,9 +135,13 @@ private class PostContentParser(private val baseUrl: String) {
         }
     }
 
-    private fun appendImage(element: Element) {
+    private fun appendImage(element: Element, style: InlineStyle) {
         val src = element.attr("src").wrapForumImage(baseUrl)
         if (src.isEmpty() || IGNORED_IMAGE_MARKERS.any(src::contains)) return
+        if (element.hasAttr("smilieid")) {
+            appendInlineImage(src, element.attr("alt"), style)
+            return
+        }
         flushRichText()
         blocks.add(
             ContentBlock.Image(
@@ -148,6 +152,15 @@ private class PostContentParser(private val baseUrl: String) {
                 isGif = src.isGifUrl()
             )
         )
+    }
+
+    private fun appendInlineImage(src: String, alt: String, style: InlineStyle) {
+        val needsLeadingSpace = parts.isNotEmpty() &&
+            pendingSpace &&
+            !parts.last().text.endsWith(' ')
+        if (needsLeadingSpace) appendSeparator()
+        parts.add(style.toPart(text = "", inlineImageUrl = src, inlineImageAlt = alt))
+        pendingSpace = false
     }
 
     private fun appendQuote(element: Element) {
@@ -278,7 +291,11 @@ private fun Element.inlineSize(current: ForumTextSize): ForumTextSize {
     }
 }
 
-private fun InlineStyle.toPart(text: String) = TextPart(
+private fun InlineStyle.toPart(
+    text: String,
+    inlineImageUrl: String = "",
+    inlineImageAlt: String = ""
+) = TextPart(
     text = text,
     bold = bold,
     italic = italic,
@@ -286,10 +303,15 @@ private fun InlineStyle.toPart(text: String) = TextPart(
     strikethrough = strikethrough,
     color = color,
     size = size,
-    isLink = isLink
+    isLink = isLink,
+    inlineImageUrl = inlineImageUrl,
+    inlineImageAlt = inlineImageAlt
 )
 
-private fun TextPart.sameStyle(other: TextPart): Boolean = copy(text = "") == other.copy(text = "")
+private fun TextPart.sameStyle(other: TextPart): Boolean {
+    if (inlineImageUrl.isNotEmpty() || other.inlineImageUrl.isNotEmpty()) return false
+    return copy(text = "") == other.copy(text = "")
+}
 
 private val LIST_TAGS = setOf("ol", "ul")
 private val NAMED_COLORS = setOf("red", "blue", "green", "black", "white", "gray", "grey", "orange", "purple")

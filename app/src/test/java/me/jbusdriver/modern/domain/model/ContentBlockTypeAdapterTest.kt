@@ -74,6 +74,29 @@ class ContentBlockTypeAdapterTest {
     }
 
     @Test
+    fun `inline image text part round trips`() {
+        val block = ContentBlock.RichText(
+            paragraphs = listOf(
+                RichParagraph(
+                    parts = listOf(
+                        TextPart("before"),
+                        TextPart(
+                            text = "",
+                            inlineImageUrl = "https://example.test/smilie.png",
+                            inlineImageAlt = "smilie"
+                        ),
+                        TextPart("after")
+                    )
+                )
+            )
+        )
+
+        val decoded = roundTrip(block)
+
+        assertEquals(block, decoded)
+    }
+
+    @Test
     fun `nested ordered and unordered list round trips`() {
         val block = ContentBlock.ListBlock(
             RichList(

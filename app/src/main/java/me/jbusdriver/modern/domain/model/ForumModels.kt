@@ -139,7 +139,9 @@ data class TextPart(
     val strikethrough: Boolean = false,
     val color: String? = null,
     val size: ForumTextSize = ForumTextSize.BODY,
-    val isLink: Boolean = false
+    val isLink: Boolean = false,
+    val inlineImageUrl: String = "",
+    val inlineImageAlt: String = ""
 )
 
 @Immutable
