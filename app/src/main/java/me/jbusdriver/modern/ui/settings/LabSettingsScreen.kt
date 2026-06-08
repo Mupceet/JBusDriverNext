@@ -216,10 +216,13 @@ private fun ForumCard(
 
             Spacer(Modifier.height(12.dp))
 
-            Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(8.dp))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SingleChoiceSegmentedButtonRow {
                     SegmentedButton(
                         selected = forumFloorOrder == ForumFloorOrder.REGULAR,
                         onClick = { onForumFloorOrderChange(ForumFloorOrder.REGULAR) },
