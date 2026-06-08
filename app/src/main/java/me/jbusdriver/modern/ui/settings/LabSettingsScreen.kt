@@ -29,6 +29,9 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -48,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.data.MirrorUrl
@@ -62,6 +66,7 @@ fun LabSettingsScreen(
 ) {
     val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle()
     val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle()
+    val forumFloorOrder by viewModel.store.forumFloorOrder.collectAsStateWithLifecycle()
     val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle()
     val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
@@ -114,8 +119,10 @@ fun LabSettingsScreen(
             ForumCard(
                 forumEnabled = forumEnabled,
                 autoLoadGifs = autoLoadGifs,
+                forumFloorOrder = forumFloorOrder,
                 onForumEnabledChange = { scope.launch { viewModel.store.setForumEnabled(it) } },
-                onAutoLoadGifsChange = { scope.launch { viewModel.store.setAutoLoadGifs(it) } }
+                onAutoLoadGifsChange = { scope.launch { viewModel.store.setAutoLoadGifs(it) } },
+                onForumFloorOrderChange = { scope.launch { viewModel.store.setForumFloorOrder(it) } }
             )
 
             // URL selection card
@@ -137,8 +144,10 @@ fun LabSettingsScreen(
 private fun ForumCard(
     forumEnabled: Boolean,
     autoLoadGifs: Boolean,
+    forumFloorOrder: ForumFloorOrder,
     onForumEnabledChange: (Boolean) -> Unit,
-    onAutoLoadGifsChange: (Boolean) -> Unit
+    onAutoLoadGifsChange: (Boolean) -> Unit,
+    onForumFloorOrderChange: (ForumFloorOrder) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -202,6 +211,29 @@ private fun ForumCard(
                     checked = autoLoadGifs,
                     onCheckedChange = onAutoLoadGifsChange
                 )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Column {
+                Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = forumFloorOrder == ForumFloorOrder.REGULAR,
+                        onClick = { onForumFloorOrderChange(ForumFloorOrder.REGULAR) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                    ) {
+                        Text("正序")
+                    }
+                    SegmentedButton(
+                        selected = forumFloorOrder == ForumFloorOrder.REVERSE,
+                        onClick = { onForumFloorOrderChange(ForumFloorOrder.REVERSE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                    ) {
+                        Text("倒序")
+                    }
+                }
             }
         }
     }
