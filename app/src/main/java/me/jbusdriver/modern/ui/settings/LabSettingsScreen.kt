@@ -226,14 +226,16 @@ private fun ForumCard(
                     SegmentedButton(
                         selected = forumFloorOrder == ForumFloorOrder.REGULAR,
                         onClick = { onForumFloorOrderChange(ForumFloorOrder.REGULAR) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        checkmark = {}
                     ) {
                         Text("正序")
                     }
                     SegmentedButton(
                         selected = forumFloorOrder == ForumFloorOrder.REVERSE,
                         onClick = { onForumFloorOrderChange(ForumFloorOrder.REVERSE) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        checkmark = {}
                     ) {
                         Text("倒序")
                     }
