@@ -140,6 +140,7 @@ fun LabSettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ForumCard(
     forumEnabled: Boolean,
