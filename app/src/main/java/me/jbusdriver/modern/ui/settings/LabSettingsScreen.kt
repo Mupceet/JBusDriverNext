@@ -214,7 +214,7 @@ private fun ForumCard(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -227,7 +227,7 @@ private fun ForumCard(
                         selected = forumFloorOrder == ForumFloorOrder.REGULAR,
                         onClick = { onForumFloorOrderChange(ForumFloorOrder.REGULAR) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        checkmark = {}
+                        icon = {}
                     ) {
                         Text("正序")
                     }
@@ -235,7 +235,7 @@ private fun ForumCard(
                         selected = forumFloorOrder == ForumFloorOrder.REVERSE,
                         onClick = { onForumFloorOrderChange(ForumFloorOrder.REVERSE) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        checkmark = {}
+                        icon = {}
                     ) {
                         Text("倒序")
                     }
