@@ -26,6 +26,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,6 +62,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
+import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
@@ -200,11 +203,10 @@ fun ForumThreadDetailScreen(
 
                             if (detail.replies.isNotEmpty()) {
                                 item(key = "replies_header") {
-                                    Text(
-                                        "精彩評論 (${detail.replyCount})",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(top = 4.dp)
+                                    RepliesHeader(
+                                        replyCount = detail.replyCount,
+                                        floorOrder = state.floorOrder,
+                                        onFloorOrderSelected = viewModel::setFloorOrder
                                     )
                                 }
                                 items(count = detail.replies.size, key = { "reply_$it" }) { index ->
@@ -317,6 +319,85 @@ private fun ThreadHeader(detail: ForumThreadDetail) {
             )
         }
     }
+}
+
+@Composable
+private fun RepliesHeader(
+    replyCount: Int,
+    floorOrder: ForumFloorOrder,
+    onFloorOrderSelected: (ForumFloorOrder) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "精彩评论 ($replyCount)",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Box {
+            IconButton(
+                onClick = { expanded = true },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    painterResource(R.drawable.sort_24px),
+                    contentDescription = "楼层排序",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                FloorOrderMenuItem(
+                    text = "正序",
+                    selected = floorOrder == ForumFloorOrder.REGULAR,
+                    onClick = {
+                        expanded = false
+                        onFloorOrderSelected(ForumFloorOrder.REGULAR)
+                    }
+                )
+                FloorOrderMenuItem(
+                    text = "倒序",
+                    selected = floorOrder == ForumFloorOrder.REVERSE,
+                    onClick = {
+                        expanded = false
+                        onFloorOrderSelected(ForumFloorOrder.REVERSE)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FloorOrderMenuItem(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        leadingIcon = {
+            if (selected) {
+                Icon(
+                    painterResource(R.drawable.check_24px),
+                    contentDescription = null
+                )
+            } else {
+                Spacer(Modifier.size(24.dp))
+            }
+        },
+        onClick = onClick
+    )
 }
 
 @Composable

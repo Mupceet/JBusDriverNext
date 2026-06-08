@@ -14,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.domain.model.ForumBanner
@@ -53,11 +54,22 @@ data class ForumThreadListUiState(
 
 data class ForumThreadDetailUiState(
     val detail: ForumThreadDetail? = null,
+    val floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val isLoadingMore: Boolean = false
+    val isLoadingMore: Boolean = false,
+    val isChangingFloorOrder: Boolean = false
 )
+
+fun ForumThreadDetailUiState.prepareFloorOrderReload(order: ForumFloorOrder): ForumThreadDetailUiState =
+    copy(
+        floorOrder = order,
+        error = null,
+        isLoading = false,
+        isLoadingMore = false,
+        isChangingFloorOrder = true
+    )
 
 @HiltViewModel
 class ForumBoardsViewModel @Inject constructor(
@@ -263,20 +275,32 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
         viewModelScope.launch { _loadedGifUrls.value = loadPersistedGifUrls() }
-        loadDetail()
+        viewModelScope.launch {
+            val defaultOrder = labSettingsStore.currentForumFloorOrder()
+            _uiState.update { it.copy(floorOrder = defaultOrder) }
+            loadDetail()
+        }
     }
 
-    fun loadDetail() {
-        if (_uiState.value.isLoading) return
-        KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage", TAG)
+    fun loadDetail(forceRefresh: Boolean = false, showLoading: Boolean = true) {
+        if (showLoading && _uiState.value.isLoading) return
+        val floorOrder = _uiState.value.floorOrder
+        KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage, floorOrder=$floorOrder", TAG)
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update {
+                if (showLoading) {
+                    it.copy(isLoading = true, error = null)
+                } else {
+                    it.copy(error = null, isChangingFloorOrder = true)
+                }
+            }
             try {
-                val detail = repository.loadThreadDetail(tid, currentPage)
+                val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh)
                 KLog.d("[Forum] loadDetail success: title=${detail.title}, replies=${detail.replies.size}", TAG)
-                _uiState.update { it.copy(detail = detail, isLoading = false) }
+                _uiState.update { it.copy(detail = detail, isLoading = false, isChangingFloorOrder = false) }
             } catch (e: Exception) {
                 KLog.e("[Forum] loadDetail failed: ${e.message}", e, TAG)
+                _uiState.update { it.copy(isChangingFloorOrder = false) }
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
             }
         }
@@ -284,10 +308,11 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
+        val floorOrder = _uiState.value.floorOrder
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
-                val detail = repository.loadThreadDetail(tid, currentPage, forceRefresh = true)
+                val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh = true)
                 _uiState.update { it.copy(detail = detail, isRefreshing = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
@@ -302,10 +327,11 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
+        val floorOrder = _uiState.value.floorOrder
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val nextDetail = repository.loadThreadDetail(tid, nextPage)
+                val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
                 _uiState.update {
                     it.copy(
                         detail = detail.copy(
@@ -320,6 +346,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 _uiState.update { it.copy(isLoadingMore = false) }
             }
         }
+    }
+
+    fun setFloorOrder(order: ForumFloorOrder) {
+        if (_uiState.value.floorOrder == order || _uiState.value.isLoading || _uiState.value.isChangingFloorOrder) return
+        currentPage = 1
+        _uiState.update { it.prepareFloorOrderReload(order) }
+        loadDetail(forceRefresh = true, showLoading = false)
     }
 
     @AssistedFactory

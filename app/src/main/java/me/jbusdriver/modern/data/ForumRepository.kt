@@ -20,7 +20,12 @@ private const val TAG = "ForumRepo"
 interface ForumRepository {
     suspend fun loadForumBoards(forceRefresh: Boolean = false): ForumHomeData
     suspend fun loadThreads(fid: Int, page: Int, typeId: Int? = null, forceRefresh: Boolean = false): ForumThreadPageResult
-    suspend fun loadThreadDetail(tid: Int, page: Int = 1, forceRefresh: Boolean = false): ForumThreadDetail
+    suspend fun loadThreadDetail(
+        tid: Int,
+        page: Int = 1,
+        floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
+        forceRefresh: Boolean = false
+    ): ForumThreadDetail
     fun destroySession()
 }
 
@@ -77,9 +82,14 @@ class DefaultForumRepository @Inject constructor(
         }
     }
 
-    override suspend fun loadThreadDetail(tid: Int, page: Int, forceRefresh: Boolean): ForumThreadDetail {
-        val cacheKey = "forum_detail_v2_${tid}_$page"
-        val url = "${siteConfig.baseUrl}/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
+    override suspend fun loadThreadDetail(
+        tid: Int,
+        page: Int,
+        floorOrder: ForumFloorOrder,
+        forceRefresh: Boolean
+    ): ForumThreadDetail {
+        val cacheKey = forumThreadDetailCacheKey(tid, page, floorOrder)
+        val url = buildForumThreadDetailUrl(siteConfig.baseUrl, tid, page, floorOrder)
         KLog.d("[Forum] loadThreadDetail: url=$url", TAG)
         return cacheStore.persistentCached(cacheKey, forceRefresh) {
             val doc = fetchForumDocument(url)

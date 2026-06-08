@@ -82,6 +82,17 @@ class LabSettingsStore @Inject constructor(
         dataStore.edit { it[KEY_AUTO_LOAD_GIFS] = enabled }
     }
 
+    val forumFloorOrder: StateFlow<ForumFloorOrder> = dataStore.data.map {
+        ForumFloorOrder.fromPreferenceValue(it[KEY_FORUM_FLOOR_ORDER])
+    }.stateIn(scope, SharingStarted.Eagerly, ForumFloorOrder.REGULAR)
+
+    suspend fun currentForumFloorOrder(): ForumFloorOrder =
+        ForumFloorOrder.fromPreferenceValue(dataStore.data.first()[KEY_FORUM_FLOOR_ORDER])
+
+    suspend fun setForumFloorOrder(order: ForumFloorOrder) {
+        dataStore.edit { it[KEY_FORUM_FLOOR_ORDER] = order.preferenceValue }
+    }
+
     val selectedBaseUrl: StateFlow<String> = dataStore.data.map {
         it[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
     }.stateIn(scope, SharingStarted.Eagerly, DEFAULT_BASE_URL)
@@ -273,6 +284,7 @@ class LabSettingsStore @Inject constructor(
     companion object {
         private val KEY_FORUM_ENABLED = booleanPreferencesKey("forum_enabled")
         private val KEY_AUTO_LOAD_GIFS = booleanPreferencesKey("auto_load_gifs")
+        private val KEY_FORUM_FLOOR_ORDER = stringPreferencesKey("forum_floor_order")
         private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")
         private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
         const val DEFAULT_BASE_URL = "https://www.javbus.com"
