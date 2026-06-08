@@ -67,10 +67,12 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
                 !it.contains("small.gif") &&
                 !it.contains("hot.jpg") &&
                 !it.contains("recommend") &&
+                !it.contains("folder_lock") &&
                 !it.contains("arw_r")
         }
 
     val pages = tbody.select(".tps a").lastOrNull()?.text()?.toIntOrNull() ?: 1
+    val titleImages = tbody.select(".post_infolist_tit img[src]")
 
     return ForumThread(
         tid = tid,
@@ -90,8 +92,18 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
             .ifBlank { tbody.select(".time span").lastOrNull()?.text()?.trim() ?: "" },
         images = images,
         isPinned = isPinned,
-        isDigest = tbody.select("img[alt=recommend]").isNotEmpty(),
-        pages = pages
+        isDigest = titleImages.any {
+            it.attr("alt").equals("recommend", ignoreCase = true) ||
+                it.attr("src").contains("recommend", ignoreCase = true)
+        },
+        pages = pages,
+        isLocked = titleImages.any {
+            it.attr("src").contains("folder_lock", ignoreCase = true)
+        },
+        isHot = titleImages.any {
+            it.attr("alt").equals("heatlevel", ignoreCase = true) ||
+                it.attr("src").contains("hot.jpg", ignoreCase = true)
+        }
     )
 }
 

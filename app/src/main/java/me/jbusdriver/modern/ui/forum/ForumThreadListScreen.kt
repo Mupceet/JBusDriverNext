@@ -229,11 +229,40 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
             )
             Column(modifier = Modifier.weight(1f)) {
                 val trailingLabels = buildList {
-                    if (thread.isDigest) {
-                        add(ForumInlineLabel("\u7cbe\u83ef", MaterialTheme.colorScheme.error))
-                    }
                     if (thread.isPinned) {
                         add(ForumInlineLabel("\u7f6e\u9802", MaterialTheme.colorScheme.primary))
+                    }
+                }
+                val trailingIcons = buildList {
+                    if (thread.isLocked) {
+                        add(
+                            ForumInlineIcon(
+                                id = "locked",
+                                iconRes = R.drawable.lock_24px,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                contentDescription = "closed"
+                            )
+                        )
+                    }
+                    if (thread.isDigest) {
+                        add(
+                            ForumInlineIcon(
+                                id = "digest",
+                                iconRes = R.drawable.thumb_up_24px,
+                                tint = MaterialTheme.colorScheme.primary,
+                                contentDescription = "recommend"
+                            )
+                        )
+                    }
+                    if (thread.isHot) {
+                        add(
+                            ForumInlineIcon(
+                                id = "hot",
+                                iconRes = R.drawable.local_fire_department_24px,
+                                tint = MaterialTheme.colorScheme.error,
+                                contentDescription = "hot"
+                            )
+                        )
                     }
                 }
                 ForumThreadTitle(
@@ -243,7 +272,8 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    trailingLabels = trailingLabels
+                    trailingLabels = trailingLabels,
+                    trailingIcons = trailingIcons
                 )
                 // Thumbnails
                 if (thread.images.isNotEmpty()) {

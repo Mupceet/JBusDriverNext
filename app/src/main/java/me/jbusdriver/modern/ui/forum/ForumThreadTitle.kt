@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
 import androidx.core.graphics.toColorInt
+import androidx.compose.ui.res.painterResource
 
 @Immutable
 internal data class ForumInlineBadge(
@@ -44,6 +46,14 @@ internal data class ForumInlineLabel(
     val bold: Boolean = true
 )
 
+@Immutable
+internal data class ForumInlineIcon(
+    val id: String,
+    val iconRes: Int,
+    val tint: Color,
+    val contentDescription: String
+)
+
 @Composable
 internal fun ForumThreadTitle(
     title: String,
@@ -54,6 +64,7 @@ internal fun ForumThreadTitle(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     trailingLabels: List<ForumInlineLabel> = emptyList(),
+    trailingIcons: List<ForumInlineIcon> = emptyList(),
     badgeFontSize: TextUnit = 10.sp
 ) {
     val badges = remember(typeName, typeColor) {
@@ -70,7 +81,7 @@ internal fun ForumThreadTitle(
             }
         }
     }
-    val annotatedTitle = remember(title, style, badges, trailingLabels) {
+    val annotatedTitle = remember(title, style, badges, trailingLabels, trailingIcons) {
         buildAnnotatedString {
             badges.forEach { badge ->
                 appendInlineContent(badge.id, badge.label)
@@ -91,10 +102,14 @@ internal fun ForumThreadTitle(
                     append(label.label)
                 }
             }
+            trailingIcons.forEach { icon ->
+                append(" ")
+                appendInlineContent(icon.id, icon.contentDescription)
+            }
         }
     }
-    val inlineContent = remember(badges, badgeFontSize) {
-        badges.associate { badge ->
+    val inlineContent = remember(badges, trailingIcons, badgeFontSize) {
+        val badgeContent = badges.associate { badge ->
             badge.id to InlineTextContent(
                 Placeholder(
                     width = forumInlineBadgeWidthEm(badge.label).em,
@@ -122,6 +137,23 @@ internal fun ForumThreadTitle(
                 }
             }
         }
+        val iconContent = trailingIcons.associate { icon ->
+            icon.id to InlineTextContent(
+                Placeholder(
+                    width = FORUM_INLINE_ICON_SIZE_EM.em,
+                    height = FORUM_INLINE_ICON_SIZE_EM.em,
+                    placeholderVerticalAlign = PlaceholderVerticalAlign.Center
+                )
+            ) {
+                Icon(
+                    painter = painterResource(icon.iconRes),
+                    contentDescription = icon.contentDescription,
+                    tint = icon.tint,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        badgeContent + iconContent
     }
 
     Text(
@@ -140,3 +172,4 @@ internal fun forumInlineBadgeWidthEm(label: String): Float =
 private const val FORUM_INLINE_BADGE_HEIGHT_EM = 1.3f
 private const val FORUM_INLINE_BADGE_HORIZONTAL_PADDING_EM = 0.76f
 private const val FORUM_INLINE_BADGE_CHAR_WIDTH_EM = 0.72f
+private const val FORUM_INLINE_ICON_SIZE_EM = 1.05f

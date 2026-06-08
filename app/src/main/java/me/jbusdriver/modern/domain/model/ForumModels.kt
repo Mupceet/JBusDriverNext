@@ -85,7 +85,9 @@ data class ForumThread(
     val images: List<String>,
     val isPinned: Boolean,
     val isDigest: Boolean,
-    val pages: Int
+    val pages: Int,
+    val isLocked: Boolean = false,
+    val isHot: Boolean = false
 )
 
 @Immutable

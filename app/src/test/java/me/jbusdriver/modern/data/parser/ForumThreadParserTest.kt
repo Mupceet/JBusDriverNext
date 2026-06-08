@@ -129,6 +129,39 @@ class ForumThreadParserTest {
         assertEquals("车神牛B，现在的里番真的毫无欲望，连雷火剑监督都不咋样了，以前我是片都不看就爱看里番。", text)
     }
 
+    @Test
+    fun `thread status images become flags instead of previews`() {
+        val doc = Jsoup.parse(
+            """
+                <table>
+                  <tbody id="normalthread_42">
+                    <tr><th>
+                      <div class="post_infolist_tit">
+                        <a class="s" href="forum.php?mod=viewthread&amp;tid=42">Thread title</a>
+                        <a href="forum.php?mod=viewthread&amp;tid=42">
+                          <img src="./static/image/common/folder_lock.gif">
+                        </a>
+                        <img src="./static/image/common/recommend.png" alt="recommend">
+                        <img src="./static/image/common/hot.jpg" alt="heatlevel">
+                        <a href="forum.php?mod=viewthread&amp;tid=42">
+                          <img src="./preview.jpg">
+                        </a>
+                      </div>
+                    </th></tr>
+                  </tbody>
+                </table>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/"
+        )
+
+        val thread = parseForumThreads(doc, "https://www.javbus.com").threads.single()
+
+        assertTrue(thread.isLocked)
+        assertTrue(thread.isDigest)
+        assertTrue(thread.isHot)
+        assertEquals(listOf("https://www.javbus.com/forum/./preview.jpg"), thread.images)
+    }
+
     private fun parsedPinnedReply(floor: Int) = parseForumThreadDetail(
         fixture(
             "pinned-rich-replies.html",
