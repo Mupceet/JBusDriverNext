@@ -49,7 +49,7 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         .let { Regex("tid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
         ?: return null
 
-    val typeLink = tbody.select(".post_infolist_tit em a").firstOrNull()
+    val typeLink = tbody.select(".post_infolist_tit em a[href*=typeid=]").firstOrNull()
     val typeId = typeLink?.attr("href")
         ?.let { Regex("typeid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
     val typeName = typeLink?.text()?.trim() ?: ""
@@ -116,9 +116,12 @@ private fun parseForumPageInfo(doc: Document): PageInfo {
 }
 
 fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
-    val title = doc.select("#thread_subject").firstOrNull()?.text()?.trim() ?: ""
+    val titleSubject = doc.select("#thread_subject").firstOrNull()
+    val title = titleSubject?.ownText()?.trim()?.ifEmpty { null }
+        ?: titleSubject?.text()?.trim()
+        ?: ""
 
-    val typeLink = doc.select("h1.ts a, .nthread_info h1.ts a").firstOrNull()
+    val typeLink = doc.select("h1.ts a[href*=typeid=], .nthread_info h1.ts a[href*=typeid=]").firstOrNull()
     val typeId = typeLink?.attr("href")
         ?.let { Regex("typeid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
     val typeName = typeLink?.text()?.replace("[", "")?.replace("]", "")?.trim() ?: ""
@@ -136,8 +139,11 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
     val authorName = authorLink?.text()?.trim() ?: ""
     val authorUid = authorLink?.attr("href")
         ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
-    val postTime = doc.select(".nthread_other span.mr10").firstOrNull()?.text()?.trim()
-        ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim() ?: ""
+    val postTime = (
+        doc.select(".nthread_other span.mr10").firstOrNull()?.text()?.trim()
+            ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim()
+            ?: ""
+        ).cleanForumPostTime()
 
     val avatarSrc = doc.select(".nthread_firstpost .post_avatar img[src]").attr("src")
         .ifBlank { doc.select("div.viewthread_authorinfo .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
@@ -174,7 +180,8 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
             authorGroup = postBox.select(".pls em a").text().trim(),
             contentBlocks = parseReplyContent(postBox, baseUrl),
             postTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
-                .ifBlank { postBox.select("em[id^=authorposton]").text().trim() },
+                .ifBlank { postBox.select("em[id^=authorposton]").text().trim() }
+                .cleanForumPostTime(),
             isPinned = floor.isPinned
         )
     }
@@ -215,3 +222,10 @@ private fun parseReplyContent(postBox: Element, baseUrl: String): List<ContentBl
     if (restricted.isNotEmpty()) return listOf(ContentBlock.RestrictedNotice(restricted))
     return parseForumPostContent(postBox.selectFirst("td.t_f"), baseUrl)
 }
+
+private fun String.cleanForumPostTime(): String =
+    trim().replace(POST_TIME_PREFIX, "").trim()
+
+private val POST_TIME_PREFIX = Regex(
+    pattern = "^(?:发表于|發表於|发表|發表|鐧艱〃鏂\\?)\\s*"
+)

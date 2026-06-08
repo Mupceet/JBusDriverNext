@@ -162,6 +162,61 @@ class ForumThreadParserTest {
         assertEquals(listOf("https://www.javbus.com/forum/./preview.jpg"), thread.images)
     }
 
+    @Test
+    fun `thread detail ignores copy link when parsing type tag`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <h1 class="ts">
+                    <span id="thread_subject">Thread title</span>
+                  </h1>
+                  <div class="nthread_info">
+                    <h1 class="ts">
+                      <span id="thread_subject">
+                        Thread title
+                        <small>
+                          <a href="forum.php?mod=viewthread&amp;tid=154969" onclick="return copyThreadUrl(this, 'forum')">[Copy link]</a>
+                        </small>
+                      </span>
+                    </h1>
+                  </div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=154969"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertEquals("Thread title", detail.title)
+        assertEquals("", detail.typeName)
+        assertEquals(0, detail.typeId)
+    }
+
+    @Test
+    fun `reply post time removes published prefix`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <div class="nthread_postbox">
+                    <div class="pi">
+                      <a id="postnum4158039"><em>2</em><sup>#</sup></a>
+                      <div class="authi">
+                        <a class="xw1" href="home.php?mod=space&amp;uid=620784">Alice</a>
+                        <em id="authorposton4158039">发表于 2025-4-26 20:28:02</em>
+                      </div>
+                    </div>
+                    <td class="t_f">reply</td>
+                  </div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=154969"
+        )
+
+        val reply = parseForumThreadDetail(doc, "https://www.javbus.com").replies.single()
+
+        assertEquals("2025-4-26 20:28:02", reply.postTime)
+    }
+
     private fun parsedPinnedReply(floor: Int) = parseForumThreadDetail(
         fixture(
             "pinned-rich-replies.html",
