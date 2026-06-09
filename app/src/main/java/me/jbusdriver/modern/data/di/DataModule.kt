@@ -11,6 +11,7 @@ import me.jbusdriver.modern.core.http.DefaultHtmlClient
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.DefaultSiteConfig
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.DefaultCollectRepository
 import me.jbusdriver.modern.data.DefaultForumSessionClient
@@ -27,6 +28,7 @@ import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.SearchHistoryStore
+import me.jbusdriver.modern.data.UiPrefsStore
 import javax.inject.Singleton
 
 /**
@@ -81,6 +83,12 @@ abstract class DataModule {
     abstract fun bindSearchHistoryStore(
         impl: DefaultSearchHistoryStore
     ): SearchHistoryStore
+
+    @Binds
+    @Singleton
+    abstract fun bindCollectionUiPrefs(
+        impl: UiPrefsStore
+    ): CollectionUiPrefs
 
     /** 绑定 [CollectRepository] 到 [DefaultCollectRepository]。 */
     @Binds

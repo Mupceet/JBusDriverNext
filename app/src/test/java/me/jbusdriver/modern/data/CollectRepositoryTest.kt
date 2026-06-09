@@ -1,6 +1,9 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.test.runTest
+import me.jbusdriver.modern.data.db.ActressDBType
+import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.db.convertDBItem
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
@@ -124,6 +127,13 @@ class CollectRepositoryTest {
         override suspend fun getCollectedMovies() = collectedMovies.values.toList()
 
         override suspend fun getCollectedActresses() = collectedActresses.values.toList()
+
+        override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+            when (dbType) {
+                MovieDBType -> collectedMovies.values.map { it.convertDBItem() }
+                ActressDBType -> collectedActresses.values.map { it.convertDBItem() }
+                else -> emptyList()
+            }
 
         override suspend fun exportCollectionsJson() = "{}"
 
