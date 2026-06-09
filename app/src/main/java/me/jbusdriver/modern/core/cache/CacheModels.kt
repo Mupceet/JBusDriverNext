@@ -7,6 +7,15 @@ data class CacheEntry<T>(
     val isExpired: Boolean
 )
 
+sealed interface CachedLoadEvent<out T> {
+    data class Cached<T>(val entry: CacheEntry<T>) : CachedLoadEvent<T>
+    data class Fresh<T>(val entry: CacheEntry<T>) : CachedLoadEvent<T>
+    data class Failure(
+        val throwable: Throwable,
+        val hadCachedValue: Boolean
+    ) : CachedLoadEvent<Nothing>
+}
+
 enum class CacheSource {
     Memory,
     Disk,

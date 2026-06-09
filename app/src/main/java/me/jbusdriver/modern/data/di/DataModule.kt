@@ -23,6 +23,8 @@ import me.jbusdriver.modern.data.DefaultSearchRepository
 import me.jbusdriver.modern.data.DefaultSearchHistoryStore
 import me.jbusdriver.modern.data.ForumSessionClient
 import me.jbusdriver.modern.data.ForumRepository
+import me.jbusdriver.modern.data.ForumCookiePersister
+import me.jbusdriver.modern.data.ForumSessionManager
 import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.data.MovieRepository
@@ -103,6 +105,12 @@ abstract class DataModule {
     abstract fun bindForumRepository(
         impl: DefaultForumRepository
     ): ForumRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindForumCookiePersister(
+        impl: ForumSessionManager
+    ): ForumCookiePersister
 
     @Binds
     @Singleton

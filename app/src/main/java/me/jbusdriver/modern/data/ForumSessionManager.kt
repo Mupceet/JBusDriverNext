@@ -70,11 +70,15 @@ private fun isImageResource(url: String): Boolean {
  * Lifecycle: WebView is created on first use and kept alive until
  * [destroy] is called (typically when the user leaves the forum tab).
  */
+interface ForumCookiePersister {
+    suspend fun persistCookies()
+}
+
 @Singleton
 class ForumSessionManager @Inject constructor(
     private val siteConfig: SiteConfig,
     private val cookieStore: SessionCookieStore
-) {
+) : ForumCookiePersister {
 
     @Volatile
     private var webView: WebView? = null
@@ -151,7 +155,7 @@ class ForumSessionManager @Inject constructor(
         return Jsoup.parse(html, url)
     }
 
-    suspend fun persistCookies() {
+    override suspend fun persistCookies() {
         cookieStore.saveCookies(siteConfig.referer())
     }
 
