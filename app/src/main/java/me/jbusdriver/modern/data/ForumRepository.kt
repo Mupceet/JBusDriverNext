@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.ForumCacheTtl
 import me.jbusdriver.modern.core.cache.readCached
@@ -249,10 +250,25 @@ class DefaultForumRepository @Inject constructor(
         }
     }
 
-    private suspend fun <T> Flow<CachedLoadEvent<T>>.firstValue(): T =
-        when (val event = first()) {
+    private suspend fun <T> Flow<CachedLoadEvent<T>>.firstValue(): T {
+        var expiredCached: CacheEntry<T>? = null
+        return when (val event = first { event ->
+            when (event) {
+                is CachedLoadEvent.Cached -> {
+                    if (event.entry.isExpired) {
+                        expiredCached = event.entry
+                        false
+                    } else {
+                        true
+                    }
+                }
+                is CachedLoadEvent.Fresh,
+                is CachedLoadEvent.Failure -> true
+            }
+        }) {
             is CachedLoadEvent.Cached -> event.entry.value
             is CachedLoadEvent.Fresh -> event.entry.value
-            is CachedLoadEvent.Failure -> throw event.throwable
+            is CachedLoadEvent.Failure -> expiredCached?.value ?: throw event.throwable
         }
+    }
 }

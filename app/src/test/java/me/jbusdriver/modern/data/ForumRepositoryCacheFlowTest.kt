@@ -78,6 +78,40 @@ class ForumRepositoryCacheFlowTest {
         assertEquals("network down", failure.throwable.message)
     }
 
+    @Test
+    fun `loadForumBoards refreshes expired cached data and returns fresh`() = runBlocking {
+        val cacheStore = FakeCacheStore()
+        cacheStore.writeCached(
+            key = "forum:https://example.test:boards",
+            value = forumHomeData("Expired Board"),
+            nowMillis = { 1_000L }
+        )
+        val sessionClient = FakeSessionClient(successHomeHtml("Fresh Board"))
+        val repository = repository(cacheStore, sessionClient)
+
+        val result = repository.loadForumBoards()
+
+        assertEquals("Fresh Board", result.boardGroups.single().boards.single().name)
+        assertEquals(1, sessionClient.fetchCount)
+    }
+
+    @Test
+    fun `loadForumBoards returns expired cached data when refresh fails`() = runBlocking {
+        val cacheStore = FakeCacheStore()
+        cacheStore.writeCached(
+            key = "forum:https://example.test:boards",
+            value = forumHomeData("Expired Board"),
+            nowMillis = { 1_000L }
+        )
+        val sessionClient = FakeSessionClient(IOException("network down"))
+        val repository = repository(cacheStore, sessionClient)
+
+        val result = repository.loadForumBoards()
+
+        assertEquals("Expired Board", result.boardGroups.single().boards.single().name)
+        assertEquals(1, sessionClient.fetchCount)
+    }
+
     private fun repository(
         cacheStore: FakeCacheStore,
         sessionClient: FakeSessionClient
