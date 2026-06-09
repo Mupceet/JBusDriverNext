@@ -21,6 +21,7 @@ import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
 import me.jbusdriver.modern.domain.model.ForumHomeSummary
 import me.jbusdriver.modern.domain.model.ForumThread
+import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -40,7 +41,8 @@ data class ForumBoardsUiState(
     val error: String? = null,
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
-    val refreshMessage: String? = null)
+    val refreshMessage: String? = null
+)
 
 data class ForumThreadListUiState(
     val threads: List<ForumThread> = emptyList(),
@@ -51,7 +53,11 @@ data class ForumThreadListUiState(
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val isRevalidating: Boolean = false,
+    val lastUpdatedAtMillis: Long? = null,
+    val pendingFreshThreads: ForumThreadPageResult? = null,
+    val refreshMessage: String? = null
 )
 
 data class ForumThreadDetailUiState(
@@ -165,7 +171,6 @@ class ForumBoardsViewModel @Inject constructor(
                 }
         }
     }
-
     fun consumeRefreshMessage() {
         _uiState.update { it.copy(refreshMessage = null) }
     }
@@ -185,6 +190,29 @@ class ForumThreadListViewModel @AssistedInject constructor(
     private val initialTypeId: Int? = navKey.typeId
     private var currentPage = 0
 
+    private var isAtTopForFreshUpdates: Boolean = true
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
+
+    fun applyPendingFreshThreads() {
+        val pending = _uiState.value.pendingFreshThreads ?: return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                threads = pending.threads,
+                pageInfo = pending.pageInfo,
+                typeFilters = pending.typeFilters,
+                pendingFreshThreads = null,
+                refreshMessage = null,
+                hasMore = pending.pageInfo.hasNext
+            )
+        }
+    }
+
+
+
     private val _uiState = MutableStateFlow(ForumThreadListUiState())
     val uiState: StateFlow<ForumThreadListUiState> = _uiState.asStateFlow()
 
@@ -201,23 +229,60 @@ class ForumThreadListViewModel @AssistedInject constructor(
         currentPage = 1
         KLog.d("[Forum] loadFirstPage: fid=$fid, typeId=${_uiState.value.currentTypeId}", TAG)
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId)
-                KLog.d("[Forum] loadFirstPage success: ${result.threads.size} threads, ${result.typeFilters.size} filters", TAG)
-                _uiState.update {
-                    it.copy(
-                        threads = result.threads,
-                        pageInfo = result.pageInfo,
-                        typeFilters = result.typeFilters.ifEmpty { it.typeFilters },
-                        isLoading = false,
-                        hasMore = result.pageInfo.hasNext
-                    )
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, revalidate = true)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            _uiState.update {
+                                it.copy(
+                                    threads = event.entry.value.threads,
+                                    pageInfo = event.entry.value.pageInfo,
+                                    typeFilters = event.entry.value.typeFilters.ifEmpty { it.typeFilters },
+                                    isLoading = false,
+                                    isRevalidating = true,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            if (isAtTopForFreshUpdates) {
+                                _uiState.update {
+                                    it.copy(
+                                        threads = event.entry.value.threads,
+                                        pageInfo = event.entry.value.pageInfo,
+                                        typeFilters = event.entry.value.typeFilters,
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        pendingFreshThreads = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        pendingFreshThreads = event.entry.value,
+                                        refreshMessage = "Post updated"
+                                    )
+                                }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                KLog.e("[Forum] loadFirstPage failed: ${e.message}", e, TAG)
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
         }
     }
 
@@ -250,22 +315,35 @@ class ForumThreadListViewModel @AssistedInject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId, forceRefresh = true)
-                currentPage = 1
-                _uiState.update {
-                    it.copy(
-                        threads = result.threads,
-                        pageInfo = result.pageInfo,
-                        typeFilters = result.typeFilters,
-                        isRefreshing = false,
-                        hasMore = result.pageInfo.hasNext
-                    )
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            currentPage = 1
+                            _uiState.update {
+                                it.copy(
+                                    threads = event.entry.value.threads,
+                                    pageInfo = event.entry.value.pageInfo,
+                                    typeFilters = event.entry.value.typeFilters,
+                                    isRefreshing = false,
+                                    hasMore = event.entry.value.pageInfo.hasNext,
+                                    pendingFreshThreads = null,
+                                    refreshMessage = null
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.threads.isEmpty()) event.throwable.message ?: "Loading failed" else it.error
+                                )
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
         }
     }
 
