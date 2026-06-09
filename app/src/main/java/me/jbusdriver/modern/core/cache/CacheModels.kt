@@ -1,0 +1,27 @@
+package me.jbusdriver.modern.core.cache
+
+data class CacheEntry<T>(
+    val value: T,
+    val storedAtMillis: Long,
+    val source: CacheSource,
+    val isExpired: Boolean
+)
+
+enum class CacheSource {
+    Memory,
+    Disk,
+    Network
+}
+
+data class CacheEnvelope(
+    val storedAtMillis: Long,
+    val payloadJson: String
+)
+
+object ForumCacheTtl {
+    const val HOME_MILLIS: Long = 5 * 60 * 1_000L
+    const val THREAD_LIST_FIRST_PAGE_MILLIS: Long = 2 * 60 * 1_000L
+    const val THREAD_LIST_NEXT_PAGE_MILLIS: Long = 5 * 60 * 1_000L
+    const val THREAD_DETAIL_FIRST_PAGE_MILLIS: Long = 15 * 60 * 1_000L
+    const val THREAD_DETAIL_NEXT_PAGE_MILLIS: Long = 10 * 60 * 1_000L
+}

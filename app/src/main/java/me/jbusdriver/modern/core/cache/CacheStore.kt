@@ -65,3 +65,73 @@ suspend inline fun <reified T> CacheStore.persistentCached(
     writeDisk(key, json)
     return result
 }
+
+suspend inline fun <reified T> CacheStore.readCached(
+    key: String,
+    ttlMillis: Long,
+    disk: Boolean = true,
+    noinline nowMillis: () -> Long = { System.currentTimeMillis() }
+): CacheEntry<T>? {
+    readMemory(key)?.let { json ->
+        parseCacheEntry<T>(json, CacheSource.Memory, ttlMillis, nowMillis)?.let { return it }
+    }
+
+    if (disk) {
+        readDisk(key)?.let { json ->
+            parseCacheEntry<T>(json, CacheSource.Disk, ttlMillis, nowMillis)?.let { entry ->
+                writeMemory(key, json)
+                return entry
+            }
+        }
+    }
+
+    return null
+}
+
+suspend inline fun <reified T> CacheStore.writeCached(
+    key: String,
+    value: T,
+    disk: Boolean = true,
+    noinline nowMillis: () -> Long = { System.currentTimeMillis() }
+): CacheEntry<T> {
+    val storedAtMillis = nowMillis()
+    val json = GSON.toJson(CacheEnvelope(storedAtMillis, GSON.toJson(value)))
+    writeMemory(key, json)
+    if (disk) {
+        writeDisk(key, json)
+    }
+    return CacheEntry(
+        value = value,
+        storedAtMillis = storedAtMillis,
+        source = CacheSource.Network,
+        isExpired = false
+    )
+}
+
+@PublishedApi
+internal inline fun <reified T> parseCacheEntry(
+    json: String,
+    source: CacheSource,
+    ttlMillis: Long,
+    noinline nowMillis: () -> Long
+): CacheEntry<T>? {
+    val envelope = runCatching { GSON.fromJson<CacheEnvelope>(json) }.getOrNull()
+    val payloadJson = envelope?.payloadJson
+    if (!payloadJson.isNullOrBlank()) {
+        val payload = runCatching { GSON.fromJson<T>(payloadJson) }.getOrNull() ?: return null
+        return CacheEntry(
+            value = payload,
+            storedAtMillis = envelope.storedAtMillis,
+            source = source,
+            isExpired = nowMillis() - envelope.storedAtMillis >= ttlMillis
+        )
+    }
+
+    val legacy = runCatching { GSON.fromJson<T>(json) }.getOrNull() ?: return null
+    return CacheEntry(
+        value = legacy,
+        storedAtMillis = 0L,
+        source = source,
+        isExpired = true
+    )
+}
