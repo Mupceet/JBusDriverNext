@@ -19,10 +19,16 @@ import javax.inject.Singleton
 
 private val Context.uiPrefsDataStore by preferencesDataStore("ui_prefs")
 
+interface CollectionUiPrefs {
+    val movieSortOption: StateFlow<String>
+    val actressSortOption: StateFlow<String>
+    suspend fun setSortOption(dbType: Int, optionName: String)
+}
+
 @Singleton
 class UiPrefsStore @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : CollectionUiPrefs {
     private val dataStore = context.uiPrefsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -36,16 +42,16 @@ class UiPrefsStore @Inject constructor(
     }
 
     /** Persisted sort option for movie collection */
-    val movieSortOption: StateFlow<String> = dataStore.data
+    override val movieSortOption: StateFlow<String> = dataStore.data
         .map { it[MOVIE_SORT] ?: "COLLECT_DESC" }
         .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
 
     /** Persisted sort option for actress collection */
-    val actressSortOption: StateFlow<String> = dataStore.data
+    override val actressSortOption: StateFlow<String> = dataStore.data
         .map { it[ACTRESS_SORT] ?: "COLLECT_DESC" }
         .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
 
-    suspend fun setSortOption(dbType: Int, optionName: String) {
+    override suspend fun setSortOption(dbType: Int, optionName: String) {
         val key = if (dbType == 1) MOVIE_SORT else ACTRESS_SORT // 1 = MovieDBType
         dataStore.edit { it[key] = optionName }
     }

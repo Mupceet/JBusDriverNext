@@ -7,13 +7,21 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.modern.core.toJsonString
+import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.db.ActressDBType
+import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.test.FakeCollectionUiPrefs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -31,9 +39,29 @@ class CollectionListViewModelTest {
         ActressInfo("Alice", "http://avatar.jpg", "http://link1")
     )
 
+    private fun Movie.toLinkItem(createTime: Long = 1_000L) = LinkItem(
+        dbType = MovieDBType,
+        key = link,
+        jsonStr = toJsonString(),
+        createTime = createTime,
+        categoryId = categoryId
+    )
+
+    private fun ActressInfo.toLinkItem(createTime: Long = 1_000L) = LinkItem(
+        dbType = ActressDBType,
+        key = link,
+        jsonStr = toJsonString(),
+        createTime = createTime,
+        categoryId = categoryId
+    )
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        NetClient.siteConfig = object : SiteConfig {
+            override var baseUrl: String = "https://www.javbus.com"
+            override fun resolve(pathOrUrl: String): String = pathOrUrl
+        }
     }
 
     @After
@@ -53,20 +81,28 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = testMovies
             override suspend fun getCollectedActresses() = testActresses
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                when (dbType) {
+                    MovieDBType -> testMovies.map { it.toLinkItem() }
+                    ActressDBType -> testActresses.map { it.toLinkItem() }
+                    else -> emptyList()
+                }
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        val viewModel = CollectionListViewModel(collectRepo)
+        val viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
 
+        assertTrue(testMovies.first().toLinkItem().toILink() is Movie)
         viewModel.loadCollection(1) // MovieDBType
         advanceUntilIdle()
-        Thread.sleep(100)
+        Thread.sleep(500)
         advanceUntilIdle()
+        val state = viewModel.uiState.value
 
-        assertEquals(1, viewModel.uiState.value.movies.size)
-        assertEquals("Collected Movie", viewModel.uiState.value.movies.first().title)
-        assertFalse(viewModel.uiState.value.isLoading)
-        assertNull(viewModel.uiState.value.error)
+        assertEquals(1, state.movies.size)
+        assertEquals("Collected Movie", state.movies.first().title)
+        assertFalse(state.isLoading)
+        assertNull(state.error)
     }
 
     @Test
@@ -81,19 +117,27 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = testMovies
             override suspend fun getCollectedActresses() = testActresses
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                when (dbType) {
+                    MovieDBType -> testMovies.map { it.toLinkItem() }
+                    ActressDBType -> testActresses.map { it.toLinkItem() }
+                    else -> emptyList()
+                }
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        val viewModel = CollectionListViewModel(collectRepo)
+        val viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
 
+        assertTrue(testActresses.first().toLinkItem().toILink() is ActressInfo)
         viewModel.loadCollection(2) // ActressDBType
         advanceUntilIdle()
-        Thread.sleep(100)
+        Thread.sleep(500)
         advanceUntilIdle()
+        val state = viewModel.uiState.value
 
-        assertEquals(1, viewModel.uiState.value.actresses.size)
-        assertEquals("Alice", viewModel.uiState.value.actresses.first().name)
-        assertFalse(viewModel.uiState.value.isLoading)
+        assertEquals(1, state.actresses.size)
+        assertEquals("Alice", state.actresses.first().name)
+        assertFalse(state.isLoading)
     }
 
     @Test
@@ -108,10 +152,11 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = throw RuntimeException("DB error")
             override suspend fun getCollectedActresses() = throw RuntimeException("DB error")
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = throw RuntimeException("DB error")
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        val viewModel = CollectionListViewModel(collectRepo)
+        val viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
 
         viewModel.loadCollection(1)
         advanceUntilIdle()

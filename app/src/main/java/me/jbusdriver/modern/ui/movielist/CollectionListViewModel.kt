@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.CollectRepository
-import me.jbusdriver.modern.data.UiPrefsStore
+import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem
@@ -55,7 +55,7 @@ data class CollectionListUiState(
 @HiltViewModel
 class CollectionListViewModel @Inject constructor(
     val collectRepository: CollectRepository,
-    private val uiPrefsStore: UiPrefsStore
+    private val uiPrefsStore: CollectionUiPrefs
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionListUiState())

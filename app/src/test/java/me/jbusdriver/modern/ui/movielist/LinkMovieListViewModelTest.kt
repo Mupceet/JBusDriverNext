@@ -48,6 +48,7 @@ class LinkMovieListViewModelTest {
         override suspend fun toggleActressCollect(actress: ActressInfo) = true
         override suspend fun getCollectedMovies() = emptyList<Movie>()
         override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+        override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = emptyList()
         override suspend fun exportCollectionsJson() = "{}"
         override suspend fun importCollectionsFromJson(json: String) = 0 to 0
     }
