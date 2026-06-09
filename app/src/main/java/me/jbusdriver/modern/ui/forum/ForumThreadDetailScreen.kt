@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -105,6 +106,16 @@ fun ForumThreadDetailScreen(
             viewModel.loadMoreReplies()
         }
     }
+    val isAtTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 20
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        viewModel.setAtTopForFreshUpdates(isAtTop)
+    }
+
 
     Scaffold(
         topBar = {
@@ -278,6 +289,18 @@ fun ForumThreadDetailScreen(
                             )
                         }
                     }
+                }
+                if (state.pendingFreshDetail != null) {
+                    AssistChip(
+                        onClick = {
+                            viewModel.applyPendingFreshDetail()
+                            scope.launch { listState.animateScrollToItem(0) }
+                        },
+                        label = { Text(state.refreshMessage ?: "Post updated") },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp)
+                    )
                 }
                 ScrollToTopButton(
                     visible = showScrollToTop,

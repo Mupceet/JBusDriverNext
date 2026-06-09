@@ -65,6 +65,10 @@ data class ForumThreadDetailUiState(
     val floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
+    val isRevalidating: Boolean = false,
+    val lastUpdatedAtMillis: Long? = null,
+    val pendingFreshDetail: ForumThreadDetail? = null,
+    val refreshMessage: String? = null,
     val error: String? = null,
     val isLoadingMore: Boolean = false,
     val isChangingFloorOrder: Boolean = false
@@ -363,8 +367,8 @@ class ForumThreadListViewModel @AssistedInject constructor(
 @HiltViewModel(assistedFactory = ForumThreadDetailViewModel.Factory::class)
 class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
-    private val labSettingsStore: LabSettingsStore,
-    private val gifLoadTracker: me.jbusdriver.modern.data.GifLoadTracker,
+    private val forumSettingsReader: me.jbusdriver.modern.data.ForumSettingsReader,
+    private val loadedGifTracker: me.jbusdriver.modern.data.LoadedGifTracker,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
     private val tid: Int = navKey.tid
@@ -376,7 +380,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
-    val autoLoadGifs: StateFlow<Boolean> = labSettingsStore.autoLoadGifs
+    val autoLoadGifs: StateFlow<Boolean> = forumSettingsReader.autoLoadGifs
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }
@@ -402,18 +406,18 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadPersistedGifUrls(): Set<String> {
-        return gifLoadTracker.loadedUrls()
+        return loadedGifTracker.loadedUrls()
     }
 
     private suspend fun persistGifUrls(urls: Set<String>) {
-        for (url in urls) gifLoadTracker.markLoaded(url)
+        for (url in urls) loadedGifTracker.markLoaded(url)
     }
 
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
         viewModelScope.launch { _loadedGifUrls.value = loadPersistedGifUrls() }
         viewModelScope.launch {
-            val defaultOrder = labSettingsStore.currentForumFloorOrder()
+            val defaultOrder = forumSettingsReader.currentForumFloorOrder()
             _uiState.update { it.copy(floorOrder = defaultOrder) }
             loadDetail()
         }
@@ -424,36 +428,97 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         val floorOrder = _uiState.value.floorOrder
         KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage, floorOrder=$floorOrder", TAG)
         viewModelScope.launch {
+            var hasContent = _uiState.value.detail != null
             _uiState.update {
-                if (showLoading) {
-                    it.copy(isLoading = true, error = null)
-                } else {
-                    it.copy(error = null, isChangingFloorOrder = true)
+                when {
+                    showLoading && !hasContent -> it.copy(isLoading = true, error = null, refreshMessage = null)
+                    showLoading -> it.copy(isRevalidating = true, error = null, refreshMessage = null)
+                    else -> it.copy(error = null, isChangingFloorOrder = true, refreshMessage = null)
                 }
             }
-            try {
-                val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh)
-                KLog.d("[Forum] loadDetail success: title=${detail.title}, replies=${detail.replies.size}", TAG)
-                _uiState.update { it.copy(detail = detail, isLoading = false, isChangingFloorOrder = false) }
-            } catch (e: Exception) {
-                KLog.e("[Forum] loadDetail failed: ${e.message}", e, TAG)
-                _uiState.update { it.copy(isChangingFloorOrder = false) }
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
+            repository.observeThreadDetail(tid, currentPage, floorOrder, forceRefresh = forceRefresh, revalidate = showLoading)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            _uiState.update {
+                                it.copy(
+                                    detail = event.entry.value,
+                                    isLoading = false,
+                                    isRevalidating = true,
+                                    isChangingFloorOrder = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            if (isAtTopForFreshUpdates || forceRefresh || !showLoading) {
+                                _uiState.update {
+                                    it.copy(
+                                        detail = event.entry.value,
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false,
+                                        pendingFreshDetail = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false,
+                                        pendingFreshDetail = event.entry.value,
+                                        refreshMessage = "Post updated"
+                                    )
+                                }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false, error = event.throwable.message ?: "Loading failed")
+                                }
+                            }
+                        }
+                    }
+                }
         }
     }
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         val floorOrder = _uiState.value.floorOrder
+        currentPage = 1
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh = true)
-                _uiState.update { it.copy(detail = detail, isRefreshing = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null, pendingFreshDetail = null) }
+            repository.observeThreadDetail(tid, 1, floorOrder, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    detail = event.entry.value,
+                                    isRefreshing = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.detail == null) event.throwable.message ?: "Loading failed" else it.error,
+                                    refreshMessage = if (it.detail != null) "Refresh failed" else null
+                                )
+                            }
+                        }
+                    }
+                }
         }
     }
 
@@ -490,6 +555,25 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         currentPage = 1
         _uiState.update { it.prepareFloorOrderReload(order) }
         loadDetail(forceRefresh = true, showLoading = false)
+    }
+
+    private var isAtTopForFreshUpdates: Boolean = true
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
+
+    fun applyPendingFreshDetail() {
+        val pending = _uiState.value.pendingFreshDetail ?: return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                detail = pending,
+                pendingFreshDetail = null,
+                refreshMessage = null,
+                lastUpdatedAtMillis = System.currentTimeMillis()
+            )
+        }
     }
 
     @AssistedFactory

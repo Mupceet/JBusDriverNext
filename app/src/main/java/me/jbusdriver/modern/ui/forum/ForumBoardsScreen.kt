@@ -27,6 +27,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -75,6 +77,28 @@ fun ForumBoardsScreen(
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize()
     ) {
+        if (state.isRevalidating && state.groups.isNotEmpty()) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            )
+        }
+        state.refreshMessage?.let { msg ->
+            AssistChip(
+                onClick = { },
+                label = { Text(msg) },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
+            )
+        }
+        LaunchedEffect(state.refreshMessage) {
+            state.refreshMessage?.let {
+                delay(2_000L)
+                viewModel.consumeRefreshMessage()
+            }
+        }
         if (state.groups.isNotEmpty()) {
             ForumHomeContent(
                 state = state,
