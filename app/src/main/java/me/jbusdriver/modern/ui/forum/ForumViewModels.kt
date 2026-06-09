@@ -11,9 +11,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.LabSettingsStore
@@ -37,8 +37,10 @@ data class ForumBoardsUiState(
     val groups: List<ForumBoardGroup> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null
-)
+    val error: String? = null,
+    val isRevalidating: Boolean = false,
+    val lastUpdatedAtMillis: Long? = null,
+    val refreshMessage: String? = null)
 
 data class ForumThreadListUiState(
     val threads: List<ForumThread> = emptyList(),
@@ -86,29 +88,86 @@ class ForumBoardsViewModel @Inject constructor(
     fun loadBoards() {
         if (_uiState.value.isLoading) return
         KLog.d("[Forum] loadBoards started", TAG)
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val data = repository.loadForumBoards()
-                KLog.d("[Forum] loadBoards success: ${data.banners.size} banners, ${data.boardGroups.size} groups", TAG)
-                _uiState.update { it.copy(banners = data.banners, summary = data.summary, groups = data.boardGroups, isLoading = false) }
-            } catch (e: Exception) {
-                KLog.e("[Forum] loadBoards failed: ${e.message}", e, TAG)
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observeForumBoards(revalidate = true)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            _uiState.update {
+                                it.copy(
+                                    banners = event.entry.value.banners,
+                                    summary = event.entry.value.summary,
+                                    groups = event.entry.value.boardGroups,
+                                    isLoading = false,
+                                    isRevalidating = true,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    banners = event.entry.value.banners,
+                                    summary = event.entry.value.summary,
+                                    groups = event.entry.value.boardGroups,
+                                    isLoading = false,
+                                    isRevalidating = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
+                                }
+                            }
+                        }
+                    }
+                }
         }
     }
 
+
     fun refresh() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val data = repository.loadForumBoards(forceRefresh = true)
-                _uiState.update { it.copy(banners = data.banners, summary = data.summary, groups = data.boardGroups, isRefreshing = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observeForumBoards(forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    banners = event.entry.value.banners,
+                                    summary = event.entry.value.summary,
+                                    groups = event.entry.value.boardGroups,
+                                    isRefreshing = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.groups.isEmpty()) event.throwable.message ?: "Loading failed" else it.error,
+                                    refreshMessage = if (it.groups.isNotEmpty()) "Refresh failed" else null
+                                )
+                            }
+                        }
+                    }
+                }
         }
+    }
+
+    fun consumeRefreshMessage() {
+        _uiState.update { it.copy(refreshMessage = null) }
     }
 
     override fun onCleared() {
@@ -141,7 +200,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (_uiState.value.isLoading) return
         currentPage = 1
         KLog.d("[Forum] loadFirstPage: fid=$fid, typeId=${_uiState.value.currentTypeId}", TAG)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId)
@@ -169,7 +228,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = repository.loadThreads(fid, nextPage, state.currentTypeId)
@@ -190,7 +249,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId, forceRefresh = true)
@@ -286,7 +345,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         if (showLoading && _uiState.value.isLoading) return
         val floorOrder = _uiState.value.floorOrder
         KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage, floorOrder=$floorOrder", TAG)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update {
                 if (showLoading) {
                     it.copy(isLoading = true, error = null)
@@ -309,7 +368,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         val floorOrder = _uiState.value.floorOrder
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh = true)
@@ -328,7 +387,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
         currentPage = nextPage
         val floorOrder = _uiState.value.floorOrder
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
