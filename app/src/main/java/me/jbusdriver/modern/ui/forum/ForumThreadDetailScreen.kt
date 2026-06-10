@@ -298,7 +298,7 @@ private fun ThreadHeader(detail: ForumThreadDetail) {
             typeName = detail.typeName,
             typeColor = detail.typeColor,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            badgeFontSize = 14.sp,
+            badgeStyle = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 4.dp)
         )
         Row(

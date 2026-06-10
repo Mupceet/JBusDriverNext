@@ -271,6 +271,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                     typeName = thread.typeName,
                     typeColor = thread.typeColor,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    badgeStyle = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     trailingLabels = trailingLabels,

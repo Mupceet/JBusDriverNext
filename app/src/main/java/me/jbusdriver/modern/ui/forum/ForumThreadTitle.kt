@@ -65,7 +65,7 @@ internal fun ForumThreadTitle(
     overflow: TextOverflow = TextOverflow.Clip,
     trailingLabels: List<ForumInlineLabel> = emptyList(),
     trailingIcons: List<ForumInlineIcon> = emptyList(),
-    badgeFontSize: TextUnit = 10.sp
+    badgeStyle: TextStyle = MaterialTheme.typography.bodySmall
 ) {
     val badges = remember(typeName, typeColor) {
         buildList {
@@ -108,7 +108,7 @@ internal fun ForumThreadTitle(
             }
         }
     }
-    val inlineContent = remember(badges, trailingIcons, badgeFontSize) {
+    val inlineContent = remember(badges, trailingIcons) {
         val badgeContent = badges.associate { badge ->
             badge.id to InlineTextContent(
                 Placeholder(
@@ -121,18 +121,14 @@ internal fun ForumThreadTitle(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(badge.containerColor, RoundedCornerShape(3.dp))
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 2.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     BasicText(
                         text = badge.label,
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
-                        style = TextStyle(
-                            color = badge.contentColor,
-                            fontSize = badgeFontSize,
-                            lineHeight = badgeFontSize
-                        )
+                        style = badgeStyle.copy(color = badge.contentColor)
                     )
                 }
             }
@@ -171,5 +167,5 @@ internal fun forumInlineBadgeWidthEm(label: String): Float =
 
 private const val FORUM_INLINE_BADGE_HEIGHT_EM = 1.3f
 private const val FORUM_INLINE_BADGE_HORIZONTAL_PADDING_EM = 0.76f
-private const val FORUM_INLINE_BADGE_CHAR_WIDTH_EM = 0.72f
+private const val FORUM_INLINE_BADGE_CHAR_WIDTH_EM = 0.8f
 private const val FORUM_INLINE_ICON_SIZE_EM = 1.05f
