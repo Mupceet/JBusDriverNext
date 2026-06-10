@@ -32,7 +32,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -75,6 +78,7 @@ fun ForumThreadListScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val showScrollToTop = rememberScrollToTopVisibility(listState)
 
     val nearEnd by remember {
@@ -111,6 +115,14 @@ fun ForumThreadListScreen(
                 }
             )
         }
+    , snackbarHost = {
+        SnackbarHost(hostState = snackbarHostState) { data ->
+            Snackbar(
+                snackbarData = data,
+                modifier = Modifier.padding(12.dp)
+            )
+        }
+    }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             PullToRefreshBox(
@@ -212,17 +224,17 @@ fun ForumThreadListScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 48.dp)
             )
-            if (state.pendingFreshThreads != null) {
-                AssistChip(
-                    onClick = {
+            LaunchedEffect(state.pendingFreshThreads) {
+                if (state.pendingFreshThreads != null) {
+                    val result = snackbarHostState.showSnackbar(
+                        message = state.refreshMessage ?: "Post updated",
+                        actionLabel = "Refresh"
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
                         viewModel.applyPendingFreshThreads()
                         scope.launch { listState.animateScrollToItem(0) }
-                    },
-                    label = { Text(state.refreshMessage ?: "Post updated") },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 8.dp)
-                )
+                    }
+                }
             }
         }
     }

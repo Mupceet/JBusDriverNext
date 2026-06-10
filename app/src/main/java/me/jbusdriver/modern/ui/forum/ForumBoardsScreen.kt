@@ -27,7 +27,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -70,6 +72,8 @@ fun ForumBoardsScreen(
     onThreadClick: (Int) -> Unit
 ) {
     val viewModel: ForumBoardsViewModel = hiltViewModel()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     PullToRefreshBox(
@@ -84,18 +88,9 @@ fun ForumBoardsScreen(
                     .align(Alignment.TopCenter)
             )
         }
-        state.refreshMessage?.let { msg ->
-            AssistChip(
-                onClick = { },
-                label = { Text(msg) },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-            )
-        }
         LaunchedEffect(state.refreshMessage) {
             state.refreshMessage?.let {
-                delay(2_000L)
+                snackbarHostState.showSnackbar(message = it, duration = androidx.compose.material3.SnackbarDuration.Short)
                 viewModel.consumeRefreshMessage()
             }
         }
@@ -129,6 +124,12 @@ fun ForumBoardsScreen(
                 }
             }
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp)
+        )
     }
 }
 

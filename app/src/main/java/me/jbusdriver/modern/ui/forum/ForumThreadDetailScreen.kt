@@ -33,7 +33,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -90,6 +93,7 @@ fun ForumThreadDetailScreen(
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val showScrollToTop = rememberScrollToTopVisibility(listState)
 
@@ -150,6 +154,14 @@ fun ForumThreadDetailScreen(
                 }
             )
         }
+    , snackbarHost = {
+        SnackbarHost(hostState = snackbarHostState) { data ->
+            Snackbar(
+                snackbarData = data,
+                modifier = Modifier.padding(12.dp)
+            )
+        }
+    }
     ) { innerPadding ->
         Box(modifier = Modifier
             .fillMaxSize()
@@ -290,17 +302,17 @@ fun ForumThreadDetailScreen(
                         }
                     }
                 }
-                if (state.pendingFreshDetail != null) {
-                    AssistChip(
-                        onClick = {
+                LaunchedEffect(state.pendingFreshDetail) {
+                    if (state.pendingFreshDetail != null) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = state.refreshMessage ?: "Post updated",
+                            actionLabel = "Refresh"
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
                             viewModel.applyPendingFreshDetail()
                             scope.launch { listState.animateScrollToItem(0) }
-                        },
-                        label = { Text(state.refreshMessage ?: "Post updated") },
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 8.dp)
-                    )
+                        }
+                    }
                 }
                 ScrollToTopButton(
                     visible = showScrollToTop,

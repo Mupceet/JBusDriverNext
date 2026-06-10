@@ -28,9 +28,9 @@ data class CacheEnvelope(
 )
 
 object ForumCacheTtl {
-    const val HOME_MILLIS: Long = 5 * 60 * 1_000L
-    const val THREAD_LIST_FIRST_PAGE_MILLIS: Long = 2 * 60 * 1_000L
-    const val THREAD_LIST_NEXT_PAGE_MILLIS: Long = 5 * 60 * 1_000L
-    const val THREAD_DETAIL_FIRST_PAGE_MILLIS: Long = 15 * 60 * 1_000L
-    const val THREAD_DETAIL_NEXT_PAGE_MILLIS: Long = 10 * 60 * 1_000L
+    const val HOME_MILLIS: Long = 10 * 1_000L
+    const val THREAD_LIST_FIRST_PAGE_MILLIS: Long = 10 * 1_000L
+    const val THREAD_LIST_NEXT_PAGE_MILLIS: Long = 10 * 1_000L
+    const val THREAD_DETAIL_FIRST_PAGE_MILLIS: Long = 10 * 1_000L
+    const val THREAD_DETAIL_NEXT_PAGE_MILLIS: Long = 10 * 1_000L
 }
