@@ -306,7 +306,6 @@ private fun DetailContent(
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .combinedClickable(
                         onLongClick = {
 
@@ -315,6 +314,7 @@ private fun DetailContent(
                         },
                         onClick = {}
                     )
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
 
@@ -328,12 +328,18 @@ private fun DetailContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         detail.headers.forEach { header ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (header.link.isNotBlank()) onHeaderClick(header)
+                                        },
+                                        onLongClick = { selectedHeader = header }
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.Top
                             ) {
                                 Text(
@@ -346,12 +352,7 @@ private fun DetailContent(
                                 if (header.name == "識別碼") {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f).combinedClickable(
-                                            onClick = {
-                                                if (header.link.isNotBlank()) onHeaderClick(header)
-                                            },
-                                            onLongClick = { selectedHeader = header }
-                                        )
+                                        modifier = Modifier.weight(1f)
                                     ) {
                                         Text(
                                             text = header.value,
@@ -384,12 +385,7 @@ private fun DetailContent(
                                             MaterialTheme.colorScheme.primary
                                         else
                                             MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.weight(1f).combinedClickable(
-                                            onClick = {
-                                                if (header.link.isNotBlank()) onHeaderClick(header)
-                                            },
-                                            onLongClick = { selectedHeader = header }
-                                        )
+                                        modifier = Modifier.weight(1f)
                                     )
                                 }
                             }

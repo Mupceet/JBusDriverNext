@@ -302,7 +302,7 @@ private fun SummarySection(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) { page ->
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                Column(modifier = Modifier.padding(vertical = 4.dp)) {
                     threadsLists[page].forEachIndexed { index, thread ->
                         SummaryThreadItem(
                             thread = thread,
@@ -337,7 +337,7 @@ private fun SummaryThreadItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
