@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
@@ -48,6 +49,14 @@ fun MovieListScreen(
         if (active) {
             viewModel.setDataSourceType(dataSourceType)
         }
+    }
+
+    // 从后台恢复时触发 revalidate
+    LifecycleResumeEffect(Unit) {
+        if (active && uiState.movies.isNotEmpty()) {
+            viewModel.revalidate()
+        }
+        onPauseOrDispose { }
     }
 
     LaunchedEffect(uiState.refreshMessage) {

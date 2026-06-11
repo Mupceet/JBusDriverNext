@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 import me.jbusdriver.modern.ui.ActressDetailUiModel
@@ -95,6 +96,14 @@ fun LinkMovieListScreen(
 
     LaunchedEffect(linkUrl) {
         viewModel.setLink(linkUrl, type, avatarUrl)
+    }
+
+    // 从后台恢复时触发 revalidate
+    LifecycleResumeEffect(linkUrl) {
+        if (uiState.movies.isNotEmpty()) {
+            viewModel.revalidate()
+        }
+        onPauseOrDispose { }
     }
 
     LaunchedEffect(uiState.refreshMessage) {

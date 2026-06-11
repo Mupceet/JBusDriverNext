@@ -83,7 +83,10 @@ class GenreListViewModel @Inject constructor(
      * @param type 数据源类型，如 [DataSourceType.GENRE] 等
      */
     fun setDataSourceType(type: DataSourceType) {
-        if (dataSourceType == type && _uiState.value.genreCategories.isNotEmpty()) return
+        if (dataSourceType == type && _uiState.value.genreCategories.isNotEmpty()) {
+            revalidate()
+            return
+        }
         dataSourceType = type
         _uiState.value = GenreListUiState()
         loadGenres()
@@ -134,6 +137,37 @@ class GenreListViewModel @Inject constructor(
                                     it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
                                 }
                             }
+                        }
+                    }
+                }
+        }
+    }
+
+    /**
+     * 后台重新验证数据（Tab 切换回来或从后台恢复时触发）。
+     */
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.isRevalidating || state.isLoading || state.isRefreshing) return
+        if (state.genreCategories.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeGenreCategories(dataSourceType, revalidate = true)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
+                            _uiState.update {
+                                it.copy(
+                                    genreCategories = categories,
+                                    isRevalidating = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
                         }
                     }
                 }

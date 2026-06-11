@@ -94,7 +94,10 @@ class ActressListViewModel @Inject constructor(
      * @param type 数据源类型，如 [DataSourceType.ACTRESSES] 等
      */
     fun setDataSourceType(type: DataSourceType) {
-        if (dataSourceType == type && _uiState.value.actresses.isNotEmpty()) return
+        if (dataSourceType == type && _uiState.value.actresses.isNotEmpty()) {
+            revalidate()
+            return
+        }
         dataSourceType = type
         currentPage = 0
         _uiState.update { it.copy(isRefreshing = true, hasMore = true, error = null) }
@@ -151,6 +154,38 @@ class ActressListViewModel @Inject constructor(
                                     it.copy(isLoading = false, isRefreshing = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
                                 }
                             }
+                        }
+                    }
+                }
+        }
+    }
+
+    /**
+     * 后台重新验证数据（Tab 切换回来或从后台恢复时触发）。
+     */
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.isRevalidating || state.isLoading || state.isRefreshing) return
+        if (state.actresses.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeActresses(dataSourceType, 1, revalidate = true)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
+                                    pageInfo = event.entry.value.second,
+                                    hasMore = event.entry.value.second.hasNext,
+                                    isRevalidating = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
                         }
                     }
                 }

@@ -285,6 +285,50 @@ class LinkMovieListViewModel @AssistedInject constructor(
     }
 
     /**
+     * 后台重新验证数据（从后台恢复时触发）。
+     */
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.isRevalidating || state.isLoading || state.isRefreshing) return
+        if (state.movies.isEmpty() || linkUrl.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = true)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            val result = event.entry.value
+                            if (isAtTopForFreshUpdates) {
+                                _uiState.update {
+                                    it.copy(
+                                        movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                        pageInfo = result.pageInfo,
+                                        hasMore = result.pageInfo.hasNext,
+                                        filterInfo = result.filterInfo,
+                                        isRevalidating = false,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshResult = event.entry.value,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
+                    }
+                }
+        }
+    }
+
+    /**
      * 下拉刷新关联电影列表和女优详情。
      *
      * 强制从网络重新获取第一页数据，忽略缓存。

@@ -110,7 +110,10 @@ class MovieListViewModel @Inject constructor(
      * @param type 数据源类型，如 [DataSourceType.CENSORED]、[DataSourceType.UNCENSORED] 等
      */
     fun setDataSourceType(type: DataSourceType) {
-        if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) return
+        if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) {
+            revalidate()
+            return
+        }
         dataSourceType = type
         currentPage = 0
         _uiState.update { it.copy(isFilterSwitching = true, hasMore = true, error = null) }
@@ -229,6 +232,55 @@ class MovieListViewModel @Inject constructor(
                                 it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 后台重新验证数据（Tab 切换回来或从后台恢复时触发）。
+     *
+     * 不显示全屏 loading，仅展示顶部进度条，收集缓存+网络事件。
+     */
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.isRevalidating || state.isLoading || state.isRefreshing) return
+        if (state.movies.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            val flow = if (genreUrl != null) {
+                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = true)
+            } else {
+                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = true)
+            }
+            flow.collect { event ->
+                when (event) {
+                    is CachedLoadEvent.Cached -> Unit // 数据已在屏幕上，无需更新
+                    is CachedLoadEvent.Fresh -> {
+                        if (isAtTopForFreshUpdates) {
+                            _uiState.update {
+                                it.copy(
+                                    movies = event.entry.value.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                    pageInfo = event.entry.value.pageInfo,
+                                    hasMore = event.entry.value.pageInfo.hasNext,
+                                    filterInfo = event.entry.value.filterInfo,
+                                    isRevalidating = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isRevalidating = false,
+                                    pendingFreshResult = event.entry.value,
+                                    refreshMessage = "有新數據"
+                                )
+                            }
+                        }
+                    }
+                    is CachedLoadEvent.Failure -> {
+                        _uiState.update { it.copy(isRevalidating = false) }
                     }
                 }
             }
