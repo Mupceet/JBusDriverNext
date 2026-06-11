@@ -22,8 +22,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -32,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,9 +91,24 @@ fun LinkMovieListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(linkUrl) {
         viewModel.setLink(linkUrl, type, avatarUrl)
+    }
+
+    LaunchedEffect(uiState.refreshMessage) {
+        uiState.refreshMessage?.let { message ->
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = "刷新",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.applyPendingFreshResult()
+            }
+            viewModel.consumeRefreshMessage()
+        }
     }
 
     val displayTitle = when {
@@ -98,6 +119,9 @@ fun LinkMovieListScreen(
     }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -172,21 +196,35 @@ fun LinkMovieListScreen(
                 }
 
                 else -> {
-                    val filterBar: (@Composable () -> Unit)? = uiState.filterInfo?.let { info ->
-                        {
-                            MovieFilterBar(
-                                magnetCount = info.magnetCount,
-                                totalCount = info.totalCount,
-                                showAll = uiState.showAll,
-                                onToggle = { viewModel.toggleShowAll() }
-                            )
-                        }
-                    }
-
-                    val header: (@Composable () -> Unit)? = when {
-                        type == "actress" && filterBar != null -> {
+                    Box(Modifier.fillMaxSize()) {
+                        val filterBar: (@Composable () -> Unit)? = uiState.filterInfo?.let { info ->
                             {
-                                Column {
+                                MovieFilterBar(
+                                    magnetCount = info.magnetCount,
+                                    totalCount = info.totalCount,
+                                    showAll = uiState.showAll,
+                                    onToggle = { viewModel.toggleShowAll() }
+                                )
+                            }
+                        }
+
+                        val header: (@Composable () -> Unit)? = when {
+                            type == "actress" && filterBar != null -> {
+                                {
+                                    Column {
+                                        val actress = uiState.actressDetail
+                                        val actressError = uiState.actressError
+                                        when {
+                                            actress != null -> ActressDetailCard(actress)
+                                            uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                            actressError != null -> ActressDetailErrorCard(actressError)
+                                        }
+                                        filterBar()
+                                    }
+                                }
+                            }
+                            type == "actress" -> {
+                                {
                                     val actress = uiState.actressDetail
                                     val actressError = uiState.actressError
                                     when {
@@ -194,35 +232,31 @@ fun LinkMovieListScreen(
                                         uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
                                         actressError != null -> ActressDetailErrorCard(actressError)
                                     }
-                                    filterBar()
                                 }
                             }
+                            filterBar != null -> filterBar
+                            else -> null
                         }
-                        type == "actress" -> {
-                            {
-                                val actress = uiState.actressDetail
-                                val actressError = uiState.actressError
-                                when {
-                                    actress != null -> ActressDetailCard(actress)
-                                    uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
-                                    actressError != null -> ActressDetailErrorCard(actressError)
-                                }
-                            }
-                        }
-                        filterBar != null -> filterBar
-                        else -> null
-                    }
 
-                    MovieList(
-                        movies = uiState.movies,
-                        hasMore = uiState.hasMore,
-                        isLoadingMore = uiState.isLoadingMore,
-                        onLoadMore = { viewModel.loadMore() },
-                        onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
-                        isGrid = isGrid,
-                        modifier = Modifier.fillMaxSize(),
-                        header = header
-                    )
+                        MovieList(
+                            movies = uiState.movies,
+                            hasMore = uiState.hasMore,
+                            isLoadingMore = uiState.isLoadingMore,
+                            onLoadMore = { viewModel.loadMore() },
+                            onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
+                            isGrid = isGrid,
+                            modifier = Modifier.fillMaxSize(),
+                            header = header
+                        )
+
+                        if (uiState.isRevalidating && uiState.movies.isNotEmpty()) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.TopCenter)
+                            )
+                        }
+                    }
                 }
             }
         }

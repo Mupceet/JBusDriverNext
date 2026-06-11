@@ -2,13 +2,19 @@ package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -35,9 +41,20 @@ fun ActressListScreen(
     viewModel: ActressListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(dataSourceType, active) {
         if (active) viewModel.setDataSourceType(dataSourceType)
+    }
+
+    LaunchedEffect(uiState.refreshMessage) {
+        uiState.refreshMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.consumeRefreshMessage()
+        }
     }
 
     PullToRefreshBox(
@@ -58,14 +75,29 @@ fun ActressListScreen(
                 )
             }
             else -> {
-                ActressGrid(
-                    actresses = uiState.actresses,
-                    hasMore = uiState.hasMore,
-                    isLoadingMore = uiState.isLoadingMore,
-                    onLoadMore = { viewModel.loadMore() },
-                    onActressClick = onActressClick,
-                    header = header
-                )
+                Box(Modifier.fillMaxSize()) {
+                    ActressGrid(
+                        actresses = uiState.actresses,
+                        hasMore = uiState.hasMore,
+                        isLoadingMore = uiState.isLoadingMore,
+                        onLoadMore = { viewModel.loadMore() },
+                        onActressClick = onActressClick,
+                        header = header
+                    )
+
+                    if (uiState.isRevalidating && uiState.actresses.isNotEmpty()) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                        )
+                    }
+
+                    SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
             }
         }
     }

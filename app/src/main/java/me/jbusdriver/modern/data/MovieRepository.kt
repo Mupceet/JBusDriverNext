@@ -1,8 +1,13 @@
 package me.jbusdriver.modern.data
 
+import kotlinx.coroutines.flow.Flow
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.MovieCacheTtl
+import me.jbusdriver.modern.core.cache.firstCachedOrFresh
 import me.jbusdriver.modern.core.cache.lruCached
+import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.cache.persistentCached
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
@@ -21,6 +26,8 @@ import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.urlPath
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "MovieRepo"
 
 /**
  * 影片列表数据仓库接口，定义按分类、URL 加载影片和演员列表的异步方法。
@@ -99,6 +106,53 @@ interface MovieRepository {
      * @return 演员详情数据，加载失败时返回 null
      */
     suspend fun loadActressDetail(url: String, forceRefresh: Boolean = false): ActressDetail?
+
+    /**
+     * 观察按数据源类型分页的影片列表（stale-while-revalidate）。
+     *
+     * 先发射缓存数据（[CachedLoadEvent.Cached]），再后台刷新发射新数据（[CachedLoadEvent.Fresh]）。
+     */
+    fun observePage(
+        type: DataSourceType,
+        page: Int,
+        showAll: Boolean = false,
+        forceRefresh: Boolean = false,
+        revalidate: Boolean = true,
+        nowMillis: () -> Long = { System.currentTimeMillis() }
+    ): Flow<CachedLoadEvent<MoviePageResult>>
+
+    /**
+     * 观察按数据源类型分页的演员列表（stale-while-revalidate）。
+     */
+    fun observeActresses(
+        type: DataSourceType,
+        page: Int,
+        forceRefresh: Boolean = false,
+        revalidate: Boolean = true,
+        nowMillis: () -> Long = { System.currentTimeMillis() }
+    ): Flow<CachedLoadEvent<Pair<List<ActressInfo>, PageInfo>>>
+
+    /**
+     * 观察类型分类列表（stale-while-revalidate）。
+     */
+    fun observeGenreCategories(
+        type: DataSourceType,
+        forceRefresh: Boolean = false,
+        revalidate: Boolean = true,
+        nowMillis: () -> Long = { System.currentTimeMillis() }
+    ): Flow<CachedLoadEvent<List<GenreGroup>>>
+
+    /**
+     * 观察通过 URL 分页的影片列表（stale-while-revalidate）。
+     */
+    fun observePageByUrl(
+        url: String,
+        page: Int,
+        showAll: Boolean = false,
+        forceRefresh: Boolean = false,
+        revalidate: Boolean = true,
+        nowMillis: () -> Long = { System.currentTimeMillis() }
+    ): Flow<CachedLoadEvent<MoviePageResult>>
 }
 
 /**
@@ -119,12 +173,16 @@ class DefaultMovieRepository @Inject constructor(
     private val siteConfig: SiteConfig
 ) : MovieRepository {
 
-    override suspend fun loadPage(
+    // ── Flow-based observe methods (stale-while-revalidate) ──
+
+    override fun observePage(
         type: DataSourceType,
         page: Int,
         showAll: Boolean,
-        forceRefresh: Boolean
-    ): MoviePageResult {
+        forceRefresh: Boolean,
+        revalidate: Boolean,
+        nowMillis: () -> Long
+    ): Flow<CachedLoadEvent<MoviePageResult>> {
         val baseUrl = siteConfig.baseUrl
         val basePath = when (type) {
             DataSourceType.UNCENSORED -> "/uncensored"
@@ -132,85 +190,128 @@ class DefaultMovieRepository @Inject constructor(
             else -> ""
         }
         val url = if (page == 1) "$baseUrl$basePath" else "$baseUrl$basePath${type.prefix}$page"
-        val cacheKey = "${type.key}_${showAll}_$page"
+        val cacheKey = "${movieCachePrefix()}:${type.key}_${showAll}_$page"
 
-        return cacheStore.lruCached(cacheKey, forceRefresh) {
-            val doc = htmlClient.fetchDocument(url, showAll)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc, baseUrl)
-            val filterInfo = parseMovieFilterInfo(doc)
-            MoviePageResult(pageInfo, movies, filterInfo)
+        return cacheStore.observeCached(
+            key = cacheKey,
+            ttlMillis = if (page == 1) MovieCacheTtl.MOVIE_LIST_FIRST_PAGE_MILLIS else MovieCacheTtl.MOVIE_LIST_NEXT_PAGE_MILLIS,
+            disk = true,
+            forceRefresh = forceRefresh,
+            revalidate = revalidate && page == 1,
+            nowMillis = nowMillis
+        ) {
+            fetchMoviePage(url, showAll)
         }
     }
 
-    override suspend fun loadActresses(
+    override fun observeActresses(
         type: DataSourceType,
         page: Int,
-        forceRefresh: Boolean
-    ): Pair<List<ActressInfo>, PageInfo> {
+        forceRefresh: Boolean,
+        revalidate: Boolean,
+        nowMillis: () -> Long
+    ): Flow<CachedLoadEvent<Pair<List<ActressInfo>, PageInfo>>> {
         val baseUrl = when (type) {
             DataSourceType.UNCENSORED_ACTRESSES -> siteConfig.baseUrl + "/uncensored/actresses"
             else -> siteConfig.baseUrl + "/actresses"
         }
         val url = if (page == 1) baseUrl else "$baseUrl/$page"
-        val cacheKey = "actresses_${type.key}_$page"
+        val cacheKey = "${movieCachePrefix()}:actresses_${type.key}_$page"
 
-        return cacheStore.lruCached(cacheKey, forceRefresh) {
-            val doc = htmlClient.fetchDocument(url)
-            val actresses = parseActressList(doc, siteConfig.baseUrl)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(
-                activePage = page,
-                nextPage = if (actresses.size >= 20) page + 1 else page
-            )
-            actresses to pageInfo
+        return cacheStore.observeCached(
+            key = cacheKey,
+            ttlMillis = if (page == 1) MovieCacheTtl.ACTRESS_LIST_FIRST_PAGE_MILLIS else MovieCacheTtl.ACTRESS_LIST_NEXT_PAGE_MILLIS,
+            disk = true,
+            forceRefresh = forceRefresh,
+            revalidate = revalidate && page == 1,
+            nowMillis = nowMillis
+        ) {
+            fetchActressPage(url, baseUrl)
         }
     }
 
-    override suspend fun loadGenreCategories(
+    override fun observeGenreCategories(
         type: DataSourceType,
-        forceRefresh: Boolean
-    ): List<GenreGroup> {
+        forceRefresh: Boolean,
+        revalidate: Boolean,
+        nowMillis: () -> Long
+    ): Flow<CachedLoadEvent<List<GenreGroup>>> {
         val baseUrl = when (type) {
             DataSourceType.UNCENSORED_GENRE -> siteConfig.baseUrl + "/uncensored/genre"
             else -> siteConfig.baseUrl + "/genre"
         }
-        val cacheKey = "genres_v2_${type.key}"
+        val cacheKey = "${movieCachePrefix()}:genres_v2_${type.key}"
 
-        return cacheStore.persistentCached(cacheKey, forceRefresh) {
-            val doc = htmlClient.fetchDocument(baseUrl)
-            val rawCategories = parseGenreCategories(doc)
-            val allGenres = rawCategories.flatMap { it.second }
-            allGenres.groupBy { it.link }
-                .filter { it.value.size > 1 }
-                .forEach { (link, items) ->
-                    KLog.w("Duplicate genre link=$link, names=${items.map { it.name }}")
-                }
-            val seen = mutableSetOf<String>()
-            rawCategories.mapNotNull { (title, genres) ->
-                val deduped = genres.filter { seen.add(it.link) }
-                if (deduped.isEmpty()) null else GenreGroup(title, deduped)
-            }
+        return cacheStore.observeCached(
+            key = cacheKey,
+            ttlMillis = MovieCacheTtl.GENRE_CATEGORIES_MILLIS,
+            disk = true,
+            forceRefresh = forceRefresh,
+            revalidate = revalidate,
+            nowMillis = nowMillis
+        ) {
+            fetchGenreCategories(baseUrl)
         }
     }
+
+    override fun observePageByUrl(
+        url: String,
+        page: Int,
+        showAll: Boolean,
+        forceRefresh: Boolean,
+        revalidate: Boolean,
+        nowMillis: () -> Long
+    ): Flow<CachedLoadEvent<MoviePageResult>> {
+        val resolvedUrl = siteConfig.resolve(url)
+        val cacheKey = "${movieCachePrefix()}:page_${resolvedUrl.urlPath}_${showAll}_$page"
+
+        return cacheStore.observeCached(
+            key = cacheKey,
+            ttlMillis = if (page == 1) MovieCacheTtl.MOVIE_BY_URL_FIRST_PAGE_MILLIS else MovieCacheTtl.MOVIE_BY_URL_NEXT_PAGE_MILLIS,
+            disk = true,
+            forceRefresh = forceRefresh,
+            revalidate = revalidate && page == 1,
+            nowMillis = nowMillis
+        ) {
+            val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
+            fetchMoviePage(fullUrl, showAll)
+        }
+    }
+
+    // ── Suspend load methods (delegate to observe + firstCachedOrFresh) ──
+
+    override suspend fun loadPage(
+        type: DataSourceType,
+        page: Int,
+        showAll: Boolean,
+        forceRefresh: Boolean
+    ): MoviePageResult =
+        observePage(type, page, showAll, forceRefresh = forceRefresh, revalidate = false)
+            .firstCachedOrFresh()
+
+    override suspend fun loadActresses(
+        type: DataSourceType,
+        page: Int,
+        forceRefresh: Boolean
+    ): Pair<List<ActressInfo>, PageInfo> =
+        observeActresses(type, page, forceRefresh = forceRefresh, revalidate = false)
+            .firstCachedOrFresh()
+
+    override suspend fun loadGenreCategories(
+        type: DataSourceType,
+        forceRefresh: Boolean
+    ): List<GenreGroup> =
+        observeGenreCategories(type, forceRefresh = forceRefresh, revalidate = false)
+            .firstCachedOrFresh()
 
     override suspend fun loadPageByUrl(
         url: String,
         page: Int,
         showAll: Boolean,
         forceRefresh: Boolean
-    ): MoviePageResult {
-        val resolvedUrl = siteConfig.resolve(url)
-        val cacheKey = "page_${resolvedUrl.urlPath}_${showAll}_$page"
-
-        return cacheStore.lruCached(cacheKey, forceRefresh) {
-            val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
-            val doc = htmlClient.fetchDocument(fullUrl, showAll)
-            val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc, siteConfig.baseUrl)
-            val filterInfo = parseMovieFilterInfo(doc)
-            MoviePageResult(pageInfo, movies, filterInfo)
-        }
-    }
+    ): MoviePageResult =
+        observePageByUrl(url, page, showAll, forceRefresh = forceRefresh, revalidate = false)
+            .firstCachedOrFresh()
 
     override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail {
         val cacheKey = "actress_${url.urlPath}"
@@ -219,6 +320,50 @@ class DefaultMovieRepository @Inject constructor(
             val doc = htmlClient.fetchDocument(siteConfig.resolve(url))
             val attrs = parseActressAttrs(doc, siteConfig.baseUrl)
             ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
+        }
+    }
+
+    // ── Private helpers ──
+
+    private fun movieCachePrefix(): String = "movie:${siteConfig.baseUrl}"
+
+    private suspend fun fetchMoviePage(url: String, showAll: Boolean): MoviePageResult {
+        KLog.d("fetchMoviePage: url=$url, showAll=$showAll", TAG)
+        val doc = htmlClient.fetchDocument(url, showAll)
+        val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = 1, nextPage = 1)
+        val movies = loadMovieFromDoc(doc, siteConfig.baseUrl)
+        val filterInfo = parseMovieFilterInfo(doc)
+        return MoviePageResult(pageInfo, movies, filterInfo)
+    }
+
+    private suspend fun fetchActressPage(
+        url: String,
+        baseUrl: String
+    ): Pair<List<ActressInfo>, PageInfo> {
+        KLog.d("fetchActressPage: url=$url", TAG)
+        val doc = htmlClient.fetchDocument(url)
+        val actresses = parseActressList(doc, siteConfig.baseUrl)
+        val pageInfo = parsePageInfo(doc) ?: PageInfo(
+            activePage = 1,
+            nextPage = if (actresses.size >= 20) 2 else 1
+        )
+        return actresses to pageInfo
+    }
+
+    private suspend fun fetchGenreCategories(url: String): List<GenreGroup> {
+        KLog.d("fetchGenreCategories: url=$url", TAG)
+        val doc = htmlClient.fetchDocument(url)
+        val rawCategories = parseGenreCategories(doc)
+        val allGenres = rawCategories.flatMap { it.second }
+        allGenres.groupBy { it.link }
+            .filter { it.value.size > 1 }
+            .forEach { (link, items) ->
+                KLog.w("Duplicate genre link=$link, names=${items.map { it.name }}")
+            }
+        val seen = mutableSetOf<String>()
+        return rawCategories.mapNotNull { (title, genres) ->
+            val deduped = genres.filter { seen.add(it.link) }
+            if (deduped.isEmpty()) null else GenreGroup(title, deduped)
         }
     }
 }

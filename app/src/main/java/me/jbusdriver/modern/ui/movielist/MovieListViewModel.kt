@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -44,13 +45,22 @@ data class MovieListUiState(
     /** 筛选信息（磁力数量与总数），仅在筛选模式下有值 */
     val filterInfo: MovieFilterInfo? = null,
     /** 是否正在切换筛选条件（保留旧列表，显示顶部刷新指示器） */
-    val isFilterSwitching: Boolean = false
+    val isFilterSwitching: Boolean = false,
+    /** 后台刷新中（有缓存数据时显示顶部进度条） */
+    val isRevalidating: Boolean = false,
+    /** 缓存数据的时间戳 */
+    val lastUpdatedAtMillis: Long? = null,
+    /** 后台刷新获得的新数据，等待用户应用 */
+    val pendingFreshResult: MoviePageResult? = null,
+    /** 轻量刷新反馈消息（Snackbar） */
+    val refreshMessage: String? = null
 )
 
 /**
  * 电影列表页 ViewModel。
  *
  * 职责：管理按分类（有码/无码/欧美等）分页加载电影列表，支持下拉刷新和加载更多。
+ * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后无缝更新。
  *
  * 使用场景：在主界面的电影列表 Tab 页面中使用，通过 Hilt 注入。
  * 用户切换分类标签时切换数据源，支持分页加载和下拉刷新。
@@ -78,6 +88,9 @@ class MovieListViewModel @Inject constructor(
 
     /** 当前 genre 过滤的 URL，非 null 时优先使用 URL 加载 */
     private var genreUrl: String? = null
+
+    /** 用户是否在列表顶部（用于决定是否自动应用后台刷新数据） */
+    private var isAtTopForFreshUpdates: Boolean = true
 
     /**
      * 设置数据源类型并重新加载列表。
@@ -112,29 +125,105 @@ class MovieListViewModel @Inject constructor(
     }
 
     /**
-     * 加载电影列表的第一页数据。
+     * 设置用户是否在列表顶部，用于决定后台刷新数据是否自动应用。
+     */
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
+
+    /**
+     * 应用后台刷新获得的待定数据。
+     */
+    fun applyPendingFreshResult() {
+        val pending = _uiState.value.pendingFreshResult ?: return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                movies = pending.movies.map { m -> m.toUiModel() },
+                pageInfo = pending.pageInfo,
+                hasMore = pending.pageInfo.hasNext,
+                filterInfo = pending.filterInfo,
+                pendingFreshResult = null,
+                refreshMessage = null
+            )
+        }
+    }
+
+    /**
+     * 加载电影列表的第一页数据（stale-while-revalidate）。
      *
-     * 如果已在加载中则跳过。加载完成后更新分页信息和是否有更多数据的状态。
+     * 先显示缓存数据，再后台刷新。如果已在加载中则跳过。
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
-        loadMovies(
-            page = 1,
-            loadingFlag = { copy(isLoading = true, error = null) },
-            onSuccess = { result, state ->
-                state.copy(
-                    movies = result.movies.map { it.toUiModel() },
-                    pageInfo = result.pageInfo,
-                    isLoading = false,
-                    isFilterSwitching = false,
-                    hasMore = result.pageInfo.hasNext,
-                    error = if (result.movies.isEmpty()) "沒有數據" else null,
-                    filterInfo = result.filterInfo
-                )
-            },
-            onError = { e, state -> state.copy(isLoading = false, isFilterSwitching = false, error = e.message ?: "載入失敗") }
-        )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            val flow = if (genreUrl != null) {
+                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = true)
+            } else {
+                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = true)
+            }
+            flow.collect { event ->
+                when (event) {
+                    is CachedLoadEvent.Cached -> {
+                        hasContent = true
+                        _uiState.update {
+                            it.copy(
+                                movies = event.entry.value.movies.map { m -> m.toUiModel() },
+                                pageInfo = event.entry.value.pageInfo,
+                                filterInfo = event.entry.value.filterInfo,
+                                isLoading = false,
+                                isFilterSwitching = false,
+                                hasMore = event.entry.value.pageInfo.hasNext,
+                                error = if (event.entry.value.movies.isEmpty()) "沒有數據" else null,
+                                isRevalidating = true,
+                                lastUpdatedAtMillis = event.entry.storedAtMillis
+                            )
+                        }
+                    }
+                    is CachedLoadEvent.Fresh -> {
+                        if (isAtTopForFreshUpdates) {
+                            _uiState.update {
+                                it.copy(
+                                    movies = event.entry.value.movies.map { m -> m.toUiModel() },
+                                    pageInfo = event.entry.value.pageInfo,
+                                    filterInfo = event.entry.value.filterInfo,
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    isRevalidating = false,
+                                    hasMore = event.entry.value.pageInfo.hasNext,
+                                    pendingFreshResult = null,
+                                    refreshMessage = null,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis,
+                                    error = if (event.entry.value.movies.isEmpty()) "沒有數據" else null
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    isRevalidating = false,
+                                    pendingFreshResult = event.entry.value,
+                                    refreshMessage = "有新數據"
+                                )
+                            }
+                        }
+                    }
+                    is CachedLoadEvent.Failure -> {
+                        _uiState.update {
+                            if (event.hadCachedValue || hasContent) {
+                                it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false)
+                            } else {
+                                it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -145,21 +234,39 @@ class MovieListViewModel @Inject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         currentPage = 1
-        loadMovies(
-            page = 1,
-            forceRefresh = true,
-            loadingFlag = { copy(isRefreshing = true, error = null) },
-            onSuccess = { result, state ->
-                state.copy(
-                    movies = result.movies.map { it.toUiModel() },
-                    pageInfo = result.pageInfo,
-                    isRefreshing = false,
-                    hasMore = result.pageInfo.hasNext,
-                    filterInfo = result.filterInfo
-                )
-            },
-            onError = { e, state -> state.copy(isRefreshing = false, error = e.message) }
-        )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            val flow = if (genreUrl != null) {
+                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
+            } else {
+                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
+            }
+            flow.collect { event ->
+                when (event) {
+                    is CachedLoadEvent.Cached -> Unit
+                    is CachedLoadEvent.Fresh -> {
+                        _uiState.update {
+                            it.copy(
+                                movies = event.entry.value.movies.map { m -> m.toUiModel() },
+                                pageInfo = event.entry.value.pageInfo,
+                                isRefreshing = false,
+                                hasMore = event.entry.value.pageInfo.hasNext,
+                                filterInfo = event.entry.value.filterInfo
+                            )
+                        }
+                    }
+                    is CachedLoadEvent.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                isRefreshing = false,
+                                error = if (it.movies.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
+                                refreshMessage = if (it.movies.isNotEmpty()) "刷新失敗" else null
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -175,43 +282,26 @@ class MovieListViewModel @Inject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
-        loadMovies(
-            page = nextPage,
-            loadingFlag = { copy(isLoadingMore = true) },
-            onSuccess = { result, state ->
-                state.copy(
-                    movies = state.movies + result.movies.map { it.toUiModel() },
-                    pageInfo = result.pageInfo,
-                    isLoadingMore = false,
-                    hasMore = result.pageInfo.hasNext,
-                    filterInfo = result.filterInfo ?: state.filterInfo
-                )
-            },
-            onError = { e, state -> state.copy(isLoadingMore = false, error = e.message) },
-            onFailure = { currentPage = _uiState.value.pageInfo.activePage }
-        )
-    }
-
-    private inline fun loadMovies(
-        page: Int,
-        forceRefresh: Boolean = false,
-        crossinline loadingFlag: MovieListUiState.() -> MovieListUiState,
-        crossinline onSuccess: (MoviePageResult, MovieListUiState) -> MovieListUiState,
-        crossinline onError: (Exception, MovieListUiState) -> MovieListUiState,
-        noinline onFailure: () -> Unit = {}
-    ) {
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update(loadingFlag)
+            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = if (genreUrl != null) {
-                    repository.loadPageByUrl(genreUrl!!, page, showAll = _uiState.value.showAll, forceRefresh = forceRefresh)
+                    repository.loadPageByUrl(genreUrl!!, nextPage, showAll = _uiState.value.showAll)
                 } else {
-                    repository.loadPage(dataSourceType, page, showAll = _uiState.value.showAll, forceRefresh = forceRefresh)
+                    repository.loadPage(dataSourceType, nextPage, showAll = _uiState.value.showAll)
                 }
-                _uiState.update { onSuccess(result, it) }
+                _uiState.update {
+                    it.copy(
+                        movies = it.movies + result.movies.map { m -> m.toUiModel() },
+                        pageInfo = result.pageInfo,
+                        isLoadingMore = false,
+                        hasMore = result.pageInfo.hasNext,
+                        filterInfo = result.filterInfo ?: it.filterInfo
+                    )
+                }
             } catch (e: Exception) {
-                onFailure()
-                _uiState.update { onError(e, it) }
+                currentPage = _uiState.value.pageInfo.activePage
+                _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
             }
         }
     }
@@ -219,6 +309,11 @@ class MovieListViewModel @Inject constructor(
     /** 清除当前的错误信息 */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /** 消费轻量刷新消息（Snackbar） */
+    fun consumeRefreshMessage() {
+        _uiState.update { it.copy(refreshMessage = null) }
     }
 
     /**

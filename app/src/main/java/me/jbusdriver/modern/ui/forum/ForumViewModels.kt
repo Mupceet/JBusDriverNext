@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.ui.forum
+﻿package me.jbusdriver.modern.ui.forum
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +29,16 @@ import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.RouteForumThreadList
 import javax.inject.Inject
+
+
+// TODO: remove after testing cache refresh UX
+private fun <T> List<T>.shuffledForTesting(): List<T> =
+    if (size < 2) this else toMutableList().apply {
+        val target = (1..lastIndex).random()
+        val temp = this[0]
+        this[0] = this[target]
+        this[target] = temp
+    }
 
 private const val TAG = "ForumVM"
 
@@ -240,9 +250,10 @@ class ForumThreadListViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
+                            KLog.d("[CacheTest] ThreadList CACHED", TAG)
                             _uiState.update {
                                 it.copy(
-                                    threads = event.entry.value.threads,
+                                    threads = event.entry.value.threads.shuffledForTesting(),
                                     pageInfo = event.entry.value.pageInfo,
                                     typeFilters = event.entry.value.typeFilters.ifEmpty { it.typeFilters },
                                     isLoading = false,
@@ -252,6 +263,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
+                            KLog.d("[CacheTest] ThreadList FRESH, isAtTop=$isAtTopForFreshUpdates", TAG)
                             if (isAtTopForFreshUpdates) {
                                 _uiState.update {
                                     it.copy(
@@ -274,6 +286,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                         refreshMessage = "Post updated"
                                     )
                                 }
+                                KLog.d("[CacheTest] ThreadList: PENDING fresh set", TAG)
                             }
                         }
                         is CachedLoadEvent.Failure -> {
@@ -441,9 +454,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
+                            KLog.d("[CacheTest] Detail CACHED", TAG)
                             _uiState.update {
                                 it.copy(
-                                    detail = event.entry.value,
+                                    detail = event.entry.value.copy(replies = event.entry.value.replies.shuffledForTesting()),
                                     isLoading = false,
                                     isRevalidating = true,
                                     isChangingFloorOrder = false,
@@ -452,6 +466,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
+                            KLog.d("[CacheTest] Detail FRESH, isAtTop=$isAtTopForFreshUpdates", TAG)
                             if (isAtTopForFreshUpdates || forceRefresh || !showLoading) {
                                 _uiState.update {
                                     it.copy(
@@ -469,10 +484,11 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                         isLoading = false,
                                         isRevalidating = false,
                                         isChangingFloorOrder = false,
-                                        pendingFreshDetail = event.entry.value,
+                                        pendingFreshDetail = event.entry.value.copy(replies = event.entry.value.replies.shuffledForTesting()),
                                         refreshMessage = "Post updated"
                                     )
                                 }
+                                KLog.d("[CacheTest] Detail: PENDING fresh set", TAG)
                             }
                         }
                         is CachedLoadEvent.Failure -> {

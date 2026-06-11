@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreCategory
@@ -28,13 +29,20 @@ data class GenreListUiState(
     /** 是否正在下拉刷新 */
     val isRefreshing: Boolean = false,
     /** 错误信息，正常时为 null */
-    val error: String? = null
+    val error: String? = null,
+    /** 后台刷新中（有缓存数据时显示顶部进度条） */
+    val isRevalidating: Boolean = false,
+    /** 缓存数据的时间戳 */
+    val lastUpdatedAtMillis: Long? = null,
+    /** 轻量刷新反馈消息（Snackbar） */
+    val refreshMessage: String? = null
 )
 
 /**
  * 分类列表页 ViewModel。
  *
  * 职责：管理按分类类型（类型/玩法等）加载分类列表，支持下拉刷新。
+ * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后无缝更新。
  *
  * 使用场景：在主界面的分类 Tab 页面中使用，通过 Hilt 注入。
  * 用户切换分类类型标签时切换数据源并重新加载分类列表。
@@ -73,26 +81,53 @@ class GenreListViewModel @Inject constructor(
     }
 
     /**
-     * 从网络加载分类列表数据。
+     * 从缓存和网络加载分类列表数据（stale-while-revalidate）。
      *
-     * 如果已在加载中则跳过。加载完成后将分类数据按类别分组存储。
+     * 先显示缓存数据，再后台刷新。如果已在加载中则跳过。
      */
     private fun loadGenres() {
         if (_uiState.value.isLoading) return
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val categories = repository.loadGenreCategories(dataSourceType).map { it.toUiModel() }
-                _uiState.update {
-                    it.copy(
-                        genreCategories = categories,
-                        isLoading = false,
-                        error = if (categories.isEmpty()) "沒有數據" else null
-                    )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observeGenreCategories(dataSourceType, revalidate = true)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            val categories = event.entry.value.map { it.toUiModel() }
+                            _uiState.update {
+                                it.copy(
+                                    genreCategories = categories,
+                                    isLoading = false,
+                                    error = if (categories.isEmpty()) "沒有數據" else null,
+                                    isRevalidating = true,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val categories = event.entry.value.map { it.toUiModel() }
+                            _uiState.update {
+                                it.copy(
+                                    genreCategories = categories,
+                                    isLoading = false,
+                                    isRevalidating = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
         }
     }
 
@@ -103,20 +138,37 @@ class GenreListViewModel @Inject constructor(
      */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val categories = repository.loadGenreCategories(dataSourceType, forceRefresh = true)
-                    .map { it.toUiModel() }
-                _uiState.update {
-                    it.copy(
-                        genreCategories = categories,
-                        isRefreshing = false
-                    )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observeGenreCategories(dataSourceType, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            val categories = event.entry.value.map { it.toUiModel() }
+                            _uiState.update {
+                                it.copy(
+                                    genreCategories = categories,
+                                    isRefreshing = false
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.genreCategories.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
+                                    refreshMessage = if (it.genreCategories.isNotEmpty()) "刷新失敗" else null
+                                )
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
-            }
         }
+    }
+
+    /** 消费轻量刷新消息（Snackbar） */
+    fun consumeRefreshMessage() {
+        _uiState.update { it.copy(refreshMessage = null) }
     }
 }

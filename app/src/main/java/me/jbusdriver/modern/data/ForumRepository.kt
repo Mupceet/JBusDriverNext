@@ -1,16 +1,12 @@
-package me.jbusdriver.modern.data
+﻿package me.jbusdriver.modern.data
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CacheStore
-import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.ForumCacheTtl
-import me.jbusdriver.modern.core.cache.readCached
-import me.jbusdriver.modern.core.cache.writeCached
+import me.jbusdriver.modern.core.cache.firstCachedOrFresh
+import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.parser.parseForumHomeData
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
@@ -107,7 +103,7 @@ class DefaultForumRepository @Inject constructor(
     ): Flow<CachedLoadEvent<ForumHomeData>> {
         val url = "${siteConfig.baseUrl}/forum/forum.php"
         forumLogD("[Forum] loadForumBoards: url=$url")
-        return observeCached(
+        return cacheStore.observeCached(
             key = forumBoardsCacheKey(),
             ttlMillis = ForumCacheTtl.HOME_MILLIS,
             disk = true,
@@ -133,7 +129,7 @@ class DefaultForumRepository @Inject constructor(
         val baseUrl = "${siteConfig.baseUrl}/forum/forum.php?mod=forumdisplay&fid=$fid&page=$page"
         val url = if (typeId != null) "$baseUrl&filter=typeid&typeid=$typeId" else baseUrl
         forumLogD("[Forum] loadThreads: url=$url")
-        return observeCached(
+        return cacheStore.observeCached(
             key = forumThreadsCacheKey(fid, page, typeId),
             ttlMillis = threadListTtl(page),
             disk = true,
@@ -156,7 +152,7 @@ class DefaultForumRepository @Inject constructor(
     ): Flow<CachedLoadEvent<ForumThreadDetail>> {
         val url = buildForumThreadDetailUrl(siteConfig.baseUrl, tid, page, floorOrder)
         forumLogD("[Forum] loadThreadDetail: url=$url")
-        return observeCached(
+        return cacheStore.observeCached(
             key = forumDetailCacheKey(tid, page, floorOrder),
             ttlMillis = threadDetailTtl(page),
             disk = true,
@@ -170,7 +166,7 @@ class DefaultForumRepository @Inject constructor(
     }
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData =
-        observeForumBoards(forceRefresh = forceRefresh, revalidate = false).firstValue()
+        observeForumBoards(forceRefresh = forceRefresh, revalidate = false).firstCachedOrFresh()
 
     override suspend fun loadThreads(
         fid: Int,
@@ -178,7 +174,7 @@ class DefaultForumRepository @Inject constructor(
         typeId: Int?,
         forceRefresh: Boolean
     ): ForumThreadPageResult =
-        observeThreads(fid, page, typeId, forceRefresh = forceRefresh, revalidate = false).firstValue()
+        observeThreads(fid, page, typeId, forceRefresh = forceRefresh, revalidate = false).firstCachedOrFresh()
 
     override suspend fun loadThreadDetail(
         tid: Int,
@@ -186,7 +182,7 @@ class DefaultForumRepository @Inject constructor(
         floorOrder: ForumFloorOrder,
         forceRefresh: Boolean
     ): ForumThreadDetail =
-        observeThreadDetail(tid, page, floorOrder, forceRefresh = forceRefresh, revalidate = false).firstValue()
+        observeThreadDetail(tid, page, floorOrder, forceRefresh = forceRefresh, revalidate = false).firstCachedOrFresh()
 
     private fun forumCachePrefix(): String = "forum:${siteConfig.baseUrl}"
 
@@ -206,69 +202,4 @@ class DefaultForumRepository @Inject constructor(
         if (page == 1) ForumCacheTtl.THREAD_DETAIL_FIRST_PAGE_MILLIS
         else ForumCacheTtl.THREAD_DETAIL_NEXT_PAGE_MILLIS
 
-    private inline fun <reified T> observeCached(
-        key: String,
-        ttlMillis: Long,
-        disk: Boolean,
-        forceRefresh: Boolean,
-        revalidate: Boolean,
-        noinline nowMillis: () -> Long,
-        crossinline fetch: suspend () -> T
-    ): Flow<CachedLoadEvent<T>> = flow {
-        var emittedCache = false
-        val cached = if (forceRefresh) {
-            null
-        } else {
-            cacheStore.readCached<T>(
-                key = key,
-                ttlMillis = ttlMillis,
-                disk = disk,
-                nowMillis = nowMillis
-            )
-        }
-
-        if (cached != null) {
-            emittedCache = true
-            emit(CachedLoadEvent.Cached(cached))
-        }
-
-        val shouldFetch = forceRefresh || cached == null || cached.isExpired || revalidate
-        if (!shouldFetch) return@flow
-
-        try {
-            val fresh = fetch()
-            val entry = cacheStore.writeCached(
-                key = key,
-                value = fresh,
-                disk = disk,
-                nowMillis = nowMillis
-            )
-            emit(CachedLoadEvent.Fresh(entry))
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
-            emit(CachedLoadEvent.Failure(throwable, emittedCache))
-        }
-    }
-
-    private suspend fun <T> Flow<CachedLoadEvent<T>>.firstValue(): T {
-        var expiredCached: CacheEntry<T>? = null
-        return when (val event = first { event ->
-            when (event) {
-                is CachedLoadEvent.Cached -> {
-                    if (event.entry.isExpired) {
-                        expiredCached = event.entry
-                        false
-                    } else {
-                        true
-                    }
-                }
-                is CachedLoadEvent.Fresh,
-                is CachedLoadEvent.Failure -> true
-            }
-        }) {
-            is CachedLoadEvent.Cached -> event.entry.value
-            is CachedLoadEvent.Fresh -> event.entry.value
-            is CachedLoadEvent.Failure -> expiredCached?.value ?: throw event.throwable
-        }
-    }
 }
