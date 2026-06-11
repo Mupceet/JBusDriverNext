@@ -20,6 +20,15 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
+// TODO: remove after testing cache refresh UX — 随机交换首元素，模拟缓存与新鲜数据的视觉差异
+private fun <T> List<T>.shuffledForTesting(): List<T> =
+    if (size < 2) this else toMutableList().apply {
+        val target = (1..lastIndex).random()
+        val temp = this[0]
+        this[0] = this[target]
+        this[target] = temp
+    }
+
 /**
  * 电影列表页的 UI 状态。
  *
@@ -171,7 +180,7 @@ class MovieListViewModel @Inject constructor(
                         hasContent = true
                         _uiState.update {
                             it.copy(
-                                movies = event.entry.value.movies.map { m -> m.toUiModel() },
+                                movies = event.entry.value.movies.shuffledForTesting().map { m -> m.toUiModel() },
                                 pageInfo = event.entry.value.pageInfo,
                                 filterInfo = event.entry.value.filterInfo,
                                 isLoading = false,

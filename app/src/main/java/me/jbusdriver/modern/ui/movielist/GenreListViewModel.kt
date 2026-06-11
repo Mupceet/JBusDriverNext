@@ -16,6 +16,15 @@ import me.jbusdriver.modern.ui.GenreCategory
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
+// TODO: remove after testing cache refresh UX — 随机交换首元素，模拟缓存与新鲜数据的视觉差异
+private fun <T> List<T>.shuffledForTesting(): List<T> =
+    if (size < 2) this else toMutableList().apply {
+        val target = (1..lastIndex).random()
+        val temp = this[0]
+        this[0] = this[target]
+        this[target] = temp
+    }
+
 /**
  * 分类列表页的 UI 状态。
  *
@@ -95,7 +104,7 @@ class GenreListViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            val categories = event.entry.value.map { it.toUiModel() }
+                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
