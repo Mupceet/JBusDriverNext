@@ -24,14 +24,25 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.toUiModel
 
-// TODO: remove after testing cache refresh UX — 随机交换首元素，模拟缓存与新鲜数据的视觉差异
-private fun <T> List<T>.shuffledForTesting(): List<T> =
-    if (size < 2) this else toMutableList().apply {
-        val target = (1..lastIndex).random()
-        val temp = this[0]
-        this[0] = this[target]
-        this[target] = temp
+// TODO: remove after testing cache refresh UX — 随机删除或重复前几项，模拟数据变化
+private fun <T> List<T>.shuffledForTesting(): List<T> {
+    if (size < 3) return this
+    val result = toMutableList()
+    val ops = (1..2).random()
+    repeat(ops) {
+        when ((0..1).random()) {
+            0 -> {
+                val idx = (0 until minOf(3, result.size - 1)).random()
+                result.removeAt(idx)
+            }
+            1 -> {
+                val idx = (0 until minOf(3, result.size)).random()
+                result.add(idx, result[idx])
+            }
+        }
     }
+    return result
+}
 
 /**
  * 关联电影列表页的 UI 状态。
@@ -118,9 +129,6 @@ class LinkMovieListViewModel @AssistedInject constructor(
     /** 列表类型，如 "actress" 表示女优关联影片 */
     private var listType: String = ""
 
-    /** 用户是否在列表顶部（用于决定是否自动应用后台刷新数据） */
-    private var isAtTopForFreshUpdates: Boolean = true
-
     /**
      * 设置链接 URL 并加载关联电影列表。
      *
@@ -144,13 +152,6 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (type == "actress" && linkUrl.isNotBlank()) {
             loadActressDetail()
         }
-    }
-
-    /**
-     * 设置用户是否在列表顶部，用于决定后台刷新数据是否自动应用。
-     */
-    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
-        isAtTopForFreshUpdates = isAtTop
     }
 
     /**
@@ -206,35 +207,24 @@ class LinkMovieListViewModel @AssistedInject constructor(
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
+                            // loadFirstPage 仅在列表为空时调用，直接应用
                             val result = event.entry.value
-                            if (isAtTopForFreshUpdates) {
-                                _uiState.update { state ->
-                                    state.copy(
-                                        movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
-                                        pageInfo = result.pageInfo,
-                                        isLoading = false,
-                                        isFilterSwitching = false,
-                                        isRevalidating = false,
-                                        hasMore = result.pageInfo.hasNext,
-                                        filterInfo = result.filterInfo,
-                                        pendingFreshResult = null,
-                                        refreshMessage = null,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis,
-                                        resolvedTitle = result.filterInfo?.let {
-                                            resolveBreadcrumbTitle(it)
-                                        } ?: state.resolvedTitle
-                                    )
-                                }
-                            } else {
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        isFilterSwitching = false,
-                                        isRevalidating = false,
-                                        pendingFreshResult = event.entry.value,
-                                        refreshMessage = "有新數據"
-                                    )
-                                }
+                            _uiState.update { state ->
+                                state.copy(
+                                    movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                    pageInfo = result.pageInfo,
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    isRevalidating = false,
+                                    hasMore = result.pageInfo.hasNext,
+                                    filterInfo = result.filterInfo,
+                                    pendingFreshResult = null,
+                                    refreshMessage = null,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis,
+                                    resolvedTitle = result.filterInfo?.let {
+                                        resolveBreadcrumbTitle(it)
+                                    } ?: state.resolvedTitle
+                                )
                             }
                         }
                         is CachedLoadEvent.Failure -> {
@@ -286,37 +276,28 @@ class LinkMovieListViewModel @AssistedInject constructor(
 
     /**
      * 后台重新验证数据（从后台恢复时触发）。
+     *
+     * 根据 TTL 判断，缓存过期时一律走 pending + Snackbar。
      */
     fun revalidate() {
         val state = _uiState.value
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.movies.isEmpty() || linkUrl.isBlank()) return
         viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
             repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
                 .collect { event ->
                     when (event) {
-                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
                         is CachedLoadEvent.Fresh -> {
-                            val result = event.entry.value
-                            if (isAtTopForFreshUpdates) {
-                                _uiState.update {
-                                    it.copy(
-                                        movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
-                                        pageInfo = result.pageInfo,
-                                        hasMore = result.pageInfo.hasNext,
-                                        filterInfo = result.filterInfo,
-                                        isRevalidating = false,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis
-                                    )
-                                }
-                            } else {
-                                _uiState.update {
-                                    it.copy(
-                                        isRevalidating = false,
-                                        pendingFreshResult = event.entry.value,
-                                        refreshMessage = "有新數據"
-                                    )
-                                }
+                            _uiState.update {
+                                it.copy(
+                                    isRevalidating = false,
+                                    pendingFreshResult = event.entry.value,
+                                    refreshMessage = "有新數據"
+                                )
                             }
                         }
                         is CachedLoadEvent.Failure -> {

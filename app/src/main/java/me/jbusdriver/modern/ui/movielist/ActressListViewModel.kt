@@ -14,18 +14,30 @@ import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
 
-// TODO: remove after testing cache refresh UX — 随机交换首元素，模拟缓存与新鲜数据的视觉差异
-private fun <T> List<T>.shuffledForTesting(): List<T> =
-    if (size < 2) this else toMutableList().apply {
-        val target = (1..lastIndex).random()
-        val temp = this[0]
-        this[0] = this[target]
-        this[target] = temp
+// TODO: remove after testing cache refresh UX — 随机删除或重复前几项，模拟数据变化
+private fun <T> List<T>.shuffledForTesting(): List<T> {
+    if (size < 3) return this
+    val result = toMutableList()
+    val ops = (1..2).random()
+    repeat(ops) {
+        when ((0..1).random()) {
+            0 -> {
+                val idx = (0 until minOf(3, result.size - 1)).random()
+                result.removeAt(idx)
+            }
+            1 -> {
+                val idx = (0 until minOf(3, result.size)).random()
+                result.add(idx, result[idx])
+            }
+        }
     }
+    return result
+}
 
 /**
  * 女优列表页的 UI 状态。
@@ -51,6 +63,8 @@ data class ActressListUiState(
     val isRevalidating: Boolean = false,
     /** 缓存数据的时间戳 */
     val lastUpdatedAtMillis: Long? = null,
+    /** 后台刷新获得的新数据，等待用户应用 */
+    val pendingFreshActresses: Pair<List<ActressInfo>, PageInfo>? = null,
     /** 轻量刷新反馈消息（Snackbar） */
     val refreshMessage: String? = null
 )
@@ -59,7 +73,7 @@ data class ActressListUiState(
  * 女优列表页 ViewModel。
  *
  * 职责：管理按分类分页加载女优列表，支持下拉刷新和加载更多。
- * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后无缝更新。
+ * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后提示用户更新。
  *
  * 使用场景：在主界面的女优列表 Tab 页面中使用，通过 Hilt 注入。
  * 用户切换女优分类标签时切换数据源，支持分页加载和下拉刷新。
@@ -88,8 +102,7 @@ class ActressListViewModel @Inject constructor(
     /**
      * 设置数据源类型并重新加载列表。
      *
-     * 如果类型未变化且列表中已有数据，则跳过重复加载。
-     * 重置页码和 UI 状态后自动调用 [loadFirstPage]。
+     * 如果类型未变化且列表中已有数据，则触发后台 revalidate。
      *
      * @param type 数据源类型，如 [DataSourceType.ACTRESSES] 等
      */
@@ -105,9 +118,28 @@ class ActressListViewModel @Inject constructor(
     }
 
     /**
+     * 应用后台刷新获得的待定数据。
+     *
+     * 重置为第 1 页数据，用户需要重新加载更多。
+     */
+    fun applyPendingFreshActresses() {
+        val pending = _uiState.value.pendingFreshActresses ?: return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                actresses = pending.first.shuffledForTesting().map { a -> a.toActressUiModel() },
+                pageInfo = pending.second,
+                hasMore = pending.second.hasNext,
+                pendingFreshActresses = null,
+                refreshMessage = null
+            )
+        }
+    }
+
+    /**
      * 加载女优列表的第一页数据（stale-while-revalidate）。
      *
-     * 先显示缓存数据，再后台刷新。如果已在加载中则跳过。
+     * 先显示缓存数据，再后台刷新。仅在列表为空时调用，Fresh 数据直接应用。
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
@@ -134,6 +166,7 @@ class ActressListViewModel @Inject constructor(
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
+                            // loadFirstPage 仅在列表为空时调用，直接应用
                             _uiState.update {
                                 it.copy(
                                     actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
@@ -162,24 +195,28 @@ class ActressListViewModel @Inject constructor(
 
     /**
      * 后台重新验证数据（Tab 切换回来或从后台恢复时触发）。
+     *
+     * 根据 TTL 判断是否需要网络请求。缓存过期时走 pending + Snackbar，
+     * 避免已加载多页时直接替换导致跳位和加载更多失效。
      */
     fun revalidate() {
         val state = _uiState.value
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.actresses.isEmpty()) return
         viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
             repository.observeActresses(dataSourceType, 1, revalidate = false)
                 .collect { event ->
                     when (event) {
-                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
                         is CachedLoadEvent.Fresh -> {
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
-                                    pageInfo = event.entry.value.second,
-                                    hasMore = event.entry.value.second.hasNext,
                                     isRevalidating = false,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    pendingFreshActresses = event.entry.value,
+                                    refreshMessage = "有新數據"
                                 )
                             }
                         }
@@ -208,7 +245,7 @@ class ActressListViewModel @Inject constructor(
                         is CachedLoadEvent.Fresh -> {
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
+                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
                                     pageInfo = event.entry.value.second,
                                     isRefreshing = false,
                                     hasMore = event.entry.value.second.hasNext
@@ -231,9 +268,6 @@ class ActressListViewModel @Inject constructor(
 
     /**
      * 加载下一页女优数据，追加到现有列表末尾。
-     *
-     * 如果正在加载、没有更多数据或下一页码不大于当前页码则跳过。
-     * 加载失败时回退页码计数器。
      */
     fun loadMore() {
         val state = _uiState.value

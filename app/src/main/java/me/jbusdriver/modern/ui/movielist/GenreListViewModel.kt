@@ -16,14 +16,25 @@ import me.jbusdriver.modern.ui.GenreCategory
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
-// TODO: remove after testing cache refresh UX — 随机交换首元素，模拟缓存与新鲜数据的视觉差异
-private fun <T> List<T>.shuffledForTesting(): List<T> =
-    if (size < 2) this else toMutableList().apply {
-        val target = (1..lastIndex).random()
-        val temp = this[0]
-        this[0] = this[target]
-        this[target] = temp
+// TODO: remove after testing cache refresh UX — 随机删除或重复前几项，模拟数据变化
+private fun <T> List<T>.shuffledForTesting(): List<T> {
+    if (size < 3) return this
+    val result = toMutableList()
+    val ops = (1..2).random()
+    repeat(ops) {
+        when ((0..1).random()) {
+            0 -> {
+                val idx = (0 until minOf(3, result.size - 1)).random()
+                result.removeAt(idx)
+            }
+            1 -> {
+                val idx = (0 until minOf(3, result.size)).random()
+                result.add(idx, result[idx])
+            }
+        }
     }
+    return result
+}
 
 /**
  * 分类列表页的 UI 状态。

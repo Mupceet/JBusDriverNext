@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -58,10 +59,14 @@ fun ActressListScreen(
 
     LaunchedEffect(uiState.refreshMessage) {
         uiState.refreshMessage?.let { message ->
-            snackbarHostState.showSnackbar(
+            val result = snackbarHostState.showSnackbar(
                 message = message,
+                actionLabel = "刷新",
                 duration = SnackbarDuration.Short
             )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.applyPendingFreshActresses()
+            }
             viewModel.consumeRefreshMessage()
         }
     }
