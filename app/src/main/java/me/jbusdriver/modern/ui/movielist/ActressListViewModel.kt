@@ -19,22 +19,15 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
 
-// TODO: remove after testing cache refresh UX — 随机删除或重复前几项，模拟数据变化
+// TODO: remove after testing cache refresh UX — 随机删除前几项，模拟数据变化
 private fun <T> List<T>.shuffledForTesting(): List<T> {
     if (size < 3) return this
     val result = toMutableList()
     val ops = (1..2).random()
     repeat(ops) {
-        when ((0..1).random()) {
-            0 -> {
-                val idx = (0 until minOf(3, result.size - 1)).random()
-                result.removeAt(idx)
-            }
-            1 -> {
-                val idx = (0 until minOf(3, result.size)).random()
-                result.add(idx, result[idx])
-            }
-        }
+        if (result.size <= 2) return@repeat
+        val idx = (0 until minOf(3, result.size - 1)).random()
+        result.removeAt(idx)
     }
     return result
 }
