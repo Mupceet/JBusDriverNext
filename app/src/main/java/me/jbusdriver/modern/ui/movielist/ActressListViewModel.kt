@@ -168,8 +168,7 @@ class ActressListViewModel @Inject constructor(
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.actresses.isEmpty()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isRevalidating = true) }
-            repository.observeActresses(dataSourceType, 1, revalidate = true)
+            repository.observeActresses(dataSourceType, 1, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit

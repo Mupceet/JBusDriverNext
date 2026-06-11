@@ -292,8 +292,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.movies.isEmpty() || linkUrl.isBlank()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isRevalidating = true) }
-            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = true)
+            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit

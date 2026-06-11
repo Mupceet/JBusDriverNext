@@ -151,8 +151,7 @@ class GenreListViewModel @Inject constructor(
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.genreCategories.isEmpty()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isRevalidating = true) }
-            repository.observeGenreCategories(dataSourceType, revalidate = true)
+            repository.observeGenreCategories(dataSourceType, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit

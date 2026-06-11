@@ -248,11 +248,10 @@ class MovieListViewModel @Inject constructor(
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.movies.isEmpty()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isRevalidating = true) }
             val flow = if (genreUrl != null) {
-                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = true)
+                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = false)
             } else {
-                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = true)
+                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = false)
             }
             flow.collect { event ->
                 when (event) {
