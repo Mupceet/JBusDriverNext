@@ -111,7 +111,7 @@ fun LinkMovieListScreen(
             val result = snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "刷新",
-                duration = SnackbarDuration.Short
+                duration = SnackbarDuration.Indefinite
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshResult()

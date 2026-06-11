@@ -19,15 +19,13 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
 
-// TODO: remove after testing cache refresh UX — 随机删除前几项，模拟数据变化
+// TODO: remove after testing cache refresh UX — 随机删除前 1~2 项，模拟数据变化
 private fun <T> List<T>.shuffledForTesting(): List<T> {
     if (size < 3) return this
     val result = toMutableList()
-    val ops = (1..2).random()
-    repeat(ops) {
+    repeat((1..2).random()) {
         if (result.size <= 2) return@repeat
-        val idx = (0 until minOf(3, result.size - 1)).random()
-        result.removeAt(idx)
+        result.removeAt(0)
     }
     return result
 }
@@ -106,7 +104,7 @@ class ActressListViewModel @Inject constructor(
         }
         dataSourceType = type
         currentPage = 0
-        _uiState.update { it.copy(isRefreshing = true, hasMore = true, error = null) }
+        _uiState.value = ActressListUiState()
         loadFirstPage()
     }
 

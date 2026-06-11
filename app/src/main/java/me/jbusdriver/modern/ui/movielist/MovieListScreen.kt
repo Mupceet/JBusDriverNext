@@ -3,6 +3,10 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
@@ -17,11 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
@@ -44,6 +50,9 @@ fun MovieListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(dataSourceType, active) {
         if (active) {
@@ -64,10 +73,14 @@ fun MovieListScreen(
             val result = snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "刷新",
-                duration = SnackbarDuration.Short
+                duration = SnackbarDuration.Indefinite
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshResult()
+                scope.launch {
+                    if (isGrid == true) gridState.animateScrollToItem(0)
+                    else listState.animateScrollToItem(0)
+                }
             }
             viewModel.consumeRefreshMessage()
         }
@@ -114,7 +127,9 @@ fun MovieListScreen(
                         compact = compact,
                         isCollected = isCollected,
                         onToggleCollect = onToggleCollect,
-                        header = filterBar
+                        header = filterBar,
+                        gridState = gridState,
+                        listState = listState
                     )
 
                     if (uiState.isRevalidating && uiState.movies.isNotEmpty()) {
