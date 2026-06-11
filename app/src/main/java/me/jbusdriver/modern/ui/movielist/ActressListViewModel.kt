@@ -119,7 +119,7 @@ class ActressListViewModel @Inject constructor(
                             hasContent = true
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
+                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
                                     pageInfo = event.entry.value.second,
                                     isLoading = false,
                                     isRefreshing = false,
@@ -133,7 +133,7 @@ class ActressListViewModel @Inject constructor(
                         is CachedLoadEvent.Fresh -> {
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
+                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
                                     pageInfo = event.entry.value.second,
                                     isLoading = false,
                                     isRefreshing = false,
@@ -174,7 +174,7 @@ class ActressListViewModel @Inject constructor(
                         is CachedLoadEvent.Fresh -> {
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
+                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
                                     pageInfo = event.entry.value.second,
                                     isRefreshing = false,
                                     hasMore = event.entry.value.second.hasNext

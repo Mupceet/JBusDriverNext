@@ -148,7 +148,7 @@ class MovieListViewModel @Inject constructor(
         currentPage = 1
         _uiState.update {
             it.copy(
-                movies = pending.movies.map { m -> m.toUiModel() },
+                movies = pending.movies.shuffledForTesting().map { m -> m.toUiModel() },
                 pageInfo = pending.pageInfo,
                 hasMore = pending.pageInfo.hasNext,
                 filterInfo = pending.filterInfo,
@@ -180,7 +180,7 @@ class MovieListViewModel @Inject constructor(
                         hasContent = true
                         _uiState.update {
                             it.copy(
-                                movies = event.entry.value.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                movies = event.entry.value.movies.map { m -> m.toUiModel() },
                                 pageInfo = event.entry.value.pageInfo,
                                 filterInfo = event.entry.value.filterInfo,
                                 isLoading = false,
@@ -196,7 +196,7 @@ class MovieListViewModel @Inject constructor(
                         if (isAtTopForFreshUpdates) {
                             _uiState.update {
                                 it.copy(
-                                    movies = event.entry.value.movies.map { m -> m.toUiModel() },
+                                    movies = event.entry.value.movies.shuffledForTesting().map { m -> m.toUiModel() },
                                     pageInfo = event.entry.value.pageInfo,
                                     filterInfo = event.entry.value.filterInfo,
                                     isLoading = false,

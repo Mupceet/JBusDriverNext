@@ -104,7 +104,7 @@ class GenreListViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
+                            val categories = event.entry.value.map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
@@ -116,7 +116,7 @@ class GenreListViewModel @Inject constructor(
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.map { it.toUiModel() }
+                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
@@ -154,7 +154,7 @@ class GenreListViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.map { it.toUiModel() }
+                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,

@@ -161,7 +161,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
         currentPage = 1
         _uiState.update {
             it.copy(
-                movies = pending.movies.map { m -> m.toUiModel() },
+                movies = pending.movies.shuffledForTesting().map { m -> m.toUiModel() },
                 pageInfo = pending.pageInfo,
                 hasMore = pending.pageInfo.hasNext,
                 filterInfo = pending.filterInfo,
@@ -190,7 +190,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                             val result = event.entry.value
                             _uiState.update { state ->
                                 state.copy(
-                                    movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                    movies = result.movies.map { m -> m.toUiModel() },
                                     pageInfo = result.pageInfo,
                                     isLoading = false,
                                     isFilterSwitching = false,
@@ -210,7 +210,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                             if (isAtTopForFreshUpdates) {
                                 _uiState.update { state ->
                                     state.copy(
-                                        movies = result.movies.map { m -> m.toUiModel() },
+                                        movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
                                         pageInfo = result.pageInfo,
                                         isLoading = false,
                                         isFilterSwitching = false,
