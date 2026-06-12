@@ -33,9 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -76,6 +74,7 @@ import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -162,11 +161,7 @@ fun ForumThreadDetailScreen(
             )
         }
     , snackbarHost = {
-        SnackbarHost(hostState = snackbarHostState) { data ->
-            Snackbar(
-                snackbarData = data,
-            )
-        }
+        ThemedSnackbarHost(hostState = snackbarHostState)
     }
     ) { innerPadding ->
         Box(modifier = Modifier
@@ -313,7 +308,7 @@ fun ForumThreadDetailScreen(
                         val result = snackbarHostState.showSnackbar(
                             message = state.refreshMessage ?: "有新數據",
                             actionLabel = "刷新",
-                            duration = SnackbarDuration.Indefinite
+                            duration = SnackbarDuration.Long
                         )
                         if (result == SnackbarResult.ActionPerformed) {
                             viewModel.applyPendingFreshDetail()

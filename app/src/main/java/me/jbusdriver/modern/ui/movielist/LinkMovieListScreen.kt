@@ -61,6 +61,7 @@ import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 
 /**
  * 关联链接影片列表页面。
@@ -131,7 +132,7 @@ fun LinkMovieListScreen(
             val result = snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "刷新",
-                duration = SnackbarDuration.Indefinite
+                duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshResult()
@@ -153,7 +154,7 @@ fun LinkMovieListScreen(
 
     Scaffold(
         snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
+            ThemedSnackbarHost(hostState = snackbarHostState)
         },
         topBar = {
             TopAppBar(

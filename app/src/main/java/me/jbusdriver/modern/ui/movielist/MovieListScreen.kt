@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
@@ -87,7 +88,7 @@ fun MovieListScreen(
             val result = snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "刷新",
-                duration = SnackbarDuration.Indefinite
+                duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshResult()
@@ -154,7 +155,7 @@ fun MovieListScreen(
                         )
                     }
 
-                    SnackbarHost(
+                    ThemedSnackbarHost(
                         hostState = snackbarHostState,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )

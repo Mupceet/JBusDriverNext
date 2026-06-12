@@ -30,6 +30,7 @@ import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 
 /**
  * 演员列表页面。
@@ -78,7 +79,7 @@ fun ActressListScreen(
             val result = snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "刷新",
-                duration = SnackbarDuration.Indefinite
+                duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshActresses()
@@ -125,7 +126,7 @@ fun ActressListScreen(
                         )
                     }
 
-                    SnackbarHost(
+                    ThemedSnackbarHost(
                         hostState = snackbarHostState,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )

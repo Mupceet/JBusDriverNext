@@ -27,9 +27,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -89,7 +88,7 @@ fun ForumBoardsScreen(
     ) {
         LaunchedEffect(state.refreshMessage) {
             state.refreshMessage?.let {
-                snackbarHostState.showSnackbar(message = it, duration = androidx.compose.material3.SnackbarDuration.Short)
+                snackbarHostState.showSnackbar(message = it, duration = androidx.compose.material3.SnackbarDuration.Long)
                 viewModel.consumeRefreshMessage()
             }
         }
@@ -130,7 +129,7 @@ fun ForumBoardsScreen(
                     .align(Alignment.TopCenter)
             )
         }
-        SnackbarHost(
+        ThemedSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
