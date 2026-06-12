@@ -203,11 +203,14 @@ class ActressListViewModel @Inject constructor(
                             val fresh = event.entry.value.copy(
                                 first = event.entry.value.first.simulateCacheRefreshChange()
                             )
+                            val freshUiModels = fresh.first.map { it.toActressUiModel() }
+                            val oldFirstPage = _uiState.value.actresses.take(freshUiModels.size)
+                            val hasChanged = oldFirstPage != freshUiModels
                             if (isAtTopForFreshUpdates) {
                                 currentPage = 1
                                 _uiState.update {
                                     it.copy(
-                                        actresses = fresh.first.map { actress -> actress.toActressUiModel() },
+                                        actresses = freshUiModels,
                                         pageInfo = fresh.second,
                                         hasMore = fresh.second.hasNext,
                                         isRevalidating = false,
@@ -216,7 +219,7 @@ class ActressListViewModel @Inject constructor(
                                         lastUpdatedAtMillis = event.entry.storedAtMillis
                                     )
                                 }
-                            } else {
+                            } else if (hasChanged) {
                                 _uiState.update {
                                     it.copy(
                                         isRevalidating = false,
@@ -224,6 +227,8 @@ class ActressListViewModel @Inject constructor(
                                         refreshMessage = "有新數據"
                                     )
                                 }
+                            } else {
+                                _uiState.update { it.copy(isRevalidating = false) }
                             }
                         }
                         is CachedLoadEvent.Failure -> {

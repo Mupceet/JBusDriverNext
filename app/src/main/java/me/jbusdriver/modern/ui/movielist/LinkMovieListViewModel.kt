@@ -284,11 +284,14 @@ class LinkMovieListViewModel @AssistedInject constructor(
                             val fresh = event.entry.value.copy(
                                 movies = event.entry.value.movies.simulateCacheRefreshChange()
                             )
+                            val freshUiModels = fresh.movies.map { it.toUiModel() }
+                            val oldFirstPage = _uiState.value.movies.take(freshUiModels.size)
+                            val hasChanged = oldFirstPage != freshUiModels
                             if (isAtTopForFreshUpdates) {
                                 currentPage = 1
                                 _uiState.update {
                                     it.copy(
-                                        movies = fresh.movies.map { movie -> movie.toUiModel() },
+                                        movies = freshUiModels,
                                         pageInfo = fresh.pageInfo,
                                         hasMore = fresh.pageInfo.hasNext,
                                         filterInfo = fresh.filterInfo,
@@ -298,7 +301,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                         lastUpdatedAtMillis = event.entry.storedAtMillis
                                     )
                                 }
-                            } else {
+                            } else if (hasChanged) {
                                 _uiState.update {
                                     it.copy(
                                         isRevalidating = false,
@@ -306,6 +309,8 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                         refreshMessage = "有新數據"
                                     )
                                 }
+                            } else {
+                                _uiState.update { it.copy(isRevalidating = false) }
                             }
                         }
                         is CachedLoadEvent.Failure -> {

@@ -126,7 +126,6 @@ fun ForumThreadListScreen(
         SnackbarHost(hostState = snackbarHostState) { data ->
             Snackbar(
                 snackbarData = data,
-                modifier = Modifier.padding(12.dp)
             )
         }
     }
@@ -234,8 +233,8 @@ fun ForumThreadListScreen(
             LaunchedEffect(state.pendingFreshThreads) {
                 if (state.pendingFreshThreads != null) {
                     val result = snackbarHostState.showSnackbar(
-                        message = state.refreshMessage ?: "Post updated",
-                        actionLabel = "Refresh",
+                        message = state.refreshMessage ?: "有新數據",
+                        actionLabel = "刷新",
                         duration = SnackbarDuration.Indefinite
                     )
                     if (result == SnackbarResult.ActionPerformed) {

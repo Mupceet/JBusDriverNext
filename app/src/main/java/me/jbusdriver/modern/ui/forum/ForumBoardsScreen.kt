@@ -87,13 +87,6 @@ fun ForumBoardsScreen(
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize()
     ) {
-        if (state.isRevalidating && state.groups.isNotEmpty()) {
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-            )
-        }
         LaunchedEffect(state.refreshMessage) {
             state.refreshMessage?.let {
                 snackbarHostState.showSnackbar(message = it, duration = androidx.compose.material3.SnackbarDuration.Short)
@@ -130,11 +123,16 @@ fun ForumBoardsScreen(
                 }
             }
         }
+        if (state.isRevalidating && state.groups.isNotEmpty()) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            )
+        }
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp)
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
 }

@@ -20,7 +20,43 @@ import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
+import me.jbusdriver.modern.KLog
 import javax.inject.Inject
+
+private const val TAG = "MovieListVM"
+
+private fun logMovieDiff(oldMovies: List<MovieUiModel>, newMovies: List<MovieUiModel>, context: String) {
+    val oldMap = oldMovies.associateBy { it.code }
+    val newMap = newMovies.associateBy { it.code }
+    val added = newMovies.filter { it.code !in oldMap }
+    val removed = oldMovies.filter { it.code !in newMap }
+    val changed = newMovies.filter { newM ->
+        val oldM = oldMap[newM.code]
+        oldM != null && oldM != newM
+    }
+    KLog.d("[$context] old=${oldMovies.size}, new=${newMovies.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", TAG)
+    if (added.isNotEmpty()) {
+        KLog.d("[$context] +新增: ${added.map { "${it.code}:${it.title.take(15)}" }}", TAG)
+    }
+    if (removed.isNotEmpty()) {
+        KLog.d("[$context] -移除: ${removed.map { "${it.code}:${it.title.take(15)}" }}", TAG)
+    }
+    if (changed.isNotEmpty()) {
+        changed.forEach { newM ->
+            val oldM = oldMap[newM.code]!!
+            val diffs = buildList {
+                if (oldM.title != newM.title) add("title改變")
+                if (oldM.imageUrl != newM.imageUrl) add("cover改變")
+                if (oldM.date != newM.date) add("date:${oldM.date}→${newM.date}")
+                if (oldM.tags != newM.tags) add("tags改變")
+            }
+            KLog.d("[$context] ~變動 code=${newM.code} ${diffs.joinToString()}", TAG)
+        }
+    }
+    if (added.isEmpty() && removed.isEmpty() && changed.isEmpty()) {
+        KLog.d("[$context] 數據完全一致，無任何變化", TAG)
+    }
+}
 
 /**
  * 电影列表页的 UI 状态。
@@ -138,6 +174,8 @@ class MovieListViewModel @Inject constructor(
      */
     fun applyPendingFreshResult() {
         val pending = _uiState.value.pendingFreshResult ?: return
+        val pendingUiModels = pending.movies.map { m -> m.toUiModel() }
+        logMovieDiff(_uiState.value.movies, pendingUiModels, "MovieList.applyPending")
         currentPage = 1
         _uiState.update {
             it.copy(
@@ -189,9 +227,11 @@ class MovieListViewModel @Inject constructor(
                     }
                     is CachedLoadEvent.Fresh -> {
                         // loadFirstPage 仅在列表为空时调用，直接应用
+                        val freshMovies = event.entry.value.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() }
+                        logMovieDiff(_uiState.value.movies, freshMovies, "MovieList.loadFirstPage")
                         _uiState.update {
                             it.copy(
-                                movies = event.entry.value.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() },
+                                movies = freshMovies,
                                 pageInfo = event.entry.value.pageInfo,
                                 filterInfo = event.entry.value.filterInfo,
                                 isLoading = false,
@@ -246,6 +286,11 @@ class MovieListViewModel @Inject constructor(
                         val fresh = event.entry.value.copy(
                             movies = event.entry.value.movies.simulateCacheRefreshChange()
                         )
+                        val freshUiModels = fresh.movies.map { it.toUiModel() }
+                        val oldMovies = _uiState.value.movies
+                        val oldFirstPage = oldMovies.take(freshUiModels.size)
+                        val hasChanged = oldFirstPage != freshUiModels
+                        logMovieDiff(oldFirstPage, freshUiModels, "MovieList.revalidate")
                         if (isAtTopForFreshUpdates) {
                             currentPage = 1
                             _uiState.update {
@@ -260,7 +305,7 @@ class MovieListViewModel @Inject constructor(
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
                             }
-                        } else {
+                        } else if (hasChanged) {
                             _uiState.update {
                                 it.copy(
                                     isRevalidating = false,
@@ -268,6 +313,8 @@ class MovieListViewModel @Inject constructor(
                                     refreshMessage = "有新數據"
                                 )
                             }
+                        } else {
+                            _uiState.update { it.copy(isRevalidating = false) }
                         }
                     }
                     is CachedLoadEvent.Failure -> {
