@@ -23,6 +23,12 @@ import me.jbusdriver.modern.data.DefaultSearchRepository
 import me.jbusdriver.modern.data.DefaultSearchHistoryStore
 import me.jbusdriver.modern.data.ForumSessionClient
 import me.jbusdriver.modern.data.ForumRepository
+import me.jbusdriver.modern.data.ForumSettingsReader
+import me.jbusdriver.modern.data.GifLoadTracker
+import me.jbusdriver.modern.data.LabSettingsStore
+import me.jbusdriver.modern.data.LoadedGifTracker
+import me.jbusdriver.modern.data.ForumCookiePersister
+import me.jbusdriver.modern.data.ForumSessionManager
 import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
 import me.jbusdriver.modern.data.MovieRepository
@@ -106,6 +112,12 @@ abstract class DataModule {
 
     @Binds
     @Singleton
+    abstract fun bindForumCookiePersister(
+        impl: ForumSessionManager
+    ): ForumCookiePersister
+
+    @Binds
+    @Singleton
     abstract fun bindForumSessionClient(
         impl: DefaultForumSessionClient
     ): ForumSessionClient
@@ -121,4 +133,16 @@ abstract class DataModule {
     abstract fun bindMagnetRepository(
         impl: DefaultMagnetRepository
     ): MagnetRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindForumSettingsReader(
+        impl: LabSettingsStore
+    ): ForumSettingsReader
+
+    @Binds
+    @Singleton
+    abstract fun bindLoadedGifTracker(
+        impl: GifLoadTracker
+    ): LoadedGifTracker
 }

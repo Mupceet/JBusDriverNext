@@ -21,7 +21,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,11 +70,12 @@ fun MovieList(
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
-    header: (@Composable () -> Unit)? = null
+    header: (@Composable () -> Unit)? = null,
+    gridState: LazyGridState = rememberLazyGridState(),
+    listState: LazyListState = rememberLazyListState()
 ) {
     val useGrid = isGrid ?: false
     if (useGrid) {
-        val gridState = rememberLazyGridState()
         val scope = rememberCoroutineScope()
         val showScrollToTop = rememberScrollToTopVisibility(gridState)
 
@@ -121,11 +124,10 @@ fun MovieList(
                 onClick = { scope.launch { gridState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = 64.dp)
             )
         }
     } else {
-        val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
         val showScrollToTop = rememberScrollToTopVisibility(listState)
 
@@ -181,7 +183,7 @@ fun MovieList(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = 64.dp)
             )
         }
     }

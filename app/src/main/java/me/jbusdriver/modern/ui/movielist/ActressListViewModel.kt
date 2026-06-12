@@ -4,15 +4,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
@@ -36,13 +40,22 @@ data class ActressListUiState(
     /** 是否还有更多数据可加载 */
     val hasMore: Boolean = true,
     /** 错误信息，正常时为 null */
-    val error: String? = null
+    val error: String? = null,
+    /** 后台刷新中（有缓存数据时显示顶部进度条） */
+    val isRevalidating: Boolean = false,
+    /** 缓存数据的时间戳 */
+    val lastUpdatedAtMillis: Long? = null,
+    /** 后台刷新获得的新数据，等待用户应用 */
+    val pendingFreshActresses: Pair<List<ActressInfo>, PageInfo>? = null,
+    /** 轻量刷新反馈消息（Snackbar） */
+    val refreshMessage: String? = null
 )
 
 /**
  * 女优列表页 ViewModel。
  *
  * 职责：管理按分类分页加载女优列表，支持下拉刷新和加载更多。
+ * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后提示用户更新。
  *
  * 使用场景：在主界面的女优列表 Tab 页面中使用，通过 Hilt 注入。
  * 用户切换女优分类标签时切换数据源，支持分页加载和下拉刷新。
@@ -67,48 +80,162 @@ class ActressListViewModel @Inject constructor(
 
     /** 当前的数据源类型（默认为女优分类） */
     private var dataSourceType: DataSourceType = DataSourceType.ACTRESSES
+    private var isAtTopForFreshUpdates: Boolean = true
+    private var firstPageJob: Job? = null
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
 
     /**
      * 设置数据源类型并重新加载列表。
      *
-     * 如果类型未变化且列表中已有数据，则跳过重复加载。
-     * 重置页码和 UI 状态后自动调用 [loadFirstPage]。
+     * 如果类型未变化且列表中已有数据，则触发后台 revalidate。
      *
      * @param type 数据源类型，如 [DataSourceType.ACTRESSES] 等
      */
     fun setDataSourceType(type: DataSourceType) {
-        if (dataSourceType == type && _uiState.value.actresses.isNotEmpty()) return
+        if (dataSourceType == type && _uiState.value.actresses.isNotEmpty()) {
+            return
+        }
         dataSourceType = type
         currentPage = 0
-        _uiState.update { it.copy(isRefreshing = true, hasMore = true, error = null) }
+        _uiState.value = ActressListUiState()
         loadFirstPage()
     }
 
     /**
-     * 加载女优列表的第一页数据。
+     * 应用后台刷新获得的待定数据。
      *
-     * 如果已在加载中则跳过。加载完成后更新分页信息和是否有更多数据的状态。
+     * 重置为第 1 页数据，用户需要重新加载更多。
+     */
+    fun applyPendingFreshActresses() {
+        val pending = _uiState.value.pendingFreshActresses ?: return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                actresses = pending.first.map { a -> a.toActressUiModel() },
+                pageInfo = pending.second,
+                hasMore = pending.second.hasNext,
+                pendingFreshActresses = null,
+                refreshMessage = null
+            )
+        }
+    }
+
+    /**
+     * 加载女优列表的第一页数据（stale-while-revalidate）。
+     *
+     * 先显示缓存数据，再后台刷新。仅在列表为空时调用，Fresh 数据直接应用。
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val result = repository.loadActresses(dataSourceType, 1)
-                _uiState.update {
-                    it.copy(
-                        actresses = result.first.map { a -> a.toActressUiModel() },
-                        pageInfo = result.second,
-                        isLoading = false,
-                        isRefreshing = false,
-                        hasMore = result.second.hasNext,
-                        error = if (result.first.isEmpty()) "沒有數據" else null
-                    )
+        firstPageJob?.cancel()
+        firstPageJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observeActresses(dataSourceType, 1, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            _uiState.update {
+                                it.copy(
+                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
+                                    pageInfo = event.entry.value.second,
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    hasMore = event.entry.value.second.hasNext,
+                                    error = if (event.entry.value.first.isEmpty()) "沒有數據" else null,
+                                    isRevalidating = event.entry.isExpired,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            // loadFirstPage 仅在列表为空时调用，直接应用
+                            _uiState.update {
+                                it.copy(
+                                    actresses = event.entry.value.first.simulateCacheRefreshChange().map { a -> a.toActressUiModel() },
+                                    pageInfo = event.entry.value.second,
+                                    isLoading = false,
+                                    isRefreshing = false,
+                                    isRevalidating = false,
+                                    hasMore = event.entry.value.second.hasNext,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRefreshing = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isRefreshing = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
+        }
+    }
+
+    /**
+     * 后台重新验证数据（Tab 切换回来或从后台恢复时触发）。
+     *
+     * 根据 TTL 判断是否需要网络请求。缓存过期时走 pending + Snackbar，
+     * 避免已加载多页时直接替换导致跳位和加载更多失效。
+     */
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.isRevalidating || state.isLoading || state.isRefreshing) return
+        if (state.actresses.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeActresses(dataSourceType, 1, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val fresh = event.entry.value.copy(
+                                first = event.entry.value.first.simulateCacheRefreshChange()
+                            )
+                            val freshUiModels = fresh.first.map { it.toActressUiModel() }
+                            val oldFirstPage = _uiState.value.actresses.take(freshUiModels.size)
+                            val hasChanged = oldFirstPage != freshUiModels
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        actresses = freshUiModels,
+                                        pageInfo = fresh.second,
+                                        hasMore = fresh.second.hasNext,
+                                        isRevalidating = false,
+                                        pendingFreshActresses = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else if (hasChanged) {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshActresses = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                            } else {
+                                _uiState.update { it.copy(isRevalidating = false) }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
+                    }
+                }
         }
     }
 
@@ -120,29 +247,38 @@ class ActressListViewModel @Inject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         currentPage = 1
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val result = repository.loadActresses(dataSourceType, 1, forceRefresh = true)
-                _uiState.update {
-                    it.copy(
-                        actresses = result.first.map { a -> a.toActressUiModel() },
-                        pageInfo = result.second,
-                        isRefreshing = false,
-                        hasMore = result.second.hasNext
-                    )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observeActresses(dataSourceType, 1, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
+                                    pageInfo = event.entry.value.second,
+                                    isRefreshing = false,
+                                    hasMore = event.entry.value.second.hasNext
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.actresses.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
+                                    refreshMessage = if (it.actresses.isNotEmpty()) "刷新失敗" else null
+                                )
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
-            }
         }
     }
 
     /**
      * 加载下一页女优数据，追加到现有列表末尾。
-     *
-     * 如果正在加载、没有更多数据或下一页码不大于当前页码则跳过。
-     * 加载失败时回退页码计数器。
      */
     fun loadMore() {
         val state = _uiState.value
@@ -168,5 +304,10 @@ class ActressListViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
             }
         }
+    }
+
+    /** 消费轻量刷新消息（Snackbar） */
+    fun consumeRefreshMessage() {
+        _uiState.update { it.copy(refreshMessage = null) }
     }
 }

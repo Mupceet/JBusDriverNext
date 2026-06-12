@@ -7,13 +7,17 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
+import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -57,7 +61,15 @@ data class LinkMovieListUiState(
     /** 是否正在切换筛选条件（保留旧列表，显示顶部刷新指示器） */
     val isFilterSwitching: Boolean = false,
     /** 从页面加载的真实标题（外部链接打开时使用） */
-    val resolvedTitle: String? = null
+    val resolvedTitle: String? = null,
+    /** 后台刷新中（有缓存数据时显示顶部进度条） */
+    val isRevalidating: Boolean = false,
+    /** 缓存数据的时间戳 */
+    val lastUpdatedAtMillis: Long? = null,
+    /** 后台刷新获得的新数据，等待用户应用 */
+    val pendingFreshResult: MoviePageResult? = null,
+    /** 轻量刷新反馈消息（Snackbar） */
+    val refreshMessage: String? = null
 )
 
 /**
@@ -65,6 +77,7 @@ data class LinkMovieListUiState(
  *
  * 职责：管理通过 URL 链接加载电影列表（如女优关联影片、分类关联影片），
  * 支持分页加载、下拉刷新、女优详情展示和女优收藏状态切换。
+ * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后无缝更新。
  *
  * 使用场景：在从女优或分类页面点击进入关联电影列表时使用，通过 Hilt 注入。
  * 当链接类型为女优时，会额外加载女优详情信息并支持收藏操作。
@@ -97,6 +110,12 @@ class LinkMovieListViewModel @AssistedInject constructor(
 
     /** 列表类型，如 "actress" 表示女优关联影片 */
     private var listType: String = ""
+    private var isAtTopForFreshUpdates: Boolean = true
+    private var firstPageJob: Job? = null
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
 
     /**
      * 设置链接 URL 并加载关联电影列表。
@@ -124,41 +143,90 @@ class LinkMovieListViewModel @AssistedInject constructor(
     }
 
     /**
-     * 加载关联电影列表的第一页数据。
+     * 应用后台刷新获得的待定数据。
+     */
+    fun applyPendingFreshResult() {
+        val pending = _uiState.value.pendingFreshResult ?: return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                movies = pending.movies.map { m -> m.toUiModel() },
+                pageInfo = pending.pageInfo,
+                hasMore = pending.pageInfo.hasNext,
+                filterInfo = pending.filterInfo,
+                pendingFreshResult = null,
+                refreshMessage = null
+            )
+        }
+    }
+
+    /**
+     * 加载关联电影列表的第一页数据（stale-while-revalidate）。
      *
-     * 如果已在加载中或 URL 为空则跳过。加载完成后更新分页信息和是否有更多数据的状态。
+     * 先显示缓存数据，再后台刷新。如果已在加载中或 URL 为空则跳过。
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading || linkUrl.isBlank()) return
         currentPage = 1
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val result = repository.loadPageByUrl(linkUrl, 1, showAll = _uiState.value.showAll)
-                _uiState.update { state ->
-                    state.copy(
-                        movies = result.movies.map { m -> m.toUiModel() },
-                        pageInfo = result.pageInfo,
-                        isLoading = false,
-                        isFilterSwitching = false,
-                        hasMore = result.pageInfo.hasNext,
-                        error = if (result.movies.isEmpty()) "沒有數據" else null,
-                        filterInfo = result.filterInfo,
-                        resolvedTitle = result.filterInfo?.let {
-                            if (it.breadcrumbType != null && it.breadcrumbName != null) {
-                                val typeLabel = when (it.breadcrumbType) {
-                                    "女優" -> "演員"
-                                    "有碼類別", "無碼類別" -> "類別"
-                                    else -> it.breadcrumbType
-                                }
-                                "$typeLabel: ${it.breadcrumbName}"
-                            } else null
+        firstPageJob?.cancel()
+        firstPageJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            val result = event.entry.value
+                            _uiState.update { state ->
+                                state.copy(
+                                    movies = result.movies.map { m -> m.toUiModel() },
+                                    pageInfo = result.pageInfo,
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    hasMore = result.pageInfo.hasNext,
+                                    error = if (result.movies.isEmpty()) "沒有數據" else null,
+                                    filterInfo = result.filterInfo,
+                                    isRevalidating = event.entry.isExpired,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis,
+                                    resolvedTitle = result.filterInfo?.let {
+                                        resolveBreadcrumbTitle(it)
+                                    } ?: state.resolvedTitle
+                                )
+                            }
                         }
-                    )
+                        is CachedLoadEvent.Fresh -> {
+                            // loadFirstPage 仅在列表为空时调用，直接应用
+                            val result = event.entry.value
+                            _uiState.update { state ->
+                                state.copy(
+                                    movies = result.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() },
+                                    pageInfo = result.pageInfo,
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    isRevalidating = false,
+                                    hasMore = result.pageInfo.hasNext,
+                                    filterInfo = result.filterInfo,
+                                    pendingFreshResult = null,
+                                    refreshMessage = null,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis,
+                                    resolvedTitle = result.filterInfo?.let {
+                                        resolveBreadcrumbTitle(it)
+                                    } ?: state.resolvedTitle
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, isFilterSwitching = false, error = e.message ?: "載入失敗") }
-            }
         }
     }
 
@@ -196,6 +264,64 @@ class LinkMovieListViewModel @AssistedInject constructor(
     }
 
     /**
+     * 后台重新验证数据（从后台恢复时触发）。
+     *
+     * 根据 TTL 判断，缓存过期时一律走 pending + Snackbar。
+     */
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.isRevalidating || state.isLoading || state.isRefreshing) return
+        if (state.movies.isEmpty() || linkUrl.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val fresh = event.entry.value.copy(
+                                movies = event.entry.value.movies.simulateCacheRefreshChange()
+                            )
+                            val freshUiModels = fresh.movies.map { it.toUiModel() }
+                            val oldFirstPage = _uiState.value.movies.take(freshUiModels.size)
+                            val hasChanged = oldFirstPage != freshUiModels
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        movies = freshUiModels,
+                                        pageInfo = fresh.pageInfo,
+                                        hasMore = fresh.pageInfo.hasNext,
+                                        filterInfo = fresh.filterInfo,
+                                        isRevalidating = false,
+                                        pendingFreshResult = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else if (hasChanged) {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshResult = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                            } else {
+                                _uiState.update { it.copy(isRevalidating = false) }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
+                    }
+                }
+        }
+    }
+
+    /**
      * 下拉刷新关联电影列表和女优详情。
      *
      * 强制从网络重新获取第一页数据，忽略缓存。
@@ -205,21 +331,33 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (_uiState.value.isRefreshing || linkUrl.isBlank()) return
         currentPage = 1
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val result = repository.loadPageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, forceRefresh = true)
-                _uiState.update {
-                    it.copy(
-                        movies = result.movies.map { m -> m.toUiModel() },
-                        pageInfo = result.pageInfo,
-                        isRefreshing = false,
-                        hasMore = result.pageInfo.hasNext,
-                        filterInfo = result.filterInfo
-                    )
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    movies = event.entry.value.movies.map { m -> m.toUiModel() },
+                                    pageInfo = event.entry.value.pageInfo,
+                                    isRefreshing = false,
+                                    hasMore = event.entry.value.pageInfo.hasNext,
+                                    filterInfo = event.entry.value.filterInfo
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.movies.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
+                                    refreshMessage = if (it.movies.isNotEmpty()) "刷新失敗" else null
+                                )
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
-            }
         }
         if (listType == "actress" && linkUrl.isNotBlank()) {
             loadActressDetail(forceRefresh = true)
@@ -292,6 +430,24 @@ class LinkMovieListViewModel @AssistedInject constructor(
         _uiState.update { it.copy(showAll = newState, isFilterSwitching = true) }
         currentPage = 0
         loadFirstPage()
+    }
+
+    /** 消费轻量刷新消息（Snackbar） */
+    fun consumeRefreshMessage() {
+        _uiState.update { it.copy(refreshMessage = null) }
+    }
+
+    private fun resolveBreadcrumbTitle(filterInfo: MovieFilterInfo): String? {
+        return filterInfo.let {
+            if (it.breadcrumbType != null && it.breadcrumbName != null) {
+                val typeLabel = when (it.breadcrumbType) {
+                    "女優" -> "演員"
+                    "有碼類別", "無碼類別" -> "類別"
+                    else -> it.breadcrumbType
+                }
+                "$typeLabel: ${it.breadcrumbName}"
+            } else null
+        }
     }
 
     @AssistedFactory

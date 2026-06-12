@@ -2,21 +2,37 @@ package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
@@ -25,7 +41,7 @@ import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 @Composable
 fun MovieListScreen(
     modifier: Modifier = Modifier,
-    dataSourceType: DataSourceType = DataSourceType.CENSORED,
+    dataSourceType: DataSourceType? = DataSourceType.CENSORED,
     active: Boolean = true,
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     compact: Boolean = false,
@@ -35,10 +51,53 @@ fun MovieListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val isAtTop by remember(isGrid) {
+        derivedStateOf {
+            if (isGrid == true) {
+                gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 20
+            } else {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 20
+            }
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        viewModel.setAtTopForFreshUpdates(isAtTop)
+    }
 
     LaunchedEffect(dataSourceType, active) {
-        if (active) {
+        if (active && dataSourceType != null) {
             viewModel.setDataSourceType(dataSourceType)
+        }
+    }
+
+    // 从后台恢复时触发 revalidate
+    LifecycleResumeEffect(active) {
+        if (active && uiState.movies.isNotEmpty()) {
+            viewModel.revalidate()
+        }
+        onPauseOrDispose { }
+    }
+
+    LaunchedEffect(uiState.refreshMessage) {
+        uiState.refreshMessage?.let { message ->
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = "刷新",
+                duration = SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.applyPendingFreshResult()
+                scope.launch {
+                    if (isGrid == true) gridState.animateScrollToItem(0)
+                    else listState.animateScrollToItem(0)
+                }
+            }
+            viewModel.consumeRefreshMessage()
         }
     }
 
@@ -62,28 +121,45 @@ fun MovieListScreen(
             }
 
             else -> {
-                val filterBar: (@Composable () -> Unit)? = uiState.filterInfo?.let { info ->
-                    {
-                        MovieFilterBar(
-                            magnetCount = info.magnetCount,
-                            totalCount = info.totalCount,
-                            showAll = uiState.showAll,
-                            onToggle = { viewModel.toggleShowAll() }
+                Box(Modifier.fillMaxSize()) {
+                    val filterBar: (@Composable () -> Unit)? = uiState.filterInfo?.let { info ->
+                        {
+                            MovieFilterBar(
+                                magnetCount = info.magnetCount,
+                                totalCount = info.totalCount,
+                                showAll = uiState.showAll,
+                                onToggle = { viewModel.toggleShowAll() }
+                            )
+                        }
+                    }
+                    MovieList(
+                        movies = uiState.movies,
+                        hasMore = uiState.hasMore,
+                        isLoadingMore = uiState.isLoadingMore,
+                        onLoadMore = { viewModel.loadMore() },
+                        onMovieClick = onMovieClick,
+                        isGrid = isGrid,
+                        compact = compact,
+                        isCollected = isCollected,
+                        onToggleCollect = onToggleCollect,
+                        header = filterBar,
+                        gridState = gridState,
+                        listState = listState
+                    )
+
+                    if (uiState.isRevalidating && uiState.movies.isNotEmpty()) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
                         )
                     }
+
+                    ThemedSnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
                 }
-                MovieList(
-                    movies = uiState.movies,
-                    hasMore = uiState.hasMore,
-                    isLoadingMore = uiState.isLoadingMore,
-                    onLoadMore = { viewModel.loadMore() },
-                    onMovieClick = onMovieClick,
-                    isGrid = isGrid,
-                    compact = compact,
-                    isCollected = isCollected,
-                    onToggleCollect = onToggleCollect,
-                    header = filterBar
-                )
             }
         }
     }

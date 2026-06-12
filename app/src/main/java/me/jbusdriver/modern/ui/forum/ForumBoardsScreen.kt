@@ -27,6 +27,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.SnackbarHostState
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -51,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
@@ -68,13 +72,26 @@ fun ForumBoardsScreen(
     onThreadClick: (Int) -> Unit
 ) {
     val viewModel: ForumBoardsViewModel = hiltViewModel()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LifecycleResumeEffect(Unit) {
+        if (state.groups.isNotEmpty()) viewModel.revalidate()
+        onPauseOrDispose { }
+    }
 
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize()
     ) {
+        LaunchedEffect(state.refreshMessage) {
+            state.refreshMessage?.let {
+                snackbarHostState.showSnackbar(message = it, duration = androidx.compose.material3.SnackbarDuration.Long)
+                viewModel.consumeRefreshMessage()
+            }
+        }
         if (state.groups.isNotEmpty()) {
             ForumHomeContent(
                 state = state,
@@ -105,6 +122,17 @@ fun ForumBoardsScreen(
                 }
             }
         }
+        if (state.isRevalidating && state.groups.isNotEmpty()) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+            )
+        }
+        ThemedSnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 

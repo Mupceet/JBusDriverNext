@@ -33,6 +33,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -58,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -70,6 +74,7 @@ import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,6 +94,12 @@ fun ForumThreadDetailScreen(
     val detail = state.detail
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LifecycleResumeEffect(Unit) {
+        if (state.detail != null) viewModel.revalidate()
+        onPauseOrDispose { }
+    }
     val context = LocalContext.current
     val showScrollToTop = rememberScrollToTopVisibility(listState)
 
@@ -105,6 +116,16 @@ fun ForumThreadDetailScreen(
             viewModel.loadMoreReplies()
         }
     }
+    val isAtTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 20
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        viewModel.setAtTopForFreshUpdates(isAtTop)
+    }
+
 
     Scaffold(
         topBar = {
@@ -139,6 +160,9 @@ fun ForumThreadDetailScreen(
                 }
             )
         }
+    , snackbarHost = {
+        ThemedSnackbarHost(hostState = snackbarHostState)
+    }
     ) { innerPadding ->
         Box(modifier = Modifier
             .fillMaxSize()
@@ -279,12 +303,25 @@ fun ForumThreadDetailScreen(
                         }
                     }
                 }
+                LaunchedEffect(state.pendingFreshDetail) {
+                    if (state.pendingFreshDetail != null) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = state.refreshMessage ?: "有新數據",
+                            actionLabel = "刷新",
+                            duration = SnackbarDuration.Long
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            viewModel.applyPendingFreshDetail()
+                            scope.launch { listState.animateScrollToItem(0) }
+                        }
+                    }
+                }
                 ScrollToTopButton(
                     visible = showScrollToTop,
                     onClick = { scope.launch { listState.animateScrollToItem(0) } },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 48.dp)
+                        .padding(bottom = 64.dp)
                 )
             }
         }

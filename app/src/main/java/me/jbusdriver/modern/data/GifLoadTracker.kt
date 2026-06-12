@@ -13,16 +13,21 @@ import javax.inject.Singleton
 private val Context.gifDataStore by preferencesDataStore("gif_loaded_urls")
 
 @Singleton
+interface LoadedGifTracker {
+    suspend fun loadedUrls(): Set<String>
+    suspend fun markLoaded(url: String)
+}
+
 class GifLoadTracker @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : LoadedGifTracker {
     private val dataStore = context.gifDataStore
 
-    suspend fun loadedUrls(): Set<String> {
+    override suspend fun loadedUrls(): Set<String> {
         return dataStore.data.map { it[URLS] ?: emptySet() }.first()
     }
 
-    suspend fun markLoaded(url: String) {
+    override suspend fun markLoaded(url: String) {
         dataStore.edit { prefs ->
             val current = prefs[URLS] ?: emptySet()
             val updated = if (current.size >= MAX_CACHE) {

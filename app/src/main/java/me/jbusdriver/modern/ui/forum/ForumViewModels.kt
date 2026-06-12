@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.ui.forum
+﻿package me.jbusdriver.modern.ui.forum
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,9 +11,10 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.LabSettingsStore
@@ -21,6 +22,7 @@ import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
 import me.jbusdriver.modern.domain.model.ForumHomeSummary
 import me.jbusdriver.modern.domain.model.ForumThread
+import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -29,7 +31,76 @@ import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.RouteForumThreadList
 import javax.inject.Inject
 
+
 private const val TAG = "ForumVM"
+
+private fun logThreadDiff(oldThreads: List<ForumThread>, newThreads: List<ForumThread>, context: String) {
+    val oldMap = oldThreads.associateBy { it.tid }
+    val newMap = newThreads.associateBy { it.tid }
+    val added = newThreads.filter { it.tid !in oldMap }
+    val removed = oldThreads.filter { it.tid !in newMap }
+    val changed = newThreads.filter { new ->
+        val old = oldMap[new.tid]
+        old != null && old != new
+    }
+    KLog.d("[$context] old=${oldThreads.size}, new=${newThreads.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", TAG)
+    if (added.isNotEmpty()) {
+        KLog.d("[$context] +新增: ${added.map { "${it.tid}:${it.title.take(20)}" }}", TAG)
+    }
+    if (removed.isNotEmpty()) {
+        KLog.d("[$context] -移除: ${removed.map { "${it.tid}:${it.title.take(20)}" }}", TAG)
+    }
+    if (changed.isNotEmpty()) {
+        changed.forEach { newT ->
+            val oldT = oldMap[newT.tid]!!
+            val diffs = buildList {
+                if (oldT.replyCount != newT.replyCount) add("replyCount:${oldT.replyCount}→${newT.replyCount}")
+                if (oldT.viewCount != newT.viewCount) add("viewCount:${oldT.viewCount}→${newT.viewCount}")
+                if (oldT.title != newT.title) add("title改變")
+                if (oldT.isPinned != newT.isPinned) add("isPinned:${oldT.isPinned}→${newT.isPinned}")
+                if (oldT.isDigest != newT.isDigest) add("isDigest:${oldT.isDigest}→${newT.isDigest}")
+                if (oldT.lastReplyAuthor != newT.lastReplyAuthor) add("lastReply:${oldT.lastReplyAuthor}→${newT.lastReplyAuthor}")
+                if (oldT.lastReplyTime != newT.lastReplyTime) add("lastTime:${oldT.lastReplyTime}→${newT.lastReplyTime}")
+            }
+            KLog.d("[$context] ~變動 tid=${newT.tid} ${diffs.joinToString()}", TAG)
+        }
+    }
+    if (added.isEmpty() && removed.isEmpty() && changed.isEmpty()) {
+        KLog.d("[$context] 數據完全一致，無任何變化", TAG)
+    }
+}
+
+private fun logReplyDiff(oldReplies: List<me.jbusdriver.modern.domain.model.ForumReply>, newReplies: List<me.jbusdriver.modern.domain.model.ForumReply>, context: String) {
+    val oldMap = oldReplies.associateBy { it.floor }
+    val newMap = newReplies.associateBy { it.floor }
+    val added = (newMap.keys - oldMap.keys).sorted()
+    val removed = (oldMap.keys - newMap.keys).sorted()
+    val changed = newReplies.filter { newR ->
+        val oldR = oldMap[newR.floor]
+        oldR != null && oldR != newR
+    }
+    KLog.d("[$context] old=${oldReplies.size}, new=${newReplies.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", TAG)
+    if (added.isNotEmpty()) {
+        KLog.d("[$context] +新回復 floors: $added", TAG)
+    }
+    if (removed.isNotEmpty()) {
+        KLog.d("[$context] -移除回復 floors: $removed", TAG)
+    }
+    if (changed.isNotEmpty()) {
+        changed.forEach { newR ->
+            val oldR = oldMap[newR.floor]!!
+            val diffs = buildList {
+                if (oldR.author != newR.author) add("author:${oldR.author}→${newR.author}")
+                if (oldR.postTime != newR.postTime) add("postTime:${oldR.postTime}→${newR.postTime}")
+                if (oldR.isPinned != newR.isPinned) add("isPinned:${oldR.isPinned}→${newR.isPinned}")
+            }
+            KLog.d("[$context] ~變動 floor=${newR.floor} ${diffs.joinToString()}", TAG)
+        }
+    }
+    if (added.isEmpty() && removed.isEmpty() && changed.isEmpty()) {
+        KLog.d("[$context] 回復數據完全一致，無任何變化", TAG)
+    }
+}
 
 data class ForumBoardsUiState(
     val banners: List<ForumBanner> = emptyList(),
@@ -37,7 +108,10 @@ data class ForumBoardsUiState(
     val groups: List<ForumBoardGroup> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isRevalidating: Boolean = false,
+    val lastUpdatedAtMillis: Long? = null,
+    val refreshMessage: String? = null
 )
 
 data class ForumThreadListUiState(
@@ -49,7 +123,11 @@ data class ForumThreadListUiState(
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val isRevalidating: Boolean = false,
+    val lastUpdatedAtMillis: Long? = null,
+    val pendingFreshThreads: ForumThreadPageResult? = null,
+    val refreshMessage: String? = null
 )
 
 data class ForumThreadDetailUiState(
@@ -57,6 +135,10 @@ data class ForumThreadDetailUiState(
     val floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
+    val isRevalidating: Boolean = false,
+    val lastUpdatedAtMillis: Long? = null,
+    val pendingFreshDetail: ForumThreadDetail? = null,
+    val refreshMessage: String? = null,
     val error: String? = null,
     val isLoadingMore: Boolean = false,
     val isChangingFloorOrder: Boolean = false
@@ -86,29 +168,90 @@ class ForumBoardsViewModel @Inject constructor(
     fun loadBoards() {
         if (_uiState.value.isLoading) return
         KLog.d("[Forum] loadBoards started", TAG)
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val data = repository.loadForumBoards()
-                KLog.d("[Forum] loadBoards success: ${data.banners.size} banners, ${data.boardGroups.size} groups", TAG)
-                _uiState.update { it.copy(banners = data.banners, summary = data.summary, groups = data.boardGroups, isLoading = false) }
-            } catch (e: Exception) {
-                KLog.e("[Forum] loadBoards failed: ${e.message}", e, TAG)
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observeForumBoards(revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            _uiState.update {
+                                it.copy(
+                                    banners = event.entry.value.banners,
+                                    summary = event.entry.value.summary,
+                                    groups = event.entry.value.boardGroups,
+                                    isLoading = false,
+                                    isRevalidating = event.entry.isExpired,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    banners = event.entry.value.banners,
+                                    summary = event.entry.value.summary,
+                                    groups = event.entry.value.boardGroups,
+                                    isLoading = false,
+                                    isRevalidating = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
+                                }
+                            }
+                        }
+                    }
+                }
         }
     }
 
+
     fun refresh() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val data = repository.loadForumBoards(forceRefresh = true)
-                _uiState.update { it.copy(banners = data.banners, summary = data.summary, groups = data.boardGroups, isRefreshing = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observeForumBoards(forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    banners = event.entry.value.banners,
+                                    summary = event.entry.value.summary,
+                                    groups = event.entry.value.boardGroups,
+                                    isRefreshing = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.groups.isEmpty()) event.throwable.message ?: "Loading failed" else it.error,
+                                    refreshMessage = if (it.groups.isNotEmpty()) "Refresh failed" else null
+                                )
+                            }
+                        }
+                    }
+                }
         }
+    }
+
+    fun revalidate() {
+        if (_uiState.value.groups.isNotEmpty()) loadBoards()
+    }
+
+    fun consumeRefreshMessage() {
+        _uiState.update { it.copy(refreshMessage = null) }
     }
 
     override fun onCleared() {
@@ -126,6 +269,30 @@ class ForumThreadListViewModel @AssistedInject constructor(
     private val initialTypeId: Int? = navKey.typeId
     private var currentPage = 0
 
+    private var isAtTopForFreshUpdates: Boolean = true
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
+
+    fun applyPendingFreshThreads() {
+        val pending = _uiState.value.pendingFreshThreads ?: return
+        logThreadDiff(_uiState.value.threads, pending.threads, "ThreadList.applyPending")
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                threads = pending.threads,
+                pageInfo = pending.pageInfo,
+                typeFilters = pending.typeFilters,
+                pendingFreshThreads = null,
+                refreshMessage = null,
+                hasMore = pending.pageInfo.hasNext
+            )
+        }
+    }
+
+
+
     private val _uiState = MutableStateFlow(ForumThreadListUiState())
     val uiState: StateFlow<ForumThreadListUiState> = _uiState.asStateFlow()
 
@@ -141,24 +308,127 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (_uiState.value.isLoading) return
         currentPage = 1
         KLog.d("[Forum] loadFirstPage: fid=$fid, typeId=${_uiState.value.currentTypeId}", TAG)
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId)
-                KLog.d("[Forum] loadFirstPage success: ${result.threads.size} threads, ${result.typeFilters.size} filters", TAG)
-                _uiState.update {
-                    it.copy(
-                        threads = result.threads,
-                        pageInfo = result.pageInfo,
-                        typeFilters = result.typeFilters.ifEmpty { it.typeFilters },
-                        isLoading = false,
-                        hasMore = result.pageInfo.hasNext
-                    )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            var hasContent = false
+            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            KLog.d("[CacheTest] ThreadList CACHED", TAG)
+                            _uiState.update {
+                                it.copy(
+                                    threads = event.entry.value.threads,
+                                    pageInfo = event.entry.value.pageInfo,
+                                    typeFilters = event.entry.value.typeFilters.ifEmpty { it.typeFilters },
+                                    isLoading = false,
+                                    isRevalidating = event.entry.isExpired,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            KLog.d("[CacheTest] ThreadList FRESH, isAtTop=$isAtTopForFreshUpdates", TAG)
+                            val fresh = event.entry.value.copy(
+                                threads = event.entry.value.threads.simulateCacheRefreshChange()
+                            )
+                            val oldThreads = _uiState.value.threads
+                            val oldFirstPage = oldThreads.take(fresh.threads.size)
+                            val hasChanged = oldFirstPage != fresh.threads
+                            logThreadDiff(oldFirstPage, fresh.threads, "ThreadList.loadFirstPage")
+                            if (isAtTopForFreshUpdates) {
+                                _uiState.update {
+                                    it.copy(
+                                        threads = fresh.threads,
+                                        pageInfo = fresh.pageInfo,
+                                        typeFilters = fresh.typeFilters,
+                                        hasMore = fresh.pageInfo.hasNext,
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        pendingFreshThreads = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else if (hasChanged) {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        pendingFreshThreads = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                                KLog.d("[CacheTest] ThreadList: PENDING fresh set", TAG)
+                            } else {
+                                _uiState.update { it.copy(isLoading = false, isRevalidating = false) }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                KLog.e("[Forum] loadFirstPage failed: ${e.message}", e, TAG)
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
+        }
+    }
+
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.threads.isEmpty() || state.isLoading || state.isRevalidating || state.isRefreshing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeThreads(fid, 1, state.currentTypeId, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val fresh = event.entry.value.copy(
+                                threads = event.entry.value.threads.simulateCacheRefreshChange()
+                            )
+                            val oldThreads = _uiState.value.threads
+                            val oldFirstPage = oldThreads.take(fresh.threads.size)
+                            val hasChanged = oldFirstPage != fresh.threads
+                            logThreadDiff(oldFirstPage, fresh.threads, "ThreadList.revalidate")
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        threads = fresh.threads,
+                                        pageInfo = fresh.pageInfo,
+                                        typeFilters = fresh.typeFilters,
+                                        hasMore = fresh.pageInfo.hasNext,
+                                        isRevalidating = false,
+                                        pendingFreshThreads = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else if (hasChanged) {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshThreads = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                            } else {
+                                _uiState.update { it.copy(isRevalidating = false) }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
+                    }
+                }
         }
     }
 
@@ -169,7 +439,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = repository.loadThreads(fid, nextPage, state.currentTypeId)
@@ -190,29 +460,43 @@ class ForumThreadListViewModel @AssistedInject constructor(
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val result = repository.loadThreads(fid, 1, _uiState.value.currentTypeId, forceRefresh = true)
-                currentPage = 1
-                _uiState.update {
-                    it.copy(
-                        threads = result.threads,
-                        pageInfo = result.pageInfo,
-                        typeFilters = result.typeFilters,
-                        isRefreshing = false,
-                        hasMore = result.pageInfo.hasNext
-                    )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            currentPage = 1
+                            _uiState.update {
+                                it.copy(
+                                    threads = event.entry.value.threads,
+                                    pageInfo = event.entry.value.pageInfo,
+                                    typeFilters = event.entry.value.typeFilters,
+                                    isRefreshing = false,
+                                    hasMore = event.entry.value.pageInfo.hasNext,
+                                    pendingFreshThreads = null,
+                                    refreshMessage = null
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.threads.isEmpty()) event.throwable.message ?: "Loading failed" else it.error
+                                )
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
         }
     }
 
     fun filterByType(typeId: Int?) {
         if (_uiState.value.currentTypeId == typeId) return
         currentPage = 0
+        isAtTopForFreshUpdates = true
         _uiState.update { it.copy(currentTypeId = typeId, threads = emptyList(), pageInfo = PageInfo()) }
         loadFirstPage()
     }
@@ -226,8 +510,8 @@ class ForumThreadListViewModel @AssistedInject constructor(
 @HiltViewModel(assistedFactory = ForumThreadDetailViewModel.Factory::class)
 class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
-    private val labSettingsStore: LabSettingsStore,
-    private val gifLoadTracker: me.jbusdriver.modern.data.GifLoadTracker,
+    private val forumSettingsReader: me.jbusdriver.modern.data.ForumSettingsReader,
+    private val loadedGifTracker: me.jbusdriver.modern.data.LoadedGifTracker,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
     private val tid: Int = navKey.tid
@@ -239,7 +523,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
-    val autoLoadGifs: StateFlow<Boolean> = labSettingsStore.autoLoadGifs
+    val autoLoadGifs: StateFlow<Boolean> = forumSettingsReader.autoLoadGifs
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }
@@ -265,18 +549,18 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadPersistedGifUrls(): Set<String> {
-        return gifLoadTracker.loadedUrls()
+        return loadedGifTracker.loadedUrls()
     }
 
     private suspend fun persistGifUrls(urls: Set<String>) {
-        for (url in urls) gifLoadTracker.markLoaded(url)
+        for (url in urls) loadedGifTracker.markLoaded(url)
     }
 
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
         viewModelScope.launch { _loadedGifUrls.value = loadPersistedGifUrls() }
         viewModelScope.launch {
-            val defaultOrder = labSettingsStore.currentForumFloorOrder()
+            val defaultOrder = forumSettingsReader.currentForumFloorOrder()
             _uiState.update { it.copy(floorOrder = defaultOrder) }
             loadDetail()
         }
@@ -286,37 +570,187 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         if (showLoading && _uiState.value.isLoading) return
         val floorOrder = _uiState.value.floorOrder
         KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage, floorOrder=$floorOrder", TAG)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
+            var hasContent = _uiState.value.detail != null
             _uiState.update {
-                if (showLoading) {
-                    it.copy(isLoading = true, error = null)
-                } else {
-                    it.copy(error = null, isChangingFloorOrder = true)
+                when {
+                    showLoading && !hasContent -> it.copy(isLoading = true, error = null, refreshMessage = null)
+                    showLoading -> it.copy(isRevalidating = true, error = null, refreshMessage = null)
+                    else -> it.copy(error = null, isChangingFloorOrder = true, refreshMessage = null)
                 }
             }
-            try {
-                val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh)
-                KLog.d("[Forum] loadDetail success: title=${detail.title}, replies=${detail.replies.size}", TAG)
-                _uiState.update { it.copy(detail = detail, isLoading = false, isChangingFloorOrder = false) }
-            } catch (e: Exception) {
-                KLog.e("[Forum] loadDetail failed: ${e.message}", e, TAG)
-                _uiState.update { it.copy(isChangingFloorOrder = false) }
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
-            }
+            repository.observeThreadDetail(tid, currentPage, floorOrder, forceRefresh = forceRefresh, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            hasContent = true
+                            KLog.d("[CacheTest] Detail CACHED", TAG)
+                            _uiState.update {
+                                it.copy(
+                                    detail = event.entry.value,
+                                    isLoading = false,
+                                    isRevalidating = event.entry.isExpired,
+                                    isChangingFloorOrder = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            KLog.d("[CacheTest] Detail FRESH, isAtTop=$isAtTopForFreshUpdates", TAG)
+                            val fresh = event.entry.value.copy(
+                                replies = event.entry.value.replies.simulateCacheRefreshChange()
+                            )
+                            val oldDetail = _uiState.value.detail
+                            val hasDetailChanged = if (oldDetail != null) {
+                                // Compare non-paged fields + first-page replies only
+                                val headerChanged = oldDetail.title != fresh.title ||
+                                    oldDetail.viewCount != fresh.viewCount ||
+                                    oldDetail.replyCount != fresh.replyCount ||
+                                    oldDetail.typeName != fresh.typeName ||
+                                    oldDetail.contentBlocks != fresh.contentBlocks
+                                val oldFirstPageReplies = oldDetail.replies.take(fresh.replies.size)
+                                headerChanged || oldFirstPageReplies != fresh.replies
+                            } else true
+                            if (oldDetail != null) {
+                                logReplyDiff(oldDetail.replies.take(fresh.replies.size), fresh.replies, "Detail.loadDetail")
+                                if (oldDetail.viewCount != fresh.viewCount || oldDetail.replyCount != fresh.replyCount) {
+                                    KLog.d("[Detail.loadDetail] viewCount:${oldDetail.viewCount}→${fresh.viewCount}, replyCount:${oldDetail.replyCount}→${fresh.replyCount}", TAG)
+                                }
+                            }
+                            if (isAtTopForFreshUpdates || forceRefresh || !showLoading) {
+                                _uiState.update {
+                                    it.copy(
+                                        detail = fresh,
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false,
+                                        pendingFreshDetail = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else if (hasDetailChanged) {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false,
+                                        pendingFreshDetail = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                                KLog.d("[CacheTest] Detail: PENDING fresh set", TAG)
+                            } else {
+                                _uiState.update {
+                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false)
+                                }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                if (event.hadCachedValue || hasContent) {
+                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false)
+                                } else {
+                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false, error = event.throwable.message ?: "Loading failed")
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.detail == null || state.isLoading || state.isRevalidating || state.isRefreshing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeThreadDetail(tid, 1, state.floorOrder, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val fresh = event.entry.value.copy(
+                                replies = event.entry.value.replies.simulateCacheRefreshChange()
+                            )
+                            val oldDetail = _uiState.value.detail
+                            val hasDetailChanged = if (oldDetail != null) {
+                                val headerChanged = oldDetail.title != fresh.title ||
+                                    oldDetail.viewCount != fresh.viewCount ||
+                                    oldDetail.replyCount != fresh.replyCount ||
+                                    oldDetail.typeName != fresh.typeName ||
+                                    oldDetail.contentBlocks != fresh.contentBlocks
+                                val oldFirstPageReplies = oldDetail.replies.take(fresh.replies.size)
+                                headerChanged || oldFirstPageReplies != fresh.replies
+                            } else true
+                            if (oldDetail != null) {
+                                logReplyDiff(oldDetail.replies.take(fresh.replies.size), fresh.replies, "Detail.revalidate")
+                                if (oldDetail.viewCount != fresh.viewCount || oldDetail.replyCount != fresh.replyCount) {
+                                    KLog.d("[Detail.revalidate] viewCount:${oldDetail.viewCount}→${fresh.viewCount}, replyCount:${oldDetail.replyCount}→${fresh.replyCount}", TAG)
+                                }
+                            }
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        detail = fresh,
+                                        isRevalidating = false,
+                                        pendingFreshDetail = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else if (hasDetailChanged) {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshDetail = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
+                            } else {
+                                _uiState.update { it.copy(isRevalidating = false) }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
+                        }
+                    }
+                }
         }
     }
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         val floorOrder = _uiState.value.floorOrder
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
-            try {
-                val detail = repository.loadThreadDetail(tid, currentPage, floorOrder, forceRefresh = true)
-                _uiState.update { it.copy(detail = detail, isRefreshing = false) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message ?: "載入失敗") }
-            }
+        currentPage = 1
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null, pendingFreshDetail = null) }
+            repository.observeThreadDetail(tid, 1, floorOrder, forceRefresh = true, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Fresh -> {
+                            _uiState.update {
+                                it.copy(
+                                    detail = event.entry.value,
+                                    isRefreshing = false,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    error = if (it.detail == null) event.throwable.message ?: "Loading failed" else it.error,
+                                    refreshMessage = if (it.detail != null) "Refresh failed" else null
+                                )
+                            }
+                        }
+                    }
+                }
         }
     }
 
@@ -328,7 +762,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
         currentPage = nextPage
         val floorOrder = _uiState.value.floorOrder
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
@@ -353,6 +787,32 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         currentPage = 1
         _uiState.update { it.prepareFloorOrderReload(order) }
         loadDetail(forceRefresh = true, showLoading = false)
+    }
+
+    private var isAtTopForFreshUpdates: Boolean = true
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
+
+    fun applyPendingFreshDetail() {
+        val pending = _uiState.value.pendingFreshDetail ?: return
+        val oldDetail = _uiState.value.detail
+        if (oldDetail != null) {
+            logReplyDiff(oldDetail.replies, pending.replies, "Detail.applyPending")
+            if (oldDetail.viewCount != pending.viewCount || oldDetail.replyCount != pending.replyCount) {
+                KLog.d("[Detail.applyPending] viewCount:${oldDetail.viewCount}→${pending.viewCount}, replyCount:${oldDetail.replyCount}→${pending.replyCount}", TAG)
+            }
+        }
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                detail = pending,
+                pendingFreshDetail = null,
+                refreshMessage = null,
+                lastUpdatedAtMillis = System.currentTimeMillis()
+            )
+        }
     }
 
     @AssistedFactory

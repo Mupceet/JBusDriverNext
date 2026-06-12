@@ -61,9 +61,14 @@ enum class ScanPhase {
 private val Context.labSettingsDataStore by preferencesDataStore("lab_settings")
 
 @Singleton
+interface ForumSettingsReader {
+    val autoLoadGifs: StateFlow<Boolean>
+    suspend fun currentForumFloorOrder(): ForumFloorOrder
+}
+
 class LabSettingsStore @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : ForumSettingsReader {
 
     private val dataStore = context.labSettingsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -75,7 +80,7 @@ class LabSettingsStore @Inject constructor(
         dataStore.edit { it[KEY_FORUM_ENABLED] = enabled }
     }
 
-    val autoLoadGifs: StateFlow<Boolean> = dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
+    override val autoLoadGifs: StateFlow<Boolean> = dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
     suspend fun setAutoLoadGifs(enabled: Boolean) {
@@ -86,7 +91,7 @@ class LabSettingsStore @Inject constructor(
         ForumFloorOrder.fromPreferenceValue(it[KEY_FORUM_FLOOR_ORDER])
     }.stateIn(scope, SharingStarted.Eagerly, ForumFloorOrder.REGULAR)
 
-    suspend fun currentForumFloorOrder(): ForumFloorOrder =
+    override suspend fun currentForumFloorOrder(): ForumFloorOrder =
         ForumFloorOrder.fromPreferenceValue(dataStore.data.first()[KEY_FORUM_FLOOR_ORDER])
 
     suspend fun setForumFloorOrder(order: ForumFloorOrder) {

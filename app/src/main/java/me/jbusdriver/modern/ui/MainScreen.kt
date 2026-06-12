@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import me.jbusdriver.R
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -144,6 +145,11 @@ fun MainScreen(
 
                         val genreViewModel: GenreListViewModel = hiltViewModel()
                         val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
+
+                        LifecycleResumeEffect(Unit) {
+                            if (genreState.genreCategories.isNotEmpty()) genreViewModel.revalidate()
+                            onPauseOrDispose { }
+                        }
 
                         LaunchedEffect(censorFilter) {
                             val genreType = when (censorFilter) {
@@ -265,9 +271,13 @@ fun MainScreen(
 
                             if (genreUrl != null) {
                                 val genreVm: MovieListViewModel = hiltViewModel(key = "genre_$genreUrl")
-                                LaunchedEffect(genreUrl) { genreVm.setGenreUrl(genreUrl) }
+                                val active = page == moviePagerState.settledPage
+                                LaunchedEffect(genreUrl, active) {
+                                    if (active) genreVm.setGenreUrl(genreUrl)
+                                }
                                 MovieListScreen(
-                                    active = true,
+                                    dataSourceType = null,
+                                    active = active,
                                     onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = genreVm
@@ -280,7 +290,7 @@ fun MainScreen(
                                 val vm: MovieListViewModel = hiltViewModel(key = "pager_$filter")
                                 MovieListScreen(
                                     dataSourceType = dataSourceType,
-                                    active = true,
+                                    active = page == moviePagerState.settledPage,
                                     onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = vm
@@ -339,7 +349,7 @@ fun MainScreen(
                             val vm: ActressListViewModel = hiltViewModel(key = "actress_$filter")
                             ActressListScreen(
                                 dataSourceType = actressType,
-                                active = true,
+                                active = page == actressPagerState.settledPage,
                                 onActressClick = { actress, _ -> onActressClick(actress, actressCensorType) },
                                 modifier = Modifier.fillMaxSize(),
                                 viewModel = vm
