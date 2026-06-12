@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
@@ -18,17 +20,6 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
-
-// TODO: remove after testing cache refresh UX — 随机删除前 1~2 项，模拟数据变化
-private fun <T> List<T>.shuffledForTesting(): List<T> {
-    if (size < 3) return this
-    val result = toMutableList()
-    repeat((1..2).random()) {
-        if (result.size <= 2) return@repeat
-        result.removeAt(0)
-    }
-    return result
-}
 
 /**
  * 女优列表页的 UI 状态。
@@ -89,6 +80,12 @@ class ActressListViewModel @Inject constructor(
 
     /** 当前的数据源类型（默认为女优分类） */
     private var dataSourceType: DataSourceType = DataSourceType.ACTRESSES
+    private var isAtTopForFreshUpdates: Boolean = true
+    private var firstPageJob: Job? = null
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
 
     /**
      * 设置数据源类型并重新加载列表。
@@ -99,7 +96,6 @@ class ActressListViewModel @Inject constructor(
      */
     fun setDataSourceType(type: DataSourceType) {
         if (dataSourceType == type && _uiState.value.actresses.isNotEmpty()) {
-            revalidate()
             return
         }
         dataSourceType = type
@@ -118,7 +114,7 @@ class ActressListViewModel @Inject constructor(
         currentPage = 1
         _uiState.update {
             it.copy(
-                actresses = pending.first.shuffledForTesting().map { a -> a.toActressUiModel() },
+                actresses = pending.first.map { a -> a.toActressUiModel() },
                 pageInfo = pending.second,
                 hasMore = pending.second.hasNext,
                 pendingFreshActresses = null,
@@ -135,10 +131,11 @@ class ActressListViewModel @Inject constructor(
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
-        viewModelScope.launch {
+        firstPageJob?.cancel()
+        firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            repository.observeActresses(dataSourceType, 1, revalidate = true)
+            repository.observeActresses(dataSourceType, 1, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -151,7 +148,7 @@ class ActressListViewModel @Inject constructor(
                                     isRefreshing = false,
                                     hasMore = event.entry.value.second.hasNext,
                                     error = if (event.entry.value.first.isEmpty()) "沒有數據" else null,
-                                    isRevalidating = true,
+                                    isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
                             }
@@ -160,7 +157,7 @@ class ActressListViewModel @Inject constructor(
                             // loadFirstPage 仅在列表为空时调用，直接应用
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.shuffledForTesting().map { a -> a.toActressUiModel() },
+                                    actresses = event.entry.value.first.simulateCacheRefreshChange().map { a -> a.toActressUiModel() },
                                     pageInfo = event.entry.value.second,
                                     isLoading = false,
                                     isRefreshing = false,
@@ -200,15 +197,33 @@ class ActressListViewModel @Inject constructor(
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
-                            _uiState.update { it.copy(isRevalidating = false) }
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
                         is CachedLoadEvent.Fresh -> {
-                            _uiState.update {
-                                it.copy(
-                                    isRevalidating = false,
-                                    pendingFreshActresses = event.entry.value,
-                                    refreshMessage = "有新數據"
-                                )
+                            val fresh = event.entry.value.copy(
+                                first = event.entry.value.first.simulateCacheRefreshChange()
+                            )
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        actresses = fresh.first.map { actress -> actress.toActressUiModel() },
+                                        pageInfo = fresh.second,
+                                        hasMore = fresh.second.hasNext,
+                                        isRevalidating = false,
+                                        pendingFreshActresses = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshActresses = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
                             }
                         }
                         is CachedLoadEvent.Failure -> {

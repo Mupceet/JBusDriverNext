@@ -1,7 +1,11 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.CancellationException
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.CacheEntry
+import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.MovieCacheTtl
@@ -119,7 +123,15 @@ interface MovieRepository {
         forceRefresh: Boolean = false,
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
-    ): Flow<CachedLoadEvent<MoviePageResult>>
+    ): Flow<CachedLoadEvent<MoviePageResult>> = flow {
+        try {
+            val value = loadPage(type, page, showAll, forceRefresh)
+            emit(CachedLoadEvent.Fresh(CacheEntry(value, nowMillis(), CacheSource.Network, false)))
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            emit(CachedLoadEvent.Failure(throwable, hadCachedValue = false))
+        }
+    }
 
     /**
      * 观察按数据源类型分页的演员列表（stale-while-revalidate）。
@@ -130,7 +142,15 @@ interface MovieRepository {
         forceRefresh: Boolean = false,
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
-    ): Flow<CachedLoadEvent<Pair<List<ActressInfo>, PageInfo>>>
+    ): Flow<CachedLoadEvent<Pair<List<ActressInfo>, PageInfo>>> = flow {
+        try {
+            val value = loadActresses(type, page, forceRefresh)
+            emit(CachedLoadEvent.Fresh(CacheEntry(value, nowMillis(), CacheSource.Network, false)))
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            emit(CachedLoadEvent.Failure(throwable, hadCachedValue = false))
+        }
+    }
 
     /**
      * 观察类型分类列表（stale-while-revalidate）。
@@ -140,7 +160,15 @@ interface MovieRepository {
         forceRefresh: Boolean = false,
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
-    ): Flow<CachedLoadEvent<List<GenreGroup>>>
+    ): Flow<CachedLoadEvent<List<GenreGroup>>> = flow {
+        try {
+            val value = loadGenreCategories(type, forceRefresh)
+            emit(CachedLoadEvent.Fresh(CacheEntry(value, nowMillis(), CacheSource.Network, false)))
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            emit(CachedLoadEvent.Failure(throwable, hadCachedValue = false))
+        }
+    }
 
     /**
      * 观察通过 URL 分页的影片列表（stale-while-revalidate）。
@@ -152,7 +180,15 @@ interface MovieRepository {
         forceRefresh: Boolean = false,
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
-    ): Flow<CachedLoadEvent<MoviePageResult>>
+    ): Flow<CachedLoadEvent<MoviePageResult>> = flow {
+        try {
+            val value = loadPageByUrl(url, page, showAll, forceRefresh)
+            emit(CachedLoadEvent.Fresh(CacheEntry(value, nowMillis(), CacheSource.Network, false)))
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            emit(CachedLoadEvent.Failure(throwable, hadCachedValue = false))
+        }
+    }
 }
 
 /**

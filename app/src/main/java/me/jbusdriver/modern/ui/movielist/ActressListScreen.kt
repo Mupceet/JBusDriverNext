@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,13 +51,22 @@ fun ActressListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
+    val isAtTop by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 20
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        viewModel.setAtTopForFreshUpdates(isAtTop)
+    }
 
     LaunchedEffect(dataSourceType, active) {
         if (active) viewModel.setDataSourceType(dataSourceType)
     }
 
     // 从后台恢复时触发 revalidate
-    LifecycleResumeEffect(Unit) {
+    LifecycleResumeEffect(active) {
         if (active && uiState.actresses.isNotEmpty()) {
             viewModel.revalidate()
         }

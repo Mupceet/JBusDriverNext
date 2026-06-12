@@ -2,12 +2,17 @@ package me.jbusdriver.modern.ui.movielist
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.core.cache.CacheEntry
+import me.jbusdriver.modern.core.cache.CacheSource
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -40,6 +45,32 @@ class MovieListViewModelTest {
     ) = object : MovieRepository {
         override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
             onLoadPage(type, page)
+        override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+            emptyList<ActressInfo>() to PageInfo()
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
+        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+            MoviePageResult(PageInfo(), emptyList())
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+    }
+
+    private fun flowFakeRepo(
+        flows: MutableList<Flow<CachedLoadEvent<MoviePageResult>>>,
+        revalidateArgs: MutableList<Boolean>
+    ) = object : MovieRepository {
+        override fun observePage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<MoviePageResult>> {
+            revalidateArgs += revalidate
+            return flows.removeAt(0)
+        }
+
+        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+            error("not used")
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
@@ -202,5 +233,62 @@ class MovieListViewModelTest {
         assertTrue(showAllCapture)
         assertFalse(viewModel.uiState.value.isFilterSwitching)
         assertEquals(5, viewModel.uiState.value.filterInfo?.magnetCount)
+    }
+
+    @Test
+    fun revalidate_awayFromTop_keepsVisibleDataAndStoresPendingFresh() = runTest(testDispatcher) {
+        val initial = MoviePageResult(PageInfo(1, 2), testMovies)
+        val freshMovies = testMovies + Movie("Movie 3", "img3", "GHI-003", "2024-01-03", "link3")
+        val fresh = MoviePageResult(PageInfo(1, 2), freshMovies)
+        val revalidateArgs = mutableListOf<Boolean>()
+        val repository = flowFakeRepo(
+            mutableListOf(
+                flow { emit(CachedLoadEvent.Fresh(CacheEntry(initial, 1L, CacheSource.Network, false))) },
+                flow {
+                    emit(CachedLoadEvent.Cached(CacheEntry(initial, 1L, CacheSource.Memory, true)))
+                    emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2L, CacheSource.Network, false)))
+                }
+            ),
+            revalidateArgs
+        )
+        val viewModel = MovieListViewModel(repository)
+        viewModel.loadFirstPage()
+        advanceUntilIdle()
+        viewModel.setAtTopForFreshUpdates(false)
+
+        viewModel.revalidate()
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.movies.size)
+        assertEquals(3, viewModel.uiState.value.pendingFreshResult?.movies?.size)
+        assertEquals("有新數據", viewModel.uiState.value.refreshMessage)
+        assertEquals(listOf(false, false), revalidateArgs)
+    }
+
+    @Test
+    fun revalidate_atTop_appliesFreshImmediately() = runTest(testDispatcher) {
+        val initial = MoviePageResult(PageInfo(1, 2), testMovies)
+        val freshMovies = testMovies + Movie("Movie 3", "img3", "GHI-003", "2024-01-03", "link3")
+        val fresh = MoviePageResult(PageInfo(1, 2), freshMovies)
+        val repository = flowFakeRepo(
+            mutableListOf(
+                flow { emit(CachedLoadEvent.Fresh(CacheEntry(initial, 1L, CacheSource.Network, false))) },
+                flow {
+                    emit(CachedLoadEvent.Cached(CacheEntry(initial, 1L, CacheSource.Memory, true)))
+                    emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2L, CacheSource.Network, false)))
+                }
+            ),
+            mutableListOf()
+        )
+        val viewModel = MovieListViewModel(repository)
+        viewModel.loadFirstPage()
+        advanceUntilIdle()
+
+        viewModel.revalidate()
+        advanceUntilIdle()
+
+        assertEquals(3, viewModel.uiState.value.movies.size)
+        assertNull(viewModel.uiState.value.pendingFreshResult)
+        assertNull(viewModel.uiState.value.refreshMessage)
     }
 }

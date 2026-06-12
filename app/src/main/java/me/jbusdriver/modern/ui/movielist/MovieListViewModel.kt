@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -19,17 +21,6 @@ import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
-
-// TODO: remove after testing cache refresh UX — 随机删除前 1~2 项，模拟数据变化
-private fun <T> List<T>.shuffledForTesting(): List<T> {
-    if (size < 3) return this
-    val result = toMutableList()
-    repeat((1..2).random()) {
-        if (result.size <= 2) return@repeat
-        result.removeAt(0) // 始终删除第一项，确保首条变化可见
-    }
-    return result
-}
 
 /**
  * 电影列表页的 UI 状态。
@@ -99,6 +90,12 @@ class MovieListViewModel @Inject constructor(
 
     /** 当前 genre 过滤的 URL，非 null 时优先使用 URL 加载 */
     private var genreUrl: String? = null
+    private var isAtTopForFreshUpdates: Boolean = true
+    private var firstPageJob: Job? = null
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
 
     /**
      * 设置数据源类型并重新加载列表。
@@ -110,7 +107,6 @@ class MovieListViewModel @Inject constructor(
      */
     fun setDataSourceType(type: DataSourceType) {
         if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) {
-            revalidate()
             return
         }
         dataSourceType = type
@@ -145,7 +141,7 @@ class MovieListViewModel @Inject constructor(
         currentPage = 1
         _uiState.update {
             it.copy(
-                movies = pending.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                movies = pending.movies.map { m -> m.toUiModel() },
                 pageInfo = pending.pageInfo,
                 hasMore = pending.pageInfo.hasNext,
                 filterInfo = pending.filterInfo,
@@ -164,13 +160,14 @@ class MovieListViewModel @Inject constructor(
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
         currentPage = 1
-        viewModelScope.launch {
+        firstPageJob?.cancel()
+        firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
             val flow = if (genreUrl != null) {
-                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = true)
+                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = false)
             } else {
-                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = true)
+                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = false)
             }
             flow.collect { event ->
                 when (event) {
@@ -185,7 +182,7 @@ class MovieListViewModel @Inject constructor(
                                 isFilterSwitching = false,
                                 hasMore = event.entry.value.pageInfo.hasNext,
                                 error = if (event.entry.value.movies.isEmpty()) "沒有數據" else null,
-                                isRevalidating = true,
+                                isRevalidating = event.entry.isExpired,
                                 lastUpdatedAtMillis = event.entry.storedAtMillis
                             )
                         }
@@ -194,7 +191,7 @@ class MovieListViewModel @Inject constructor(
                         // loadFirstPage 仅在列表为空时调用，直接应用
                         _uiState.update {
                             it.copy(
-                                movies = event.entry.value.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                movies = event.entry.value.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() },
                                 pageInfo = event.entry.value.pageInfo,
                                 filterInfo = event.entry.value.filterInfo,
                                 isLoading = false,
@@ -243,17 +240,34 @@ class MovieListViewModel @Inject constructor(
             flow.collect { event ->
                 when (event) {
                     is CachedLoadEvent.Cached -> {
-                        // 缓存有效（未过期），无需网络请求
-                        _uiState.update { it.copy(isRevalidating = false) }
+                        _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                     }
                     is CachedLoadEvent.Fresh -> {
-                        // 缓存过期，网络获取到新数据 → 走 pending 提示
-                        _uiState.update {
-                            it.copy(
-                                isRevalidating = false,
-                                pendingFreshResult = event.entry.value,
-                                refreshMessage = "有新數據"
-                            )
+                        val fresh = event.entry.value.copy(
+                            movies = event.entry.value.movies.simulateCacheRefreshChange()
+                        )
+                        if (isAtTopForFreshUpdates) {
+                            currentPage = 1
+                            _uiState.update {
+                                it.copy(
+                                    movies = fresh.movies.map { movie -> movie.toUiModel() },
+                                    pageInfo = fresh.pageInfo,
+                                    hasMore = fresh.pageInfo.hasNext,
+                                    filterInfo = fresh.filterInfo,
+                                    isRevalidating = false,
+                                    pendingFreshResult = null,
+                                    refreshMessage = null,
+                                    lastUpdatedAtMillis = event.entry.storedAtMillis
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isRevalidating = false,
+                                    pendingFreshResult = fresh,
+                                    refreshMessage = "有新數據"
+                                )
+                            }
                         }
                     }
                     is CachedLoadEvent.Failure -> {

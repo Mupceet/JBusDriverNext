@@ -5,27 +5,18 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreCategory
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
-
-// TODO: remove after testing cache refresh UX — 随机删除前 1~2 项，模拟数据变化
-private fun <T> List<T>.shuffledForTesting(): List<T> {
-    if (size < 3) return this
-    val result = toMutableList()
-    repeat((1..2).random()) {
-        if (result.size <= 2) return@repeat
-        result.removeAt(0)
-    }
-    return result
-}
 
 /**
  * 分类列表页的 UI 状态。
@@ -75,6 +66,7 @@ class GenreListViewModel @Inject constructor(
 
     /** 当前的数据源类型（默认为分类类型） */
     private var dataSourceType: DataSourceType = DataSourceType.GENRE
+    private var loadJob: Job? = null
 
     /**
      * 设置数据源类型并重新加载分类列表。
@@ -86,7 +78,6 @@ class GenreListViewModel @Inject constructor(
      */
     fun setDataSourceType(type: DataSourceType) {
         if (dataSourceType == type && _uiState.value.genreCategories.isNotEmpty()) {
-            revalidate()
             return
         }
         dataSourceType = type
@@ -101,10 +92,11 @@ class GenreListViewModel @Inject constructor(
      */
     private fun loadGenres() {
         if (_uiState.value.isLoading) return
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            repository.observeGenreCategories(dataSourceType, revalidate = true)
+            repository.observeGenreCategories(dataSourceType, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -115,13 +107,13 @@ class GenreListViewModel @Inject constructor(
                                     genreCategories = categories,
                                     isLoading = false,
                                     error = if (categories.isEmpty()) "沒有數據" else null,
-                                    isRevalidating = true,
+                                    isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
+                            val categories = event.entry.value.simulateCacheRefreshChange().map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
@@ -156,9 +148,11 @@ class GenreListViewModel @Inject constructor(
             repository.observeGenreCategories(dataSourceType, revalidate = false)
                 .collect { event ->
                     when (event) {
-                        is CachedLoadEvent.Cached -> Unit
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
+                            val categories = event.entry.value.simulateCacheRefreshChange().map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
@@ -189,7 +183,7 @@ class GenreListViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.shuffledForTesting().map { it.toUiModel() }
+                            val categories = event.entry.value.map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,

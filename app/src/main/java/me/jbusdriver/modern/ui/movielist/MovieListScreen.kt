@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,7 +40,7 @@ import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 @Composable
 fun MovieListScreen(
     modifier: Modifier = Modifier,
-    dataSourceType: DataSourceType = DataSourceType.CENSORED,
+    dataSourceType: DataSourceType? = DataSourceType.CENSORED,
     active: Boolean = true,
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     compact: Boolean = false,
@@ -53,15 +54,28 @@ fun MovieListScreen(
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val isAtTop by remember(isGrid) {
+        derivedStateOf {
+            if (isGrid == true) {
+                gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 20
+            } else {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 20
+            }
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        viewModel.setAtTopForFreshUpdates(isAtTop)
+    }
 
     LaunchedEffect(dataSourceType, active) {
-        if (active) {
+        if (active && dataSourceType != null) {
             viewModel.setDataSourceType(dataSourceType)
         }
     }
 
     // 从后台恢复时触发 revalidate
-    LifecycleResumeEffect(Unit) {
+    LifecycleResumeEffect(active) {
         if (active && uiState.movies.isNotEmpty()) {
             viewModel.revalidate()
         }

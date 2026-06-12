@@ -43,6 +43,11 @@ val javbusAuthCookie = providers.gradleProperty("JAVBUS_AUTH_COOKIE")
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
 
+val cacheRefreshTestMode = providers.gradleProperty("cacheRefreshTestMode")
+    .orNull
+    ?.toBooleanStrictOrNull()
+    ?: false
+
 val releaseStoreFile = providers.gradleProperty("RELEASE_STORE_FILE")
     .map { it.unquotePropertyValue() }
 val releaseStorePassword = providers.gradleProperty("RELEASE_STORE_PASSWORD")
@@ -92,6 +97,7 @@ android {
 
     buildTypes {
         release {
+            buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", "false")
             applicationIdSuffix = ".release"
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
@@ -106,6 +112,7 @@ android {
             manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
         debug {
+            buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", cacheRefreshTestMode.toString())
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             manifestPlaceholders["allowBackup"] = "true"

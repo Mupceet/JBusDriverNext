@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
@@ -35,9 +37,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
@@ -93,6 +97,22 @@ fun LinkMovieListScreen(
     val context = LocalContext.current
     val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val isAtTop by remember(isGrid) {
+        derivedStateOf {
+            if (isGrid) {
+                gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 20
+            } else {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 20
+            }
+        }
+    }
+
+    LaunchedEffect(isAtTop) {
+        viewModel.setAtTopForFreshUpdates(isAtTop)
+    }
 
     LaunchedEffect(linkUrl) {
         viewModel.setLink(linkUrl, type, avatarUrl)
@@ -115,6 +135,10 @@ fun LinkMovieListScreen(
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshResult()
+                scope.launch {
+                    if (isGrid) gridState.animateScrollToItem(0)
+                    else listState.animateScrollToItem(0)
+                }
             }
             viewModel.consumeRefreshMessage()
         }
@@ -255,7 +279,9 @@ fun LinkMovieListScreen(
                             onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                             isGrid = isGrid,
                             modifier = Modifier.fillMaxSize(),
-                            header = header
+                            header = header,
+                            gridState = gridState,
+                            listState = listState
                         )
 
                         if (uiState.isRevalidating && uiState.movies.isNotEmpty()) {

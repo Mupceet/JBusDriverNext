@@ -14,6 +14,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.LabSettingsStore
@@ -30,15 +31,6 @@ import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.RouteForumThreadList
 import javax.inject.Inject
 
-
-// TODO: remove after testing cache refresh UX
-private fun <T> List<T>.shuffledForTesting(): List<T> =
-    if (size < 2) this else toMutableList().apply {
-        val target = (1..lastIndex).random()
-        val temp = this[0]
-        this[0] = this[target]
-        this[target] = temp
-    }
 
 private const val TAG = "ForumVM"
 
@@ -111,7 +103,7 @@ class ForumBoardsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            repository.observeForumBoards(revalidate = true)
+            repository.observeForumBoards(revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -122,7 +114,7 @@ class ForumBoardsViewModel @Inject constructor(
                                     summary = event.entry.value.summary,
                                     groups = event.entry.value.boardGroups,
                                     isLoading = false,
-                                    isRevalidating = true,
+                                    isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
                             }
@@ -185,6 +177,11 @@ class ForumBoardsViewModel @Inject constructor(
                 }
         }
     }
+
+    fun revalidate() {
+        if (_uiState.value.groups.isNotEmpty()) loadBoards()
+    }
+
     fun consumeRefreshMessage() {
         _uiState.update { it.copy(refreshMessage = null) }
     }
@@ -245,7 +242,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, revalidate = true)
+            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -253,23 +250,27 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             KLog.d("[CacheTest] ThreadList CACHED", TAG)
                             _uiState.update {
                                 it.copy(
-                                    threads = event.entry.value.threads.shuffledForTesting(),
+                                    threads = event.entry.value.threads,
                                     pageInfo = event.entry.value.pageInfo,
                                     typeFilters = event.entry.value.typeFilters.ifEmpty { it.typeFilters },
                                     isLoading = false,
-                                    isRevalidating = true,
+                                    isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
                             }
                         }
                         is CachedLoadEvent.Fresh -> {
                             KLog.d("[CacheTest] ThreadList FRESH, isAtTop=$isAtTopForFreshUpdates", TAG)
+                            val fresh = event.entry.value.copy(
+                                threads = event.entry.value.threads.simulateCacheRefreshChange()
+                            )
                             if (isAtTopForFreshUpdates) {
                                 _uiState.update {
                                     it.copy(
-                                        threads = event.entry.value.threads,
-                                        pageInfo = event.entry.value.pageInfo,
-                                        typeFilters = event.entry.value.typeFilters,
+                                        threads = fresh.threads,
+                                        pageInfo = fresh.pageInfo,
+                                        typeFilters = fresh.typeFilters,
+                                        hasMore = fresh.pageInfo.hasNext,
                                         isLoading = false,
                                         isRevalidating = false,
                                         pendingFreshThreads = null,
@@ -282,7 +283,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                     it.copy(
                                         isLoading = false,
                                         isRevalidating = false,
-                                        pendingFreshThreads = event.entry.value,
+                                        pendingFreshThreads = fresh,
                                         refreshMessage = "Post updated"
                                     )
                                 }
@@ -297,6 +298,53 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                     it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
                                 }
                             }
+                        }
+                    }
+                }
+        }
+    }
+
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.threads.isEmpty() || state.isLoading || state.isRevalidating || state.isRefreshing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeThreads(fid, 1, state.currentTypeId, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val fresh = event.entry.value.copy(
+                                threads = event.entry.value.threads.simulateCacheRefreshChange()
+                            )
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        threads = fresh.threads,
+                                        pageInfo = fresh.pageInfo,
+                                        typeFilters = fresh.typeFilters,
+                                        hasMore = fresh.pageInfo.hasNext,
+                                        isRevalidating = false,
+                                        pendingFreshThreads = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshThreads = fresh,
+                                        refreshMessage = "Post updated"
+                                    )
+                                }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
                         }
                     }
                 }
@@ -367,6 +415,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
     fun filterByType(typeId: Int?) {
         if (_uiState.value.currentTypeId == typeId) return
         currentPage = 0
+        isAtTopForFreshUpdates = true
         _uiState.update { it.copy(currentTypeId = typeId, threads = emptyList(), pageInfo = PageInfo()) }
         loadFirstPage()
     }
@@ -449,7 +498,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                     else -> it.copy(error = null, isChangingFloorOrder = true, refreshMessage = null)
                 }
             }
-            repository.observeThreadDetail(tid, currentPage, floorOrder, forceRefresh = forceRefresh, revalidate = showLoading)
+            repository.observeThreadDetail(tid, currentPage, floorOrder, forceRefresh = forceRefresh, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -457,9 +506,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             KLog.d("[CacheTest] Detail CACHED", TAG)
                             _uiState.update {
                                 it.copy(
-                                    detail = event.entry.value.copy(replies = event.entry.value.replies.shuffledForTesting()),
+                                    detail = event.entry.value,
                                     isLoading = false,
-                                    isRevalidating = true,
+                                    isRevalidating = event.entry.isExpired,
                                     isChangingFloorOrder = false,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
@@ -467,10 +516,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                         }
                         is CachedLoadEvent.Fresh -> {
                             KLog.d("[CacheTest] Detail FRESH, isAtTop=$isAtTopForFreshUpdates", TAG)
+                            val fresh = event.entry.value.copy(
+                                replies = event.entry.value.replies.simulateCacheRefreshChange()
+                            )
                             if (isAtTopForFreshUpdates || forceRefresh || !showLoading) {
                                 _uiState.update {
                                     it.copy(
-                                        detail = event.entry.value,
+                                        detail = fresh,
                                         isLoading = false,
                                         isRevalidating = false,
                                         isChangingFloorOrder = false,
@@ -484,7 +536,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                         isLoading = false,
                                         isRevalidating = false,
                                         isChangingFloorOrder = false,
-                                        pendingFreshDetail = event.entry.value.copy(replies = event.entry.value.replies.shuffledForTesting()),
+                                        pendingFreshDetail = fresh,
                                         refreshMessage = "Post updated"
                                     )
                                 }
@@ -499,6 +551,50 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                     it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false, error = event.throwable.message ?: "Loading failed")
                                 }
                             }
+                        }
+                    }
+                }
+        }
+    }
+
+    fun revalidate() {
+        val state = _uiState.value
+        if (state.detail == null || state.isLoading || state.isRevalidating || state.isRefreshing) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRevalidating = true) }
+            repository.observeThreadDetail(tid, 1, state.floorOrder, revalidate = false)
+                .collect { event ->
+                    when (event) {
+                        is CachedLoadEvent.Cached -> {
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            val fresh = event.entry.value.copy(
+                                replies = event.entry.value.replies.simulateCacheRefreshChange()
+                            )
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        detail = fresh,
+                                        isRevalidating = false,
+                                        pendingFreshDetail = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshDetail = fresh,
+                                        refreshMessage = "Post updated"
+                                    )
+                                }
+                            }
+                        }
+                        is CachedLoadEvent.Failure -> {
+                            _uiState.update { it.copy(isRevalidating = false) }
                         }
                     }
                 }

@@ -34,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -94,6 +96,11 @@ fun ForumThreadDetailScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LifecycleResumeEffect(Unit) {
+        if (state.detail != null) viewModel.revalidate()
+        onPauseOrDispose { }
+    }
     val context = LocalContext.current
     val showScrollToTop = rememberScrollToTopVisibility(listState)
 
@@ -306,7 +313,8 @@ fun ForumThreadDetailScreen(
                     if (state.pendingFreshDetail != null) {
                         val result = snackbarHostState.showSnackbar(
                             message = state.refreshMessage ?: "Post updated",
-                            actionLabel = "Refresh"
+                            actionLabel = "Refresh",
+                            duration = SnackbarDuration.Indefinite
                         )
                         if (result == SnackbarResult.ActionPerformed) {
                             viewModel.applyPendingFreshDetail()

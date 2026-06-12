@@ -7,11 +7,13 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
@@ -23,17 +25,6 @@ import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.toUiModel
-
-// TODO: remove after testing cache refresh UX — 随机删除前 1~2 项，模拟数据变化
-private fun <T> List<T>.shuffledForTesting(): List<T> {
-    if (size < 3) return this
-    val result = toMutableList()
-    repeat((1..2).random()) {
-        if (result.size <= 2) return@repeat
-        result.removeAt(0)
-    }
-    return result
-}
 
 /**
  * 关联电影列表页的 UI 状态。
@@ -119,6 +110,12 @@ class LinkMovieListViewModel @AssistedInject constructor(
 
     /** 列表类型，如 "actress" 表示女优关联影片 */
     private var listType: String = ""
+    private var isAtTopForFreshUpdates: Boolean = true
+    private var firstPageJob: Job? = null
+
+    fun setAtTopForFreshUpdates(isAtTop: Boolean) {
+        isAtTopForFreshUpdates = isAtTop
+    }
 
     /**
      * 设置链接 URL 并加载关联电影列表。
@@ -153,7 +150,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
         currentPage = 1
         _uiState.update {
             it.copy(
-                movies = pending.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                movies = pending.movies.map { m -> m.toUiModel() },
                 pageInfo = pending.pageInfo,
                 hasMore = pending.pageInfo.hasNext,
                 filterInfo = pending.filterInfo,
@@ -171,10 +168,11 @@ class LinkMovieListViewModel @AssistedInject constructor(
     fun loadFirstPage() {
         if (_uiState.value.isLoading || linkUrl.isBlank()) return
         currentPage = 1
-        viewModelScope.launch {
+        firstPageJob?.cancel()
+        firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = true)
+            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -189,7 +187,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                     hasMore = result.pageInfo.hasNext,
                                     error = if (result.movies.isEmpty()) "沒有數據" else null,
                                     filterInfo = result.filterInfo,
-                                    isRevalidating = true,
+                                    isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis,
                                     resolvedTitle = result.filterInfo?.let {
                                         resolveBreadcrumbTitle(it)
@@ -202,7 +200,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                             val result = event.entry.value
                             _uiState.update { state ->
                                 state.copy(
-                                    movies = result.movies.shuffledForTesting().map { m -> m.toUiModel() },
+                                    movies = result.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() },
                                     pageInfo = result.pageInfo,
                                     isLoading = false,
                                     isFilterSwitching = false,
@@ -280,15 +278,34 @@ class LinkMovieListViewModel @AssistedInject constructor(
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
-                            _uiState.update { it.copy(isRevalidating = false) }
+                            _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
                         is CachedLoadEvent.Fresh -> {
-                            _uiState.update {
-                                it.copy(
-                                    isRevalidating = false,
-                                    pendingFreshResult = event.entry.value,
-                                    refreshMessage = "有新數據"
-                                )
+                            val fresh = event.entry.value.copy(
+                                movies = event.entry.value.movies.simulateCacheRefreshChange()
+                            )
+                            if (isAtTopForFreshUpdates) {
+                                currentPage = 1
+                                _uiState.update {
+                                    it.copy(
+                                        movies = fresh.movies.map { movie -> movie.toUiModel() },
+                                        pageInfo = fresh.pageInfo,
+                                        hasMore = fresh.pageInfo.hasNext,
+                                        filterInfo = fresh.filterInfo,
+                                        isRevalidating = false,
+                                        pendingFreshResult = null,
+                                        refreshMessage = null,
+                                        lastUpdatedAtMillis = event.entry.storedAtMillis
+                                    )
+                                }
+                            } else {
+                                _uiState.update {
+                                    it.copy(
+                                        isRevalidating = false,
+                                        pendingFreshResult = fresh,
+                                        refreshMessage = "有新數據"
+                                    )
+                                }
                             }
                         }
                         is CachedLoadEvent.Failure -> {

@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumThread
@@ -80,6 +82,11 @@ fun ForumThreadListScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val showScrollToTop = rememberScrollToTopVisibility(listState)
+
+    LifecycleResumeEffect(Unit) {
+        if (state.threads.isNotEmpty()) viewModel.revalidate()
+        onPauseOrDispose { }
+    }
 
     val nearEnd by remember {
         derivedStateOf {
@@ -228,7 +235,8 @@ fun ForumThreadListScreen(
                 if (state.pendingFreshThreads != null) {
                     val result = snackbarHostState.showSnackbar(
                         message = state.refreshMessage ?: "Post updated",
-                        actionLabel = "Refresh"
+                        actionLabel = "Refresh",
+                        duration = SnackbarDuration.Indefinite
                     )
                     if (result == SnackbarResult.ActionPerformed) {
                         viewModel.applyPendingFreshThreads()
