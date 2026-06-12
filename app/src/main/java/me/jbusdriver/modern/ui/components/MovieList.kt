@@ -124,7 +124,7 @@ fun MovieList(
                 onClick = { scope.launch { gridState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = 64.dp)
             )
         }
     } else {
@@ -183,7 +183,7 @@ fun MovieList(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = 64.dp)
             )
         }
     }
