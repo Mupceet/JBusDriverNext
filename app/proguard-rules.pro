@@ -13,87 +13,104 @@
 # Gson 2.14 ships consumer rules for TypeToken, @SerializedName, @JsonAdapter
 # and adapter constructors. App rules only preserve JSON field names for data
 # that is persisted, exported, or restored from cache across releases.
--keepclassmembers class me.jbusdriver.modern.domain.model.Movie {
+
+# Kotlin Pair is used as a GSON deserialization target (e.g. Pair<List<ActressInfo>, PageInfo>)
+# and must not be obfuscated or its member names renamed.
+-keep class kotlin.Pair {
+    <fields>;
+}
+# CacheEnvelope is serialized/deserialized by GSON in cache layer
+-keep class me.jbusdriver.modern.core.cache.CacheEnvelope {
+    <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.Movie {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ActressInfo {
+-keep class me.jbusdriver.modern.domain.model.ActressInfo {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.Header {
+-keep class me.jbusdriver.modern.domain.model.Header {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.Genre {
+-keep class me.jbusdriver.modern.domain.model.Genre {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.SearchLink {
+-keep class me.jbusdriver.modern.domain.model.SearchLink {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.PageLink {
+-keep class me.jbusdriver.modern.domain.model.PageLink {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.MoviePageResult {
+-keep class me.jbusdriver.modern.domain.model.MoviePageResult {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.MovieFilterInfo {
+-keep class me.jbusdriver.modern.domain.model.MovieFilterInfo {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.PageInfo {
+-keep class me.jbusdriver.modern.domain.model.PageInfo {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.MovieDetail {
+-keep class me.jbusdriver.modern.domain.model.MovieDetail {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ImageSample {
+-keep class me.jbusdriver.modern.domain.model.ImageSample {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ActressAttrs {
+-keep class me.jbusdriver.modern.domain.model.ActressAttrs {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ActressDetail {
+-keep class me.jbusdriver.modern.domain.model.ActressDetail {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.GenreGroup {
+-keep class me.jbusdriver.modern.domain.model.GenreGroup {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumBoardGroup {
+-keep class me.jbusdriver.modern.domain.model.ForumBoardGroup {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumBanner {
+-keep class me.jbusdriver.modern.domain.model.ForumBanner {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumSummaryThread {
+-keep class me.jbusdriver.modern.domain.model.ForumSummaryThread {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumHomeSummary {
+-keep class me.jbusdriver.modern.domain.model.ForumHomeSummary {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumHomeData {
+-keep class me.jbusdriver.modern.domain.model.ForumHomeData {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumBoard {
+-keep class me.jbusdriver.modern.domain.model.ForumBoard {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.LastPost {
+-keep class me.jbusdriver.modern.domain.model.LastPost {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumThread {
+-keep class me.jbusdriver.modern.domain.model.ForumThread {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumThreadDetail {
+-keep class me.jbusdriver.modern.domain.model.ForumThreadDetail {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.Comment {
+-keep class me.jbusdriver.modern.domain.model.Comment {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumReply {
+-keep class me.jbusdriver.modern.domain.model.ForumReply {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumTypeFilter {
+-keep class me.jbusdriver.modern.domain.model.ForumTypeFilter {
     !static !transient <fields>;
 }
--keepclassmembers class me.jbusdriver.modern.domain.model.ForumThreadPageResult {
+-keep class me.jbusdriver.modern.domain.model.ForumThreadPageResult {
     !static !transient <fields>;
 }
+-keep class me.jbusdriver.modern.domain.model.ContentBlock { *; }
+-keep class me.jbusdriver.modern.domain.model.ContentBlock$RichText { !static !transient <fields>; }
+-keep class me.jbusdriver.modern.domain.model.ContentBlock$ListBlock { !static !transient <fields>; }
+-keep class me.jbusdriver.modern.domain.model.ContentBlock$Image { !static !transient <fields>; }
+-keep class me.jbusdriver.modern.domain.model.ContentBlock$Quote { !static !transient <fields>; }
+-keep class me.jbusdriver.modern.domain.model.ContentBlock$RestrictedNotice { !static !transient <fields>; }
+-keep class me.jbusdriver.modern.data.ContentBlockTypeAdapter { *; }
 -keepclassmembers enum me.jbusdriver.modern.domain.model.SearchType {
     *;
 }
