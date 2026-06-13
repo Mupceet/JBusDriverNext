@@ -97,7 +97,7 @@ internal fun MagnetBottomSheet(
 
                     uiState.magnetsError != null && uiState.magnets.isEmpty() -> {
                         item {
-                            Text(uiState.magnetsError, color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(uiState.magnetsError ?: R.string.load_failed), color = MaterialTheme.colorScheme.error)
                         }
                     }
 

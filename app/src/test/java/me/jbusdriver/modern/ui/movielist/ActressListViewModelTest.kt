@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -82,7 +83,7 @@ class ActressListViewModelTest {
         Thread.sleep(100)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error?.contains("Network error") == true)
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 

@@ -50,7 +50,7 @@ data class LinkMovieListUiState(
     /** 是否还有更多数据可加载 */
     val hasMore: Boolean = true,
     /** 错误信息，正常时为 null */
-    val error: String? = null,
+    val error: Int? = null,
     /** 女优详情数据，仅在女优页面时有值 */
     val actressDetail: ActressDetailUiModel? = null,
     /** 是否正在加载女优详情 */
@@ -190,7 +190,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                     isLoading = false,
                                     isFilterSwitching = false,
                                     hasMore = result.pageInfo.hasNext,
-                                    error = if (result.movies.isEmpty()) "沒有數據" else null,
+                                    error = if (result.movies.isEmpty()) R.string.no_data else null,
                                     filterInfo = result.filterInfo,
                                     isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis,
@@ -226,7 +226,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
+                                    it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = R.string.load_failed)
                                 }
                             }
                         }
@@ -263,7 +263,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                 }
             } catch (e: Exception) {
                 pages.rollbackTo(state.pageInfo.activePage)
-                _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+                _uiState.update { it.copy(isLoadingMore = false, error = R.string.load_failed) }
             }
         }
     }
@@ -358,7 +358,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                             _uiState.update {
                                 it.copy(
                                     isRefreshing = false,
-                                    error = if (it.movies.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
+                                    error = if (it.movies.isEmpty()) R.string.load_failed else it.error,
                                     refreshMessage = if (it.movies.isNotEmpty()) R.string.refresh_failed else null
                                 )
                             }

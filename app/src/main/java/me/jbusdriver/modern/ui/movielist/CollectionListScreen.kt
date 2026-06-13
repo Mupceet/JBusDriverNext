@@ -53,7 +53,7 @@ fun CollectionListScreen(
 
         uiState.error != null && uiState.movies.isEmpty() && uiState.actresses.isEmpty() -> {
             ErrorView(
-                message = stringResource(R.string.load_failed),
+                message = stringResource(uiState.error ?: R.string.load_failed),
                 onRetry = { viewModel.loadCollection(dbType) },
                 modifier = modifier
             )

@@ -45,7 +45,7 @@ data class ActressListUiState(
     /** 是否还有更多数据可加载 */
     val hasMore: Boolean = true,
     /** 错误信息，正常时为 null */
-    val error: String? = null,
+    val error: Int? = null,
     /** 后台刷新中（有缓存数据时显示顶部进度条） */
     val isRevalidating: Boolean = false,
     /** 缓存数据的时间戳 */
@@ -152,7 +152,7 @@ class ActressListViewModel @Inject constructor(
                                     isLoading = false,
                                     isRefreshing = false,
                                     hasMore = event.entry.value.second.hasNext,
-                                    error = if (event.entry.value.first.isEmpty()) "沒有數據" else null,
+                                    error = if (event.entry.value.first.isEmpty()) R.string.no_data else null,
                                     isRevalidating = event.entry.isExpired,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
                                 )
@@ -177,7 +177,7 @@ class ActressListViewModel @Inject constructor(
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRefreshing = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isRefreshing = false, isRevalidating = false, error = event.throwable.message ?: "載入失敗")
+                                    it.copy(isLoading = false, isRefreshing = false, isRevalidating = false, error = R.string.load_failed)
                                 }
                             }
                         }
@@ -274,7 +274,7 @@ class ActressListViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     isRefreshing = false,
-                                    error = if (it.actresses.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
+                                    error = if (it.actresses.isEmpty()) R.string.load_failed else it.error,
                                     refreshMessage = if (it.actresses.isNotEmpty()) R.string.refresh_failed else null
                                 )
                             }
@@ -308,7 +308,7 @@ class ActressListViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 pages.rollbackTo(state.pageInfo.activePage)
-                _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+                _uiState.update { it.copy(isLoadingMore = false, error = R.string.load_failed) }
             }
         }
     }

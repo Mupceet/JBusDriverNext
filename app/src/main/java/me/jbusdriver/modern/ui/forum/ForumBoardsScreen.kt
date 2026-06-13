@@ -108,7 +108,7 @@ fun ForumBoardsScreen(
             if (state.isLoading) {
                 LoadingViewCentered()
             } else {
-                EmptyStateView(message = state.error)
+                EmptyStateView(message = state.error?.let { stringResource(it) })
             }
         }
         if (state.isRevalidating && state.groups.isNotEmpty()) {

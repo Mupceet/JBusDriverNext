@@ -55,7 +55,7 @@ data class ForumThreadListUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null,
+    val error: Int? = null,
     val hasMore: Boolean = true,
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
@@ -168,7 +168,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
+                                    it.copy(isLoading = false, isRevalidating = false, error = R.string.load_failed)
                                 }
                             }
                         }
@@ -282,7 +282,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             _uiState.update {
                                 it.copy(
                                     isRefreshing = false,
-                                    error = if (it.threads.isEmpty()) event.throwable.message ?: "Loading failed" else it.error
+                                    error = if (it.threads.isEmpty()) R.string.load_failed else it.error
                                 )
                             }
                         }

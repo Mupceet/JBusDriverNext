@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
@@ -103,7 +104,7 @@ class ForumCacheRefreshViewModelTest {
 
         val state = viewModel.uiState.value
         assertTrue(state.groups.isEmpty())
-        assertEquals("offline", state.error)
+        assertEquals(R.string.load_failed, state.error)
     }
 
     @Test

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.domain.model.hasNext
@@ -43,7 +44,7 @@ data class SearchUiState(
     /** 是否还有更多搜索结果可加载 */
     val hasMore: Boolean = true,
     /** 错误信息，正常时为 null */
-    val error: String? = null,
+    val error: Int? = null,
     /** 当前搜索结果的页码 */
     val currentPage: Int = 0
 )
@@ -175,7 +176,7 @@ class SearchViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, error = R.string.search_failed) }
             }
         }
     }
@@ -218,7 +219,7 @@ class SearchViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
+                _uiState.update { it.copy(isRefreshing = false, error = R.string.search_failed) }
             }
         }
     }
@@ -258,7 +259,7 @@ class SearchViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
+                _uiState.update { it.copy(isLoadingMore = false, error = R.string.search_failed) }
             }
         }
     }

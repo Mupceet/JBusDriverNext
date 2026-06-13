@@ -248,7 +248,7 @@ fun ForumThreadDetailScreen(
                     }
 
                     state.isLoading -> LoadingViewCentered()
-                    else -> EmptyStateView(message = state.error)
+                    else -> EmptyStateView(message = state.error?.let { stringResource(it) })
                 }
                 LaunchedEffect(state.pendingFreshDetail) {
                     if (state.pendingFreshDetail != null) {

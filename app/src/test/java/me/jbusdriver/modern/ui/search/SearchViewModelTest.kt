@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.domain.model.MoviePageResult
@@ -89,7 +90,7 @@ class SearchViewModelTest {
         viewModel.search("test")
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error?.contains("Search failed") == true)
+        assertEquals(R.string.search_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 

@@ -49,7 +49,7 @@ data class ForumThreadDetailUiState(
     val lastUpdatedAtMillis: Long? = null,
     val pendingFreshDetail: ForumThreadDetail? = null,
     val refreshMessage: Int? = null,
-    val error: String? = null,
+    val error: Int? = null,
     val isLoadingMore: Boolean = false,
     val isChangingFloorOrder: Boolean = false
 )
@@ -202,7 +202,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false)
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false, error = event.throwable.message ?: "Loading failed")
+                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false, error = R.string.load_failed)
                                 }
                             }
                         }
@@ -296,7 +296,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             _uiState.update {
                                 it.copy(
                                     isRefreshing = false,
-                                    error = if (it.detail == null) event.throwable.message ?: "Loading failed" else it.error,
+                                    error = if (it.detail == null) R.string.load_failed else it.error,
                                     refreshMessage = if (it.detail != null) R.string.refresh_failed else null
                                 )
                             }

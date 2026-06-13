@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
@@ -38,7 +39,7 @@ data class CollectionListUiState(
     val movieCount: Int = 0,
     val actressCount: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: Int? = null,
     val filterState: CollectionFilterState = CollectionFilterState(),
     val availableYears: AvailableYears = AvailableYears(),
     val availablePublishMonths: Set<Int> = emptySet()
@@ -107,7 +108,7 @@ class CollectionListViewModel @Inject constructor(
                 updateAvailableYears()
                 applyFilterAndSort()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入收藏失敗") }
+                _uiState.update { it.copy(isLoading = false, error = R.string.collect_load_failed) }
             }
         }
     }

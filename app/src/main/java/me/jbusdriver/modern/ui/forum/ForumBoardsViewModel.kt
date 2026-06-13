@@ -25,7 +25,7 @@ data class ForumBoardsUiState(
     val groups: List<ForumBoardGroup> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null,
+    val error: Int? = null,
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
     val refreshMessage: Int? = null
@@ -82,7 +82,7 @@ class ForumBoardsViewModel @Inject constructor(
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, error = event.throwable.message ?: "Loading failed")
+                                    it.copy(isLoading = false, isRevalidating = false, error = R.string.load_failed)
                                 }
                             }
                         }
@@ -113,7 +113,7 @@ class ForumBoardsViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     isRefreshing = false,
-                                    error = if (it.groups.isEmpty()) event.throwable.message ?: "Loading failed" else it.error,
+                                    error = if (it.groups.isEmpty()) R.string.load_failed else it.error,
                                     refreshMessage = if (it.groups.isNotEmpty()) R.string.refresh_failed else null
                                 )
                             }

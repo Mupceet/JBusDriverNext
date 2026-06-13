@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
@@ -97,7 +98,7 @@ class MovieDetailViewModelTest {
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error?.contains("Network error") == true)
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 

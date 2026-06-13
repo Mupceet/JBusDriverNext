@@ -150,7 +150,7 @@ class MovieListViewModelTest {
         Thread.sleep(100)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error?.contains("Network error") == true)
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 

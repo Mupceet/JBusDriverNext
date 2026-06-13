@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
@@ -101,7 +102,7 @@ class LinkMovieListViewModelTest {
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error?.contains("Network error") == true)
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 

@@ -161,7 +161,7 @@ fun MovieDetailScreen(
 
                 uiState.error != null -> {
                     ErrorView(
-                        message = stringResource(R.string.load_failed),
+                        message = stringResource(uiState.error ?: R.string.load_failed),
                         onRetry = { viewModel.loadDetail(movieUrl, censorType) }
                     )
                 }

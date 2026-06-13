@@ -107,7 +107,7 @@ fun ActressListScreen(
             }
             uiState.error != null && uiState.actresses.isEmpty() -> {
                 ErrorView(
-                    message = stringResource(R.string.load_failed),
+                    message = stringResource(uiState.error ?: R.string.load_failed),
                     onRetry = { viewModel.refresh() }
                 )
             }

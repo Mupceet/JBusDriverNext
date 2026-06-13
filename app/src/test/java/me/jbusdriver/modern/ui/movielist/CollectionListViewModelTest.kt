@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.site.SiteConfig
@@ -163,7 +164,7 @@ class CollectionListViewModelTest {
         Thread.sleep(100)
         advanceUntilIdle()
 
-        assertEquals("DB error", viewModel.uiState.value.error)
+        assertEquals(R.string.collect_load_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 }

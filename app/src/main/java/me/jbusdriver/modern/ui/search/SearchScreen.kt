@@ -263,7 +263,7 @@ fun SearchScreen(
 
             uiState.error != null && !hasResults -> {
                 ErrorView(
-                    message = stringResource(R.string.search_failed),
+                    message = stringResource(uiState.error ?: R.string.search_failed),
                     onRetry = { doSearch() }
                 )
             }

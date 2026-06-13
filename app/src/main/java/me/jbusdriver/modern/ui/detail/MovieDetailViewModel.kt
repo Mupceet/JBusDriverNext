@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MagnetRepository
@@ -25,10 +26,10 @@ data class MovieDetailUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val movieDetail: MovieDetailUiModel? = null,
-    val error: String? = null,
+    val error: Int? = null,
     val magnets: List<MagnetUiModel> = emptyList(),
     val isLoadingMagnets: Boolean = false,
-    val magnetsError: String? = null,
+    val magnetsError: Int? = null,
     val isCollected: Boolean = false,
     val gid: String? = null,
     val uc: String? = null
@@ -69,7 +70,7 @@ class MovieDetailViewModel @Inject constructor(
                 val collected = collectRepository.isMovieCollected(movie)
                 _uiState.update { it.copy(isCollected = collected) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "載入失敗") }
+                _uiState.update { it.copy(isLoading = false, error = R.string.load_failed) }
             }
         }
     }
@@ -82,7 +83,7 @@ class MovieDetailViewModel @Inject constructor(
                 val detail = repository.getMovieDetail(currentUrl, forceRefresh = true)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isRefreshing = false) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
+                _uiState.update { it.copy(isRefreshing = false, error = R.string.load_failed) }
             }
         }
     }
@@ -101,7 +102,7 @@ class MovieDetailViewModel @Inject constructor(
                     it.copy(magnets = magnets, isLoadingMagnets = false)
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = e.message) }
+                _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = R.string.load_failed) }
             }
         }
     }
