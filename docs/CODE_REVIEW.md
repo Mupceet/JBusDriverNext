@@ -411,13 +411,13 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 | 重复 UI | 5.1 LoadingView/EmptyStateView/ErrorView / 5.2 CollectButton / 5.3 ShareButton | 通用组件已提取并迁移 |
 | 类划分 | 8.1 ForumViewModels / 8.2 ForumPostParser / 8.3 MirrorScanner / 8.4 CollectCategoryScreen / 8.5 MovieListViewModel | 全部拆分/职责下沉（8.5 用 `MoviePageSource` 策略封装 by-type / by-url 两种加载模式） |
 | §10 | Task 1–7（ForumSession/Cookie/索引/FileCache 等） | 已核实全部实施 |
-| i18n | 6.1 字符串资源化基础 | 建 `strings.xml`(en) + `values-zh-rTW`，已迁移 11 个文件 |
+| i18n | 6.1 字符串资源化 | 基本完成：`values/`(繁中默认) + `values-en/`(英文) 约 128 键；全部 Composable 与 ViewModel 文案已迁移。ViewModel 一律发出 `@StringRes Int`（error / refreshMessage / ScanState.error / 标题），UI 层 `stringResource`/`context.getString` 解析（模式 A）。仅余 debug diff-log 与解析数据比较串（非用户可见，刻意保留） |
+| i18n | 6.2 繁简混用 | 基本解决：硬编码文案全部上移到资源，简繁混用（如 磁力链接/連結、Refresh failed/刷新失敗）经统一 key 消除 |
 
 ### 🔄 进行中 / 部分完成
 
 | 分类 | 问题 | 现状 |
 |------|------|------|
-| i18n | 6.1 | 已迁移 MainTabContent、StateViews、CollectButton、ShareButton、ForumThreadDetailScreen、LabSettingsScreen、SearchScreen、CollectCategoryScreen、CollectionFilterSheet、LinkMovieListScreen、ImageViewScreen、MovieDetailScreen（含拆分出的 Sections/MagnetBottomSheet）；尚余约 15+ 文件（含 ViewModel 内文案，需经 `context.getString` 或事件化处理） |
 | 文件过长 | 七 | MovieDetailScreen、ForumThreadDetailScreen 均已拆分；§7 表中仅余 CollectionListViewModel(287)、LinkMovieListScreen(422)、SearchScreen(373) 等中小文件 |
 | P2 | 4.3 SWR 四段式重复 | 提取 `core/cache/PagedSwrState` 工具（`PageTracker`/`AtTopGate`/`decideFreshRevalidate`），已迁移 MovieList/LinkMovieList/ActressList 三个分页 ViewModel；reducer 仍内联保留各 VM 字段差异。暂缓 ForumThreadList（`distinctBy`+typeFilters+首屏 pending 差异）、Genre/ForumBoards（非分页）、ForumThreadDetail（定制） |
 
@@ -425,7 +425,6 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 
 | 分类 | 问题 |
 |------|------|
-| i18n | 6.2 繁简混用统一（依赖 6.1 完成） |
 | 架构 | 9.1 统一错误处理策略 |
 | 测试/文档 | 9.2–9.4 ForumSessionManager/HtmlClient/SiteConfig/CollectRepository/ForumRepository 等单元测试与 KDoc |
 
