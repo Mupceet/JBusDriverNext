@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -61,11 +62,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoard
 import me.jbusdriver.modern.domain.model.ForumSummaryThread
 
-private val TabLabels = listOf("最新主題", "最新回復", "熱點話題")
+private val TabLabels = listOf(R.string.forum_tab_latest, R.string.forum_tab_latest_reply, R.string.forum_tab_hot)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -301,7 +303,7 @@ private fun SummarySection(
                         },
                         text = {
                             Text(
-                                label,
+                                stringResource(label),
                                 fontSize = 13.sp,
                                 fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal
                             )

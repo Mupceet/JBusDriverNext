@@ -10,7 +10,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import me.jbusdriver.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -51,7 +53,7 @@ fun CollectionListScreen(
 
         uiState.error != null && uiState.movies.isEmpty() && uiState.actresses.isEmpty() -> {
             ErrorView(
-                message = "載入失敗，請重試",
+                message = stringResource(R.string.load_failed),
                 onRetry = { viewModel.loadCollection(dbType) },
                 modifier = modifier
             )
@@ -61,7 +63,7 @@ fun CollectionListScreen(
             if (uiState.movies.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (hasItems) "沒有匹配的篩選結果" else "還沒有收藏",
+                        if (hasItems) stringResource(R.string.no_filter_match) else stringResource(R.string.no_collection_yet),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -81,7 +83,7 @@ fun CollectionListScreen(
             if (uiState.actresses.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (hasItems) "沒有匹配的篩選結果" else "還沒有收藏",
+                        if (hasItems) stringResource(R.string.no_filter_match) else stringResource(R.string.no_collection_yet),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

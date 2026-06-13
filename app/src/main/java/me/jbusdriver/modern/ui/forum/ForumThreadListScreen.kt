@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,7 +118,7 @@ fun ForumThreadListScreen(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
+                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -152,7 +153,7 @@ fun ForumThreadListScreen(
                                 FilterChip(
                                     selected = state.currentTypeId == null,
                                     onClick = { viewModel.filterByType(null) },
-                                    label = { Text("全部", fontSize = 12.sp) }
+                                    label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
                                 )
                             }
                             itemsIndexed(state.typeFilters, key = { index, _ -> "typeFilter_$index" }) { _, filter ->
@@ -319,7 +320,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "${thread.viewCount} 瀏覽 · ${thread.replyCount} 回復",
+                        stringResource(R.string.view_count, thread.viewCount, thread.replyCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -113,7 +114,7 @@ fun MovieList(
                 if (!hasMore && movies.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.no_more), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -172,7 +173,7 @@ fun MovieList(
                 if (!hasMore && movies.isNotEmpty()) {
                     item {
                         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.no_more), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -453,7 +454,7 @@ fun CompactMovieItem(
                         painter = painterResource(
                             if (isCollected) R.drawable.favorite_fill_24px else R.drawable.favorite_24px
                         ),
-                        contentDescription = if (isCollected) "取消收藏" else "收藏",
+                        contentDescription = if (isCollected) stringResource(R.string.uncollect_action) else stringResource(R.string.collect),
                         tint = if (isCollected) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )

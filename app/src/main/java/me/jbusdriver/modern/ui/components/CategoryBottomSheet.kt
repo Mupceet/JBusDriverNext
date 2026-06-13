@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,7 +38,7 @@ fun CategoryBottomSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("選擇類別", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.select_category), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(12.dp))
                 IconButton(
                     onClick = { expandedTitles.addAll(categories.map { it.title }) },
@@ -45,7 +46,7 @@ fun CategoryBottomSheet(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.expand_all_24px),
-                        contentDescription = "全部展開",
+                        contentDescription = stringResource(R.string.expand_all),
                         modifier = Modifier.graphicsLayer { rotationZ = 180f }.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -56,7 +57,7 @@ fun CategoryBottomSheet(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.collapse_all_24px),
-                        contentDescription = "全部摺疊",
+                        contentDescription = stringResource(R.string.collapse_all),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -66,7 +67,7 @@ fun CategoryBottomSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isMultiSelect && selectedGenres.isNotEmpty()) {
                     Text(
-                        "已選 ${selectedGenres.size}",
+                        stringResource(R.string.selected_count, selectedGenres.size),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp
                     )
@@ -74,7 +75,7 @@ fun CategoryBottomSheet(
                 }
                 if (selectedGenres.isNotEmpty()) {
                     TextButton(onClick = { onSelectionChange(emptySet()) }) {
-                        Text("重置", fontSize = 12.sp)
+                        Text(stringResource(R.string.reset), fontSize = 12.sp)
                     }
                 }
 //                Text("多選", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

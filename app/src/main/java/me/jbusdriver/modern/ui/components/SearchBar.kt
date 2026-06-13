@@ -14,13 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.jbusdriver.R
 
 @Composable
 fun SearchBar(
-    hint: String = "搜索影片、演員、類別...",
+    hint: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -36,12 +37,12 @@ fun SearchBar(
         ) {
             Icon(
                 painter = painterResource(R.drawable.search_24px),
-                contentDescription = "搜尋",
+                contentDescription = stringResource(R.string.search),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                hint,
+                hint ?: stringResource(R.string.search_placeholder),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 fontSize = 14.sp
             )

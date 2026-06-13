@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import me.jbusdriver.R
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -65,7 +67,7 @@ fun ErrorView(
         )
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onRetry) {
-            Text("重試")
+            Text(stringResource(R.string.retry))
         }
     }
 }

@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import me.jbusdriver.R
 
 @Composable
 fun MovieFilterBar(
@@ -38,13 +40,13 @@ fun MovieFilterBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             FilterSegment(
-                text = "已有磁力 ($magnetCount)",
+                text = stringResource(R.string.magnet_count, magnetCount),
                 active = !showAll,
                 onClick = { if (showAll) onToggle() },
                 modifier = Modifier.weight(1f)
             )
             FilterSegment(
-                text = "全部影片 ($totalCount)",
+                text = stringResource(R.string.all_movies_count, totalCount),
                 active = showAll,
                 onClick = { if (!showAll) onToggle() },
                 modifier = Modifier.weight(1f)

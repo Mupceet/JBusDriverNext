@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -72,7 +73,7 @@ fun GifPlaceholder(
                     modifier = Modifier.size(36.dp)
                 )
                 Text(
-                    text = "點擊載入",
+                    text = stringResource(R.string.click_to_load),
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -90,11 +91,11 @@ fun GifPlaceholder(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 DropdownMenuItem(
-                    text = { Text("載入此動圖") },
+                    text = { Text(stringResource(R.string.load_this_gif)) },
                     onClick = { showMenu = false; onClick() }
                 )
                 DropdownMenuItem(
-                    text = { Text("載入全部動圖") },
+                    text = { Text(stringResource(R.string.load_all_gifs)) },
                     onClick = { showMenu = false; onLoadAllGifs() }
                 )
             }

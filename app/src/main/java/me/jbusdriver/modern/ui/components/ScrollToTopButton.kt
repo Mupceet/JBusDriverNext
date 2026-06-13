@@ -18,6 +18,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -50,7 +51,7 @@ fun ScrollToTopButton(
         ) {
             Icon(
                 painter = painterResource(R.drawable.keyboard_double_arrow_up_24px),
-                contentDescription = "回到頂部"
+                contentDescription = stringResource(R.string.back_to_top)
             )
         }
     }

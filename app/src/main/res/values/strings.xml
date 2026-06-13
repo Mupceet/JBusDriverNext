@@ -138,4 +138,30 @@
     <string name="saved_to_gallery">Saved to gallery</string>
     <string name="save_failed_detail">Save failed: %1$s</string>
     <string name="share_failed_detail">Share failed: %1$s</string>
+
+    <!-- Collection filter / category -->
+    <string name="select_category">Select category</string>
+    <string name="expand_all">Expand all</string>
+    <string name="collapse_all">Collapse all</string>
+    <string name="selected_count">Selected %1$d</string>
+    <string name="multi_select">Multi-select</string>
+    <string name="no_filter_match">No matching results</string>
+    <string name="no_collection_yet">No collections yet</string>
+
+    <!-- Search -->
+    <string name="search">Search</string>
+    <string name="search_placeholder">Search movies, actresses, genres…</string>
+
+    <!-- Movie filter bar -->
+    <string name="magnet_count">With magnet (%1$d)</string>
+    <string name="all_movies_count">All movies (%1$d)</string>
+
+    <!-- GIF -->
+    <string name="click_to_load">Tap to load</string>
+    <string name="load_this_gif">Load this GIF</string>
+    <string name="load_all_gifs">Load all GIFs</string>
+
+    <!-- Misc UI -->
+    <string name="retry">Retry</string>
+    <string name="back_to_top">Back to top</string>
 </resources>

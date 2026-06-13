@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import androidx.compose.material3.AlertDialog
@@ -91,17 +92,17 @@ fun ActressAvatar(
     if (showDialog && contentDescription != null) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("演員") },
+            title = { Text(stringResource(R.string.actresses)) },
             text = { SelectionContainer { Text(contentDescription) } },
             confirmButton = {
                 TextButton(onClick = {
                     ctx.copy(contentDescription)
-                    Toast.makeText(ctx, "已複製", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, ctx.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                     showDialog = false
-                }) { Text("複製") }
+                }) { Text(stringResource(R.string.copy)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("關閉") }
+                TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.close)) }
             }
         )
     }

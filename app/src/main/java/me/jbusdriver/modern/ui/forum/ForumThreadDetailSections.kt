@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -70,7 +71,7 @@ internal fun ThreadHeader(detail: ForumThreadDetail) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                "${detail.viewCount} 瀏覽 · ${detail.replyCount} 回復",
+                stringResource(R.string.view_count, detail.viewCount, detail.replyCount),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -94,7 +95,7 @@ internal fun RepliesHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "精彩评论 ($replyCount)",
+            stringResource(R.string.forum_reply_count, replyCount),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
@@ -106,7 +107,7 @@ internal fun RepliesHeader(
             ) {
                 Icon(
                     painterResource(R.drawable.sort_24px),
-                    contentDescription = "楼层排序",
+                    contentDescription = stringResource(R.string.floor_sort),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -115,7 +116,7 @@ internal fun RepliesHeader(
                 onDismissRequest = { expanded = false }
             ) {
                 FloorOrderMenuItem(
-                    text = "正序",
+                    text = stringResource(R.string.floor_order_regular),
                     selected = floorOrder == ForumFloorOrder.REGULAR,
                     onClick = {
                         expanded = false
@@ -123,7 +124,7 @@ internal fun RepliesHeader(
                     }
                 )
                 FloorOrderMenuItem(
-                    text = "倒序",
+                    text = stringResource(R.string.floor_order_reverse),
                     selected = floorOrder == ForumFloorOrder.REVERSE,
                     onClick = {
                         expanded = false
@@ -168,7 +169,7 @@ internal fun CommentsSection(comments: List<Comment>) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                "點評",
+                stringResource(R.string.comment),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )
@@ -285,7 +286,7 @@ internal fun FloorContentDialog(
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "內容預覽",
+                    stringResource(R.string.content_preview),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp)
                 )
@@ -311,10 +312,10 @@ internal fun FloorContentDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("關閉")
+                        Text(stringResource(R.string.close))
                     }
                     TextButton(onClick = onCopyAll) {
-                        Text("複製全部")
+                        Text(stringResource(R.string.copy_all))
                     }
                 }
             }

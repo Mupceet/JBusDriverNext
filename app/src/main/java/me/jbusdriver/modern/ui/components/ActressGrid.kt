@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import me.jbusdriver.R
 import me.jbusdriver.modern.ui.ActressUiModel
 
 /**
@@ -97,7 +99,7 @@ fun ActressGrid(
             if (!hasMore && actresses.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Text("沒有更多了", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.no_more), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

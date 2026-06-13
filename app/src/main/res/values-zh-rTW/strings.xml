@@ -138,4 +138,30 @@
     <string name="saved_to_gallery">已保存到相冊</string>
     <string name="save_failed_detail">保存失敗: %1$s</string>
     <string name="share_failed_detail">分享失敗: %1$s</string>
+
+    <!-- Collection filter / category -->
+    <string name="select_category">選擇類別</string>
+    <string name="expand_all">全部展開</string>
+    <string name="collapse_all">全部摺疊</string>
+    <string name="selected_count">已選 %1$d</string>
+    <string name="multi_select">多選</string>
+    <string name="no_filter_match">沒有匹配的篩選結果</string>
+    <string name="no_collection_yet">還沒有收藏</string>
+
+    <!-- Search -->
+    <string name="search">搜尋</string>
+    <string name="search_placeholder">搜索影片、演員、類別…</string>
+
+    <!-- Movie filter bar -->
+    <string name="magnet_count">已有磁力 (%1$d)</string>
+    <string name="all_movies_count">全部影片 (%1$d)</string>
+
+    <!-- GIF -->
+    <string name="click_to_load">點擊載入</string>
+    <string name="load_this_gif">載入此動圖</string>
+    <string name="load_all_gifs">載入全部動圖</string>
+
+    <!-- Misc UI -->
+    <string name="retry">重試</string>
+    <string name="back_to_top">回到頂部</string>
 </resources>

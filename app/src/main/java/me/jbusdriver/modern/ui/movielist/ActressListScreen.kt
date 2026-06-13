@@ -22,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import me.jbusdriver.R
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
@@ -102,7 +104,7 @@ fun ActressListScreen(
             }
             uiState.error != null && uiState.actresses.isEmpty() -> {
                 ErrorView(
-                    message = "載入失敗，請重試",
+                    message = stringResource(R.string.load_failed),
                     onRetry = { viewModel.refresh() }
                 )
             }
