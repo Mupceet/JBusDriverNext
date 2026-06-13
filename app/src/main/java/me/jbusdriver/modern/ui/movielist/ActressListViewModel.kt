@@ -10,7 +10,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
+import me.jbusdriver.modern.core.cache.PageTracker
+import me.jbusdriver.modern.core.cache.decideFreshRevalidate
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -76,15 +80,15 @@ class ActressListViewModel @Inject constructor(
     val uiState: StateFlow<ActressListUiState> = _uiState.asStateFlow()
 
     /** 当前已加载到的页码 */
-    private var currentPage = 0
+    private val pages = PageTracker()
 
     /** 当前的数据源类型（默认为女优分类） */
     private var dataSourceType: DataSourceType = DataSourceType.ACTRESSES
-    private var isAtTopForFreshUpdates: Boolean = true
+    private val atTop = AtTopGate()
     private var firstPageJob: Job? = null
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
-        isAtTopForFreshUpdates = isAtTop
+        atTop.isAtTop = isAtTop
     }
 
     /**
@@ -99,7 +103,7 @@ class ActressListViewModel @Inject constructor(
             return
         }
         dataSourceType = type
-        currentPage = 0
+        pages.reset()
         _uiState.value = ActressListUiState()
         loadFirstPage()
     }
@@ -111,7 +115,7 @@ class ActressListViewModel @Inject constructor(
      */
     fun applyPendingFreshActresses() {
         val pending = _uiState.value.pendingFreshActresses ?: return
-        currentPage = 1
+        pages.startFirstPage()
         _uiState.update {
             it.copy(
                 actresses = pending.first.map { a -> a.toActressUiModel() },
@@ -130,7 +134,7 @@ class ActressListViewModel @Inject constructor(
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
-        currentPage = 1
+        pages.startFirstPage()
         firstPageJob?.cancel()
         firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
@@ -204,31 +208,33 @@ class ActressListViewModel @Inject constructor(
                                 first = event.entry.value.first.simulateCacheRefreshChange()
                             )
                             val freshUiModels = fresh.first.map { it.toActressUiModel() }
-                            val oldFirstPage = _uiState.value.actresses.take(freshUiModels.size)
-                            val hasChanged = oldFirstPage != freshUiModels
-                            if (isAtTopForFreshUpdates) {
-                                currentPage = 1
-                                _uiState.update {
-                                    it.copy(
-                                        actresses = freshUiModels,
-                                        pageInfo = fresh.second,
-                                        hasMore = fresh.second.hasNext,
-                                        isRevalidating = false,
-                                        pendingFreshActresses = null,
-                                        refreshMessage = null,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis
-                                    )
+                            when (decideFreshRevalidate(_uiState.value.actresses, freshUiModels, atTop.isAtTop)) {
+                                FreshRevalidateOutcome.ApplyImmediately -> {
+                                    pages.startFirstPage()
+                                    _uiState.update {
+                                        it.copy(
+                                            actresses = freshUiModels,
+                                            pageInfo = fresh.second,
+                                            hasMore = fresh.second.hasNext,
+                                            isRevalidating = false,
+                                            pendingFreshActresses = null,
+                                            refreshMessage = null,
+                                            lastUpdatedAtMillis = event.entry.storedAtMillis
+                                        )
+                                    }
                                 }
-                            } else if (hasChanged) {
-                                _uiState.update {
-                                    it.copy(
-                                        isRevalidating = false,
-                                        pendingFreshActresses = fresh,
-                                        refreshMessage = "有新數據"
-                                    )
+                                FreshRevalidateOutcome.StorePending -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            isRevalidating = false,
+                                            pendingFreshActresses = fresh,
+                                            refreshMessage = "有新數據"
+                                        )
+                                    }
                                 }
-                            } else {
-                                _uiState.update { it.copy(isRevalidating = false) }
+                                FreshRevalidateOutcome.NoChange -> {
+                                    _uiState.update { it.copy(isRevalidating = false) }
+                                }
                             }
                         }
                         is CachedLoadEvent.Failure -> {
@@ -246,7 +252,7 @@ class ActressListViewModel @Inject constructor(
      */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
-        currentPage = 1
+        pages.startFirstPage()
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             repository.observeActresses(dataSourceType, 1, forceRefresh = true, revalidate = false)
@@ -284,9 +290,9 @@ class ActressListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore || !state.hasMore) return
         val nextPage = state.pageInfo.nextPage
-        if (nextPage <= currentPage) return
+        if (!pages.shouldLoadMore(state.pageInfo)) return
 
-        currentPage = nextPage
+        pages.advanceTo(nextPage)
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
@@ -300,7 +306,7 @@ class ActressListViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                currentPage = state.pageInfo.activePage
+                pages.rollbackTo(state.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
             }
         }
