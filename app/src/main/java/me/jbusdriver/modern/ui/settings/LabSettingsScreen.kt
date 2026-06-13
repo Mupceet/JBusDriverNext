@@ -426,7 +426,7 @@ private fun UrlSelectionCard(
             if (scanState.error != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    scanState.error ?: "",
+                    scanState.error?.let { stringResource(it) } ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )

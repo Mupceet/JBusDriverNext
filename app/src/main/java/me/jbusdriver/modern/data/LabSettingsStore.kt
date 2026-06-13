@@ -33,7 +33,7 @@ data class ScanState(
     val totalCount: Int = 0,
     val currentUrl: String = "",
     val discoveredUrls: List<MirrorUrl> = emptyList(),
-    val error: String? = null
+    val error: Int? = null
 )
 
 enum class ScanPhase {

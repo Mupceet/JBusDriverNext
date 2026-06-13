@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.data.ScanState
 import javax.inject.Inject
@@ -32,7 +33,7 @@ class LabSettingsViewModel @Inject constructor(
                 val currentUrl = store.selectedBaseUrl.first()
                 store.scanMirrorUrls(_scanState, currentUrl)
             } catch (e: Exception) {
-                _scanState.value = ScanState(error = e.message ?: "掃描失敗")
+                _scanState.value = ScanState(error = R.string.scan_failed)
             }
         }
     }
@@ -49,7 +50,7 @@ class LabSettingsViewModel @Inject constructor(
             try {
                 store.verifyMirrorUrls(_scanState)
             } catch (e: Exception) {
-                _scanState.value = ScanState(error = e.message ?: "檢測失敗")
+                _scanState.value = ScanState(error = R.string.verify_failed)
             }
         }
     }

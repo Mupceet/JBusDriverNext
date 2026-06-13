@@ -164,4 +164,8 @@
     <!-- Misc UI -->
     <string name="retry">Retry</string>
     <string name="back_to_top">Back to top</string>
+
+    <!-- Lab scan errors -->
+    <string name="scan_failed">Scan failed</string>
+    <string name="verify_failed">Connectivity check failed</string>
 </resources>

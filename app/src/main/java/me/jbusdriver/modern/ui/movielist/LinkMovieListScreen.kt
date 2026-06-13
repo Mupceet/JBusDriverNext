@@ -149,11 +149,14 @@ fun LinkMovieListScreen(
         }
     }
 
-    val displayTitle = when {
-        uiState.resolvedTitle != null -> uiState.resolvedTitle!!
-        title.isNotBlank() && type == "actress" -> stringResource(R.string.actress_type, title)
-        title.isNotBlank() && type == "genre" -> stringResource(R.string.genre_type, title)
-        else -> stringResource(R.string.loading)
+    val displayTitle = when (val rt = uiState.resolvedTitle) {
+        is ResolvedTitle.Actress -> stringResource(R.string.actress_type, rt.name)
+        is ResolvedTitle.Genre -> stringResource(R.string.genre_type, rt.name)
+        null -> when {
+            title.isNotBlank() && type == "actress" -> stringResource(R.string.actress_type, title)
+            title.isNotBlank() && type == "genre" -> stringResource(R.string.genre_type, title)
+            else -> stringResource(R.string.loading)
+        }
     }
 
     Scaffold(

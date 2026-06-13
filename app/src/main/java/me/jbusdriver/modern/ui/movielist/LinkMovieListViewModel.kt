@@ -36,6 +36,16 @@ import me.jbusdriver.modern.ui.toUiModel
  *
  * 包含电影列表数据、分页信息、女优详情数据、收藏状态及各加载/错误标志。
  */
+/**
+ * VM 解析出的页面标题来源（不含本地化文案）：UI 层据此用 stringResource 格式化，
+ * 避免在 ViewModel 中拼装带本地化文案的字符串。
+ */
+sealed interface ResolvedTitle {
+    val name: String
+    data class Actress(override val name: String) : ResolvedTitle
+    data class Genre(override val name: String) : ResolvedTitle
+}
+
 data class LinkMovieListUiState(
     /** 当前已加载的电影列表 */
     val movies: List<MovieUiModel> = emptyList(),
@@ -66,7 +76,7 @@ data class LinkMovieListUiState(
     /** 是否正在切换筛选条件（保留旧列表，显示顶部刷新指示器） */
     val isFilterSwitching: Boolean = false,
     /** 从页面加载的真实标题（外部链接打开时使用） */
-    val resolvedTitle: String? = null,
+    val resolvedTitle: ResolvedTitle? = null,
     /** 后台刷新中（有缓存数据时显示顶部进度条） */
     val isRevalidating: Boolean = false,
     /** 缓存数据的时间戳 */
@@ -390,7 +400,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 detail.info
                             ),
                             isLoadingActress = false,
-                            resolvedTitle = "演員: ${detail.name}"
+                            resolvedTitle = ResolvedTitle.Actress(detail.name)
                         )
                     }
                     val actress = ActressInfo(
@@ -444,16 +454,13 @@ class LinkMovieListViewModel @AssistedInject constructor(
         _uiState.update { it.copy(refreshMessage = null) }
     }
 
-    private fun resolveBreadcrumbTitle(filterInfo: MovieFilterInfo): String? {
-        return filterInfo.let {
-            if (it.breadcrumbType != null && it.breadcrumbName != null) {
-                val typeLabel = when (it.breadcrumbType) {
-                    "女優" -> "演員"
-                    "有碼類別", "無碼類別" -> "類別"
-                    else -> it.breadcrumbType
-                }
-                "$typeLabel: ${it.breadcrumbName}"
-            } else null
+    private fun resolveBreadcrumbTitle(filterInfo: MovieFilterInfo): ResolvedTitle? {
+        val name = filterInfo.breadcrumbName ?: return null
+        if (filterInfo.breadcrumbType == null) return null
+        return if (filterInfo.breadcrumbType == "女優") {
+            ResolvedTitle.Actress(name)
+        } else {
+            ResolvedTitle.Genre(name)
         }
     }
 
