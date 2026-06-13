@@ -28,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.SnackbarHostState
+import me.jbusdriver.modern.ui.components.EmptyStateView
+import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -99,27 +101,10 @@ fun ForumBoardsScreen(
                 onThreadClick = onThreadClick
             )
         } else {
-            Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator()
-                } else {
-                    Text(
-                        state.error ?: "內容為空",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (state.error != null) MaterialTheme.colorScheme.error
-                               else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "下拉刷新重試",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            if (state.isLoading) {
+                LoadingViewCentered()
+            } else {
+                EmptyStateView(message = state.error)
             }
         }
         if (state.isRevalidating && state.groups.isNotEmpty()) {

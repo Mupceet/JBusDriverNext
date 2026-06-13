@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,7 +74,10 @@ import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.components.EmptyStateView
+import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
+import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
@@ -146,17 +150,8 @@ fun ForumThreadDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        val url =
-                            "${me.jbusdriver.modern.core.http.NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid"
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, url)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "分享主題"))
-                    }) {
-                        Icon(painterResource(R.drawable.share_24px), contentDescription = "分享")
-                    }
+                    val threadUrl = "${me.jbusdriver.modern.core.http.NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid"
+                    ShareButton(text = threadUrl, chooserTitle = stringResource(R.string.share_thread))
                 }
             )
         }
@@ -275,33 +270,8 @@ fun ForumThreadDetailScreen(
                         }
                     }
 
-                    state.isLoading -> {
-                        Column(
-                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) { CircularProgressIndicator() }
-                    }
-                    else -> {
-                        Column(
-                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                state.error ?: "內容為空",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (state.error != null) MaterialTheme.colorScheme.error
-                                       else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "下拉刷新重試",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                    state.isLoading -> LoadingViewCentered()
+                    else -> EmptyStateView(message = state.error)
                 }
                 LaunchedEffect(state.pendingFreshDetail) {
                     if (state.pendingFreshDetail != null) {

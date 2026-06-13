@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumThread
+import me.jbusdriver.modern.ui.components.EmptyStateView
+import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
@@ -187,33 +189,8 @@ fun ForumThreadListScreen(
                                 }
                             }
                         }
-                        state.isLoading -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) { CircularProgressIndicator() }
-                        }
-                        else -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    state.error ?: "內容為空",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (state.error != null) MaterialTheme.colorScheme.error
-                                           else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "下拉刷新重試",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        state.isLoading -> LoadingViewCentered()
+                        else -> EmptyStateView(message = state.error)
                     }
                 }
             }
