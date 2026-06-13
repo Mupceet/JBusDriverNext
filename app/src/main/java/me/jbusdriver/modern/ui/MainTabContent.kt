@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -41,8 +42,8 @@ import me.jbusdriver.modern.ui.movielist.GenreListViewModel
 import me.jbusdriver.modern.ui.movielist.MovieListScreen
 import me.jbusdriver.modern.ui.movielist.MovieListViewModel
 
-internal enum class CensorFilter(val label: String) {
-    CENSORED("有碼"), UNCENSORED("無碼")
+internal enum class CensorFilter(val labelRes: Int) {
+    CENSORED(R.string.censored), UNCENSORED(R.string.uncensored)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,7 +126,7 @@ internal fun MovieTabContent(
                         selectedGenreLinks = genreLinkMemory[filter.name] ?: emptySet()
                     }
                 },
-                label = { Text(filter.label, fontSize = 12.sp) }
+                label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
             )
             Spacer(Modifier.width(6.dp))
         }
@@ -137,7 +138,7 @@ internal fun MovieTabContent(
             onClick = { showCategorySheet = true },
             label = {
                 Text(
-                    if (selectedGenreLinks.isEmpty()) "類別"
+                    if (selectedGenreLinks.isEmpty()) stringResource(R.string.genre)
                     else selectedGenresForChip.joinToString("+") { it.name },
                     fontSize = 12.sp,
                     maxLines = 1
@@ -152,7 +153,7 @@ internal fun MovieTabContent(
         ) {
             Icon(
                 painter = painterResource(if (isGrid) R.drawable.list_view_24px else R.drawable.grid_view_24px),
-                contentDescription = if (isGrid) "列表" else "網格",
+                contentDescription = if (isGrid) stringResource(R.string.list_view) else stringResource(R.string.grid),
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -236,7 +237,7 @@ internal fun ActressTabContent(
             FilterChip(
                 selected = censorFilter == filter,
                 onClick = { censorFilter = filter },
-                label = { Text(filter.label, fontSize = 12.sp) }
+                label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
             )
             Spacer(Modifier.width(6.dp))
         }

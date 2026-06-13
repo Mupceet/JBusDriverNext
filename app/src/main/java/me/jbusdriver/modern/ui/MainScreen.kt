@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
@@ -37,15 +38,15 @@ enum class BottomNavCategory { MOVIE, ACTRESS, FORUM, COLLECT }
 
 private data class BottomNavItem(
     val category: BottomNavCategory,
-    val label: String,
+    val labelRes: Int,
     val iconRes: Int
 )
 
 private val BottomNavItems = listOf(
-    BottomNavItem(BottomNavCategory.MOVIE, "影片", R.drawable.movie_24px),
-    BottomNavItem(BottomNavCategory.ACTRESS, "演員", R.drawable.person_24px),
-    BottomNavItem(BottomNavCategory.FORUM, "論壇", R.drawable.forum_24px),
-    BottomNavItem(BottomNavCategory.COLLECT, "收藏", R.drawable.favorite_24px)
+    BottomNavItem(BottomNavCategory.MOVIE, R.string.nav_movies, R.drawable.movie_24px),
+    BottomNavItem(BottomNavCategory.ACTRESS, R.string.nav_actresses, R.drawable.person_24px),
+    BottomNavItem(BottomNavCategory.FORUM, R.string.nav_forum, R.drawable.forum_24px),
+    BottomNavItem(BottomNavCategory.COLLECT, R.string.nav_collect, R.drawable.favorite_24px)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,10 +92,10 @@ fun MainScreen(
                         icon = {
                             Icon(
                                 painter = painterResource(item.iconRes),
-                                contentDescription = item.label
+                                contentDescription = stringResource(item.labelRes)
                             )
                         },
-                        label = { Text(item.label, style = MaterialTheme.typography.labelSmall) }
+                        label = { Text(stringResource(item.labelRes), style = MaterialTheme.typography.labelSmall) }
                     )
                 }
             }
