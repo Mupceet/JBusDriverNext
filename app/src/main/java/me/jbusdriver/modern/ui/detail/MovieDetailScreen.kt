@@ -83,6 +83,7 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.ShareButton
 import androidx.core.net.toUri
 
 /**
@@ -143,26 +144,14 @@ fun MovieDetailScreen(
                 },
                 actions = {
                     if (detail != null) {
-                        IconButton(onClick = {
-                            val code = detail.headers.firstOrNull()?.value ?: ""
-                            val shareText = buildString {
-                                if (code.isNotBlank()) append(code).append("\n")
-                                append(detail.title)
-                                append("\n")
-                                append(movieUrl)
-                            }
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                            }
-                            context.startActivity(Intent.createChooser(intent, "分享"))
-                        }) {
-                            Icon(
-                                painter = painterResource(R.drawable.share_24px),
-                                contentDescription = "分享",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                        val code = detail.headers.firstOrNull()?.value ?: ""
+                        val shareText = buildString {
+                            if (code.isNotBlank()) append(code).append("\n")
+                            append(detail.title)
+                            append("\n")
+                            append(movieUrl)
                         }
+                        ShareButton(text = shareText)
                         CollectButton(
                             isCollected = uiState.isCollected,
                             onToggle = { viewModel.toggleCollect() }

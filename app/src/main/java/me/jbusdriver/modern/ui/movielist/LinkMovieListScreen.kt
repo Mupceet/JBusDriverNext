@@ -60,6 +60,7 @@ import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
@@ -173,24 +174,12 @@ fun LinkMovieListScreen(
                 },
                 actions = {
                     if (linkUrl.isNotBlank()) {
-                        IconButton(onClick = {
-                            val shareText = buildString {
-                                append(displayTitle)
-                                append("\n")
-                                append(linkUrl)
-                            }
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                setType("text/plain")
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                            }
-                            context.startActivity(Intent.createChooser(intent, "分享"))
-                        }) {
-                            Icon(
-                                painter = painterResource(R.drawable.share_24px),
-                                contentDescription = "分享",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                        val shareText = buildString {
+                            append(displayTitle)
+                            append("\n")
+                            append(linkUrl)
                         }
+                        ShareButton(text = shareText)
                     }
                     if (type == "actress" && uiState.actressDetail != null) {
                         CollectButton(
