@@ -12,6 +12,7 @@
     <string name="back">返回</string>
     <string name="share">分享</string>
     <string name="copy">複製</string>
+    <string name="copy_link">複製連結</string>
     <string name="close">關閉</string>
     <string name="refresh">刷新</string>
     <string name="all">全部</string>

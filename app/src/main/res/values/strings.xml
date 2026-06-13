@@ -12,6 +12,7 @@
     <string name="back">Back</string>
     <string name="share">Share</string>
     <string name="copy">Copy</string>
+    <string name="copy_link">Copy link</string>
     <string name="close">Close</string>
     <string name="refresh">Refresh</string>
     <string name="all">All</string>

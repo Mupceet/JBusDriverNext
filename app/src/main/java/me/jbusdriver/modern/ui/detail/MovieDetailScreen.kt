@@ -65,6 +65,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -132,14 +133,14 @@ fun MovieDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        detail?.title ?: "載入中...",
+                        detail?.title ?: stringResource(R.string.loading),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
+                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -178,7 +179,7 @@ fun MovieDetailScreen(
 
                 uiState.error != null -> {
                     ErrorView(
-                        message = "載入失敗，請重試",
+                        message = stringResource(R.string.load_failed),
                         onRetry = { viewModel.loadDetail(movieUrl, censorType) }
                     )
                 }
@@ -293,7 +294,7 @@ private fun DetailContent(
                         onLongClick = {
 
                             context.copy(detail.title)
-                            Toast.makeText(context, "已複製標題", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.copied_title), Toast.LENGTH_SHORT).show()
                         },
                         onClick = {}
                     )
@@ -348,14 +349,14 @@ private fun DetailContent(
                                         val context = LocalContext.current
                                         Icon(
                                             painter = painterResource(R.drawable.content_copy_24px),
-                                            contentDescription = "複製",
+                                            contentDescription = stringResource(R.string.copy),
                                             modifier = Modifier
                                                 .size(22.dp)
                                                 .padding(start = 4.dp)
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .clickable {
                                                     context.copy(header.value)
-                                                    Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                                                 },
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -434,7 +435,7 @@ private fun DetailContent(
                         )
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text("查看磁力連結")
+                    Text(stringResource(R.string.view_magnet))
                 }
             }
         } else {
@@ -452,12 +453,12 @@ private fun DetailContent(
             confirmButton = {
                 TextButton(onClick = {
                     context.copy(header.value)
-                    Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                     selectedHeader = null
-                }) { Text("複製") }
+                }) { Text(stringResource(R.string.copy)) }
             },
             dismissButton = {
-                TextButton(onClick = { selectedHeader = null }) { Text("關閉") }
+                TextButton(onClick = { selectedHeader = null }) { Text(stringResource(R.string.close)) }
             }
         )
     }
@@ -477,7 +478,7 @@ private fun DetailContent(
 @Composable
 private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("類別", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.genre), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             genres.forEach { genre ->
@@ -508,7 +509,7 @@ private fun ImageSampleSection(
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            "截圖",
+            stringResource(R.string.screenshot),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -554,7 +555,7 @@ private fun ActressSection(
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            "演員",
+            stringResource(R.string.actresses),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -604,7 +605,7 @@ private fun ActressSection(
 private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (MovieUiModel) -> Unit) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
-            "推薦",
+            stringResource(R.string.related),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -673,7 +674,7 @@ private fun MagnetBottomSheet(
                 .fillMaxHeight(0.618f)
         ) {
             Text(
-                "磁力連結",
+                stringResource(R.string.magnet_links),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
@@ -709,7 +710,7 @@ private fun MagnetBottomSheet(
                     uiState.magnets.isEmpty() -> {
                         item {
                             Text(
-                                "暫無磁力連結",
+                                stringResource(R.string.no_magnet),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -746,9 +747,9 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                 if (magnet.link.isNotBlank()) {
                     try {
                         val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
-                        context.startActivity(Intent.createChooser(intent, "選擇下載方式"))
+                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.select_download)))
                     } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(context, "未找到可處理的應用", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.no_handler), Toast.LENGTH_SHORT).show()
                     }
                 }
             },
@@ -799,14 +800,14 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                 onClick = {
                     if (magnet.link.isNotBlank()) {
                         context.copy(magnet.link)
-                        Toast.makeText(context, "已複製磁力連結", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.copied_magnet), Toast.LENGTH_SHORT).show()
                     }
                 }
             ) {
                 Icon(
                     painterResource(
                         R.drawable.content_copy_24px),
-                    contentDescription = "複製連結",
+                    contentDescription = stringResource(R.string.copy_link),
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
