@@ -272,17 +272,17 @@ Repository 作为 `val`（public）暴露，破坏封装性。
 | 文件 | 行数 | 问题 |
 |------|------|------|
 | `ForumViewModels.kt` | 822 | 3个ViewModel + 3个UiState + 3个diff函数 |
-| `MovieDetailScreen.kt` | 833 | 含DetailContent + 5个section组件 + MagnetBottomSheet + MagnetItem |
+| ~~`MovieDetailScreen.kt`~~ | ~~833~~ | ✅ 已拆分为 MovieDetailScreen(447) + MovieDetailSections + MagnetBottomSheet |
 | `ForumThreadDetailScreen.kt` | 603 | 含ThreadHeader + RepliesHeader + CommentsSection + ReplyItem + FloorContentDialog |
-| `MainScreen.kt` | 378 | 4个Tab内容全部内联 |
-| `MovieListViewModel.kt` | 429 | 含429行的loadFirstPage/revalidate/loadMore/refresh |
-| `ForumPostParser.kt` | 318 | 文本解析逻辑复杂 |
-| `LabSettingsStore.kt` | 303 | 含扫描/验证/排序逻辑 |
+| ~~`MainScreen.kt`~~ | ~~378~~ | ✅ 已拆分（4.6） |
+| ~~`MovieListViewModel.kt`~~ | ~~429~~ | ✅ 已重构（8.5 策略 + 4.3 PagedSwrState） |
+| ~~`ForumPostParser.kt`~~ | ~~318~~ | ✅ 已拆分（8.2） |
+| ~~`LabSettingsStore.kt`~~ | ~~303~~ | ✅ 已提取 MirrorScanner（8.3） |
 | `CollectionListViewModel.kt` | 287 | 含筛选/排序扩展函数 |
 | `LinkMovieListScreen.kt` | 422 | 含完整的女优详情页 |
 | `SearchScreen.kt` | 373 | 含搜索历史/结果/实验入口 |
 
-**建议**: 按上述 4.5、4.6 节建议拆分。
+**建议**: 按上述 4.5、4.6 节建议拆分。注：上表已划掉的项目均已完成拆分/重构。
 
 ---
 
@@ -417,8 +417,8 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 
 | 分类 | 问题 | 现状 |
 |------|------|------|
-| i18n | 6.1 | 已迁移 MainTabContent、StateViews、CollectButton、ShareButton、ForumThreadDetailScreen、LabSettingsScreen、SearchScreen、CollectCategoryScreen、CollectionFilterSheet、LinkMovieListScreen、ImageViewScreen；尚有 MovieDetailScreen 等约 20+ 文件（含 ViewModel 内文案，需经 `context.getString` 或事件化处理） |
-| 文件过长 | 七 | MovieDetailScreen(833)、ForumThreadDetailScreen(603) 仍未拆分 |
+| i18n | 6.1 | 已迁移 MainTabContent、StateViews、CollectButton、ShareButton、ForumThreadDetailScreen、LabSettingsScreen、SearchScreen、CollectCategoryScreen、CollectionFilterSheet、LinkMovieListScreen、ImageViewScreen、MovieDetailScreen（含拆分出的 Sections/MagnetBottomSheet）；尚余约 15+ 文件（含 ViewModel 内文案，需经 `context.getString` 或事件化处理） |
+| 文件过长 | 七 | MovieDetailScreen 已拆分（447+197+206）；ForumThreadDetailScreen(603) 仍未拆分 |
 | P2 | 4.3 SWR 四段式重复 | 提取 `core/cache/PagedSwrState` 工具（`PageTracker`/`AtTopGate`/`decideFreshRevalidate`），已迁移 MovieList/LinkMovieList/ActressList 三个分页 ViewModel；reducer 仍内联保留各 VM 字段差异。暂缓 ForumThreadList（`distinctBy`+typeFilters+首屏 pending 差异）、Genre/ForumBoards（非分页）、ForumThreadDetail（定制） |
 
 ### ⬜ 待处理
