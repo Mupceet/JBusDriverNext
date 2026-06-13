@@ -419,12 +419,12 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 |------|------|------|
 | i18n | 6.1 | 已迁移 MainTabContent、StateViews、CollectButton、ShareButton、ForumThreadDetailScreen、LabSettingsScreen、SearchScreen、CollectCategoryScreen、CollectionFilterSheet、LinkMovieListScreen、ImageViewScreen；尚有 MovieDetailScreen 等约 20+ 文件（含 ViewModel 内文案，需经 `context.getString` 或事件化处理） |
 | 文件过长 | 七 | MovieDetailScreen(833)、ForumThreadDetailScreen(603) 仍未拆分 |
+| P2 | 4.3 SWR 四段式重复 | 提取 `core/cache/PagedSwrState` 工具（`PageTracker`/`AtTopGate`/`decideFreshRevalidate`），已迁移 MovieList/LinkMovieList/ActressList 三个分页 ViewModel；reducer 仍内联保留各 VM 字段差异。暂缓 ForumThreadList（`distinctBy`+typeFilters+首屏 pending 差异）、Genre/ForumBoards（非分页）、ForumThreadDetail（定制） |
 
 ### ⬜ 待处理
 
 | 分类 | 问题 |
 |------|------|
-| P2 | 4.3 多个 ViewModel 的 stale-while-revalidate 四段式重复（建议 `CachedViewModel` 基类） |
 | i18n | 6.2 繁简混用统一（依赖 6.1 完成） |
 | 架构 | 9.1 统一错误处理策略 |
 | 测试/文档 | 9.2–9.4 ForumSessionManager/HtmlClient/SiteConfig/CollectRepository/ForumRepository 等单元测试与 KDoc |
