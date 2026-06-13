@@ -1,3 +1,167 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">JBusDriver</string>
+
+    <!-- Navigation -->
+    <string name="nav_movies">Movies</string>
+    <string name="nav_actresses">Actresses</string>
+    <string name="nav_forum">Forum</string>
+    <string name="nav_collect">Collection</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="share">Share</string>
+    <string name="copy">Copy</string>
+    <string name="copy_link">Copy link</string>
+    <string name="close">Close</string>
+    <string name="refresh">Refresh</string>
+    <string name="all">All</string>
+    <string name="filter">Filter</string>
+    <string name="grid">Grid</string>
+    <string name="list_view">List</string>
+
+    <!-- Status -->
+    <string name="loading">Loading…</string>
+    <string name="empty_content">Content is empty</string>
+    <string name="no_data">No data</string>
+    <string name="load_failed">Failed to load, please retry</string>
+    <string name="refresh_failed">Refresh failed</string>
+    <string name="no_more">No more items</string>
+    <string name="pull_to_refresh">Pull to refresh</string>
+    <string name="new_data_available">New data available</string>
+
+    <!-- Movie -->
+    <string name="genre">Genre</string>
+    <string name="censored">Censored</string>
+    <string name="uncensored">Uncensored</string>
+    <string name="view_count">%1$d views · %2$d replies</string>
+    <string name="screenshot">Screenshots</string>
+    <string name="actresses">Actresses</string>
+    <string name="related">Related</string>
+    <string name="magnet_links">Magnet Links</string>
+    <string name="view_magnet">View Magnet Links</string>
+    <string name="no_magnet">No magnet links available</string>
+
+    <!-- Collect -->
+    <string name="my_collect">My Collection</string>
+    <string name="collect_success">Added to collection</string>
+    <string name="uncollect">Removed from collection</string>
+    <string name="collect">Collect</string>
+    <string name="uncollect_action">Uncollect</string>
+    <string name="export_collect">Export Collection</string>
+    <string name="import_collect">Import Collection</string>
+    <string name="export_success">Export successful</string>
+    <string name="export_failed">Export failed</string>
+    <string name="import_failed">Import failed</string>
+    <string name="collect_load_failed">Failed to load collection</string>
+
+    <!-- Search -->
+    <string name="search_hint">Enter keywords to search</string>
+    <string name="search_history">Search History</string>
+    <string name="delete_all">Delete All</string>
+    <string name="done">Done</string>
+    <string name="search_failed">Search failed, please retry</string>
+    <string name="no_results">No results found</string>
+
+    <!-- Forum -->
+    <string name="forum_reply_count">Top comments (%1$d)</string>
+    <string name="floor_sort">Floor order</string>
+    <string name="floor_order_regular">Ascending</string>
+    <string name="floor_order_reverse">Descending</string>
+    <string name="comment">Reviews</string>
+    <string name="content_preview">Content Preview</string>
+    <string name="copy_all">Copy All</string>
+    <string name="share_thread">Share Thread</string>
+    <string name="copied">Copied</string>
+    <string name="copied_title">Title copied</string>
+    <string name="copied_magnet">Magnet link copied</string>
+    <string name="select_download">Select download method</string>
+    <string name="no_handler">No app found to handle this</string>
+    <string name="share_image">Share Image</string>
+    <string name="share_failed">Share failed</string>
+    <string name="forum_tab_latest">Latest Threads</string>
+    <string name="forum_tab_latest_reply">Latest Replies</string>
+    <string name="forum_tab_hot">Hot Topics</string>
+
+    <!-- Settings -->
+    <string name="lab_settings">Lab</string>
+    <string name="lab_experimental">Experimental features may be unstable</string>
+    <string name="forum_settings">Forum</string>
+    <string name="forum_settings_desc">Browse forums, read and participate in discussions</string>
+    <string name="forum_enable">Enable</string>
+    <string name="auto_load_gif">Auto-load GIFs</string>
+    <string name="auto_load_gif_desc">Load GIF images in forum posts automatically</string>
+    <string name="floor_order">Floor browsing order</string>
+    <string name="select_url">Select URL</string>
+    <string name="scan_url">Scan URLs</string>
+    <string name="rescan">Rescan</string>
+    <string name="check_connectivity">Check connectivity</string>
+    <string name="cancel">Cancel</string>
+    <string name="unreachable">Unreachable</string>
+    <string name="scanning">Scanning %1$d/%2$d…</string>
+    <string name="verifying">Verifying %1$d/%2$d…</string>
+
+    <!-- Misc -->
+    <string name="more">More</string>
+    <string name="delete">Delete</string>
+    <string name="actress_type">Actress: %1$s</string>
+    <string name="genre_type">Genre: %1$s</string>
+    <string name="header_type">Other: %1$s</string>
+    <string name="folder">Actress</string>
+
+    <!-- Common actions -->
+    <string name="clear">Clear</string>
+    <string name="settings">Settings</string>
+    <string name="reset">Reset</string>
+    <string name="save">Save</string>
+
+    <!-- Search extras -->
+    <string name="lab_experimental_settings">Experimental feature settings</string>
+
+    <!-- Collection extras -->
+    <string name="cannot_read_file">Cannot read file</string>
+    <string name="export_failed_detail">Export failed: %1$s</string>
+    <string name="import_failed_detail">Import failed: %1$s</string>
+    <string name="tab_movies_count">Movies (%1$d)</string>
+    <string name="tab_actresses_count">Actresses (%1$d)</string>
+    <string name="filter_count">Filter (%1$d)</string>
+
+    <!-- Collection filter -->
+    <string name="content_type">Content type</string>
+    <string name="release_date">Release date</string>
+    <string name="collect_time">Collect time</string>
+    <string name="earlier">Earlier</string>
+    <string name="month_format">Month %1$d</string>
+
+    <!-- Image viewer -->
+    <string name="image_not_loaded">Image not loaded</string>
+    <string name="saved_to_gallery">Saved to gallery</string>
+    <string name="save_failed_detail">Save failed: %1$s</string>
+    <string name="share_failed_detail">Share failed: %1$s</string>
+
+    <!-- Collection filter / category -->
+    <string name="select_category">Select category</string>
+    <string name="expand_all">Expand all</string>
+    <string name="collapse_all">Collapse all</string>
+    <string name="selected_count">Selected %1$d</string>
+    <string name="multi_select">Multi-select</string>
+    <string name="no_filter_match">No matching results</string>
+    <string name="no_collection_yet">No collections yet</string>
+
+    <!-- Search -->
+    <string name="search">Search</string>
+    <string name="search_placeholder">Search movies, actresses, genres…</string>
+
+    <!-- Movie filter bar -->
+    <string name="magnet_count">With magnet (%1$d)</string>
+    <string name="all_movies_count">All movies (%1$d)</string>
+
+    <!-- GIF -->
+    <string name="click_to_load">Tap to load</string>
+    <string name="load_this_gif">Load this GIF</string>
+    <string name="load_all_gifs">Load all GIFs</string>
+
+    <!-- Misc UI -->
+    <string name="retry">Retry</string>
+    <string name="back_to_top">Back to top</string>
 </resources>
