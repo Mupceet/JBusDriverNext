@@ -1,4 +1,4 @@
-﻿package me.jbusdriver.modern.ui.forum
+package me.jbusdriver.modern.ui.forum
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,71 +35,43 @@ import javax.inject.Inject
 private const val TAG = "ForumVM"
 
 private fun logThreadDiff(oldThreads: List<ForumThread>, newThreads: List<ForumThread>, context: String) {
-    val oldMap = oldThreads.associateBy { it.tid }
-    val newMap = newThreads.associateBy { it.tid }
-    val added = newThreads.filter { it.tid !in oldMap }
-    val removed = oldThreads.filter { it.tid !in newMap }
-    val changed = newThreads.filter { new ->
-        val old = oldMap[new.tid]
-        old != null && old != new
-    }
-    KLog.d("[$context] old=${oldThreads.size}, new=${newThreads.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", TAG)
-    if (added.isNotEmpty()) {
-        KLog.d("[$context] +新增: ${added.map { "${it.tid}:${it.title.take(20)}" }}", TAG)
-    }
-    if (removed.isNotEmpty()) {
-        KLog.d("[$context] -移除: ${removed.map { "${it.tid}:${it.title.take(20)}" }}", TAG)
-    }
-    if (changed.isNotEmpty()) {
-        changed.forEach { newT ->
-            val oldT = oldMap[newT.tid]!!
-            val diffs = buildList {
-                if (oldT.replyCount != newT.replyCount) add("replyCount:${oldT.replyCount}→${newT.replyCount}")
-                if (oldT.viewCount != newT.viewCount) add("viewCount:${oldT.viewCount}→${newT.viewCount}")
-                if (oldT.title != newT.title) add("title改變")
-                if (oldT.isPinned != newT.isPinned) add("isPinned:${oldT.isPinned}→${newT.isPinned}")
-                if (oldT.isDigest != newT.isDigest) add("isDigest:${oldT.isDigest}→${newT.isDigest}")
-                if (oldT.lastReplyAuthor != newT.lastReplyAuthor) add("lastReply:${oldT.lastReplyAuthor}→${newT.lastReplyAuthor}")
-                if (oldT.lastReplyTime != newT.lastReplyTime) add("lastTime:${oldT.lastReplyTime}→${newT.lastReplyTime}")
+    me.jbusdriver.modern.core.logListDiff(
+        oldItems = oldThreads,
+        newItems = newThreads,
+        context = context,
+        tag = TAG,
+        keySelector = { it.tid },
+        describe = { "${it.tid}:${it.title.take(20)}" },
+        diffFields = { old, new ->
+            buildList {
+                if (old.replyCount != new.replyCount) add("replyCount:${old.replyCount}→${new.replyCount}")
+                if (old.viewCount != new.viewCount) add("viewCount:${old.viewCount}→${new.viewCount}")
+                if (old.title != new.title) add("title改變")
+                if (old.isPinned != new.isPinned) add("isPinned:${old.isPinned}→${new.isPinned}")
+                if (old.isDigest != new.isDigest) add("isDigest:${old.isDigest}→${new.isDigest}")
+                if (old.lastReplyAuthor != new.lastReplyAuthor) add("lastReply:${old.lastReplyAuthor}→${new.lastReplyAuthor}")
+                if (old.lastReplyTime != new.lastReplyTime) add("lastTime:${old.lastReplyTime}→${new.lastReplyTime}")
             }
-            KLog.d("[$context] ~變動 tid=${newT.tid} ${diffs.joinToString()}", TAG)
         }
-    }
-    if (added.isEmpty() && removed.isEmpty() && changed.isEmpty()) {
-        KLog.d("[$context] 數據完全一致，無任何變化", TAG)
-    }
+    )
 }
 
 private fun logReplyDiff(oldReplies: List<me.jbusdriver.modern.domain.model.ForumReply>, newReplies: List<me.jbusdriver.modern.domain.model.ForumReply>, context: String) {
-    val oldMap = oldReplies.associateBy { it.floor }
-    val newMap = newReplies.associateBy { it.floor }
-    val added = (newMap.keys - oldMap.keys).sorted()
-    val removed = (oldMap.keys - newMap.keys).sorted()
-    val changed = newReplies.filter { newR ->
-        val oldR = oldMap[newR.floor]
-        oldR != null && oldR != newR
-    }
-    KLog.d("[$context] old=${oldReplies.size}, new=${newReplies.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", TAG)
-    if (added.isNotEmpty()) {
-        KLog.d("[$context] +新回復 floors: $added", TAG)
-    }
-    if (removed.isNotEmpty()) {
-        KLog.d("[$context] -移除回復 floors: $removed", TAG)
-    }
-    if (changed.isNotEmpty()) {
-        changed.forEach { newR ->
-            val oldR = oldMap[newR.floor]!!
-            val diffs = buildList {
-                if (oldR.author != newR.author) add("author:${oldR.author}→${newR.author}")
-                if (oldR.postTime != newR.postTime) add("postTime:${oldR.postTime}→${newR.postTime}")
-                if (oldR.isPinned != newR.isPinned) add("isPinned:${oldR.isPinned}→${newR.isPinned}")
+    me.jbusdriver.modern.core.logListDiff(
+        oldItems = oldReplies,
+        newItems = newReplies,
+        context = context,
+        tag = TAG,
+        keySelector = { it.floor },
+        describe = { "floor=${it.floor}" },
+        diffFields = { old, new ->
+            buildList {
+                if (old.author != new.author) add("author:${old.author}→${new.author}")
+                if (old.postTime != new.postTime) add("postTime:${old.postTime}→${new.postTime}")
+                if (old.isPinned != new.isPinned) add("isPinned:${old.isPinned}→${new.isPinned}")
             }
-            KLog.d("[$context] ~變動 floor=${newR.floor} ${diffs.joinToString()}", TAG)
         }
-    }
-    if (added.isEmpty() && removed.isEmpty() && changed.isEmpty()) {
-        KLog.d("[$context] 回復數據完全一致，無任何變化", TAG)
-    }
+    )
 }
 
 data class ForumBoardsUiState(

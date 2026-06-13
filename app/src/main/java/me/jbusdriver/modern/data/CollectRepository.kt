@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
+import androidx.room.withTransaction
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.convertDBItem
@@ -102,8 +103,7 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun addCollect(linkItem: LinkItem): Boolean {
         return withContext(Dispatchers.IO) {
-            linkDao.insert(linkItem)
-            true
+            linkDao.insert(linkItem) != -1L
         }
     }
 
@@ -119,12 +119,15 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun toggleMovieCollect(movie: Movie): Boolean {
         val item = movie.convertDBItem()
-        return if (isCollected(item)) {
-            removeCollect(item)
-            false
-        } else {
-            addCollect(item)
-            true
+        return me.jbusdriver.modern.data.db.DB.collectDatabase.withTransaction {
+            val exists = linkDao.hasByKey(item.dbType, item.key) >= 1
+            if (exists) {
+                linkDao.delete(item.dbType, item.key)
+                false
+            } else {
+                linkDao.insert(item)
+                true
+            }
         }
     }
 
@@ -134,12 +137,15 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun toggleActressCollect(actress: ActressInfo): Boolean {
         val item = actress.convertDBItem()
-        return if (isCollected(item)) {
-            removeCollect(item)
-            false
-        } else {
-            addCollect(item)
-            true
+        return me.jbusdriver.modern.data.db.DB.collectDatabase.withTransaction {
+            val exists = linkDao.hasByKey(item.dbType, item.key) >= 1
+            if (exists) {
+                linkDao.delete(item.dbType, item.key)
+                false
+            } else {
+                linkDao.insert(item)
+                true
+            }
         }
     }
 

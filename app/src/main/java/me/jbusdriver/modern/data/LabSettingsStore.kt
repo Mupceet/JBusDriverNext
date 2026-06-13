@@ -23,6 +23,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import me.jbusdriver.modern.KLog
@@ -238,18 +240,21 @@ class LabSettingsStore @Inject constructor(
         state: MutableStateFlow<ScanState>
     ): List<MirrorUrl> = coroutineScope {
         val completed = java.util.concurrent.atomic.AtomicInteger(0)
-        val deferreds = urls.mapIndexed { _, url ->
+        val semaphore = Semaphore(6)
+        val deferreds = urls.map { url ->
             async(Dispatchers.IO) {
-                val latency = NetClient.checkReachable(url)
-                val done = completed.incrementAndGet()
-                state.value = ScanState(
-                    isScanning = true,
-                    phase = ScanPhase.VERIFYING,
-                    scannedCount = done,
-                    totalCount = urls.size,
-                    currentUrl = url
-                )
-                MirrorUrl(url, latency >= 0, latency)
+                semaphore.withPermit {
+                    val latency = NetClient.checkReachable(url)
+                    val done = completed.incrementAndGet()
+                    state.value = ScanState(
+                        isScanning = true,
+                        phase = ScanPhase.VERIFYING,
+                        scannedCount = done,
+                        totalCount = urls.size,
+                        currentUrl = url
+                    )
+                    MirrorUrl(url, latency >= 0, latency)
+                }
             }
         }
         deferreds.awaitAll()

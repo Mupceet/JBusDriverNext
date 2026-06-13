@@ -26,36 +26,22 @@ import javax.inject.Inject
 private const val TAG = "MovieListVM"
 
 private fun logMovieDiff(oldMovies: List<MovieUiModel>, newMovies: List<MovieUiModel>, context: String) {
-    val oldMap = oldMovies.associateBy { it.code }
-    val newMap = newMovies.associateBy { it.code }
-    val added = newMovies.filter { it.code !in oldMap }
-    val removed = oldMovies.filter { it.code !in newMap }
-    val changed = newMovies.filter { newM ->
-        val oldM = oldMap[newM.code]
-        oldM != null && oldM != newM
-    }
-    KLog.d("[$context] old=${oldMovies.size}, new=${newMovies.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", TAG)
-    if (added.isNotEmpty()) {
-        KLog.d("[$context] +新增: ${added.map { "${it.code}:${it.title.take(15)}" }}", TAG)
-    }
-    if (removed.isNotEmpty()) {
-        KLog.d("[$context] -移除: ${removed.map { "${it.code}:${it.title.take(15)}" }}", TAG)
-    }
-    if (changed.isNotEmpty()) {
-        changed.forEach { newM ->
-            val oldM = oldMap[newM.code]!!
-            val diffs = buildList {
-                if (oldM.title != newM.title) add("title改變")
-                if (oldM.imageUrl != newM.imageUrl) add("cover改變")
-                if (oldM.date != newM.date) add("date:${oldM.date}→${newM.date}")
-                if (oldM.tags != newM.tags) add("tags改變")
+    me.jbusdriver.modern.core.logListDiff(
+        oldItems = oldMovies,
+        newItems = newMovies,
+        context = context,
+        tag = TAG,
+        keySelector = { it.code },
+        describe = { "${it.code}:${it.title.take(15)}" },
+        diffFields = { old, new ->
+            buildList {
+                if (old.title != new.title) add("title改變")
+                if (old.imageUrl != new.imageUrl) add("cover改變")
+                if (old.date != new.date) add("date:${old.date}→${new.date}")
+                if (old.tags != new.tags) add("tags改變")
             }
-            KLog.d("[$context] ~變動 code=${newM.code} ${diffs.joinToString()}", TAG)
         }
-    }
-    if (added.isEmpty() && removed.isEmpty() && changed.isEmpty()) {
-        KLog.d("[$context] 數據完全一致，無任何變化", TAG)
-    }
+    )
 }
 
 /**

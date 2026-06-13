@@ -25,33 +25,31 @@ class DefaultHtmlClient @Inject constructor(
         get() = NetClient.glideOkHttpClient
 
     override suspend fun fetchHtml(url: String, showAll: Boolean, referer: String?): String {
+        val response = fetchWithVerifyFallback(url, showAll, referer)
+        return response.body
+    }
+
+    override suspend fun fetchDocument(url: String, showAll: Boolean): Document {
+        val response = fetchWithVerifyFallback(url, showAll, referer = null)
+        return withContext(Dispatchers.Default) { Jsoup.parse(response.body, response.finalUrl) }
+    }
+
+    private suspend fun fetchWithVerifyFallback(
+        url: String,
+        showAll: Boolean,
+        referer: String?
+    ): NetClient.HtmlResponse {
         val first = NetClient.fetchHtmlResponse(url, showAll, referer)
-        if (!first.isDriverVerify()) return first.body
+        if (!first.isDriverVerify()) return first
 
         KLog.w("HtmlClient hit driver verification for $url; warming browser session")
         browserSessionClient.warmUp()
         val retry = NetClient.fetchHtmlResponse(url, showAll, referer)
-        if (!retry.isDriverVerify()) return retry.body
+        if (!retry.isDriverVerify()) return retry
 
         KLog.w("HtmlClient retry still hit verification for $url; falling back to browser fetch")
-        return browserSessionClient.fetchDocument(url).html()
-    }
-
-    override suspend fun fetchDocument(url: String, showAll: Boolean): Document {
-        val first = NetClient.fetchHtmlResponse(url, showAll)
-        if (!first.isDriverVerify()) {
-            return withContext(Dispatchers.Default) { Jsoup.parse(first.body, first.finalUrl) }
-        }
-
-        KLog.w("HtmlClient hit driver verification for $url; warming browser session")
-        browserSessionClient.warmUp()
-        val retry = NetClient.fetchHtmlResponse(url, showAll)
-        if (!retry.isDriverVerify()) {
-            return withContext(Dispatchers.Default) { Jsoup.parse(retry.body, retry.finalUrl) }
-        }
-
-        KLog.w("HtmlClient retry still hit verification for $url; falling back to browser fetch")
-        return browserSessionClient.fetchDocument(url)
+        val doc = browserSessionClient.fetchDocument(url)
+        return NetClient.HtmlResponse(doc.location(), doc.html())
     }
 
     private fun NetClient.HtmlResponse.isDriverVerify(): Boolean =
