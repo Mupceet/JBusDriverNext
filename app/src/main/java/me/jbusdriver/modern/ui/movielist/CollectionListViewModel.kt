@@ -54,7 +54,7 @@ data class CollectionListUiState(
  */
 @HiltViewModel
 class CollectionListViewModel @Inject constructor(
-    val collectRepository: CollectRepository,
+    private val collectRepository: CollectRepository,
     private val uiPrefsStore: CollectionUiPrefs
 ) : ViewModel() {
 

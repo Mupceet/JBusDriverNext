@@ -2,7 +2,8 @@ package me.jbusdriver.modern.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
@@ -24,18 +25,22 @@ class GifLoadTracker @Inject constructor(
     private val dataStore = context.gifDataStore
 
     override suspend fun loadedUrls(): Set<String> {
-        return dataStore.data.map { it[URLS] ?: emptySet() }.first()
+        val prefs = dataStore.data.first()
+        val count = prefs[URL_COUNT] ?: 0
+        return (0 until count).mapNotNull { i -> prefs[urlKey(i)] }.toSet()
     }
 
     override suspend fun markLoaded(url: String) {
         dataStore.edit { prefs ->
-            val current = prefs[URLS] ?: emptySet()
-            val updated = if (current.size >= MAX_CACHE) {
-                current.toList().takeLast(MAX_CACHE - 1).toSet() + url
-            } else {
-                current + url
+            val count = prefs[URL_COUNT] ?: 0
+            val existing = (0 until count).mapNotNull { i -> prefs[urlKey(i)] }.toMutableList()
+            existing.remove(url)
+            existing.add(url)
+            if (existing.size > MAX_CACHE) {
+                existing.removeFirst()
             }
-            prefs[URLS] = updated
+            existing.forEachIndexed { i, u -> prefs[urlKey(i)] = u }
+            prefs[URL_COUNT] = existing.size
         }
     }
 
@@ -43,8 +48,10 @@ class GifLoadTracker @Inject constructor(
         dataStore.edit { it.clear() }
     }
 
+    private fun urlKey(index: Int) = stringPreferencesKey("url_$index")
+
     companion object {
-        private val URLS = stringSetPreferencesKey("urls")
+        private val URL_COUNT = intPreferencesKey("url_count")
         private const val MAX_CACHE = 500
     }
 }
