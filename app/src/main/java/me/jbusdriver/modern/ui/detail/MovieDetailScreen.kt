@@ -1,25 +1,17 @@
 package me.jbusdriver.modern.ui.detail
 
-import me.jbusdriver.R
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,12 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,21 +30,18 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,25 +53,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.ui.HeaderUiModel
 import me.jbusdriver.modern.ui.ImageSampleUiModel
-import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.modern.ui.components.ActressAvatar
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
-import androidx.core.net.toUri
 
 /**
  * 影片详情页面的顶层可组合函数。
@@ -117,7 +100,6 @@ fun MovieDetailScreen(
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var showMagnetSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(movieUrl, censorType) {
@@ -225,7 +207,7 @@ fun MovieDetailScreen(
  * @param onActressClick 点击演员头像时的回调
  * @param onGenreClick 点击类别标签时的回调
  * @param onImageClick 点击图片（封面或截图）时的回调
- * @param onMagnetClick 点击"查看磁力链接"按钮时的回调
+ * @param onMagnetClick 点击“查看磁力連結”按钮时的回调
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -461,357 +443,5 @@ private fun DetailContent(
                 TextButton(onClick = { selectedHeader = null }) { Text(stringResource(R.string.close)) }
             }
         )
-    }
-}
-
-/**
- * 影片类别标签区域。
- *
- * 职责：以 FlowRow 形式展示影片所属的所有类别标签，每个标签可点击跳转。
- *
- * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联类别时显示。
- *
- * @param genres 类别列表
- * @param onGenreClick 点击单个类别标签时的回调
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel) -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(stringResource(R.string.genre), style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(4.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            genres.forEach { genre ->
-                AssistChip(
-                    onClick = { onGenreClick(genre) },
-                    label = { Text(genre.name, style = MaterialTheme.typography.labelSmall) }
-                )
-            }
-        }
-    }
-}
-
-/**
- * 影片截图预览区域。
- *
- * 职责：以水平滚动列表展示影片的截图缩略图，点击任意截图可进入全屏图片查看器。
- *
- * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联截图时显示。
- *
- * @param samples 截图列表，包含缩略图和大图的 URL
- * @param onImageClick 点击截图时的回调，参数为所有大图 URL 列表和当前点击的索引
- */
-@Composable
-private fun ImageSampleSection(
-    samples: List<ImageSampleUiModel>,
-    allImages: List<String>,
-    onImageClick: (List<String>, Int) -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            stringResource(R.string.screenshot),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(4.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
-            items(samples.size) { index ->
-                val sample = samples[index]
-                AsyncImage(
-                    model = sample.thumb,
-                    contentDescription = sample.title,
-                    modifier = Modifier
-                        .width(100.dp)
-                        .aspectRatio(4f / 3f)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable {
-                            onImageClick(allImages, index + 1)
-                        },
-                    contentScale = ContentScale.Crop
-                )
-            }
-        }
-    }
-}
-
-/**
- * 演员头像列表区域。
- *
- * 职责：以水平滚动列表展示影片关联的演员头像和名称，点击可跳转到演员详情。
- *
- * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联演员时显示。
- *
- * @param actresses 演员列表
- * @param onActressClick 点击演员时的回调
- */
-@Composable
-private fun ActressSection(
-    actresses: List<ActressUiModel>,
-    onActressClick: (ActressUiModel) -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            stringResource(R.string.actresses),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(4.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
-            items(actresses.size) { index ->
-                val actress = actresses[index]
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onActressClick(actress) }
-                ) {
-                    ActressAvatar(
-                        avatarUrl = actress.avatar,
-                        contentDescription = actress.name,
-                        size = 64.dp,
-                        onClick = { onActressClick(actress) }
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = actress.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.width(64.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 推荐影片区域。
- *
- * 职责：以水平滚动列表展示与当前影片相关的推荐影片，包含封面和标题。
- *
- * 使用场景：作为 [DetailContent] 中的一个 section，当影片有关联推荐影片时显示。
- *
- * @param movies 推荐影片列表
- * @param onMovieClick 点击推荐影片时的回调
- */
-@Composable
-private fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (MovieUiModel) -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(
-            stringResource(R.string.related),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(4.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
-            items(movies.size) { index ->
-                val movie = movies[index]
-                Column(
-                    modifier = Modifier
-                        .width(100.dp)
-                        .clickable { onMovieClick(movie) }
-                ) {
-                    AsyncImage(
-                        model = movie.imageUrl,
-                        contentDescription = movie.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = movie.code + " " + movie.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 磁力链接底部弹窗。
- *
- * 职责：以 ModalBottomSheet 展示影片的磁力链接列表，支持分页加载更多。
- * 点击磁力链接项会将链接复制到剪贴板。
- *
- * 使用场景：在 [MovieDetailScreen] 中点击"查看磁力链接"按钮后弹出。
- *
- * @param uiState 影片详情页的 UI 状态，包含磁力链接数据和加载状态
- * @param onDismiss 关闭弹窗的回调
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MagnetBottomSheet(
-    uiState: MovieDetailUiState,
-    onDismiss: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val context = LocalContext.current
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.618f)
-        ) {
-            Text(
-                stringResource(R.string.magnet_links),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Spacer(Modifier.height(8.dp))
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                when {
-                    uiState.isLoadingMagnets && uiState.magnets.isEmpty() -> {
-                        item {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                    }
-
-                    uiState.magnetsError != null && uiState.magnets.isEmpty() -> {
-                        item {
-                            Text(uiState.magnetsError, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-
-                    uiState.magnets.isEmpty() -> {
-                        item {
-                            Text(
-                                stringResource(R.string.no_magnet),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    else -> {
-                        items(uiState.magnets, key = { it.link }) { magnet ->
-                            MagnetItem(magnet = magnet, context = context)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * 单条磁力链接的可组合项。
- *
- * 职责：展示磁力链接的名称、大小和日期信息，提供「复制」和「打开」两个独立操作。
- *
- * 使用场景：作为 [MagnetBottomSheet] 中磁力链接列表的单个条目。
- *
- * @param magnet 磁力链接数据模型
- * @param context Android Context，用于获取 ClipboardManager 和启动 Intent
- */
-@Composable
-private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                if (magnet.link.isNotBlank()) {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
-                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.select_download)))
-                    } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(context, context.getString(R.string.no_handler), Toast.LENGTH_SHORT).show()
-                    }
-                }
-            },
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = magnet.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(
-                    modifier = Modifier.padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (magnet.size.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Text(
-                                magnet.size,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                    if (magnet.date.isNotBlank()) {
-                        Text(
-                            magnet.date,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
-            }
-            IconButton(
-                onClick = {
-                    if (magnet.link.isNotBlank()) {
-                        context.copy(magnet.link)
-                        Toast.makeText(context, context.getString(R.string.copied_magnet), Toast.LENGTH_SHORT).show()
-                    }
-                }
-            ) {
-                Icon(
-                    painterResource(
-                        R.drawable.content_copy_24px),
-                    contentDescription = stringResource(R.string.copy_link),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
