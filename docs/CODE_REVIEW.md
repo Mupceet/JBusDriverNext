@@ -273,7 +273,7 @@ Repository 作为 `val`（public）暴露，破坏封装性。
 |------|------|------|
 | `ForumViewModels.kt` | 822 | 3个ViewModel + 3个UiState + 3个diff函数 |
 | ~~`MovieDetailScreen.kt`~~ | ~~833~~ | ✅ 已拆分为 MovieDetailScreen(447) + MovieDetailSections + MagnetBottomSheet |
-| `ForumThreadDetailScreen.kt` | 603 | 含ThreadHeader + RepliesHeader + CommentsSection + ReplyItem + FloorContentDialog |
+| ~~`ForumThreadDetailScreen.kt`~~ | ~~603~~ | ✅ 已拆分为 ForumThreadDetailScreen(275) + ForumThreadDetailSections |
 | ~~`MainScreen.kt`~~ | ~~378~~ | ✅ 已拆分（4.6） |
 | ~~`MovieListViewModel.kt`~~ | ~~429~~ | ✅ 已重构（8.5 策略 + 4.3 PagedSwrState） |
 | ~~`ForumPostParser.kt`~~ | ~~318~~ | ✅ 已拆分（8.2） |
@@ -418,7 +418,7 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 | 分类 | 问题 | 现状 |
 |------|------|------|
 | i18n | 6.1 | 已迁移 MainTabContent、StateViews、CollectButton、ShareButton、ForumThreadDetailScreen、LabSettingsScreen、SearchScreen、CollectCategoryScreen、CollectionFilterSheet、LinkMovieListScreen、ImageViewScreen、MovieDetailScreen（含拆分出的 Sections/MagnetBottomSheet）；尚余约 15+ 文件（含 ViewModel 内文案，需经 `context.getString` 或事件化处理） |
-| 文件过长 | 七 | MovieDetailScreen 已拆分（447+197+206）；ForumThreadDetailScreen(603) 仍未拆分 |
+| 文件过长 | 七 | MovieDetailScreen、ForumThreadDetailScreen 均已拆分；§7 表中仅余 CollectionListViewModel(287)、LinkMovieListScreen(422)、SearchScreen(373) 等中小文件 |
 | P2 | 4.3 SWR 四段式重复 | 提取 `core/cache/PagedSwrState` 工具（`PageTracker`/`AtTopGate`/`decideFreshRevalidate`），已迁移 MovieList/LinkMovieList/ActressList 三个分页 ViewModel；reducer 仍内联保留各 VM 字段差异。暂缓 ForumThreadList（`distinctBy`+typeFilters+首屏 pending 差异）、Genre/ForumBoards（非分页）、ForumThreadDetail（定制） |
 
 ### ⬜ 待处理
