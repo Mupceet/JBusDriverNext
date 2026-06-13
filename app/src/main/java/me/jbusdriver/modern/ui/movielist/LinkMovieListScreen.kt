@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import me.jbusdriver.R
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -129,11 +130,12 @@ fun LinkMovieListScreen(
         onPauseOrDispose { }
     }
 
+    val refreshLabel = stringResource(R.string.refresh)
     LaunchedEffect(uiState.refreshMessage) {
         uiState.refreshMessage?.let { message ->
             val result = snackbarHostState.showSnackbar(
                 message = message,
-                actionLabel = "刷新",
+                actionLabel = refreshLabel,
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -149,9 +151,9 @@ fun LinkMovieListScreen(
 
     val displayTitle = when {
         uiState.resolvedTitle != null -> uiState.resolvedTitle!!
-        title.isNotBlank() && type == "actress" -> "演員: $title"
-        title.isNotBlank() && type == "genre" -> "類別: $title"
-        else -> "載入中..."
+        title.isNotBlank() && type == "actress" -> stringResource(R.string.actress_type, title)
+        title.isNotBlank() && type == "genre" -> stringResource(R.string.genre_type, title)
+        else -> stringResource(R.string.loading)
     }
 
     Scaffold(
@@ -169,7 +171,7 @@ fun LinkMovieListScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
+                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -207,7 +209,7 @@ fun LinkMovieListScreen(
 
                 uiState.error != null && uiState.movies.isEmpty() -> {
                     ErrorView(
-                        message = "載入失敗，請重試",
+                        message = stringResource(R.string.load_failed),
                         onRetry = { viewModel.refresh() }
                     )
                 }

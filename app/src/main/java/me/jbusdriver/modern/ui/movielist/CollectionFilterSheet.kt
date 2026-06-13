@@ -32,9 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.db.MovieDBType
 
 /**
@@ -73,14 +75,14 @@ fun CollectionFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "篩選",
+                    stringResource(R.string.filter),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (filterState.hasActiveFilters) {
                         TextButton(onClick = { onFilterChange(CollectionFilterState()) }) {
-                            Text("重置", fontSize = 12.sp)
+                            Text(stringResource(R.string.reset), fontSize = 12.sp)
                         }
                     }
                     SortDropdown(
@@ -101,21 +103,21 @@ fun CollectionFilterSheet(
             ) {
                 // ── Censor filter (movie only) ──
                 if (dbType == MovieDBType) {
-                    FilterSectionLabel("內容類型")
+                    FilterSectionLabel(stringResource(R.string.content_type))
                     Spacer(Modifier.padding(top = 6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         CensorChip(
-                            label = "全部",
+                            label = stringResource(R.string.all),
                             selected = filterState.censorFilter == CensorFilter.ALL,
                             onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.ALL)) }
                         )
                         CensorChip(
-                            label = "有碼",
+                            label = stringResource(R.string.censored),
                             selected = filterState.censorFilter == CensorFilter.CENSORED,
                             onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.CENSORED)) }
                         )
                         CensorChip(
-                            label = "無碼",
+                            label = stringResource(R.string.uncensored),
                             selected = filterState.censorFilter == CensorFilter.UNCENSORED,
                             onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.UNCENSORED)) }
                         )
@@ -124,7 +126,7 @@ fun CollectionFilterSheet(
                     Spacer(Modifier.padding(top = 16.dp))
 
                     // ── Publish date (movie only) ──
-                    FilterSectionLabel("發佈日期")
+                    FilterSectionLabel(stringResource(R.string.release_date))
                     Spacer(Modifier.padding(top = 6.dp))
                     YearChipRow(
                         selectedYear = filterState.publishYear,
@@ -152,7 +154,7 @@ fun CollectionFilterSheet(
                 }
 
                 // ── Collect time (both) ──
-                FilterSectionLabel("收藏時間")
+                FilterSectionLabel(stringResource(R.string.collect_time))
                 Spacer(Modifier.padding(top = 6.dp))
                 YearChipRow(
                     selectedYear = filterState.collectYear,
@@ -194,7 +196,7 @@ private fun YearChipRow(
         FilterChip(
             selected = selectedYear == null,
             onClick = { onSelect(null) },
-            label = { Text("全部", fontSize = 12.sp) }
+            label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
         )
         years.forEach { year ->
             FilterChip(
@@ -207,7 +209,7 @@ private fun YearChipRow(
             FilterChip(
                 selected = selectedYear == -1,
                 onClick = { onSelect(-1) },
-                label = { Text("更早", fontSize = 12.sp) }
+                label = { Text(stringResource(R.string.earlier), fontSize = 12.sp) }
             )
         }
     }
@@ -224,7 +226,7 @@ private fun MonthChipRow(
         FilterChip(
             selected = selectedMonth == null,
             onClick = { onSelect(null) },
-            label = { Text("全部", fontSize = 12.sp) }
+            label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
         )
         (1..12).forEach { month ->
             val available = month in availableMonths
@@ -233,7 +235,7 @@ private fun MonthChipRow(
                 onClick = { if (available) onSelect(month) },
                 label = {
                     Text(
-                        "${month}月",
+                        stringResource(R.string.month_format, month),
                         fontSize = 12.sp,
                         color = if (available) MaterialTheme.colorScheme.onSurface
                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)

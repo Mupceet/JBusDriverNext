@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import me.jbusdriver.R
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -160,7 +161,7 @@ fun SearchScreen(
                     focusManager.clearFocus()
                     onBack()
                 }) {
-                    Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "返回")
+                    Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = stringResource(R.string.back))
                 }
             },
             trailingIcon = {
@@ -172,7 +173,7 @@ fun SearchScreen(
                     }) {
                         Icon(
                             painterResource(R.drawable.close_24px),
-                            contentDescription = "清除"
+                            contentDescription = stringResource(R.string.clear)
                         )
                     }
                 }
@@ -234,12 +235,12 @@ fun SearchScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            "實驗室",
+                            stringResource(R.string.lab_settings),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "實驗性功能設置",
+                            stringResource(R.string.lab_experimental_settings),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -262,7 +263,7 @@ fun SearchScreen(
 
             uiState.error != null && !hasResults -> {
                 ErrorView(
-                    message = "搜尋失敗，請重試",
+                    message = stringResource(R.string.search_failed),
                     onRetry = { doSearch() }
                 )
             }
@@ -275,24 +276,24 @@ fun SearchScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("搜索歷史", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.search_history), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (isDeletingHistory) {
                                 Row {
                                     TextButton(onClick = {
                                         viewModel.clearHistory()
                                         isDeletingHistory = false
                                     }) {
-                                        Text("全部刪除", fontSize = 12.sp)
+                                        Text(stringResource(R.string.delete_all), fontSize = 12.sp)
                                     }
                                     TextButton(onClick = { isDeletingHistory = false }) {
-                                        Text("完成", fontSize = 12.sp)
+                                        Text(stringResource(R.string.done), fontSize = 12.sp)
                                     }
                                 }
                             } else {
                                 IconButton(onClick = { isDeletingHistory = true }) {
                                     Icon(
                                         painterResource(R.drawable.delete_24px),
-                                        contentDescription = "刪除",
+                                        contentDescription = stringResource(R.string.delete),
                                         modifier = Modifier.size(20.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -315,7 +316,7 @@ fun SearchScreen(
                                                 Text(query, fontSize = 12.sp)
                                                 Icon(
                                                     painterResource(R.drawable.close_24px),
-                                                    contentDescription = "刪除",
+                                                    contentDescription = stringResource(R.string.delete),
                                                     modifier = Modifier
                                                         .size(14.dp)
                                                         .clickable { viewModel.removeHistoryItem(query) },
@@ -339,14 +340,14 @@ fun SearchScreen(
                     }
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("輸入關鍵詞開始搜尋", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.search_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
 
             !hasResults -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("沒有找到相關結果", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 

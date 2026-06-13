@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,12 +90,12 @@ fun LabSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("實驗室") },
+                title = { Text(stringResource(R.string.lab_settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             painterResource(R.drawable.arrow_back_24px),
-                            contentDescription = "返回"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 }
@@ -110,7 +111,7 @@ fun LabSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "實驗性功能可能不穩定",
+                stringResource(R.string.lab_experimental),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -166,7 +167,7 @@ private fun ForumCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "論壇功能",
+                    stringResource(R.string.forum_settings),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -174,7 +175,7 @@ private fun ForumCard(
 
             Spacer(Modifier.height(8.dp))
             Text(
-                "瀏覽論壇版塊、閱讀和參與帖子討論",
+                stringResource(R.string.forum_settings_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -186,7 +187,7 @@ private fun ForumCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("啟用", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.forum_enable), style = MaterialTheme.typography.bodyMedium)
                 Switch(
                     checked = forumEnabled,
                     onCheckedChange = onForumEnabledChange
@@ -201,9 +202,9 @@ private fun ForumCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("自動載入動圖", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.auto_load_gif), style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        "論壇帖中的 GIF 圖片無需點擊直接播放",
+                        stringResource(R.string.auto_load_gif_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -221,7 +222,7 @@ private fun ForumCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.floor_order), style = MaterialTheme.typography.bodyMedium)
                 SingleChoiceSegmentedButtonRow {
                     SegmentedButton(
                         selected = forumFloorOrder == ForumFloorOrder.REGULAR,
@@ -229,7 +230,7 @@ private fun ForumCard(
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         icon = {}
                     ) {
-                        Text("正序")
+                        Text(stringResource(R.string.floor_order_regular))
                     }
                     SegmentedButton(
                         selected = forumFloorOrder == ForumFloorOrder.REVERSE,
@@ -237,7 +238,7 @@ private fun ForumCard(
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         icon = {}
                     ) {
-                        Text("倒序")
+                        Text(stringResource(R.string.floor_order_reverse))
                     }
                 }
             }
@@ -273,7 +274,7 @@ private fun UrlSelectionCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "選擇網址",
+                    stringResource(R.string.select_url),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -329,7 +330,7 @@ private fun UrlSelectionCard(
                                         if (!mirror.isReachable) {
                                             Spacer(Modifier.width(8.dp))
                                             Text(
-                                                "不可達",
+                                                stringResource(R.string.unreachable),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.error
                                             )
@@ -371,14 +372,14 @@ private fun UrlSelectionCard(
                             contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 } else {
                     Button(
                         onClick = onScan,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (scanState.phase == ScanPhase.DONE) "重新掃描" else "掃描網址")
+                        Text(if (scanState.phase == ScanPhase.DONE) stringResource(R.string.rescan) else stringResource(R.string.scan_url))
                     }
                 }
 
@@ -388,7 +389,7 @@ private fun UrlSelectionCard(
                         modifier = Modifier.weight(1f),
                         enabled = !scanState.isScanning
                     ) {
-                        Text("檢測連通")
+                        Text(stringResource(R.string.check_connectivity))
                     }
                 }
             }
@@ -401,8 +402,8 @@ private fun UrlSelectionCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 val phaseText = when (scanState.phase) {
-                    ScanPhase.DISCOVERING -> "正在掃描 ${scanState.scannedCount}/${scanState.totalCount}…"
-                    ScanPhase.VERIFYING -> "正在驗證 ${scanState.scannedCount}/${scanState.totalCount}…"
+                    ScanPhase.DISCOVERING -> stringResource(R.string.scanning, scanState.scannedCount, scanState.totalCount)
+                    ScanPhase.VERIFYING -> stringResource(R.string.verifying, scanState.scannedCount, scanState.totalCount)
                     else -> ""
                 }
                 Text(

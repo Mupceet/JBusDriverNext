@@ -107,4 +107,34 @@
     <string name="genre_type">類別: %1$s</string>
     <string name="header_type">其他: %1$s</string>
     <string name="folder">女優</string>
+
+    <!-- Common actions -->
+    <string name="clear">清除</string>
+    <string name="settings">設置</string>
+    <string name="reset">重置</string>
+    <string name="save">保存</string>
+
+    <!-- Search extras -->
+    <string name="lab_experimental_settings">實驗性功能設置</string>
+
+    <!-- Collection extras -->
+    <string name="cannot_read_file">無法讀取檔案</string>
+    <string name="export_failed_detail">導出失敗: %1$s</string>
+    <string name="import_failed_detail">導入失敗: %1$s</string>
+    <string name="tab_movies_count">影片 (%1$d)</string>
+    <string name="tab_actresses_count">演員 (%1$d)</string>
+    <string name="filter_count">篩選 (%1$d)</string>
+
+    <!-- Collection filter -->
+    <string name="content_type">內容類型</string>
+    <string name="release_date">發佈日期</string>
+    <string name="collect_time">收藏時間</string>
+    <string name="earlier">更早</string>
+    <string name="month_format">%1$d月</string>
+
+    <!-- Image viewer -->
+    <string name="image_not_loaded">圖片未載入</string>
+    <string name="saved_to_gallery">已保存到相冊</string>
+    <string name="save_failed_detail">保存失敗: %1$s</string>
+    <string name="share_failed_detail">分享失敗: %1$s</string>
 </resources>

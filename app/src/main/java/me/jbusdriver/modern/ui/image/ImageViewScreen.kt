@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
@@ -144,7 +145,7 @@ fun ImageViewScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             painterResource(R.drawable.arrow_back_24px),
-                            contentDescription = "返回",
+                            contentDescription = stringResource(R.string.back),
                             tint = Color.White
                         )
                     }
@@ -157,7 +158,7 @@ fun ImageViewScreen(
                     }) {
                         Icon(
                             painterResource(R.drawable.download_24px),
-                            contentDescription = "保存",
+                            contentDescription = stringResource(R.string.save),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -169,7 +170,7 @@ fun ImageViewScreen(
                     }) {
                         Icon(
                             painterResource(R.drawable.share_24px),
-                            contentDescription = "分享",
+                            contentDescription = stringResource(R.string.share),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -249,7 +250,7 @@ private suspend fun getCachedBitmap(context: Context, imageUrl: String) =
             .build()
         val result = context.imageLoader.execute(request)
         (result as? SuccessResult)?.drawable?.toBitmap()
-            ?: throw IllegalStateException("圖片未載入")
+            ?: throw IllegalStateException(context.getString(R.string.image_not_loaded))
     }
 
 private suspend fun saveToGallery(context: Context, imageUrl: String) {
@@ -281,11 +282,11 @@ private suspend fun saveToGallery(context: Context, imageUrl: String) {
             }
         }
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, "已保存到相冊", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.saved_to_gallery), Toast.LENGTH_SHORT).show()
         }
     } catch (e: Exception) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, "保存失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.save_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 }
@@ -313,11 +314,11 @@ private suspend fun shareImage(context: Context, imageUrl: String) {
                 clipData = ClipData.newRawUri("", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "分享圖片"))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_image)))
         }
     } catch (e: Exception) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, "分享失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.share_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 }

@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -96,9 +97,9 @@ fun CollectCategoryScreen(
                 context.contentResolver.openOutputStream(uri)?.use { os ->
                     os.write(json.toByteArray(Charsets.UTF_8))
                 }
-                Toast.makeText(context, "導出成功", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(context, "導出失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.export_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -111,7 +112,10 @@ fun CollectCategoryScreen(
             try {
                 val json = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                        ?: throw IllegalStateException("無法讀取檔案")
+                }
+                if (json == null) {
+                    Toast.makeText(context, context.getString(R.string.cannot_read_file), Toast.LENGTH_SHORT).show()
+                    return@launch
                 }
                 actionVm.importCollectionsJson(
                     json,
@@ -120,11 +124,11 @@ fun CollectCategoryScreen(
                         actressVm.loadCollection(ActressDBType)
                     },
                     onError = { e ->
-                        Toast.makeText(context, "導入失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 )
             } catch (e: Exception) {
-                Toast.makeText(context, "導入失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -135,7 +139,7 @@ fun CollectCategoryScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "我的收藏",
+                stringResource(R.string.my_collect),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
@@ -144,7 +148,7 @@ fun CollectCategoryScreen(
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
                         painterResource(R.drawable.more_vert_24px),
-                        contentDescription = "更多"
+                        contentDescription = stringResource(R.string.more)
                     )
                 }
                 DropdownMenu(
@@ -152,7 +156,7 @@ fun CollectCategoryScreen(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("導出收藏") },
+                        text = { Text(stringResource(R.string.export_collect)) },
                         onClick = {
                             showMenu = false
                             val filename = "jbus_backup_${SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())}.json"
@@ -160,7 +164,7 @@ fun CollectCategoryScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("導入收藏") },
+                        text = { Text(stringResource(R.string.import_collect)) },
                         onClick = {
                             showMenu = false
                             importLauncher.launch(arrayOf("application/json"))
@@ -177,13 +181,13 @@ fun CollectCategoryScreen(
             FilterChip(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                label = { Text("影片 (${movieState.movies.size})", fontSize = 12.sp) }
+                label = { Text(stringResource(R.string.tab_movies_count, movieState.movies.size), fontSize = 12.sp) }
             )
             Spacer(Modifier.width(6.dp))
             FilterChip(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                label = { Text("演員 (${actressState.actresses.size})", fontSize = 12.sp) }
+                label = { Text(stringResource(R.string.tab_actresses_count, actressState.actresses.size), fontSize = 12.sp) }
             )
             Spacer(Modifier.weight(1f))
             FilterChip(
@@ -191,9 +195,9 @@ fun CollectCategoryScreen(
                 onClick = { showFilterSheet = true },
                 label = {
                     if (activeFilterState.filterState.hasActiveFilters) {
-                        Text("篩選 (${activeFilterState.filterState.activeFilterCount})", fontSize = 12.sp)
+                        Text(stringResource(R.string.filter_count, activeFilterState.filterState.activeFilterCount), fontSize = 12.sp)
                     } else {
-                        Text("篩選", fontSize = 12.sp)
+                        Text(stringResource(R.string.filter), fontSize = 12.sp)
                     }
                 },
                 trailingIcon = {
