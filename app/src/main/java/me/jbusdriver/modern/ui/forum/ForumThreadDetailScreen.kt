@@ -75,6 +75,7 @@ fun ForumThreadDetailScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val refreshLabel = stringResource(R.string.refresh)
 
     LifecycleResumeEffect(Unit) {
         if (state.detail != null) viewModel.revalidate()
@@ -252,8 +253,8 @@ fun ForumThreadDetailScreen(
                 LaunchedEffect(state.pendingFreshDetail) {
                     if (state.pendingFreshDetail != null) {
                         val result = snackbarHostState.showSnackbar(
-                            message = state.refreshMessage ?: "有新數據",
-                            actionLabel = "刷新",
+                            message = context.getString(state.refreshMessage ?: R.string.new_data_available),
+                            actionLabel = refreshLabel,
                             duration = SnackbarDuration.Long
                         )
                         if (result == SnackbarResult.ActionPerformed) {

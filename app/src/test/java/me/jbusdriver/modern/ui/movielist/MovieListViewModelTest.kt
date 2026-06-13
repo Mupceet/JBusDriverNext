@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
@@ -261,7 +262,7 @@ class MovieListViewModelTest {
 
         assertEquals(2, viewModel.uiState.value.movies.size)
         assertEquals(3, viewModel.uiState.value.pendingFreshResult?.movies?.size)
-        assertEquals("有新數據", viewModel.uiState.value.refreshMessage)
+        assertEquals(R.string.new_data_available, viewModel.uiState.value.refreshMessage)
         assertEquals(listOf(false, false), revalidateArgs)
     }
 

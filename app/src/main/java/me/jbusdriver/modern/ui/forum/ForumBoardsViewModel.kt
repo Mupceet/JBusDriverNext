@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.ForumRepository
@@ -27,7 +28,7 @@ data class ForumBoardsUiState(
     val error: String? = null,
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
-    val refreshMessage: String? = null
+    val refreshMessage: Int? = null
 )
 
 @HiltViewModel
@@ -113,7 +114,7 @@ class ForumBoardsViewModel @Inject constructor(
                                 it.copy(
                                     isRefreshing = false,
                                     error = if (it.groups.isEmpty()) event.throwable.message ?: "Loading failed" else it.error,
-                                    refreshMessage = if (it.groups.isNotEmpty()) "Refresh failed" else null
+                                    refreshMessage = if (it.groups.isNotEmpty()) R.string.refresh_failed else null
                                 )
                             }
                         }

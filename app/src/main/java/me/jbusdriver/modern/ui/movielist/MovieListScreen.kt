@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.jbusdriver.R
@@ -57,6 +58,8 @@ fun MovieListScreen(
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val refreshLabel = stringResource(R.string.refresh)
     val isAtTop by remember(isGrid) {
         derivedStateOf {
             if (isGrid == true) {
@@ -86,10 +89,10 @@ fun MovieListScreen(
     }
 
     LaunchedEffect(uiState.refreshMessage) {
-        uiState.refreshMessage?.let { message ->
+        uiState.refreshMessage?.let { resId ->
             val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = "刷新",
+                message = context.getString(resId),
+                actionLabel = refreshLabel,
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
@@ -47,7 +48,7 @@ data class ForumThreadDetailUiState(
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
     val pendingFreshDetail: ForumThreadDetail? = null,
-    val refreshMessage: String? = null,
+    val refreshMessage: Int? = null,
     val error: String? = null,
     val isLoadingMore: Boolean = false,
     val isChangingFloorOrder: Boolean = false
@@ -187,7 +188,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                         isRevalidating = false,
                                         isChangingFloorOrder = false,
                                         pendingFreshDetail = fresh,
-                                        refreshMessage = "有新數據"
+                                        refreshMessage = R.string.new_data_available
                                     )
                                 }
                             } else {
@@ -257,7 +258,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                     it.copy(
                                         isRevalidating = false,
                                         pendingFreshDetail = fresh,
-                                        refreshMessage = "有新數據"
+                                        refreshMessage = R.string.new_data_available
                                     )
                                 }
                             } else {
@@ -296,7 +297,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 it.copy(
                                     isRefreshing = false,
                                     error = if (it.detail == null) event.throwable.message ?: "Loading failed" else it.error,
-                                    refreshMessage = if (it.detail != null) "Refresh failed" else null
+                                    refreshMessage = if (it.detail != null) R.string.refresh_failed else null
                                 )
                             }
                         }

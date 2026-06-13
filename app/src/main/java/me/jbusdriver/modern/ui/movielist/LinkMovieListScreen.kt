@@ -130,12 +130,12 @@ fun LinkMovieListScreen(
         onPauseOrDispose { }
     }
 
-    val refreshLabel = stringResource(R.string.refresh)
+    val refreshActionLabel = stringResource(R.string.refresh)
     LaunchedEffect(uiState.refreshMessage) {
-        uiState.refreshMessage?.let { message ->
+        uiState.refreshMessage?.let { resId ->
             val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = refreshLabel,
+                message = context.getString(resId),
+                actionLabel = refreshActionLabel,
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {

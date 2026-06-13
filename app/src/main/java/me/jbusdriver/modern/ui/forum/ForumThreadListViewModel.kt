@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
@@ -59,7 +60,7 @@ data class ForumThreadListUiState(
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
     val pendingFreshThreads: ForumThreadPageResult? = null,
-    val refreshMessage: String? = null
+    val refreshMessage: Int? = null
 )
 
 @HiltViewModel(assistedFactory = ForumThreadListViewModel.Factory::class)
@@ -155,7 +156,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                         isLoading = false,
                                         isRevalidating = false,
                                         pendingFreshThreads = fresh,
-                                        refreshMessage = "有新數據"
+                                        refreshMessage = R.string.new_data_available
                                     )
                                 }
                             } else {
@@ -214,7 +215,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                     it.copy(
                                         isRevalidating = false,
                                         pendingFreshThreads = fresh,
-                                        refreshMessage = "有新數據"
+                                        refreshMessage = R.string.new_data_available
                                     )
                                 }
                             } else {

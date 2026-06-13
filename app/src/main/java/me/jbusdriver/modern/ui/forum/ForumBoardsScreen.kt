@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -78,6 +79,7 @@ fun ForumBoardsScreen(
     val viewModel: ForumBoardsViewModel = hiltViewModel()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LifecycleResumeEffect(Unit) {
@@ -92,7 +94,7 @@ fun ForumBoardsScreen(
     ) {
         LaunchedEffect(state.refreshMessage) {
             state.refreshMessage?.let {
-                snackbarHostState.showSnackbar(message = it, duration = androidx.compose.material3.SnackbarDuration.Long)
+                snackbarHostState.showSnackbar(message = context.getString(it), duration = androidx.compose.material3.SnackbarDuration.Long)
                 viewModel.consumeRefreshMessage()
             }
         }

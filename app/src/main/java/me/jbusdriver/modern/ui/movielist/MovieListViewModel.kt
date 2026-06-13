@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
@@ -121,7 +122,7 @@ data class MovieListUiState(
     /** 后台刷新获得的新数据，等待用户应用 */
     val pendingFreshResult: MoviePageResult? = null,
     /** 轻量刷新反馈消息（Snackbar） */
-    val refreshMessage: String? = null
+    val refreshMessage: Int? = null
 )
 
 /**
@@ -347,7 +348,7 @@ class MovieListViewModel @Inject constructor(
                                     it.copy(
                                         isRevalidating = false,
                                         pendingFreshResult = fresh,
-                                        refreshMessage = "有新數據"
+                                        refreshMessage = R.string.new_data_available
                                     )
                                 }
                             }
@@ -399,7 +400,7 @@ class MovieListViewModel @Inject constructor(
                             it.copy(
                                 isRefreshing = false,
                                 error = if (it.movies.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
-                                refreshMessage = if (it.movies.isNotEmpty()) "刷新失敗" else null
+                                refreshMessage = if (it.movies.isNotEmpty()) R.string.refresh_failed else null
                             )
                         }
                     }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
@@ -37,7 +38,7 @@ data class GenreListUiState(
     /** 缓存数据的时间戳 */
     val lastUpdatedAtMillis: Long? = null,
     /** 轻量刷新反馈消息（Snackbar） */
-    val refreshMessage: String? = null
+    val refreshMessage: Int? = null
 )
 
 /**
@@ -196,7 +197,7 @@ class GenreListViewModel @Inject constructor(
                                 it.copy(
                                     isRefreshing = false,
                                     error = if (it.genreCategories.isEmpty()) event.throwable.message ?: "載入失敗" else it.error,
-                                    refreshMessage = if (it.genreCategories.isNotEmpty()) "刷新失敗" else null
+                                    refreshMessage = if (it.genreCategories.isNotEmpty()) R.string.refresh_failed else null
                                 )
                             }
                         }
