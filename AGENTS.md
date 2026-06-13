@@ -154,3 +154,70 @@ me.jbusdriver.modern/
 - `JBus` (top-level `lateinit var` in `AppContext.kt`): Application context reference.
 - `NetClient.defaultFastUrl`: Current base URL for the target site, switchable at runtime.
 - `CacheLoader.lru` / `CacheLoader.fileCache`: Global caches (memory LRU + disk FileCache).
+
+## Testing
+
+```bash
+# Run unit tests
+./gradlew test
+
+# Run Android instrumented tests
+./gradlew connectedAndroidTest
+
+# Run a specific test class
+./gradlew test --tests "me.jbusdriver.modern.ui.movielist.MovieListViewModelTest"
+```
+
+Test files are in `app/src/test/` (unit) and `app/src/androidTest/` (instrumented). Tests use JUnit4 + kotlinx-coroutines-test. ViewModel tests inject fake repositories via Hilt test modules.
+
+## Code Review Notes
+
+See `docs/CODE_REVIEW.md` for the full code review report. Key findings:
+
+### Known Architectural Issues
+- `lateinit var JBus` in `AppContext.kt` — global mutable singleton, prefer Hilt `@ApplicationContext`
+- `SiteConfig` constructor uses `runBlocking` — may cause ANR on cold start
+- `ForumSessionClient.ensureSession()` holds Activity reference — lifecycle risk
+- `ForumSessionManager` WebView thread safety — `destroy()` and `fetchDocument()` lack synchronization
+- ViewModel `loadFirstPage/revalidate/loadMore/refresh` pattern is heavily duplicated across 5+ ViewModels
+- `ForumViewModels.kt` contains 3 ViewModels in one file (822 lines) — should be split
+- **i18n**: All UI strings are hardcoded Traditional Chinese — zero `stringResource()` usage; `strings.xml` contains only `app_name`
+- **Duplicate UI**: Loading/Empty/Error state patterns repeated in 12+ Screen files; CollectButton and ShareButton logic duplicated across 3-4 files
+- **File overlong**: `MovieDetailScreen.kt` (833 lines), `ForumViewModels.kt` (822 lines), `ForumThreadDetailScreen.kt` (603 lines)
+- **LabSettingsStore.kt** (303 lines) mixes DataStore prefs, WebView scanning, concurrent verification, and URL sorting — should be split
+
+### Data Flow (Stale-While-Revalidate)
+All list screens use the same caching pattern via `CacheStore.observeCached()`:
+1. Emit `CachedLoadEvent.Cached` from memory/disk cache (immediate)
+2. Background fetch → emit `CachedLoadEvent.Fresh` (new data)
+3. ViewModel decides: apply immediately if at top, or show "有新數據" Snackbar if scrolled down
+
+### Navigation Routes (Nav3)
+
+| Route Key | Purpose |
+|-----------|---------|
+| `RouteMain` | Tab pager (home) |
+| `RouteSearch(defaultSearchType)` | Search screen |
+| `RouteMovieDetail(movieUrl, censorType)` | Movie detail |
+| `RouteImageViewer(images, startIndex)` | Full-screen image viewer |
+| `RouteLinkMovies(linkUrl, title, type, avatar, censorType)` | Actress/genre movie list |
+| `RouteForumThreadList(fid, title, typeId)` | Forum thread list |
+| `RouteForumThreadDetail(tid)` | Forum thread detail |
+| `RouteLabSettings` | Lab/experimental settings |
+
+### Key Libraries
+
+| Purpose | Library |
+|---------|---------|
+| UI | Jetpack Compose + Material3 (BOM-managed) |
+| DI | Hilt |
+| Async | Kotlin Coroutines |
+| Network | OkHttp 5.3 |
+| HTML Parsing | Jsoup 1.22 |
+| Database | Room 2.8 (KSP) |
+| Image Loading | Coil 2.7 |
+| Image Zoom | Telephoto 0.19 |
+| JSON | Gson 2.14 |
+| Navigation | Navigation 3 (1.1.1) |
+| Preferences | DataStore Preferences |
+| Debug | LeakCanary 2.14 (debugOnly) |
