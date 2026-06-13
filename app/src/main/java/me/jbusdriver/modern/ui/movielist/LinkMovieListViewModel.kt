@@ -12,7 +12,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
+import me.jbusdriver.modern.core.cache.PageTracker
+import me.jbusdriver.modern.core.cache.decideFreshRevalidate
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
@@ -103,18 +107,18 @@ class LinkMovieListViewModel @AssistedInject constructor(
     val uiState: StateFlow<LinkMovieListUiState> = _uiState.asStateFlow()
 
     /** 当前已加载到的页码 */
-    private var currentPage = 0
+    private val pages = PageTracker()
 
     /** 当前加载的链接 URL */
     private var linkUrl: String = navKey.linkUrl
 
     /** 列表类型，如 "actress" 表示女优关联影片 */
     private var listType: String = ""
-    private var isAtTopForFreshUpdates: Boolean = true
+    private val atTop = AtTopGate()
     private var firstPageJob: Job? = null
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
-        isAtTopForFreshUpdates = isAtTop
+        atTop.isAtTop = isAtTop
     }
 
     /**
@@ -131,7 +135,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (linkUrl == url && _uiState.value.movies.isNotEmpty()) return
         linkUrl = url
         listType = type
-        currentPage = 0
+        pages.reset()
         _uiState.value = LinkMovieListUiState()
         if (type == "actress") {
             _uiState.update { it.copy(isLoadingActress = true, actressError = null) }
@@ -147,7 +151,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
      */
     fun applyPendingFreshResult() {
         val pending = _uiState.value.pendingFreshResult ?: return
-        currentPage = 1
+        pages.startFirstPage()
         _uiState.update {
             it.copy(
                 movies = pending.movies.map { m -> m.toUiModel() },
@@ -167,7 +171,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading || linkUrl.isBlank()) return
-        currentPage = 1
+        pages.startFirstPage()
         firstPageJob?.cancel()
         firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
@@ -240,9 +244,9 @@ class LinkMovieListViewModel @AssistedInject constructor(
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore || !state.hasMore) return
         val nextPage = state.pageInfo.nextPage
-        if (nextPage <= currentPage) return
+        if (!pages.shouldLoadMore(state.pageInfo)) return
 
-        currentPage = nextPage
+        pages.advanceTo(nextPage)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
@@ -257,7 +261,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                     )
                 }
             } catch (e: Exception) {
-                currentPage = state.pageInfo.activePage
+                pages.rollbackTo(state.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false, error = e.message) }
             }
         }
@@ -285,32 +289,34 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 movies = event.entry.value.movies.simulateCacheRefreshChange()
                             )
                             val freshUiModels = fresh.movies.map { it.toUiModel() }
-                            val oldFirstPage = _uiState.value.movies.take(freshUiModels.size)
-                            val hasChanged = oldFirstPage != freshUiModels
-                            if (isAtTopForFreshUpdates) {
-                                currentPage = 1
-                                _uiState.update {
-                                    it.copy(
-                                        movies = freshUiModels,
-                                        pageInfo = fresh.pageInfo,
-                                        hasMore = fresh.pageInfo.hasNext,
-                                        filterInfo = fresh.filterInfo,
-                                        isRevalidating = false,
-                                        pendingFreshResult = null,
-                                        refreshMessage = null,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis
-                                    )
+                            when (decideFreshRevalidate(_uiState.value.movies, freshUiModels, atTop.isAtTop)) {
+                                FreshRevalidateOutcome.ApplyImmediately -> {
+                                    pages.startFirstPage()
+                                    _uiState.update {
+                                        it.copy(
+                                            movies = freshUiModels,
+                                            pageInfo = fresh.pageInfo,
+                                            hasMore = fresh.pageInfo.hasNext,
+                                            filterInfo = fresh.filterInfo,
+                                            isRevalidating = false,
+                                            pendingFreshResult = null,
+                                            refreshMessage = null,
+                                            lastUpdatedAtMillis = event.entry.storedAtMillis
+                                        )
+                                    }
                                 }
-                            } else if (hasChanged) {
-                                _uiState.update {
-                                    it.copy(
-                                        isRevalidating = false,
-                                        pendingFreshResult = fresh,
-                                        refreshMessage = "有新數據"
-                                    )
+                                FreshRevalidateOutcome.StorePending -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            isRevalidating = false,
+                                            pendingFreshResult = fresh,
+                                            refreshMessage = "有新數據"
+                                        )
+                                    }
                                 }
-                            } else {
-                                _uiState.update { it.copy(isRevalidating = false) }
+                                FreshRevalidateOutcome.NoChange -> {
+                                    _uiState.update { it.copy(isRevalidating = false) }
+                                }
                             }
                         }
                         is CachedLoadEvent.Failure -> {
@@ -329,7 +335,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
      */
     fun refresh() {
         if (_uiState.value.isRefreshing || linkUrl.isBlank()) return
-        currentPage = 1
+        pages.startFirstPage()
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
@@ -428,7 +434,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
     fun toggleShowAll() {
         val newState = !_uiState.value.showAll
         _uiState.update { it.copy(showAll = newState, isFilterSwitching = true) }
-        currentPage = 0
+        pages.reset()
         loadFirstPage()
     }
 
