@@ -357,17 +357,17 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 
 ## 十、已修复问题确认
 
-以下问题在 `2026-05-28-code-review-remediation.md` 中已有修复计划，需确认是否已实施：
+以下问题在 `2026-05-28-code-review-remediation.md` 中已有修复计划，截至 2026-06-13 已全部核实实施：
 
 | 问题 | 修复计划 | 状态 |
 |------|---------|------|
-| ForumSessionManager 恢复 Cookie 后未创建 WebView | Task 1 | 待确认 |
-| WebView 协程取消路径不完整 | Task 2 | 待确认 |
-| Activity 销毁时未 destroy 浏览器会话 | Task 3 | 待确认 |
+| ForumSessionManager 恢复 Cookie 后未创建 WebView | Task 1 | ✅ 已修复（`ensureWebViewCreated()` + 恢复分支调用） |
+| WebView 协程取消路径不完整 | Task 2 | ✅ 已修复（`WebViewHelper` 两处 + `ForumSessionManager` 的 `invokeOnCancellation` 清理） |
+| Activity 销毁时未 destroy 浏览器会话 | Task 3 | ✅ 已修复（`BrowserSessionClient.destroy()` + `ModernMainActivity.onDestroy` 调用） |
 | 搜索 URL 编码问题 | Task 4 | ✅ 已修复 |
-| 收藏日期提取不一致 | Task 5 | 待确认 |
-| 收藏唯一性索引不含 dbType | Task 6 | 待确认 |
-| FileCache key 哈希碰撞 | Task 7 | 待确认 |
+| 收藏日期提取不一致 | Task 5 | ✅ 已修复（统一 `toCollectionMovie` 转换） |
+| 收藏唯一性索引不含 dbType | Task 6 | ✅ 已修复（`[dbType, key]` 唯一索引 + DB v2 迁移） |
+| FileCache key 哈希碰撞 | Task 7 | ✅ 已修复（SHA-256 文件名 + 旧 key 回退读取） |
 
 ---
 
@@ -390,3 +390,43 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 3. i18n: 字符串资源化（影响面最广）
 4. 重复 UI: 提取通用组件（减少约 30% 重复代码）
 5. 文件拆分: ForumViewModels + MainScreen + MovieDetailScreen
+
+---
+
+## 十二、本轮修复进度（自 82436b0 起）
+
+**更新日期**: 2026-06-13
+
+### ✅ 已完成
+
+| 分类 | 问题 | 处理 |
+|------|------|------|
+| P0 | 2.1 Cookie 泄露 | 改为从 `local.properties` / Gradle property / 环境变量注入，移除仓库内明文 |
+| P0 | 2.2 debug 模拟缓存 | 改为 `-PcacheRefreshTestMode` 显式传入，仓库默认 false |
+| P1 | 3.1 HTTP 状态码 / 3.2 深链 / 3.3+3.7 搜索竞态 / 3.4 runBlocking | 全部修复 |
+| P1 | 3.5 Activity 引用 / 3.6 WebView 线程安全 | 生命周期校验 + `Mutex` 保护 |
+| P2 | 4.1 toggle 原子化 / 4.2 并发上限 / 4.4 logDiff 泛型化 / 4.9 HtmlClient 重试去重 | 全部修复 |
+| P2 | 4.5 ForumViewModels 拆分 / 4.6 MainScreen 拆分 | 每屏独立文件 |
+| P2 | 4.7 domain model 不可变 / 4.8 封装性 / 4.10 GifLoadTracker 顺序存储 | 全部修复 |
+| 重复 UI | 5.1 LoadingView/EmptyStateView/ErrorView / 5.2 CollectButton / 5.3 ShareButton | 通用组件已提取并迁移 |
+| 类划分 | 8.1 ForumViewModels / 8.2 ForumPostParser / 8.3 MirrorScanner / 8.4 CollectCategoryScreen | 全部拆分/职责下沉 |
+| §10 | Task 1–7（ForumSession/Cookie/索引/FileCache 等） | 已核实全部实施 |
+| i18n | 6.1 字符串资源化基础 | 建 `strings.xml`(en) + `values-zh-rTW`，已迁移 11 个文件 |
+
+### 🔄 进行中 / 部分完成
+
+| 分类 | 问题 | 现状 |
+|------|------|------|
+| i18n | 6.1 | 已迁移 MainTabContent、StateViews、CollectButton、ShareButton、ForumThreadDetailScreen、LabSettingsScreen、SearchScreen、CollectCategoryScreen、CollectionFilterSheet、LinkMovieListScreen、ImageViewScreen；尚有 MovieDetailScreen 等约 20+ 文件（含 ViewModel 内文案，需经 `context.getString` 或事件化处理） |
+| 文件过长 | 七 | MovieDetailScreen(833)、ForumThreadDetailScreen(603) 仍未拆分 |
+
+### ⬜ 待处理
+
+| 分类 | 问题 |
+|------|------|
+| P2 | 4.3 多个 ViewModel 的 stale-while-revalidate 四段式重复（建议 `CachedViewModel` 基类） |
+| 类划分 | 8.5 MovieListViewModel 的 `dataSourceType` 与 `genreUrl` 双模式混合 |
+| i18n | 6.2 繁简混用统一（依赖 6.1 完成） |
+| 架构 | 9.1 统一错误处理策略 |
+| 测试/文档 | 9.2–9.4 ForumSessionManager/HtmlClient/SiteConfig/CollectRepository/ForumRepository 等单元测试与 KDoc |
+
