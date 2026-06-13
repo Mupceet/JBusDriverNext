@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,10 +21,10 @@ import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.modern.KLog
 import javax.inject.Inject
 
 private const val TAG = "MovieListVM"
+private const val FIRST_PAGE = 1
 
 private fun logMovieDiff(oldMovies: List<MovieUiModel>, newMovies: List<MovieUiModel>, context: String) {
     me.jbusdriver.modern.core.logListDiff(
@@ -42,6 +43,45 @@ private fun logMovieDiff(oldMovies: List<MovieUiModel>, newMovies: List<MovieUiM
             }
         }
     )
+}
+
+/**
+ * 影片分页数据的来源策略。
+ *
+ * 将“按数据源类型加载”（首页 Tab）与“按 URL 加载”（类型/演员筛选页）两种互斥模式
+ * 封装为独立实现，避免 ViewModel 中散落的 `if (genreUrl != null)` 分支。
+ */
+private sealed interface MoviePageSource {
+    /** 用于去重判断的唯一标识 */
+    val key: String
+
+    /** 观察首页数据（stale-while-revalidate） */
+    fun observeFirstPage(
+        showAll: Boolean,
+        forceRefresh: Boolean,
+        revalidate: Boolean
+    ): Flow<CachedLoadEvent<MoviePageResult>>
+
+    /** 加载指定页（追加加载更多时使用） */
+    suspend fun loadNextPage(page: Int, showAll: Boolean): MoviePageResult
+
+    /** 按数据源类型加载（有码/无码/欧美等首页） */
+    class ByType(private val repository: MovieRepository, val type: DataSourceType) : MoviePageSource {
+        override val key = "type:${type.key}"
+        override fun observeFirstPage(showAll: Boolean, forceRefresh: Boolean, revalidate: Boolean) =
+            repository.observePage(type, FIRST_PAGE, showAll, forceRefresh, revalidate)
+        override suspend fun loadNextPage(page: Int, showAll: Boolean) =
+            repository.loadPage(type, page, showAll)
+    }
+
+    /** 按完整列表 URL 加载（类型筛选、演员关联等场景） */
+    class ByUrl(private val repository: MovieRepository, val url: String) : MoviePageSource {
+        override val key = "url:$url"
+        override fun observeFirstPage(showAll: Boolean, forceRefresh: Boolean, revalidate: Boolean) =
+            repository.observePageByUrl(url, FIRST_PAGE, showAll, forceRefresh, revalidate)
+        override suspend fun loadNextPage(page: Int, showAll: Boolean) =
+            repository.loadPageByUrl(url, page, showAll)
+    }
 }
 
 /**
@@ -86,6 +126,9 @@ data class MovieListUiState(
  * 职责：管理按分类（有码/无码/欧美等）分页加载电影列表，支持下拉刷新和加载更多。
  * 采用 stale-while-revalidate 策略：先显示缓存数据，后台静默刷新后提示用户更新。
  *
+ * 数据来源通过 [MoviePageSource] 策略注入：首页 Tab 走 [setDataSourceType]（按类型），
+ * 类型/演员筛选页走 [setGenreUrl]（按 URL）。两种模式互斥，ViewModel 内部不再区分。
+ *
  * 使用场景：在主界面的电影列表 Tab 页面中使用，通过 Hilt 注入。
  * 用户切换分类标签时切换数据源，支持分页加载和下拉刷新。
  *
@@ -107,11 +150,9 @@ class MovieListViewModel @Inject constructor(
     /** 当前已加载到的页码 */
     private var currentPage = 0
 
-    /** 当前的数据源类型（有码/无码/欧美等） */
-    private var dataSourceType: DataSourceType = DataSourceType.CENSORED
+    /** 当前的数据来源策略（按类型或按 URL） */
+    private var pageSource: MoviePageSource = MoviePageSource.ByType(repository, DataSourceType.CENSORED)
 
-    /** 当前 genre 过滤的 URL，非 null 时优先使用 URL 加载 */
-    private var genreUrl: String? = null
     private var isAtTopForFreshUpdates: Boolean = true
     private var firstPageJob: Job? = null
 
@@ -128,10 +169,11 @@ class MovieListViewModel @Inject constructor(
      * @param type 数据源类型，如 [DataSourceType.CENSORED]、[DataSourceType.UNCENSORED] 等
      */
     fun setDataSourceType(type: DataSourceType) {
-        if (dataSourceType == type && _uiState.value.movies.isNotEmpty()) {
+        val newSource = MoviePageSource.ByType(repository, type)
+        if (pageSource.key == newSource.key && _uiState.value.movies.isNotEmpty()) {
             return
         }
-        dataSourceType = type
+        pageSource = newSource
         currentPage = 0
         _uiState.value = MovieListUiState(showAll = _uiState.value.showAll)
         loadFirstPage()
@@ -143,11 +185,13 @@ class MovieListViewModel @Inject constructor(
      * 如果 URL 未变化且列表中已有数据，则跳过重复加载。
      * 重置页码和 UI 状态后自动调用 [loadFirstPage]。
      *
-     * @param url genre 过滤页面的完整 URL，传 null 则回退到按数据源类型加载
+     * @param url genre 过滤页面的完整 URL，传 null 则不执行任何操作
      */
     fun setGenreUrl(url: String?) {
-        if (genreUrl == url && _uiState.value.movies.isNotEmpty()) return
-        genreUrl = url
+        if (url == null) return
+        val newSource = MoviePageSource.ByUrl(repository, url)
+        if (pageSource.key == newSource.key && _uiState.value.movies.isNotEmpty()) return
+        pageSource = newSource
         currentPage = 0
         _uiState.value = MovieListUiState()
         loadFirstPage()
@@ -188,11 +232,12 @@ class MovieListViewModel @Inject constructor(
         firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            val flow = if (genreUrl != null) {
-                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = false)
-            } else {
-                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = false)
-            }
+            val source = pageSource
+            val flow = source.observeFirstPage(
+                showAll = _uiState.value.showAll,
+                forceRefresh = false,
+                revalidate = false
+            )
             flow.collect { event ->
                 when (event) {
                     is CachedLoadEvent.Cached -> {
@@ -258,11 +303,12 @@ class MovieListViewModel @Inject constructor(
         if (state.movies.isEmpty()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
-            val flow = if (genreUrl != null) {
-                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, revalidate = false)
-            } else {
-                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, revalidate = false)
-            }
+            val source = pageSource
+            val flow = source.observeFirstPage(
+                showAll = _uiState.value.showAll,
+                forceRefresh = false,
+                revalidate = false
+            )
             flow.collect { event ->
                 when (event) {
                     is CachedLoadEvent.Cached -> {
@@ -321,11 +367,12 @@ class MovieListViewModel @Inject constructor(
         currentPage = 1
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
-            val flow = if (genreUrl != null) {
-                repository.observePageByUrl(genreUrl!!, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
-            } else {
-                repository.observePage(dataSourceType, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
-            }
+            val source = pageSource
+            val flow = source.observeFirstPage(
+                showAll = _uiState.value.showAll,
+                forceRefresh = true,
+                revalidate = false
+            )
             flow.collect { event ->
                 when (event) {
                     is CachedLoadEvent.Cached -> Unit
@@ -370,11 +417,7 @@ class MovieListViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val result = if (genreUrl != null) {
-                    repository.loadPageByUrl(genreUrl!!, nextPage, showAll = _uiState.value.showAll)
-                } else {
-                    repository.loadPage(dataSourceType, nextPage, showAll = _uiState.value.showAll)
-                }
+                val result = pageSource.loadNextPage(nextPage, showAll = _uiState.value.showAll)
                 _uiState.update {
                     it.copy(
                         movies = it.movies + result.movies.map { m -> m.toUiModel() },

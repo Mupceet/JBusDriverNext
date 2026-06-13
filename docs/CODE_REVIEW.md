@@ -409,7 +409,7 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 | P2 | 4.5 ForumViewModels 拆分 / 4.6 MainScreen 拆分 | 每屏独立文件 |
 | P2 | 4.7 domain model 不可变 / 4.8 封装性 / 4.10 GifLoadTracker 顺序存储 | 全部修复 |
 | 重复 UI | 5.1 LoadingView/EmptyStateView/ErrorView / 5.2 CollectButton / 5.3 ShareButton | 通用组件已提取并迁移 |
-| 类划分 | 8.1 ForumViewModels / 8.2 ForumPostParser / 8.3 MirrorScanner / 8.4 CollectCategoryScreen | 全部拆分/职责下沉 |
+| 类划分 | 8.1 ForumViewModels / 8.2 ForumPostParser / 8.3 MirrorScanner / 8.4 CollectCategoryScreen / 8.5 MovieListViewModel | 全部拆分/职责下沉（8.5 用 `MoviePageSource` 策略封装 by-type / by-url 两种加载模式） |
 | §10 | Task 1–7（ForumSession/Cookie/索引/FileCache 等） | 已核实全部实施 |
 | i18n | 6.1 字符串资源化基础 | 建 `strings.xml`(en) + `values-zh-rTW`，已迁移 11 个文件 |
 
@@ -425,7 +425,6 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 | 分类 | 问题 |
 |------|------|
 | P2 | 4.3 多个 ViewModel 的 stale-while-revalidate 四段式重复（建议 `CachedViewModel` 基类） |
-| 类划分 | 8.5 MovieListViewModel 的 `dataSourceType` 与 `genreUrl` 双模式混合 |
 | i18n | 6.2 繁简混用统一（依赖 6.1 完成） |
 | 架构 | 9.1 统一错误处理策略 |
 | 测试/文档 | 9.2–9.4 ForumSessionManager/HtmlClient/SiteConfig/CollectRepository/ForumRepository 等单元测试与 KDoc |
