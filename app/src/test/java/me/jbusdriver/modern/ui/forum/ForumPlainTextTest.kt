@@ -11,8 +11,8 @@ import org.junit.Test
 class ForumPlainTextTest {
     @Test
     fun `pinned floor label includes pinned prefix`() {
-        assertEquals("置頂 · 2#", forumFloorLabel(floor = 2, isPinned = true))
-        assertEquals("5#", forumFloorLabel(floor = 5, isPinned = false))
+        assertEquals("置頂 · 2#", forumFloorLabel(floor = 2, isPinned = true, pinnedLabel = "置頂"))
+        assertEquals("5#", forumFloorLabel(floor = 5, isPinned = false, pinnedLabel = "置頂"))
     }
 
     @Test

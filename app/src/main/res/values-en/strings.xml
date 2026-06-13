@@ -168,4 +168,5 @@
     <!-- Lab scan errors -->
     <string name="scan_failed">Scan failed</string>
     <string name="verify_failed">Connectivity check failed</string>
+    <string name="pinned">Pinned</string>
 </resources>

@@ -244,7 +244,7 @@ internal fun ReplyItem(
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        "${forumFloorLabel(reply.floor, reply.isPinned)} · ${reply.postTime}",
+                        "${forumFloorLabel(reply.floor, reply.isPinned, stringResource(R.string.pinned))} · ${reply.postTime}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

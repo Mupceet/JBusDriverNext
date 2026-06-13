@@ -448,8 +448,8 @@ internal fun buildForumPlainText(blocks: List<ContentBlock>): String =
         .filter(String::isNotBlank)
         .joinToString("\n")
 
-internal fun forumFloorLabel(floor: Int, isPinned: Boolean): String =
-    if (isPinned) "置頂 · $floor#" else "$floor#"
+internal fun forumFloorLabel(floor: Int, isPinned: Boolean, pinnedLabel: String): String =
+    if (isPinned) "$pinnedLabel · $floor#" else "$floor#"
 
 internal fun forumListIndentStep(depth: Int): Int {
     val currentIndent = depth.coerceIn(0, MAX_LIST_DEPTH) * LIST_INDENT_DP

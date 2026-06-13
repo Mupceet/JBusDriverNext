@@ -168,4 +168,5 @@
     <!-- Lab scan errors -->
     <string name="scan_failed">掃描失敗</string>
     <string name="verify_failed">檢測失敗</string>
+    <string name="pinned">置頂</string>
 </resources>
