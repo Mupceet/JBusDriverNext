@@ -90,15 +90,21 @@ class ModernMainActivity : ComponentActivity() {
             return RouteMovieDetail(movieUrl = url, censorType = censorType)
         }
 
-        val subPath = if (segments[0] in listOf("uncensored", "xyz")) segments[1] else segments[0]
-        if (subPath in listOf("star", "genre", "director", "studio", "label", "series", "publisher")) {
-            val type = when (subPath) {
+        val isPrefixSegment = segments[0] in listOf("uncensored", "xyz")
+        val contentSegment = if (isPrefixSegment) segments.getOrNull(1) else segments[0]
+
+        if (contentSegment in listOf("star", "genre", "director", "studio", "label", "series", "publisher")) {
+            val type = when (contentSegment) {
                 "star" -> "actress"
                 "genre" -> "genre"
                 else -> "header"
             }
             val title = segments.last()
             return RouteLinkMovies(linkUrl = url, title = title, type = type, censorType = censorType)
+        }
+
+        if (isPrefixSegment && segments.size == 2) {
+            return RouteMovieDetail(movieUrl = url, censorType = censorType)
         }
 
         return RouteMain

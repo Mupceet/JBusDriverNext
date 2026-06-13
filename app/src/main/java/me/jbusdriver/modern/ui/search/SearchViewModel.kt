@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,6 +74,9 @@ class SearchViewModel @Inject constructor(
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
+    /** 当前搜索请求的 Job，用于取消旧请求 */
+    private var searchJob: Job? = null
+
     /** 搜索历史记录 */
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
@@ -99,6 +103,7 @@ class SearchViewModel @Inject constructor(
 
     /** 清空搜索内容，恢复空状态 */
     fun clearSearch() {
+        searchJob?.cancel()
         _uiState.update {
             it.copy(
                 query = "",
@@ -129,19 +134,23 @@ class SearchViewModel @Inject constructor(
             historyStore.addQuery(query)
             _searchHistory.value = historyStore.getHistory()
         }
-        viewModelScope.launch {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            val activeQuery = query
+            val activeType = searchType
             _uiState.update {
                 it.copy(
-                    query = query,
-                    searchType = searchType,
+                    query = activeQuery,
+                    searchType = activeType,
                     isLoading = true,
                     error = null,
                     currentPage = 1
                 )
             }
             try {
-                if (searchType == SearchType.ACTRESS) {
-                    val result = repository.searchActresses(query, 1)
+                if (activeType == SearchType.ACTRESS) {
+                    val result = repository.searchActresses(activeQuery, 1)
+                    if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
                     _uiState.update {
                         it.copy(
                             actressResults = result.second.map { a -> a.toActressUiModel() },
@@ -152,7 +161,8 @@ class SearchViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    val result = repository.searchMovies(searchType, query, 1)
+                    val result = repository.searchMovies(activeType, activeQuery, 1)
+                    if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
                     _uiState.update {
                         it.copy(
                             results = result.movies.map { m -> m.toUiModel() },
@@ -164,6 +174,7 @@ class SearchViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }

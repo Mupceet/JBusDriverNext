@@ -1,7 +1,10 @@
 package me.jbusdriver.modern.core.site
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.LabSettingsStore
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,9 +21,18 @@ interface SiteConfig {
 class DefaultSiteConfig @Inject constructor(
     private val labSettingsStore: LabSettingsStore
 ) : SiteConfig {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     @Volatile
-    private var _baseUrl: String = runBlocking {
-        labSettingsStore.selectedBaseUrl.first()
+    private var _baseUrl: String = LabSettingsStore.DEFAULT_BASE_URL
+
+    init {
+        scope.launch {
+            val persisted = labSettingsStore.selectedBaseUrl.first()
+            if (persisted.isNotBlank()) {
+                _baseUrl = persisted.trimEnd('/')
+            }
+        }
     }
 
     override var baseUrl: String

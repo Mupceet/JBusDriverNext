@@ -133,6 +133,13 @@ object NetClient {
 
                 override fun onResponse(call: Call, response: Response) {
                     try {
+                        if (!response.isSuccessful) {
+                            response.close()
+                            cont.resumeWith(Result.failure(
+                                IOException("HTTP ${response.code} for $url")
+                            ))
+                            return
+                        }
                         val body = response.body.string()
                         if (body.isNotBlank()) {
                             cont.resumeWith(Result.success(HtmlResponse(response.request.url.toString(), body)))
