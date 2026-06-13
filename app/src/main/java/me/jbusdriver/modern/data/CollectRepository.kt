@@ -210,9 +210,8 @@ class DefaultCollectRepository @Inject constructor(
                 val jsonObj = element.asJsonObject
                 val movie = GSON.fromJson(jsonObj.toString(), Movie::class.java)
                     .let { it.copy(imageUrl = it.imageUrl.wrapImage(siteConfig.baseUrl)) }
-                // Restore categoryId from exported data (it's @Transient, not deserialized by Gson)
-                movie.categoryId = jsonObj.get("categoryId")?.asInt ?: MovieCategory.id ?: 1
-                val item = movie.convertDBItem()
+                val importedCategoryId = jsonObj.get("categoryId")?.asInt ?: MovieCategory.id ?: 1
+                val item = movie.convertDBItem(categoryId = importedCategoryId)
                 if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                     skipped++
                 } else {
@@ -224,9 +223,8 @@ class DefaultCollectRepository @Inject constructor(
                 val jsonObj = element.asJsonObject
                 val actress = GSON.fromJson(jsonObj.toString(), ActressInfo::class.java)
                     .let { it.copy(avatar = it.avatar.wrapImage(siteConfig.baseUrl)) }
-                // Restore categoryId from exported data (it's @Transient, not deserialized by Gson)
-                actress.categoryId = jsonObj.get("categoryId")?.asInt ?: ActressCategory.id ?: 2
-                val item = actress.convertDBItem()
+                val importedCategoryId = jsonObj.get("categoryId")?.asInt ?: ActressCategory.id ?: 2
+                val item = actress.convertDBItem(categoryId = importedCategoryId)
                 if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                     skipped++
                 } else {
@@ -250,9 +248,8 @@ class DefaultCollectRepository @Inject constructor(
                     MovieDBType -> {
                         val movie = GSON.fromJson(jsonStr, Movie::class.java)
                             .let { it.copy(imageUrl = it.imageUrl.wrapImage(siteConfig.baseUrl)) }
-                        // Legacy format may include categoryId; fallback to default
-                        movie.categoryId = obj.get("categoryId")?.asInt ?: MovieCategory.id ?: 1
-                        val item = movie.convertDBItem()
+                        val importedCategoryId = obj.get("categoryId")?.asInt ?: MovieCategory.id ?: 1
+                        val item = movie.convertDBItem(categoryId = importedCategoryId)
                         if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
                         } else {
@@ -263,9 +260,8 @@ class DefaultCollectRepository @Inject constructor(
                     ActressDBType -> {
                         val actress = GSON.fromJson(jsonStr, ActressInfo::class.java)
                             .let { it.copy(avatar = it.avatar.wrapImage(siteConfig.baseUrl)) }
-                        // Legacy format may include categoryId; fallback to default
-                        actress.categoryId = obj.get("categoryId")?.asInt ?: ActressCategory.id ?: 2
-                        val item = actress.convertDBItem()
+                        val importedCategoryId = obj.get("categoryId")?.asInt ?: ActressCategory.id ?: 2
+                        val item = actress.convertDBItem(categoryId = importedCategoryId)
                         if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
                         } else {

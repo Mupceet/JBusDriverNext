@@ -57,7 +57,7 @@ val ILink.uniqueKey: String
  *
  * @return 可直接插入数据库的 [LinkItem] 实体
  */
-fun ILink.convertDBItem(): LinkItem {
+fun ILink.convertDBItem(categoryId: Int = this.categoryId): LinkItem {
     val stripped = stripUrlFields(this)
     return LinkItem(
         dbType = this.DBtype,
@@ -65,7 +65,7 @@ fun ILink.convertDBItem(): LinkItem {
         key = stripped.uniqueKey,
         jsonStr = stripped.toJsonString(),
         categoryId = when {
-            this.categoryId > 0 -> categoryId
+            categoryId > 0 -> categoryId
             else -> AllFirstParentDBCategoryGroup[this.DBtype]?.id ?: LinkCategory.id ?: -1
         }
     )

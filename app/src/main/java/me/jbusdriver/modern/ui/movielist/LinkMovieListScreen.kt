@@ -58,6 +58,7 @@ import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.components.ActressAvatar
+import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
@@ -192,17 +193,10 @@ fun LinkMovieListScreen(
                         }
                     }
                     if (type == "actress" && uiState.actressDetail != null) {
-                        IconButton(onClick = {
-                            viewModel.toggleActressCollect()
-                            val msg = if (!uiState.isCollected) "收藏成功" else "已取消收藏"
-                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                        }) {
-                            Icon(
-                                painter = painterResource(if (uiState.isCollected) R.drawable.favorite_fill_24px else R.drawable.favorite_24px),
-                                contentDescription = if (uiState.isCollected) "取消收藏" else "收藏",
-                                tint = if (uiState.isCollected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        CollectButton(
+                            isCollected = uiState.isCollected,
+                            onToggle = { viewModel.toggleActressCollect() }
+                        )
                     }
                 }
             )
