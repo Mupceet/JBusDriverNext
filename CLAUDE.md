@@ -154,3 +154,23 @@ me.jbusdriver.modern/
 - `JBus` (top-level `lateinit var` in `AppContext.kt`): Application context reference.
 - `NetClient.defaultFastUrl`: Current base URL for the target site, switchable at runtime.
 - `CacheLoader.lru` / `CacheLoader.fileCache`: Global caches (memory LRU + disk FileCache).
+
+Add as a new ## Build & Commit Hygiene section near the top of CLAUDE.md, after any project description.\n\n## Build & Commit Hygiene
+- After staging files, always run `git status` before committing to verify no unrelated files (e.g., `.mimicode/`, tool config) are included.
+- Never commit directly to `release` branch — always work on `develop` or a feature branch.
+- Run a build check (`./gradlew assembleDebug`) before committing to catch compilation errors.
+  Add under a new ## Code Quality Rules section, after build/commit instructions.\n\n## Code Quality Rules
+- Prefer StateFlow with `.cachedIn()` or `.stateIn()` over raw Flow for ViewModel state holders to avoid recomputation and flickering.
+- When refactoring multiple files, keep changes minimal and targeted — do not redesign UI the user didn't ask for.
+- After any Gson/ProGuard changes, verify both debug and release builds parse sample JSON correctly.
+- When removing or renaming a data field, add backward-compatible @SerializedName aliases for old field names.
+  Add under a new ## Android / Kotlin Conventions section.\n\n## Android / Kotlin Conventions
+- This is an Android app using Jetpack Compose, Material 3, Kotlin, Gson, and DataStore.
+- Verify Compose API calls compile before finalizing — do not guess package paths for inlineContent, SubcomposeAsyncImage, or similar APIs.
+- When implementing caching (SWR or similar), test for: scroll position retention, duplicate key safety, and tab-switch refresh behavior.
+- ProGuard/R8 keep rules must cover all Gson model classes — add `@Keep` or rules proactively.
+  Add under a new ## Workflow Preferences section at the top of CLAUDE.md so Claude sees it immediately.\n\n## Workflow Preferences
+- Do NOT start implementing until I've confirmed the design or approach. Wait for explicit approval.
+- When I propose a feature, first present a brief plan (affected files, approach, trade-offs) before writing code.
+- If a first implementation is complex, proactively suggest a simpler alternative before I have to ask.
+- After completing a feature, check for and remove any dead code or unused parameters from the old approach.
