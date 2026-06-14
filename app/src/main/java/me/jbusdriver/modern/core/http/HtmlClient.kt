@@ -17,6 +17,16 @@ interface HtmlClient {
     suspend fun fetchDocument(url: String, showAll: Boolean = false): Document
 }
 
+/**
+ * 判断响应是否命中"driver-verify"拦截页（URL 或正文包含特征串）。
+ *
+ * 抽成纯函数以便单元测试：[DefaultHtmlClient] 的重试/回退策略完全依赖该判定。
+ */
+internal fun isDriverVerifyPage(finalUrl: String, body: String): Boolean =
+    finalUrl.contains("/doc/driver-verify", ignoreCase = true) ||
+        body.contains("/doc/driver-verify", ignoreCase = true) ||
+        body.contains("driver-verify", ignoreCase = true)
+
 @Singleton
 class DefaultHtmlClient @Inject constructor(
     private val browserSessionClient: BrowserSessionClient
@@ -53,7 +63,5 @@ class DefaultHtmlClient @Inject constructor(
     }
 
     private fun NetClient.HtmlResponse.isDriverVerify(): Boolean =
-        finalUrl.contains("/doc/driver-verify", ignoreCase = true) ||
-            body.contains("/doc/driver-verify", ignoreCase = true) ||
-            body.contains("driver-verify", ignoreCase = true)
+        isDriverVerifyPage(finalUrl, body)
 }

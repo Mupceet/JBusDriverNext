@@ -17,6 +17,20 @@ interface SiteConfig {
     fun referer(): String = "${baseUrl.trimEnd('/')}/"
 }
 
+/**
+ * 将相对路径或完整 URL 解析为基于 [baseUrl] 的绝对 URL。
+ *
+ * - 已是 http(s) 开头的完整 URL：原样返回。
+ * - 以 "/" 开头的绝对路径：拼到 baseUrl 根下。
+ * - 其余相对路径：补一个 "/" 再拼接。
+ * - baseUrl 末尾的 "/" 会被裁剪，避免出现双斜杠。
+ */
+internal fun resolveUrl(baseUrl: String, pathOrUrl: String): String {
+    if (pathOrUrl.startsWith("http")) return pathOrUrl
+    val prefix = if (pathOrUrl.startsWith("/")) "" else "/"
+    return baseUrl.trimEnd('/') + prefix + pathOrUrl
+}
+
 @Singleton
 class DefaultSiteConfig @Inject constructor(
     private val labSettingsStore: LabSettingsStore
@@ -43,9 +57,5 @@ class DefaultSiteConfig @Inject constructor(
         _baseUrl = url.trimEnd('/')
     }
 
-    override fun resolve(pathOrUrl: String): String {
-        if (pathOrUrl.startsWith("http")) return pathOrUrl
-        val prefix = if (pathOrUrl.startsWith("/")) "" else "/"
-        return baseUrl.trimEnd('/') + prefix + pathOrUrl
-    }
+    override fun resolve(pathOrUrl: String): String = resolveUrl(baseUrl, pathOrUrl)
 }
