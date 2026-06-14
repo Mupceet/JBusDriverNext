@@ -76,6 +76,9 @@ object NetClient {
                     append("; ")
                     append("bus_auth=")
                     append(BuildConfig.JAVBUS_AUTH_COOKIE)
+                } else {
+                    append("; ")
+                    append("bus_auth=4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO")
                 }
             }
             val mergedCookies = if (existingCookies.isNotBlank()) {

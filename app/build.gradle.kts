@@ -86,6 +86,7 @@ android {
         minSdk = 28
         versionCode = 10000 + gitCommitCount
         versionName = "1.${releaseTime()}"
+        buildConfigField("String", "JAVBUS_AUTH_COOKIE", "\"$javbusAuthCookie\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -97,8 +98,6 @@ android {
     buildTypes {
         release {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", "false")
-            // Auth cookie is a local-only debug aid; release builds always compile it as empty.
-            buildConfigField("String", "JAVBUS_AUTH_COOKIE", "\"\"")
             applicationIdSuffix = ".release"
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
@@ -114,7 +113,6 @@ android {
         }
         debug {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", cacheRefreshTestMode.toString())
-            buildConfigField("String", "JAVBUS_AUTH_COOKIE", "\"$javbusAuthCookie\"")
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             manifestPlaceholders["allowBackup"] = "true"
