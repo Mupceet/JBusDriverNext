@@ -439,3 +439,70 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 |------|------|
 | 测试/文档 | 9.3 深链路由测试（`resolveJavbusRoute`）；9.4 公共 API KDoc；ForumSessionManager（设备相关）与 HtmlClient 完整重试编排（需 `NetClient` 可注入） |
 
+---
+
+## 十三、Clean Code / 分层架构复审（2026-06-14）
+
+**复审方式**：3 个并行只读审计 agent 分别覆盖 `data+core+DI`、`ui+domain`、`跨模块+死代码`，已剔除 §12 中标记 ✅ 的旧项。下列为新发现。
+
+### P1 — 高价值 / 低风险
+
+| # | 位置 | 问题 | 建议 |
+|---|------|------|------|
+| 13.1 | `app/build.gradle.kts:156` + `libs.versions.toml` | `androidx-material`（非 Compose 旧版 Material）依赖全项目零引用，纯属死重，拖入 APK | 删除依赖与版本目录条目 |
+| 13.2 | `ui/ColorSchemeScreen.kt`（整文件） | 零引用的孤立调试页（无路由、无调用方） | 删除文件 |
+| 13.3 | `ui/theme/Color.kt`（整文件） | 8 个顶层颜色常量全部未引用（`Theme.kt` 走动态/种子配色） | 删除文件 |
+| 13.4 | `ui/detail/MovieDetailScreen.kt:233` | 死表达式 `detail.headers.firstOrNull()?.value ?: ""`（求值后丢弃，每次重组都跑） | 删除该行 |
+| 13.5 | `ui/forum/ForumThreadDetailScreen.kt:157` | i18n 漏网：`Toast.makeText(context, "已複製", …)` 硬编码，其余复制 Toast 均已 `R.string.copied` | 改 `context.getString(R.string.copied)` |
+| 13.6 | `domain/model/ILink.kt:16` | `var categoryId: Int` 强制所有 domain 模型（`Movie`/`Header`/`Genre`/`ActressInfo`/`Magnet`/`PageLink`/`SearchLink`）暴露可变 `categoryId`，data 层（导入路径）直接改写它——§4.7 仅改了默认值，可变契约仍在 | 改为 `val`，categoryId 经 data 层单独传递 |
+
+### P1/P2 — 架构（分层与全局状态）
+
+| # | 位置 | 问题 | 建议 |
+|---|------|------|------|
+| 13.7 | `JBus`(AppContext) / `NetClient` / `CacheLoader` / `JBusManager` | 四个全局可变单例绕过 Hilt，被 DI 管理的代码以静态引用触达 → 不可测（与 §9.2 残留一致），且 `NetClient.defaultFastUrl`/`siteConfig` 在 `onCreate` 前访问会 NPE | 长期：`@ApplicationContext` 注入、`NetClient`/`DB` 改 Hilt `@Singleton`；短期至少文档标注为有意逃逸口 |
+| 13.8 | `core/CacheLoader.kt` | 旧 `lruCached()`/`persistentCached()`/`getString()` 公共 API 已无调用方（仓库已迁 `CacheStore`），但 KDoc 仍宣称“核心读取 API”，形成两套并行缓存 API | 折叠为 `DefaultCacheStore` 的私有后端，删死方法与过期 KDoc |
+| 13.9 | `data/db/DB.kt` + `data/di/DatabaseModule.kt` | `DatabaseModule` 仅透传 `object DB`，双重间接；`DB.historyDao/categoryDao/linkDao` 懒加载委托零调用；`HistoryDao`（除 insert）/`LinkItemDao` 多数方法零调用；`CollectRepository` 还直接静态 `DB.collectDatabase.withTransaction{}` 绕过 Hilt | 二选一：Room 构造完全收归 `DatabaseModule`（删 `object DB`），或全部用 `object DB`（删 `@Provides`）；清理死 DAO 方法 |
+| 13.10 | `domain/model/SearchType.kt:16`、`DataSourceType.kt:18` | site URL 模板（`"/search/%s&DBtype=2"`、`"/page/"` 等）硬编码在 **domain** 枚举里，把站点路由结构泄漏给 domain/ui 层 | URL 模板下沉到 data 层路由表，枚举只保留语义身份 |
+
+### P2 — 中等
+
+| # | 位置 | 问题 | 建议 |
+|---|------|------|------|
+| 13.11 | `data/db/LinkMappers.kt:142` | `restoreUrlFields()` 直接读 `NetClient.siteConfig.baseUrl`，db/mapper 反向依赖 `core.http` | baseUrl/SiteConfig 作参数传入 |
+| 13.12 | `data/CollectRepository.kt:120-150,196-276` | `withTransaction` 用静态 `DB.collectDatabase`；导入路径 4 处近似“反序列化→查重→插入/跳过”重复块 | 注入 `CollectDatabase`；抽 `insertIfAbsent(item)` |
+| 13.13 | `ui/MainTabContent.kt:57-92,217-228` | `MovieTabContent`/`ActressTabContent` 重复审查筛选 chip 行与 pager↔filter `LaunchedEffect` 同步块 | 抽 `CensorFilterRow` + `rememberCensorPagerSync()` |
+| 13.14 | `ui/components/ScrollToTopButton.kt:60-110` | `rememberScrollToTopVisibility` 两份几乎相同实现（LazyList/LazyGrid） | 抽公共 helper（按 firstVisibleIndex/isScrollInProgress） |
+| 13.15 | `ui/components/CategoryBottomSheet.kt:81-92` | 12 行注释掉的多选 UI；`isMultiSelect` 状态仍在但永不可为 true（半成品死状态） | 恢复多选或删除注释块 + `isMultiSelect` |
+| 13.16 | `core/BaseExtension.kt:27` / `JBusManager.kt:54-56` | `formatFileSize()` 用 `manager.first().get()` 无空/生命周期守护（冷启动可能 NPE）；`context` 取首个注册 Activity 而非栈顶（KDoc 误导） | 用 `JBusManager.context`（有 Application 回退）；或追踪 resumed Activity |
+| 13.17 | `data/parser/MovieHtmlParser.kt:88` | `java.net.URL(url).path` 在 `mapNotNull` 内会抛异常（非过滤），畸形 href 导致整页解析失败；且 `java.net.URL` 在 Android 已弃用 | `runCatching` 或 `Uri.parse(url).path` |
+| 13.18 | `data/parser/ForumPostParser.kt:78-98` vs `InlineParagraphParser.kt:47-70` | §8.2 拆分时把“内联文本累加”逻辑复制成两份 ~20 行 | 抽公共 `InlineTextAccumulator` |
+| 13.19 | `app/proguard-rules.pro:26-134` | ~30 个 domain model 的逐类 Gson keep 规则，新增模型易漏（仅 release 崩） | 合并为包级 `-keep class me.jbusdriver.modern.domain.model.** { !static !transient <fields>; }`（内部类 `$` 仍需枚举） |
+| 13.20 | `ui/components/CollectButton.kt`、`ActressAvatar.kt:100` | Composable 内直接 `Toast.makeText`，绕过其他页面统一的 SnackbarHost | 统一经 Snackbar host |
+| 13.21 | `domain/model/Category.kt:21` | `var order`/`var id`，自定义 equals 依赖 `id` → 入库前后相等性不同；外加 `MovieCategory`/`ActressCategory`/`LinkCategory` 共享可变单例 | 冻结字段或拆分“插入结果”类型 |
+| 13.22 | `data/MovieRepository.kt:119-191` | 接口默认方法体实现了一套**绕过缓存**的 SWR，但唯一实现已全部 override，默认体永不执行且具误导性 | 删除默认体（声明为抽象） |
+
+### P3 — 小修 / 死代码清理
+
+- `core/BaseExtension.kt`：`Context.paste()`、零参 `arrayMapof()`、`Context.packageInfo` 均无调用。
+- `core/FileUtil.kt`（整文件）：`createDir()` 无外部调用 → 删文件。
+- `core/http/NetClient.kt`：`fetchDocument`(public)/`fetchHtml`(internal) 已无调用（仅 `fetchHtmlResponse` 在用）；`glideOkHttpClient` 命名误导（项目用 Coil）。
+- `core/site/SiteConfig.kt:56`：`updateBaseUrl()` 无调用且与 DataStore 不同步（竞态）。
+- `data/ForumFloorOrder.kt:31`：`forumThreadDetailCacheKey()` 无调用。
+- `data/GifLoadTracker.kt:47`：`clearAll()` 无调用。
+- `data/ForumRepository.kt:23-29`：`forumLogD/E` 用 `runCatching` 包 `KLog`（永不抛）。
+- `data/ForumSessionClient.kt:9`：空标记接口（无成员），或用 `BrowserSessionClient` 直连。
+- `data/db/DB.kt:9-10,21`：自引用 import；KDoc 提到 `allowMainThreadQueries()` 但构造未调用。
+- `AppContext.kt:28-34,49-55`：`isDebug` 仅用于一行 `Log.d`；`onLowMemory/onTrimMemory` 空实现。
+- `ui/UiModels.kt:50,114`：仅 `GenreUiModel`/`GenreCategory` 带 `@Keep`，其余兄弟类型没有（无明显 R8/反射依据）。
+- `domain/model/Movie.kt:32`：`tags: List<String>? = listOf()` 可空+非空默认（调用方需 `orEmpty()`）→ 改非空 `emptyList()`。
+- `data/UiPrefsStore.kt:55`：魔数 `1`（`// 1 = MovieDBType`）→ 用命名常量。
+
+### 复审结论
+
+- **最高杠杆、零风险**：删 `androidx-material` 依赖（13.1）+ 删 `ColorSchemeScreen.kt`/`theme/Color.kt`（13.2/13.3）+ 删死表达式/补 i18n（13.4/13.5）——合计数十行，立即收益。
+- **架构级**：全局单例收敛到 Hilt（13.7）、`CacheLoader` 折叠（13.8）、`DB` 双重间接收敛（13.9）、domain 去 URL 模板（13.10）——这是真正提升可测性与分层纯净度的方向。
+- **domain 不可变性**：§4.7 当年只改默认值，`ILink.categoryId` 的 `var`（13.6）仍是 data→domain 的可变缝，建议本次一并收口。
+- ui/domain VM 卫生已达标（无 Context/Resources 残留、`@StringRes Int` 一致）；剩余多为重复/死代码清理。
+
+
