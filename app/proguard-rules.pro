@@ -110,7 +110,7 @@
 -keep class me.jbusdriver.modern.domain.model.ContentBlock$Image { !static !transient <fields>; }
 -keep class me.jbusdriver.modern.domain.model.ContentBlock$Quote { !static !transient <fields>; }
 -keep class me.jbusdriver.modern.domain.model.ContentBlock$RestrictedNotice { !static !transient <fields>; }
--keep class me.jbusdriver.modern.data.ContentBlockTypeAdapter { *; }
+-keep class me.jbusdriver.modern.domain.model.ContentBlockTypeAdapter { *; }
 -keepclassmembers enum me.jbusdriver.modern.domain.model.SearchType {
     *;
 }

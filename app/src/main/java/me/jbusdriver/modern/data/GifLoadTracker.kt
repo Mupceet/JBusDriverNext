@@ -37,7 +37,7 @@ class GifLoadTracker @Inject constructor(
             existing.remove(url)
             existing.add(url)
             if (existing.size > MAX_CACHE) {
-                existing.removeFirst()
+                existing.removeAt(0)
             }
             existing.forEachIndexed { i, u -> prefs[urlKey(i)] = u }
             prefs[URL_COUNT] = existing.size
