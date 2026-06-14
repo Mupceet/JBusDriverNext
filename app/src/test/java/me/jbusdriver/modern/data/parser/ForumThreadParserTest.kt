@@ -217,6 +217,36 @@ class ForumThreadParserTest {
         assertEquals("2025-4-26 20:28:02", reply.postTime)
     }
 
+    @Test
+    fun `first-post comment pagination does not shadow reply next page`() {
+        // 首楼留言分页会注入一条 href="javascript:;" 的 .nxt（真实 page 在 onclick 的
+        // ajaxget 里），它出现在回复楼层分页之前。必须跳过它，取真正携带 page= 的回复分页链接。
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <div class="pgs mbm mtn cl">
+                    <div class="pg">
+                      <a href="javascript:;" class="nxt" onclick="ajaxget('forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=2', 'comment_4773811')">下一頁</a>
+                    </div>
+                  </div>
+                  <div class="pgs mtm mbm cl">
+                    <div class="pg">
+                      <strong>1</strong>
+                      <a href="https://www.javbus.com/forum/forum.php?mod=viewthread&amp;tid=172059&amp;extra=&amp;page=2">2</a>
+                      <a href="https://www.javbus.com/forum/forum.php?mod=viewthread&amp;tid=172059&amp;extra=&amp;page=2" class="nxt">下一頁</a>
+                    </div>
+                  </div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+        )
+
+        val pageInfo = parseForumThreadDetail(doc, "https://www.javbus.com").pageInfo
+
+        assertEquals(1, pageInfo.activePage)
+        assertEquals(2, pageInfo.nextPage)
+    }
+
     private fun parsedPinnedReply(floor: Int) = parseForumThreadDetail(
         fixture(
             "pinned-rich-replies.html",

@@ -109,8 +109,12 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
 
 private fun parseForumPageInfo(doc: Document): PageInfo {
     val currentPage = doc.select(".pg strong").firstOrNull()?.text()?.toIntOrNull() ?: 1
-    val nextPage = doc.select(".pg a.nxt").firstOrNull()?.attr("href")
-        ?.let { Regex("page=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+    // 首楼留言分页会注入一条 href="javascript:;" 的 .nxt（真实 page 在 onclick 的 ajaxget 里），
+    // 必须跳过它，取第一个携带真实 page= 目标的回复分页链接。
+    val nextPage = doc.select(".pg a.nxt")
+        .firstOrNull { PAGE_PARAM.containsMatchIn(it.attr("href")) }
+        ?.attr("href")
+        ?.let { PAGE_PARAM.find(it)?.groupValues?.get(1)?.toIntOrNull() }
         ?: currentPage
     return PageInfo(activePage = currentPage, nextPage = nextPage)
 }
@@ -229,3 +233,5 @@ private fun String.cleanForumPostTime(): String =
 private val POST_TIME_PREFIX = Regex(
     pattern = "^(?:发表于|發表於|发表|發表|鐧艱〃鏂\\?)\\s*"
 )
+
+private val PAGE_PARAM = Regex("page=(\\d+)")
