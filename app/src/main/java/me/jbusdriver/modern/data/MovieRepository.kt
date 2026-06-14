@@ -1,16 +1,15 @@
 package me.jbusdriver.modern.data
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.CancellationException
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
-import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.CacheStore
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.MovieCacheTtl
 import me.jbusdriver.modern.core.cache.firstCachedOrFresh
-import me.jbusdriver.modern.core.cache.lruCached
 import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.cache.persistentCached
 import me.jbusdriver.modern.core.http.HtmlClient

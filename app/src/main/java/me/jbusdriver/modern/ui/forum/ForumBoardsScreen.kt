@@ -15,43 +15,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.SnackbarHostState
-import me.jbusdriver.modern.ui.components.EmptyStateView
-import me.jbusdriver.modern.ui.components.LoadingViewCentered
-import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,8 +57,12 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoard
 import me.jbusdriver.modern.domain.model.ForumSummaryThread
+import me.jbusdriver.modern.ui.components.EmptyStateView
+import me.jbusdriver.modern.ui.components.LoadingViewCentered
+import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 
-private val TabLabels = listOf(R.string.forum_tab_latest, R.string.forum_tab_latest_reply, R.string.forum_tab_hot)
+private val TabLabels =
+    listOf(R.string.forum_tab_latest, R.string.forum_tab_latest_reply, R.string.forum_tab_hot)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +89,10 @@ fun ForumBoardsScreen(
         val refreshMessage = refreshMessageRes?.let { stringResource(it) }
         LaunchedEffect(refreshMessageRes) {
             if (refreshMessage != null) {
-                snackbarHostState.showSnackbar(message = refreshMessage, duration = androidx.compose.material3.SnackbarDuration.Long)
+                snackbarHostState.showSnackbar(
+                    message = refreshMessage,
+                    duration = androidx.compose.material3.SnackbarDuration.Long
+                )
                 viewModel.consumeRefreshMessage()
             }
         }
@@ -243,7 +241,11 @@ private fun BannerCarousel(
                         .width(if (i == pagerState.currentPage) 12.dp else 6.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(if (i == pagerState.currentPage) Color.White else Color.White.copy(alpha = 0.4f))
+                        .background(
+                            if (i == pagerState.currentPage) Color.White else Color.White.copy(
+                                alpha = 0.4f
+                            )
+                        )
                 )
             }
         }

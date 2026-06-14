@@ -103,7 +103,11 @@ fun CollectCategoryScreen(
                 }
                 Toast.makeText(context, exportSuccessMessage, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(context, resources.getString(R.string.export_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    resources.getString(R.string.export_failed_detail, e.message.orEmpty()),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -115,7 +119,8 @@ fun CollectCategoryScreen(
         scope.launch {
             try {
                 val json = withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()
+                        ?.use { it.readText() }
                 }
                 if (json == null) {
                     Toast.makeText(context, cannotReadFileMessage, Toast.LENGTH_SHORT).show()
@@ -128,18 +133,28 @@ fun CollectCategoryScreen(
                         actressVm.loadCollection(ActressDBType)
                     },
                     onError = { e ->
-                        Toast.makeText(context, resources.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            resources.getString(R.string.import_failed_detail, e.message.orEmpty()),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             } catch (e: Exception) {
-                Toast.makeText(context, resources.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    resources.getString(R.string.import_failed_detail, e.message.orEmpty()),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, end = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, top = 4.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -163,7 +178,12 @@ fun CollectCategoryScreen(
                         text = { Text(stringResource(R.string.export_collect)) },
                         onClick = {
                             showMenu = false
-                            val filename = "jbus_backup_${SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())}.json"
+                            val filename = "jbus_backup_${
+                                SimpleDateFormat(
+                                    "yyyyMMdd",
+                                    Locale.US
+                                ).format(Date())
+                            }.json"
                             exportLauncher.launch(filename)
                         }
                     )
@@ -179,19 +199,33 @@ fun CollectCategoryScreen(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FilterChip(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                label = { Text(stringResource(R.string.tab_movies_count, movieState.movies.size), fontSize = 12.sp) }
+                label = {
+                    Text(
+                        stringResource(R.string.tab_movies_count, movieState.movies.size),
+                        fontSize = 12.sp
+                    )
+                }
             )
             Spacer(Modifier.width(6.dp))
             FilterChip(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                label = { Text(stringResource(R.string.tab_actresses_count, actressState.actresses.size), fontSize = 12.sp) }
+                label = {
+                    Text(
+                        stringResource(
+                            R.string.tab_actresses_count,
+                            actressState.actresses.size
+                        ), fontSize = 12.sp
+                    )
+                }
             )
             Spacer(Modifier.weight(1f))
             FilterChip(
@@ -199,7 +233,12 @@ fun CollectCategoryScreen(
                 onClick = { showFilterSheet = true },
                 label = {
                     if (activeFilterState.filterState.hasActiveFilters) {
-                        Text(stringResource(R.string.filter_count, activeFilterState.filterState.activeFilterCount), fontSize = 12.sp)
+                        Text(
+                            stringResource(
+                                R.string.filter_count,
+                                activeFilterState.filterState.activeFilterCount
+                            ), fontSize = 12.sp
+                        )
                     } else {
                         Text(stringResource(R.string.filter), fontSize = 12.sp)
                     }

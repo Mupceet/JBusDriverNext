@@ -25,7 +25,11 @@ import me.jbusdriver.modern.ui.RouteForumThreadList
 
 private const val TAG = "ForumVM"
 
-private fun logThreadDiff(oldThreads: List<ForumThread>, newThreads: List<ForumThread>, context: String) {
+private fun logThreadDiff(
+    oldThreads: List<ForumThread>,
+    newThreads: List<ForumThread>,
+    context: String
+) {
     me.jbusdriver.modern.core.logListDiff(
         oldItems = oldThreads,
         newItems = newThreads,
@@ -128,6 +132,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             val fresh = event.entry.value.copy(
                                 threads = event.entry.value.threads.simulateCacheRefreshChange()
@@ -160,15 +165,25 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                     )
                                 }
                             } else {
-                                _uiState.update { it.copy(isLoading = false, isRevalidating = false) }
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false
+                                    )
+                                }
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, error = R.string.load_failed)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        error = R.string.load_failed
+                                    )
                                 }
                             }
                         }
@@ -188,6 +203,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             val fresh = event.entry.value.copy(
                                 threads = event.entry.value.threads.simulateCacheRefreshChange()
@@ -222,6 +238,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                 _uiState.update { it.copy(isRevalidating = false) }
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update { it.copy(isRevalidating = false) }
                         }
@@ -260,7 +277,13 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (_uiState.value.isRefreshing) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
-            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, forceRefresh = true, revalidate = false)
+            repository.observeThreads(
+                fid,
+                1,
+                _uiState.value.currentTypeId,
+                forceRefresh = true,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
@@ -278,6 +301,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(
@@ -295,7 +319,13 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (_uiState.value.currentTypeId == typeId) return
         currentPage = 0
         isAtTopForFreshUpdates = true
-        _uiState.update { it.copy(currentTypeId = typeId, threads = emptyList(), pageInfo = PageInfo()) }
+        _uiState.update {
+            it.copy(
+                currentTypeId = typeId,
+                threads = emptyList(),
+                pageInfo = PageInfo()
+            )
+        }
         loadFirstPage()
     }
 

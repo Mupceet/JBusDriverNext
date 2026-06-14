@@ -21,11 +21,11 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import androidx.compose.ui.res.stringResource
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
@@ -95,7 +95,12 @@ fun MainScreen(
                                 contentDescription = stringResource(item.labelRes)
                             )
                         },
-                        label = { Text(stringResource(item.labelRes), style = MaterialTheme.typography.labelSmall) }
+                        label = {
+                            Text(
+                                stringResource(item.labelRes),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     )
                 }
             }
@@ -114,17 +119,28 @@ fun MainScreen(
                         onSearchClick = onSearchClick,
                         onMovieClick = onMovieClick
                     )
+
                     BottomNavCategory.ACTRESS -> ActressTabContent(
                         onSearchClick = onSearchClick,
                         onActressClick = onActressClick
                     )
+
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
                         onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
                     )
+
                     BottomNavCategory.FORUM -> {
-                        SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 8.dp))
+                        SearchBar(
+                            onClick = { onSearchClick("") },
+                            modifier = Modifier.padding(
+                                start = 12.dp,
+                                top = 4.dp,
+                                end = 12.dp,
+                                bottom = 8.dp
+                            )
+                        )
                         ForumBoardsScreen(
                             onBoardClick = onForumBoardClick,
                             onThreadClick = onForumThreadClick

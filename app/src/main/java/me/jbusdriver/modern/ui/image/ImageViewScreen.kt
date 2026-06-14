@@ -1,7 +1,7 @@
 package me.jbusdriver.modern.ui.image
 
-import me.jbusdriver.R
 import android.app.Activity
+import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
-import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,16 +55,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.jbusdriver.R
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
@@ -263,7 +263,10 @@ private suspend fun saveToGallery(context: Context, imageUrl: String) {
                 put(MediaStore.Images.Media.DISPLAY_NAME, filename)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/JBus")
+                    put(
+                        MediaStore.Images.Media.RELATIVE_PATH,
+                        Environment.DIRECTORY_PICTURES + "/JBus"
+                    )
                     put(MediaStore.Images.Media.IS_PENDING, 1)
                 }
             }
@@ -282,11 +285,19 @@ private suspend fun saveToGallery(context: Context, imageUrl: String) {
             }
         }
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, context.getString(R.string.saved_to_gallery), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.saved_to_gallery),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     } catch (e: Exception) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, context.getString(R.string.save_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.save_failed_detail, e.message.orEmpty()),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
@@ -298,7 +309,8 @@ private suspend fun shareImage(context: Context, imageUrl: String) {
         val file = withContext(Dispatchers.IO) {
             val shareDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
             val file = File(shareDir, "share_${System.currentTimeMillis()}.jpg")
-            file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
+            file.outputStream()
+                .use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
             file
         }
 
@@ -314,11 +326,20 @@ private suspend fun shareImage(context: Context, imageUrl: String) {
                 clipData = ClipData.newRawUri("", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_image)))
+            context.startActivity(
+                Intent.createChooser(
+                    intent,
+                    context.getString(R.string.share_image)
+                )
+            )
         }
     } catch (e: Exception) {
         withContext(Dispatchers.Main) {
-            Toast.makeText(context, context.getString(R.string.share_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.share_failed_detail, e.message.orEmpty()),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }

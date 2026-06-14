@@ -66,8 +66,9 @@ class LabSettingsStore @Inject constructor(
         dataStore.edit { it[KEY_FORUM_ENABLED] = enabled }
     }
 
-    override val autoLoadGifs: StateFlow<Boolean> = dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
-        .stateIn(scope, SharingStarted.Eagerly, false)
+    override val autoLoadGifs: StateFlow<Boolean> =
+        dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
+            .stateIn(scope, SharingStarted.Eagerly, false)
 
     suspend fun setAutoLoadGifs(enabled: Boolean) {
         dataStore.edit { it[KEY_AUTO_LOAD_GIFS] = enabled }

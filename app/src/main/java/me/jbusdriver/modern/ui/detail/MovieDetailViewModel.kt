@@ -12,7 +12,6 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
-import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 import me.jbusdriver.modern.ui.MagnetUiModel
@@ -98,7 +97,12 @@ class MovieDetailViewModel @Inject constructor(
                     it.copy(magnets = magnets, isLoadingMagnets = false)
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoadingMagnets = false, magnetsError = R.string.load_failed) }
+                _uiState.update {
+                    it.copy(
+                        isLoadingMagnets = false,
+                        magnetsError = R.string.load_failed
+                    )
+                }
             }
         }
     }
@@ -128,6 +132,7 @@ private fun MovieDetailUiModel.toCollectionMovie(link: String): Movie =
         title = title,
         imageUrl = cover,
         code = headers.firstOrNull()?.value ?: "",
-        date = headers.firstOrNull { it.name == "發行日期" || it.name == "日期" || it.name == "发行日期" }?.value ?: "",
+        date = headers.firstOrNull { it.name == "發行日期" || it.name == "日期" || it.name == "发行日期" }?.value
+            ?: "",
         link = link
     )

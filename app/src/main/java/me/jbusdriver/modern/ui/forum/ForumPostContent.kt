@@ -7,8 +7,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -103,6 +103,7 @@ internal fun ForumPostContent(
                 is ContentBlock.RichText -> block.paragraphs.forEach { paragraph ->
                     StyledParagraph(paragraph)
                 }
+
                 is ContentBlock.ListBlock -> RichListContent(block.list)
                 is ContentBlock.Image -> if (showImages) {
                     if (block.isGif && !autoLoadGifs && block.url !in loadedGifUrls) {
@@ -110,7 +111,9 @@ internal fun ForumPostContent(
                             onClick = { onLoadGif(block.url) },
                             onLoadAllGifs = onLoadAllGifs,
                             modifier = if (block.isFullSize) {
-                                Modifier.fillMaxWidth().height(180.dp)
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
                             } else {
                                 Modifier.size(48.dp)
                             }
@@ -123,6 +126,7 @@ internal fun ForumPostContent(
                         )
                     }
                 }
+
                 is ContentBlock.Quote -> QuoteContent(block)
                 is ContentBlock.RestrictedNotice -> RestrictedNotice(block.message)
             }
@@ -234,7 +238,8 @@ internal fun adaptForumTextColor(source: Color, background: Color): Color {
         darker == null -> lighter ?: opaqueSource
         lighter == null -> darker
         abs(darker.toHsl().lightness - hsl.lightness) <=
-            abs(lighter.toHsl().lightness - hsl.lightness) -> darker
+                abs(lighter.toHsl().lightness - hsl.lightness) -> darker
+
         else -> lighter
     }
 }
@@ -343,7 +348,9 @@ private fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
             contentScale = ContentScale.FillWidth,
             loading = {
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -419,7 +426,9 @@ private fun QuoteContent(block: ContentBlock.Quote) {
 @Composable
 private fun RestrictedNotice(message: String) {
     Card(
-        modifier = Modifier.fillMaxWidth().testTag("restricted_notice"),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("restricted_notice"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {

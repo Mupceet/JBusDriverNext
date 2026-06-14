@@ -54,8 +54,10 @@ class AtTopGate(var isAtTop: Boolean = true)
 enum class FreshRevalidateOutcome {
     /** 用户在列表顶部：直接替换为新数据 */
     ApplyImmediately,
+
     /** 用户已下滑且数据有变化：暂存为 pending 并提示“有新数据” */
     StorePending,
+
     /** 数据无变化：仅结束 revalidate 状态 */
     NoChange
 }

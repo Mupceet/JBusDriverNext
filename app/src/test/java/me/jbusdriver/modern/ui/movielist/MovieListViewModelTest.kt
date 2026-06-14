@@ -2,8 +2,8 @@ package me.jbusdriver.modern.ui.movielist
 
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -13,18 +13,18 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.domain.model.ActressDetail
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.GenreGroup
+import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.domain.model.Movie
-import me.jbusdriver.modern.domain.model.DataSourceType
-import me.jbusdriver.modern.domain.model.ActressInfo
-import me.jbusdriver.modern.domain.model.ActressDetail
-import me.jbusdriver.modern.domain.model.GenreGroup
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -48,14 +48,30 @@ class MovieListViewModelTest {
     private fun fullFakeRepo(
         onLoadPage: (DataSourceType, Int) -> MoviePageResult
     ) = object : MovieRepository {
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             onLoadPage(type, page)
+
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
-        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
-        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+            emptyList<GenreGroup>()
+
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
-        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+            null
     }
 
     private fun flowFakeRepo(
@@ -74,14 +90,30 @@ class MovieListViewModelTest {
             return flows.removeAt(0)
         }
 
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             error("not used")
+
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
-        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
-        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+            emptyList<GenreGroup>()
+
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
-        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+            null
     }
 
     @Before
@@ -120,7 +152,8 @@ class MovieListViewModelTest {
 
     @Test
     fun loadMore_appendsMovies() = runTest(testDispatcher) {
-        val page2Movies = listOf(Movie("Movie 3", "http://img3.jpg", "GHI-003", "2024-01-03", "http://link3"))
+        val page2Movies =
+            listOf(Movie("Movie 3", "http://img3.jpg", "GHI-003", "2024-01-03", "http://link3"))
         var callCount = 0
         val repository = fullFakeRepo { _, page ->
             callCount++
@@ -211,16 +244,42 @@ class MovieListViewModelTest {
     fun toggleShowAll_reloadsMoviesWithShowAll() = runTest(testDispatcher) {
         var showAllCapture = false
         val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean): MoviePageResult {
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ): MoviePageResult {
                 showAllCapture = showAll
-                return MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies, MovieFilterInfo(5, 10))
+                return MoviePageResult(
+                    PageInfo(1, 2, listOf(1, 2)),
+                    testMovies,
+                    MovieFilterInfo(5, 10)
+                )
             }
-            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+
+            override suspend fun loadActresses(
+                type: DataSourceType,
+                page: Int,
+                forceRefresh: Boolean
+            ) =
                 emptyList<ActressInfo>() to PageInfo()
-            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
-            override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) =
                 MoviePageResult(PageInfo(), emptyList())
-            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+            override suspend fun loadActressDetail(
+                url: String,
+                forceRefresh: Boolean
+            ): ActressDetail? = null
         }
         viewModel = MovieListViewModel(repository)
 
@@ -252,7 +311,18 @@ class MovieListViewModelTest {
         val revalidateArgs = mutableListOf<Boolean>()
         val repository = flowFakeRepo(
             mutableListOf(
-                flow { emit(CachedLoadEvent.Fresh(CacheEntry(initial, 1L, CacheSource.Network, false))) },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(
+                                initial,
+                                1L,
+                                CacheSource.Network,
+                                false
+                            )
+                        )
+                    )
+                },
                 flow {
                     emit(CachedLoadEvent.Cached(CacheEntry(initial, 1L, CacheSource.Memory, true)))
                     emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2L, CacheSource.Network, false)))
@@ -281,7 +351,18 @@ class MovieListViewModelTest {
         val fresh = MoviePageResult(PageInfo(1, 2), freshMovies)
         val repository = flowFakeRepo(
             mutableListOf(
-                flow { emit(CachedLoadEvent.Fresh(CacheEntry(initial, 1L, CacheSource.Network, false))) },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(
+                                initial,
+                                1L,
+                                CacheSource.Network,
+                                false
+                            )
+                        )
+                    )
+                },
                 flow {
                     emit(CachedLoadEvent.Cached(CacheEntry(initial, 1L, CacheSource.Memory, true)))
                     emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2L, CacheSource.Network, false)))

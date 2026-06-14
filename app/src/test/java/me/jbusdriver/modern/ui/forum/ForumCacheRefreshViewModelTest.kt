@@ -10,15 +10,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.ForumFloorOrder
-import me.jbusdriver.modern.ui.RouteForumThreadList
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
-import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -46,21 +44,61 @@ class ForumCacheRefreshViewModelTest {
         private val flows: MutableList<Flow<CachedLoadEvent<ForumHomeData>>>
     ) : ForumRepository {
         private var callIndex = 0
-        override fun observeForumBoards(forceRefresh: Boolean, revalidate: Boolean, nowMillis: () -> Long): Flow<CachedLoadEvent<ForumHomeData>> {
+        override fun observeForumBoards(
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<ForumHomeData>> {
             return if (callIndex < flows.size) flows[callIndex++] else flows.last()
         }
-        override fun observeThreads(fid: Int, page: Int, typeId: Int?, forceRefresh: Boolean, revalidate: Boolean, nowMillis: () -> Long): Flow<CachedLoadEvent<ForumThreadPageResult>> = flow { error("not used") }
-        override fun observeThreadDetail(tid: Int, page: Int, floorOrder: ForumFloorOrder, forceRefresh: Boolean, revalidate: Boolean, nowMillis: () -> Long): Flow<CachedLoadEvent<ForumThreadDetail>> = flow { error("not used") }
-        override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData = error("not used")
-        override suspend fun loadThreads(fid: Int, page: Int, typeId: Int?, forceRefresh: Boolean): ForumThreadPageResult = error("not used")
-        override suspend fun loadThreadDetail(tid: Int, page: Int, floorOrder: ForumFloorOrder, forceRefresh: Boolean): ForumThreadDetail = error("not used")
+
+        override fun observeThreads(
+            fid: Int,
+            page: Int,
+            typeId: Int?,
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<ForumThreadPageResult>> = flow { error("not used") }
+
+        override fun observeThreadDetail(
+            tid: Int,
+            page: Int,
+            floorOrder: ForumFloorOrder,
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<ForumThreadDetail>> = flow { error("not used") }
+
+        override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData =
+            error("not used")
+
+        override suspend fun loadThreads(
+            fid: Int,
+            page: Int,
+            typeId: Int?,
+            forceRefresh: Boolean
+        ): ForumThreadPageResult = error("not used")
+
+        override suspend fun loadThreadDetail(
+            tid: Int,
+            page: Int,
+            floorOrder: ForumFloorOrder,
+            forceRefresh: Boolean
+        ): ForumThreadDetail = error("not used")
+
         override fun destroySession() = Unit
     }
 
     private fun homeData(groups: Int = 0) = ForumHomeData(
         banners = emptyList(),
         summary = me.jbusdriver.modern.domain.model.ForumHomeSummary(),
-        boardGroups = List(groups) { me.jbusdriver.modern.domain.model.ForumBoardGroup("G$it", emptyList()) }
+        boardGroups = List(groups) {
+            me.jbusdriver.modern.domain.model.ForumBoardGroup(
+                "G$it",
+                emptyList()
+            )
+        }
     )
 
     @Test
@@ -113,9 +151,32 @@ class ForumCacheRefreshViewModelTest {
     fun `home refresh replaces with fresh data`() = runTest(testDispatcher) {
         val initial = homeData(1)
         val refreshed = homeData(2)
-        val repository = FakeHomeRepository(mutableListOf(
-            flow { emit(CachedLoadEvent.Fresh(CacheEntry(initial, 1_000L, CacheSource.Network, false))) },
-            flow { emit(CachedLoadEvent.Fresh(CacheEntry(refreshed, 2_000L, CacheSource.Network, false))) }
+        val repository = FakeHomeRepository(
+            mutableListOf(
+            flow {
+                emit(
+                    CachedLoadEvent.Fresh(
+                        CacheEntry(
+                            initial,
+                            1_000L,
+                            CacheSource.Network,
+                            false
+                        )
+                    )
+                )
+            },
+            flow {
+                emit(
+                    CachedLoadEvent.Fresh(
+                        CacheEntry(
+                            refreshed,
+                            2_000L,
+                            CacheSource.Network,
+                            false
+                        )
+                    )
+                )
+            }
         ))
         val viewModel = ForumBoardsViewModel(repository)
         advanceUntilIdle()
@@ -136,26 +197,63 @@ class ForumCacheRefreshViewModelTest {
         private val flows: MutableList<Flow<CachedLoadEvent<ForumThreadPageResult>>>
     ) : ForumRepository {
         private var callIndex = 0
-        override fun observeForumBoards(forceRefresh: Boolean, revalidate: Boolean, nowMillis: () -> Long): Flow<CachedLoadEvent<ForumHomeData>> = flow { error("not used") }
-        override fun observeThreads(fid: Int, page: Int, typeId: Int?, forceRefresh: Boolean, revalidate: Boolean, nowMillis: () -> Long): Flow<CachedLoadEvent<ForumThreadPageResult>> {
+        override fun observeForumBoards(
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<ForumHomeData>> = flow { error("not used") }
+
+        override fun observeThreads(
+            fid: Int,
+            page: Int,
+            typeId: Int?,
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<ForumThreadPageResult>> {
             return if (callIndex < flows.size) flows[callIndex++] else flows.last()
         }
-        override fun observeThreadDetail(tid: Int, page: Int, floorOrder: ForumFloorOrder, forceRefresh: Boolean, revalidate: Boolean, nowMillis: () -> Long): Flow<CachedLoadEvent<ForumThreadDetail>> = flow { error("not used") }
-        override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData = error("not used")
-        override suspend fun loadThreads(fid: Int, page: Int, typeId: Int?, forceRefresh: Boolean): ForumThreadPageResult = error("not used")
-        override suspend fun loadThreadDetail(tid: Int, page: Int, floorOrder: ForumFloorOrder, forceRefresh: Boolean): ForumThreadDetail = error("not used")
+
+        override fun observeThreadDetail(
+            tid: Int,
+            page: Int,
+            floorOrder: ForumFloorOrder,
+            forceRefresh: Boolean,
+            revalidate: Boolean,
+            nowMillis: () -> Long
+        ): Flow<CachedLoadEvent<ForumThreadDetail>> = flow { error("not used") }
+
+        override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData =
+            error("not used")
+
+        override suspend fun loadThreads(
+            fid: Int,
+            page: Int,
+            typeId: Int?,
+            forceRefresh: Boolean
+        ): ForumThreadPageResult = error("not used")
+
+        override suspend fun loadThreadDetail(
+            tid: Int,
+            page: Int,
+            floorOrder: ForumFloorOrder,
+            forceRefresh: Boolean
+        ): ForumThreadDetail = error("not used")
+
         override fun destroySession() = Unit
     }
 
     private fun threadResult(count: Int) = ForumThreadPageResult(
-        threads = List(count) { idx -> me.jbusdriver.modern.domain.model.ForumThread(
-            tid = idx + 1, typeId = 0, typeName = "T$idx", typeColor = "",
-            title = "Thread $idx", author = "A", authorUid = 0, authorAvatar = "",
-            dateLine = "", viewCount = 0, replyCount = 0,
-            lastReplyAuthor = "", lastReplyTime = "",
-            images = emptyList(), isPinned = false, isDigest = false,
-            pages = 1, isLocked = false, isHot = false
-        ) },
+        threads = List(count) { idx ->
+            me.jbusdriver.modern.domain.model.ForumThread(
+                tid = idx + 1, typeId = 0, typeName = "T$idx", typeColor = "",
+                title = "Thread $idx", author = "A", authorUid = 0, authorAvatar = "",
+                dateLine = "", viewCount = 0, replyCount = 0,
+                lastReplyAuthor = "", lastReplyTime = "",
+                images = emptyList(), isPinned = false, isDigest = false,
+                pages = 1, isLocked = false, isHot = false
+            )
+        },
         typeFilters = emptyList(),
         pageInfo = me.jbusdriver.modern.domain.model.PageInfo(1, 1, listOf(1))
     )

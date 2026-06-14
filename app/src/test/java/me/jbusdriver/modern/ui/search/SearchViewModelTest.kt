@@ -11,11 +11,11 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.SearchType
-import me.jbusdriver.modern.domain.model.ActressInfo
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,9 +40,11 @@ class SearchViewModelTest {
             history.remove(query)
             history.add(0, query)
         }
+
         override suspend fun removeQuery(query: String) {
             history.remove(query)
         }
+
         override suspend fun clearHistory() {
             history.clear()
         }
@@ -62,9 +64,18 @@ class SearchViewModelTest {
     @Test
     fun search_loadsResults() = runTest(testDispatcher) {
         val repository = object : SearchRepository {
-            override suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean) =
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ) =
                 MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
-            override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> =
+
+            override suspend fun searchActresses(
+                query: String,
+                page: Int
+            ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
         val viewModel = SearchViewModel(repository, fakeHistoryStore())
@@ -82,9 +93,18 @@ class SearchViewModelTest {
     @Test
     fun search_handlesError() = runTest(testDispatcher) {
         val repository = object : SearchRepository {
-            override suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean) =
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ) =
                 throw RuntimeException("Search failed")
-            override suspend fun searchActresses(query: String, page: Int): Pair<PageInfo, List<ActressInfo>> =
+
+            override suspend fun searchActresses(
+                query: String,
+                page: Int
+            ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
         val viewModel = SearchViewModel(repository, fakeHistoryStore())
@@ -99,8 +119,14 @@ class SearchViewModelTest {
     @Test
     fun search_emptyQuery_doesNotLoad() = runTest(testDispatcher) {
         val repository = object : SearchRepository {
-            override suspend fun searchMovies(type: SearchType, query: String, page: Int, forceRefresh: Boolean) =
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ) =
                 error("Should not be called")
+
             override suspend fun searchActresses(query: String, page: Int) =
                 error("Should not be called")
         }

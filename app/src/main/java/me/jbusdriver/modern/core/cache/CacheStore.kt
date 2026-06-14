@@ -206,6 +206,7 @@ suspend fun <T> Flow<CachedLoadEvent<T>>.firstCachedOrFresh(): T {
                     true
                 }
             }
+
             is CachedLoadEvent.Fresh,
             is CachedLoadEvent.Failure -> true
         }

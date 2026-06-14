@@ -4,9 +4,9 @@ import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.persistentCached
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.domain.model.urlPath
-import me.jbusdriver.modern.domain.model.MovieDetail
 import me.jbusdriver.modern.data.parser.parseMovieDetails
+import me.jbusdriver.modern.domain.model.MovieDetail
+import me.jbusdriver.modern.domain.model.urlPath
 import javax.inject.Inject
 import javax.inject.Singleton
 

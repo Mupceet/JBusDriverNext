@@ -6,15 +6,15 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
@@ -22,11 +22,11 @@ import me.jbusdriver.modern.core.cache.decideFreshRevalidate
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
-import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
@@ -43,6 +43,7 @@ import me.jbusdriver.modern.ui.toUiModel
  */
 sealed interface ResolvedTitle {
     val name: String
+
     data class Actress(override val name: String) : ResolvedTitle
     data class Genre(override val name: String) : ResolvedTitle
 }
@@ -188,7 +189,12 @@ class LinkMovieListViewModel @AssistedInject constructor(
         firstPageJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
             var hasContent = false
-            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
+            repository.observePageByUrl(
+                linkUrl,
+                1,
+                showAll = _uiState.value.showAll,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -211,12 +217,14 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             // loadFirstPage 仅在列表为空时调用，直接应用
                             val result = event.entry.value
                             _uiState.update { state ->
                                 state.copy(
-                                    movies = result.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() },
+                                    movies = result.movies.simulateCacheRefreshChange()
+                                        .map { m -> m.toUiModel() },
                                     pageInfo = result.pageInfo,
                                     isLoading = false,
                                     isFilterSwitching = false,
@@ -232,12 +240,22 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 if (event.hadCachedValue || hasContent) {
-                                    it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false)
+                                    it.copy(
+                                        isLoading = false,
+                                        isFilterSwitching = false,
+                                        isRevalidating = false
+                                    )
                                 } else {
-                                    it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = R.string.load_failed)
+                                    it.copy(
+                                        isLoading = false,
+                                        isFilterSwitching = false,
+                                        isRevalidating = false,
+                                        error = R.string.load_failed
+                                    )
                                 }
                             }
                         }
@@ -262,7 +280,8 @@ class LinkMovieListViewModel @AssistedInject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val result = repository.loadPageByUrl(linkUrl, nextPage, showAll = _uiState.value.showAll)
+                val result =
+                    repository.loadPageByUrl(linkUrl, nextPage, showAll = _uiState.value.showAll)
                 _uiState.update {
                     it.copy(
                         movies = it.movies + result.movies.map { m -> m.toUiModel() },
@@ -290,18 +309,28 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (state.movies.isEmpty() || linkUrl.isBlank()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
-            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, revalidate = false)
+            repository.observePageByUrl(
+                linkUrl,
+                1,
+                showAll = _uiState.value.showAll,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             val fresh = event.entry.value.copy(
                                 movies = event.entry.value.movies.simulateCacheRefreshChange()
                             )
                             val freshUiModels = fresh.movies.map { it.toUiModel() }
-                            when (decideFreshRevalidate(_uiState.value.movies, freshUiModels, atTop.isAtTop)) {
+                            when (decideFreshRevalidate(
+                                _uiState.value.movies,
+                                freshUiModels,
+                                atTop.isAtTop
+                            )) {
                                 FreshRevalidateOutcome.ApplyImmediately -> {
                                     pages.startFirstPage()
                                     _uiState.update {
@@ -317,6 +346,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                         )
                                     }
                                 }
+
                                 FreshRevalidateOutcome.StorePending -> {
                                     _uiState.update {
                                         it.copy(
@@ -326,11 +356,13 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                         )
                                     }
                                 }
+
                                 FreshRevalidateOutcome.NoChange -> {
                                     _uiState.update { it.copy(isRevalidating = false) }
                                 }
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update { it.copy(isRevalidating = false) }
                         }
@@ -350,7 +382,13 @@ class LinkMovieListViewModel @AssistedInject constructor(
         pages.startFirstPage()
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
-            repository.observePageByUrl(linkUrl, 1, showAll = _uiState.value.showAll, forceRefresh = true, revalidate = false)
+            repository.observePageByUrl(
+                linkUrl,
+                1,
+                showAll = _uiState.value.showAll,
+                forceRefresh = true,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
@@ -365,6 +403,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(

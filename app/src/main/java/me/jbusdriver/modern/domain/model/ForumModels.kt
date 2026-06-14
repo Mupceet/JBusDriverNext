@@ -171,7 +171,13 @@ sealed class ContentBlock {
     data class ListBlock(val list: RichList) : ContentBlock()
 
     @Immutable
-    data class Image(val url: String, val width: Int = 0, val height: Int = 0, val isFullSize: Boolean = false, val isGif: Boolean = false) : ContentBlock()
+    data class Image(
+        val url: String,
+        val width: Int = 0,
+        val height: Int = 0,
+        val isFullSize: Boolean = false,
+        val isGif: Boolean = false
+    ) : ContentBlock()
 
     @Immutable
     data class Quote(val author: String, val content: String) : ContentBlock()
@@ -192,10 +198,12 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
                 json.addProperty("type", "richtext")
                 json.add("paragraphs", gson.toJsonTree(value.paragraphs, RICH_PARAGRAPHS_TYPE))
             }
+
             is ContentBlock.ListBlock -> {
                 json.addProperty("type", "list")
                 json.add("list", gson.toJsonTree(value.list, RICH_LIST_TYPE))
             }
+
             is ContentBlock.Image -> {
                 json.addProperty("type", "image")
                 json.addProperty("url", value.url)
@@ -204,11 +212,13 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
                 if (value.isFullSize) json.addProperty("fullSize", true)
                 if (value.isGif) json.addProperty("isGif", true)
             }
+
             is ContentBlock.Quote -> {
                 json.addProperty("type", "quote")
                 json.addProperty("author", value.author)
                 json.addProperty("content", value.content)
             }
+
             is ContentBlock.RestrictedNotice -> {
                 json.addProperty("type", "restricted")
                 json.addProperty("message", value.message)
@@ -227,6 +237,7 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
             "list" -> json["list"]
                 ?.takeUnless { it.isJsonNull }
                 ?.let { ContentBlock.ListBlock(gson.fromJson(it, RICH_LIST_TYPE)) }
+
             "image" -> ContentBlock.Image(
                 url = json.string("url"),
                 width = json.int("width"),
@@ -234,6 +245,7 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
                 isFullSize = json.boolean("fullSize"),
                 isGif = json.boolean("isGif")
             )
+
             "quote" -> ContentBlock.Quote(json.string("author"), json.string("content"))
             "restricted" -> ContentBlock.RestrictedNotice(json.string("message"))
             else -> null

@@ -51,7 +51,9 @@ class DefaultSiteConfig @Inject constructor(
 
     override var baseUrl: String
         get() = _baseUrl
-        set(value) { _baseUrl = value.trimEnd('/') }
+        set(value) {
+            _baseUrl = value.trimEnd('/')
+        }
 
     suspend fun updateBaseUrl(url: String) {
         _baseUrl = url.trimEnd('/')

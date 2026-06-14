@@ -20,7 +20,10 @@ fun <T, K : Any> logListDiff(
         old != null && old != new
     }
 
-    KLog.d("[$context] old=${oldItems.size}, new=${newItems.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}", tag)
+    KLog.d(
+        "[$context] old=${oldItems.size}, new=${newItems.size}, added=${added.size}, removed=${removed.size}, changed=${changed.size}",
+        tag
+    )
     if (added.isNotEmpty()) {
         KLog.d("[$context] +新增: ${added.map { describe(it) }}", tag)
     }

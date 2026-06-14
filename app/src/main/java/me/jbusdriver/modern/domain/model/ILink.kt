@@ -12,6 +12,7 @@ import java.io.Serializable
 interface ILink : Serializable {
     /** 该数据项对应的目标页面 URL */
     val link: String
+
     /** 该数据项所属的收藏分类 ID */
     var categoryId: Int
 }

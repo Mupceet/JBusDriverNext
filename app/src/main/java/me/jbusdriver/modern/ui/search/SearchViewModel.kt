@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
-import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.SearchType
+import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel

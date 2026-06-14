@@ -6,21 +6,19 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.io.ByteArrayInputStream
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.WebViewHelper
 import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
-import me.jbusdriver.modern.core.http.WebViewHelper.loadUrlAwait
 import me.jbusdriver.modern.core.http.WebViewHelper.unescapeJsString
 import me.jbusdriver.modern.core.site.SiteConfig
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -140,7 +138,8 @@ class ForumSessionManager @Inject constructor(
     }
 
     suspend fun fetchDocument(url: String): Document {
-        val wv = webView ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
+        val wv = webView
+            ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
         val html = withContext(Dispatchers.Main) {
             withTimeout(20_000) {
                 loadPageWithBlockedResources(wv, url)
@@ -185,7 +184,11 @@ class ForumSessionManager @Inject constructor(
                             val reqUrl = request.url.toString()
                             if (isBlockedResource(reqUrl)) {
                                 return if (isImageResource(reqUrl)) {
-                                    WebResourceResponse("image/png", "utf-8", ByteArrayInputStream(TRANSPARENT_PNG))
+                                    WebResourceResponse(
+                                        "image/png",
+                                        "utf-8",
+                                        ByteArrayInputStream(TRANSPARENT_PNG)
+                                    )
                                 } else {
                                     WebResourceResponse("text/plain", "utf-8", null)
                                 }

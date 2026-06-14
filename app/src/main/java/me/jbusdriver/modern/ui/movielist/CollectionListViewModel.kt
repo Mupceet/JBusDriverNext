@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
@@ -23,7 +24,6 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import me.jbusdriver.modern.KLog
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -64,9 +64,11 @@ class CollectionListViewModel @Inject constructor(
 
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()
+
     /** 未筛选的原始演员数据 */
     private var allActresses: List<ActressUiModel> = emptyList()
     private var currentDbType: Int = MovieDBType
+
     /** 是否已从持久化加载排序设定 */
     private var sortRestored = false
 
@@ -85,9 +87,12 @@ class CollectionListViewModel @Inject constructor(
             if (!sortRestored) {
                 val savedSort = try {
                     val store = uiPrefsStore
-                    val flow = if (dbType == MovieDBType) store.movieSortOption else store.actressSortOption
+                    val flow =
+                        if (dbType == MovieDBType) store.movieSortOption else store.actressSortOption
                     SortOption.valueOf(flow.first())
-                } catch (_: Exception) { SortOption.COLLECT_DESC }
+                } catch (_: Exception) {
+                    SortOption.COLLECT_DESC
+                }
                 _uiState.update { it.copy(filterState = it.filterState.copy(sortOption = savedSort)) }
                 sortRestored = true
             }
@@ -202,7 +207,9 @@ class CollectionListViewModel @Inject constructor(
         val availableMonths = if (filter.publishYear != null && filter.publishYear > 0) {
             allMovies
                 .filter { it.date.take(4).toIntOrNull() == filter.publishYear }
-                .mapNotNull { if (it.date.length >= 7) it.date.substring(5, 7).toIntOrNull() else null }
+                .mapNotNull {
+                    if (it.date.length >= 7) it.date.substring(5, 7).toIntOrNull() else null
+                }
                 .toSet()
         } else emptySet()
 

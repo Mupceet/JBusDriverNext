@@ -58,14 +58,30 @@ class LinkMovieListViewModelTest {
     private fun fullFakeRepo(
         onLoadPageByUrl: (String, Int) -> MoviePageResult
     ) = object : MovieRepository {
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
+
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
-        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
-        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+            emptyList<GenreGroup>()
+
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             onLoadPageByUrl(url, page)
-        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+            null
     }
 
     @Before
@@ -132,16 +148,42 @@ class LinkMovieListViewModelTest {
     fun toggleShowAll_reloadsMoviesWithShowAll() = runTest(testDispatcher) {
         var showAllCapture = false
         val repository = object : MovieRepository {
-            override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) =
                 MoviePageResult(PageInfo(), emptyList())
-            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+
+            override suspend fun loadActresses(
+                type: DataSourceType,
+                page: Int,
+                forceRefresh: Boolean
+            ) =
                 emptyList<ActressInfo>() to PageInfo()
-            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
-            override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean): MoviePageResult {
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ): MoviePageResult {
                 showAllCapture = showAll
-                return MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies, MovieFilterInfo(5, 10))
+                return MoviePageResult(
+                    PageInfo(1, 2, listOf(1, 2)),
+                    testMovies,
+                    MovieFilterInfo(5, 10)
+                )
             }
-            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+            override suspend fun loadActressDetail(
+                url: String,
+                forceRefresh: Boolean
+            ): ActressDetail? = null
         }
         val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
 

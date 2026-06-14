@@ -1,10 +1,10 @@
 package me.jbusdriver.modern.ui
 
 import androidx.compose.runtime.Immutable
-import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Genre
 import me.jbusdriver.modern.domain.model.GenreGroup
+import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
 
@@ -52,7 +52,12 @@ data class GenreUiModel(val name: String = "", val link: String = "")
 
 /** 演员的 UI 模型 */
 @Immutable
-data class ActressUiModel(val name: String, val avatar: String, val link: String, val createTime: Long = 0L)
+data class ActressUiModel(
+    val name: String,
+    val avatar: String,
+    val link: String,
+    val createTime: Long = 0L
+)
 
 /** 截图画册的 UI 模型 */
 @Immutable

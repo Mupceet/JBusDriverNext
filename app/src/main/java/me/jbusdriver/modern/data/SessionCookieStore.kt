@@ -27,7 +27,8 @@ class SessionCookieStore @Inject constructor(
         for ((name, value) in cookies) {
             if (name in TRACKED_COOKIES) {
                 val ttlSeconds = COOKIE_TTL[name] ?: 0L
-                val expiresAt = if (ttlSeconds > 0) System.currentTimeMillis() / 1000 + ttlSeconds else 0L
+                val expiresAt =
+                    if (ttlSeconds > 0) System.currentTimeMillis() / 1000 + ttlSeconds else 0L
                 entries[name] = PersistedCookie(value, expiresAt)
             }
         }
@@ -81,7 +82,11 @@ class SessionCookieStore @Inject constructor(
     }
 
     private fun tryParse(json: String): Map<String, PersistedCookie>? {
-        return try { GSON.fromJson<Map<String, PersistedCookie>>(json) } catch (_: Exception) { null }
+        return try {
+            GSON.fromJson<Map<String, PersistedCookie>>(json)
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun parseCookieString(cookieString: String): Map<String, String> {
@@ -95,8 +100,21 @@ class SessionCookieStore @Inject constructor(
 
     companion object {
         private const val TAG = "SessionCookie"
-        private val TRACKED_COOKIES = setOf("age", "PHPSESSID", "4fJN_2132_saltkey", "4fJN_2132_sid", "4fJN_2132_lastvisit", "4fJN_2132_lastact")
+        private val TRACKED_COOKIES = setOf(
+            "age",
+            "PHPSESSID",
+            "4fJN_2132_saltkey",
+            "4fJN_2132_sid",
+            "4fJN_2132_lastvisit",
+            "4fJN_2132_lastact"
+        )
         private val CRITICAL_COOKIES = setOf("age", "4fJN_2132_saltkey")
-        private val COOKIE_TTL = mapOf("age" to 30*24*3600L, "4fJN_2132_saltkey" to 30*24*3600L, "4fJN_2132_sid" to 24*3600L, "4fJN_2132_lastvisit" to 30*24*3600L, "4fJN_2132_lastact" to 24*3600L)
+        private val COOKIE_TTL = mapOf(
+            "age" to 30 * 24 * 3600L,
+            "4fJN_2132_saltkey" to 30 * 24 * 3600L,
+            "4fJN_2132_sid" to 24 * 3600L,
+            "4fJN_2132_lastvisit" to 30 * 24 * 3600L,
+            "4fJN_2132_lastact" to 24 * 3600L
+        )
     }
 }

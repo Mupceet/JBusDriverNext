@@ -104,16 +104,23 @@ internal fun MovieTabContent(
                 selectedGenres = selectedGenres,
                 onSelectionChange = { newSelection ->
                     selectedGenreLinks = newSelection.map { it.link }.toSet()
-                    genreLinkMemory = genreLinkMemory + (censorFilter.name to newSelection.map { it.link }.toSet())
+                    genreLinkMemory =
+                        genreLinkMemory + (censorFilter.name to newSelection.map { it.link }
+                            .toSet())
                 },
             )
         }
     }
 
-    SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp))
+    SearchBar(
+        onClick = { onSearchClick("") },
+        modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp)
+    )
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         CensorFilter.entries.forEach { filter ->
@@ -121,7 +128,8 @@ internal fun MovieTabContent(
                 selected = censorFilter == filter,
                 onClick = {
                     if (censorFilter != filter) {
-                        genreLinkMemory = genreLinkMemory + (censorFilter.name to selectedGenreLinks)
+                        genreLinkMemory =
+                            genreLinkMemory + (censorFilter.name to selectedGenreLinks)
                         censorFilter = filter
                         selectedGenreLinks = genreLinkMemory[filter.name] ?: emptySet()
                     }
@@ -132,7 +140,8 @@ internal fun MovieTabContent(
         }
         Spacer(Modifier.weight(1f))
         val allGenresForChip = genreState.genreCategories.flatMap { it.genres.orEmpty() }
-        val selectedGenresForChip = allGenresForChip.filter { it.link in selectedGenreLinks }.toSet()
+        val selectedGenresForChip =
+            allGenresForChip.filter { it.link in selectedGenreLinks }.toSet()
         FilterChip(
             selected = selectedGenreLinks.isNotEmpty(),
             onClick = { showCategorySheet = true },
@@ -144,7 +153,13 @@ internal fun MovieTabContent(
                     maxLines = 1
                 )
             },
-            trailingIcon = { Icon(painterResource(R.drawable.filter_alt_24px), null, modifier = Modifier.size(16.dp)) }
+            trailingIcon = {
+                Icon(
+                    painterResource(R.drawable.filter_alt_24px),
+                    null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         )
         Spacer(Modifier.width(8.dp))
         IconButton(
@@ -153,7 +168,9 @@ internal fun MovieTabContent(
         ) {
             Icon(
                 painter = painterResource(if (isGrid) R.drawable.list_view_24px else R.drawable.grid_view_24px),
-                contentDescription = if (isGrid) stringResource(R.string.list_view) else stringResource(R.string.grid),
+                contentDescription = if (isGrid) stringResource(R.string.list_view) else stringResource(
+                    R.string.grid
+                ),
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -170,7 +187,9 @@ internal fun MovieTabContent(
             CensorFilter.UNCENSORED -> "UNCENSORED"
             else -> null
         }
-        val pageLinks = if (filter == censorFilter) selectedGenreLinks else (genreLinkMemory[filter.name] ?: emptySet())
+        val pageLinks =
+            if (filter == censorFilter) selectedGenreLinks else (genreLinkMemory[filter.name]
+                ?: emptySet())
         val genreUrl = if (pageLinks.isNotEmpty()) {
             pageLinks.joinToString("-") { it.trimEnd('/').substringAfterLast("/") }
                 .let { ids ->
@@ -227,10 +246,15 @@ internal fun ActressTabContent(
         }
     }
 
-    SearchBar(onClick = { onSearchClick("") }, modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp))
+    SearchBar(
+        onClick = { onSearchClick("") },
+        modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp)
+    )
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         CensorFilter.entries.forEach { filter ->

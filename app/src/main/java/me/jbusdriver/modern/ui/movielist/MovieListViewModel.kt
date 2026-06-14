@@ -18,11 +18,11 @@ import me.jbusdriver.modern.core.cache.PageTracker
 import me.jbusdriver.modern.core.cache.decideFreshRevalidate
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
+import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
-import me.jbusdriver.modern.domain.model.DataSourceType
-import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
@@ -30,7 +30,11 @@ import javax.inject.Inject
 private const val TAG = "MovieListVM"
 private const val FIRST_PAGE = 1
 
-private fun logMovieDiff(oldMovies: List<MovieUiModel>, newMovies: List<MovieUiModel>, context: String) {
+private fun logMovieDiff(
+    oldMovies: List<MovieUiModel>,
+    newMovies: List<MovieUiModel>,
+    context: String
+) {
     me.jbusdriver.modern.core.logListDiff(
         oldItems = oldMovies,
         newItems = newMovies,
@@ -70,10 +74,16 @@ private sealed interface MoviePageSource {
     suspend fun loadNextPage(page: Int, showAll: Boolean): MoviePageResult
 
     /** 按数据源类型加载（有码/无码/欧美等首页） */
-    class ByType(private val repository: MovieRepository, val type: DataSourceType) : MoviePageSource {
+    class ByType(private val repository: MovieRepository, val type: DataSourceType) :
+        MoviePageSource {
         override val key = "type:${type.key}"
-        override fun observeFirstPage(showAll: Boolean, forceRefresh: Boolean, revalidate: Boolean) =
+        override fun observeFirstPage(
+            showAll: Boolean,
+            forceRefresh: Boolean,
+            revalidate: Boolean
+        ) =
             repository.observePage(type, FIRST_PAGE, showAll, forceRefresh, revalidate)
+
         override suspend fun loadNextPage(page: Int, showAll: Boolean) =
             repository.loadPage(type, page, showAll)
     }
@@ -81,8 +91,13 @@ private sealed interface MoviePageSource {
     /** 按完整列表 URL 加载（类型筛选、演员关联等场景） */
     class ByUrl(private val repository: MovieRepository, val url: String) : MoviePageSource {
         override val key = "url:$url"
-        override fun observeFirstPage(showAll: Boolean, forceRefresh: Boolean, revalidate: Boolean) =
+        override fun observeFirstPage(
+            showAll: Boolean,
+            forceRefresh: Boolean,
+            revalidate: Boolean
+        ) =
             repository.observePageByUrl(url, FIRST_PAGE, showAll, forceRefresh, revalidate)
+
         override suspend fun loadNextPage(page: Int, showAll: Boolean) =
             repository.loadPageByUrl(url, page, showAll)
     }
@@ -155,7 +170,8 @@ class MovieListViewModel @Inject constructor(
     private val pages = PageTracker()
 
     /** 当前的数据来源策略（按类型或按 URL） */
-    private var pageSource: MoviePageSource = MoviePageSource.ByType(repository, DataSourceType.CENSORED)
+    private var pageSource: MoviePageSource =
+        MoviePageSource.ByType(repository, DataSourceType.CENSORED)
 
     private val atTop = AtTopGate()
     private var firstPageJob: Job? = null
@@ -260,9 +276,11 @@ class MovieListViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is CachedLoadEvent.Fresh -> {
                         // loadFirstPage 仅在列表为空时调用，直接应用
-                        val freshMovies = event.entry.value.movies.simulateCacheRefreshChange().map { m -> m.toUiModel() }
+                        val freshMovies = event.entry.value.movies.simulateCacheRefreshChange()
+                            .map { m -> m.toUiModel() }
                         logMovieDiff(_uiState.value.movies, freshMovies, "MovieList.loadFirstPage")
                         _uiState.update {
                             it.copy(
@@ -280,12 +298,22 @@ class MovieListViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is CachedLoadEvent.Failure -> {
                         _uiState.update {
                             if (event.hadCachedValue || hasContent) {
-                                it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false)
+                                it.copy(
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    isRevalidating = false
+                                )
                             } else {
-                                it.copy(isLoading = false, isFilterSwitching = false, isRevalidating = false, error = R.string.load_failed)
+                                it.copy(
+                                    isLoading = false,
+                                    isFilterSwitching = false,
+                                    isRevalidating = false,
+                                    error = R.string.load_failed
+                                )
                             }
                         }
                     }
@@ -318,6 +346,7 @@ class MovieListViewModel @Inject constructor(
                     is CachedLoadEvent.Cached -> {
                         _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                     }
+
                     is CachedLoadEvent.Fresh -> {
                         val fresh = event.entry.value.copy(
                             movies = event.entry.value.movies.simulateCacheRefreshChange()
@@ -342,6 +371,7 @@ class MovieListViewModel @Inject constructor(
                                     )
                                 }
                             }
+
                             FreshRevalidateOutcome.StorePending -> {
                                 _uiState.update {
                                     it.copy(
@@ -351,11 +381,13 @@ class MovieListViewModel @Inject constructor(
                                     )
                                 }
                             }
+
                             FreshRevalidateOutcome.NoChange -> {
                                 _uiState.update { it.copy(isRevalidating = false) }
                             }
                         }
                     }
+
                     is CachedLoadEvent.Failure -> {
                         _uiState.update { it.copy(isRevalidating = false) }
                     }
@@ -394,6 +426,7 @@ class MovieListViewModel @Inject constructor(
                             )
                         }
                     }
+
                     is CachedLoadEvent.Failure -> {
                         _uiState.update {
                             it.copy(

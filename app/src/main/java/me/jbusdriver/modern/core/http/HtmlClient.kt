@@ -24,8 +24,8 @@ interface HtmlClient {
  */
 internal fun isDriverVerifyPage(finalUrl: String, body: String): Boolean =
     finalUrl.contains("/doc/driver-verify", ignoreCase = true) ||
-        body.contains("/doc/driver-verify", ignoreCase = true) ||
-        body.contains("driver-verify", ignoreCase = true)
+            body.contains("/doc/driver-verify", ignoreCase = true) ||
+            body.contains("driver-verify", ignoreCase = true)
 
 @Singleton
 class DefaultHtmlClient @Inject constructor(

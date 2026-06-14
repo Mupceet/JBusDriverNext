@@ -126,7 +126,10 @@ class ForumThreadParserTest {
             parts.single { it.inlineImageUrl.isNotEmpty() }.inlineImageUrl
         )
         val text = parts.joinToString("") { it.text }
-        assertEquals("车神牛B，现在的里番真的毫无欲望，连雷火剑监督都不咋样了，以前我是片都不看就爱看里番。", text)
+        assertEquals(
+            "车神牛B，现在的里番真的毫无欲望，连雷火剑监督都不咋样了，以前我是片都不看就爱看里番。",
+            text
+        )
     }
 
     @Test

@@ -9,7 +9,16 @@ import me.jbusdriver.modern.data.db.entity.History
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.parser.stripToPath
 import me.jbusdriver.modern.data.parser.wrapImage
-import me.jbusdriver.modern.domain.model.*
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.AllFirstParentDBCategoryGroup
+import me.jbusdriver.modern.domain.model.Genre
+import me.jbusdriver.modern.domain.model.Header
+import me.jbusdriver.modern.domain.model.ILink
+import me.jbusdriver.modern.domain.model.LinkCategory
+import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.PageLink
+import me.jbusdriver.modern.domain.model.SearchLink
+import me.jbusdriver.modern.domain.model.urlPath
 
 /**
  * 获取 [ILink] 实例对应的数据库类型标识。
@@ -128,10 +137,12 @@ private fun stripUrlFields(link: ILink): ILink {
             link = link.link.stripToPath(),
             imageUrl = link.imageUrl.stripToPath()
         )
+
         is ActressInfo -> link.copy(
             link = link.link.stripToPath(),
             avatar = link.avatar.stripToPath()
         )
+
         is Header -> link.copy(link = link.link.stripToPath())
         is Genre -> link.copy(link = link.link.stripToPath())
         else -> link
@@ -145,10 +156,12 @@ private fun restoreUrlFields(link: ILink): ILink {
             link = link.link.wrapImage(baseUrl),
             imageUrl = link.imageUrl.wrapImage(baseUrl)
         )
+
         is ActressInfo -> link.copy(
             link = link.link.wrapImage(baseUrl),
             avatar = link.avatar.wrapImage(baseUrl)
         )
+
         is Header -> link.copy(link = link.link.wrapImage(baseUrl))
         is Genre -> link.copy(link = link.link.wrapImage(baseUrl))
         else -> link

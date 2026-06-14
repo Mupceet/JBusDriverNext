@@ -6,10 +6,11 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.http.NetClient.defaultFastUrl
+import me.jbusdriver.modern.core.http.NetClient.fetchDocument
 import me.jbusdriver.modern.core.site.SiteConfig
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -90,7 +91,10 @@ object NetClient {
                 .header("User-Agent", USER_AGENT)
                 .header("Cookie", mergedCookies)
                 .build()
-            KLog.d("NetClient", "Prepared cookies for ${request.url}; auth=${BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()}")
+            KLog.d(
+                "NetClient",
+                "Prepared cookies for ${request.url}; auth=${BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()}"
+            )
             chain.proceed(request)
         }
     }
@@ -117,10 +121,18 @@ object NetClient {
     /**
      * 使用 OkHttp 异步请求获取 URL 的 HTML 内容
      */
-    internal suspend fun fetchHtml(url: String, showAll: Boolean = false, referer: String? = null): String =
+    internal suspend fun fetchHtml(
+        url: String,
+        showAll: Boolean = false,
+        referer: String? = null
+    ): String =
         fetchHtmlResponse(url, showAll, referer).body
 
-    internal suspend fun fetchHtmlResponse(url: String, showAll: Boolean = false, referer: String? = null): HtmlResponse =
+    internal suspend fun fetchHtmlResponse(
+        url: String,
+        showAll: Boolean = false,
+        referer: String? = null
+    ): HtmlResponse =
         suspendCancellableCoroutine { cont ->
             val request = Request.Builder()
                 .url(url)
@@ -138,14 +150,23 @@ object NetClient {
                     try {
                         if (!response.isSuccessful) {
                             response.close()
-                            cont.resumeWith(Result.failure(
-                                IOException("HTTP ${response.code} for $url")
-                            ))
+                            cont.resumeWith(
+                                Result.failure(
+                                    IOException("HTTP ${response.code} for $url")
+                                )
+                            )
                             return
                         }
                         val body = response.body.string()
                         if (body.isNotBlank()) {
-                            cont.resumeWith(Result.success(HtmlResponse(response.request.url.toString(), body)))
+                            cont.resumeWith(
+                                Result.success(
+                                    HtmlResponse(
+                                        response.request.url.toString(),
+                                        body
+                                    )
+                                )
+                            )
                         } else {
                             cont.resumeWith(Result.failure(IllegalStateException("Empty response for $url")))
                         }

@@ -112,7 +112,8 @@ class CollectRepositoryTest {
             }
         }
 
-        override suspend fun isActressCollected(actress: ActressInfo) = actress.link in collectedActresses
+        override suspend fun isActressCollected(actress: ActressInfo) =
+            actress.link in collectedActresses
 
         override suspend fun toggleActressCollect(actress: ActressInfo): Boolean {
             return if (actress.link in collectedActresses) {

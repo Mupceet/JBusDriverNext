@@ -4,8 +4,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Semaphore
@@ -159,7 +159,10 @@ class MirrorScanner @Inject constructor() {
         )
     }
 
-    private suspend fun loadAndExtractMirrorUrls(webView: android.webkit.WebView, url: String): List<String> {
+    private suspend fun loadAndExtractMirrorUrls(
+        webView: android.webkit.WebView,
+        url: String
+    ): List<String> {
         webView.loadUrlAwait(url)
 
         val result = webView.evaluateJs(EXTRACT_MIRROR_JS)

@@ -15,14 +15,12 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.Genre
 import me.jbusdriver.modern.domain.model.GenreGroup
-import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -38,15 +36,30 @@ class GenreListViewModelTest {
     private fun fullFakeRepo(
         onLoadGenreCategories: (DataSourceType) -> List<GenreGroup>
     ) = object : MovieRepository {
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
+
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             emptyList<ActressInfo>() to PageInfo()
+
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
             onLoadGenreCategories(type)
-        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
-        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+            null
     }
 
     @Before

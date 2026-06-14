@@ -52,9 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.LabSettingsStore
+import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.MirrorUrl
 import me.jbusdriver.modern.data.ScanPhase
 import me.jbusdriver.modern.data.ScanState
@@ -187,7 +186,10 @@ private fun ForumCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.forum_enable), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.forum_enable),
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 Switch(
                     checked = forumEnabled,
                     onCheckedChange = onForumEnabledChange
@@ -202,7 +204,10 @@ private fun ForumCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.auto_load_gif), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        stringResource(R.string.auto_load_gif),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                     Text(
                         stringResource(R.string.auto_load_gif_desc),
                         style = MaterialTheme.typography.bodySmall,
@@ -222,7 +227,10 @@ private fun ForumCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.floor_order), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.floor_order),
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 SingleChoiceSegmentedButtonRow {
                     SegmentedButton(
                         selected = forumFloorOrder == ForumFloorOrder.REGULAR,
@@ -379,7 +387,11 @@ private fun UrlSelectionCard(
                         onClick = onScan,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (scanState.phase == ScanPhase.DONE) stringResource(R.string.rescan) else stringResource(R.string.scan_url))
+                        Text(
+                            if (scanState.phase == ScanPhase.DONE) stringResource(R.string.rescan) else stringResource(
+                                R.string.scan_url
+                            )
+                        )
                     }
                 }
 
@@ -402,8 +414,18 @@ private fun UrlSelectionCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 val phaseText = when (scanState.phase) {
-                    ScanPhase.DISCOVERING -> stringResource(R.string.scanning, scanState.scannedCount, scanState.totalCount)
-                    ScanPhase.VERIFYING -> stringResource(R.string.verifying, scanState.scannedCount, scanState.totalCount)
+                    ScanPhase.DISCOVERING -> stringResource(
+                        R.string.scanning,
+                        scanState.scannedCount,
+                        scanState.totalCount
+                    )
+
+                    ScanPhase.VERIFYING -> stringResource(
+                        R.string.verifying,
+                        scanState.scannedCount,
+                        scanState.totalCount
+                    )
+
                     else -> ""
                 }
                 Text(

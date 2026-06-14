@@ -54,14 +54,15 @@ fun parseMovieDetails(doc: Document, baseUrl: String): MovieDetail {
     val headers = mutableListOf<Header>()
     val headersContainer = roeMovie.select(".info")
 
-    headersContainer.select("span.header").filterNot { it.parent()?.hasClass("star-show") == true }.forEach { span ->
-        val p = span.parent() ?: return@forEach
-        val name = span.text().trimEnd(':').trim()
-        val linkEl = p.select("a").firstOrNull()
-        val value = linkEl?.text() ?: p.text().removePrefix(span.text()).trim()
-        val link = linkEl?.attr("href") ?: ""
-        headers.add(Header(name, value, link))
-    }
+    headersContainer.select("span.header").filterNot { it.parent()?.hasClass("star-show") == true }
+        .forEach { span ->
+            val p = span.parent() ?: return@forEach
+            val name = span.text().trimEnd(':').trim()
+            val linkEl = p.select("a").firstOrNull()
+            val value = linkEl?.text() ?: p.text().removePrefix(span.text()).trim()
+            val link = linkEl?.attr("href") ?: ""
+            headers.add(Header(name, value, link))
+        }
 
     val content = doc.select("[name=description]").attr("content").trim()
 
@@ -88,7 +89,10 @@ fun parseMovieDetails(doc: Document, baseUrl: String): MovieDetail {
         val path = java.net.URL(url).path.orEmpty().trimEnd('/')
         val lastSegment = path.substringAfterLast('/')
         // Skip forum/thread links – only keep movie pages (code-like last segment)
-        if (lastSegment.contains("thread") || lastSegment.contains("forum") || lastSegment.contains(".")) return@mapNotNull null
+        if (lastSegment.contains("thread") || lastSegment.contains("forum") || lastSegment.contains(
+                "."
+            )
+        ) return@mapNotNull null
         Movie(
             it.attr("title"),
             it.select("img").attr("src").wrapImage(baseUrl),

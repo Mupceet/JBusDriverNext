@@ -8,9 +8,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation3.runtime.NavKey
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.ui.theme.JBusTheme
@@ -65,7 +65,10 @@ class ModernMainActivity : ComponentActivity() {
         val javbusUrl = when (intent?.action) {
             android.content.Intent.ACTION_VIEW -> intent.data?.toString()
             android.content.Intent.ACTION_SEND ->
-                JBUS_URL_REGEX.find(intent.getStringExtra(android.content.Intent.EXTRA_TEXT) ?: "")?.value
+                JBUS_URL_REGEX.find(
+                    intent.getStringExtra(android.content.Intent.EXTRA_TEXT) ?: ""
+                )?.value
+
             else -> null
         }
         if (javbusUrl != null) {
@@ -93,14 +96,28 @@ class ModernMainActivity : ComponentActivity() {
         val isPrefixSegment = segments[0] in listOf("uncensored", "xyz")
         val contentSegment = if (isPrefixSegment) segments.getOrNull(1) else segments[0]
 
-        if (contentSegment in listOf("star", "genre", "director", "studio", "label", "series", "publisher")) {
+        if (contentSegment in listOf(
+                "star",
+                "genre",
+                "director",
+                "studio",
+                "label",
+                "series",
+                "publisher"
+            )
+        ) {
             val type = when (contentSegment) {
                 "star" -> "actress"
                 "genre" -> "genre"
                 else -> "header"
             }
             val title = segments.last()
-            return RouteLinkMovies(linkUrl = url, title = title, type = type, censorType = censorType)
+            return RouteLinkMovies(
+                linkUrl = url,
+                title = title,
+                type = type,
+                censorType = censorType
+            )
         }
 
         if (isPrefixSegment && segments.size == 2) {

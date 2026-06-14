@@ -3,9 +3,9 @@ package me.jbusdriver.modern.ui.forum
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.PageInfo
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
-import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ForumThreadDetailStateTest {

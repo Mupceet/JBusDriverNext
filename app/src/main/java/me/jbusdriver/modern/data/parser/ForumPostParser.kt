@@ -51,6 +51,7 @@ private class PostContentParser(private val baseUrl: String) {
                     size = element.inlineSize(style.size)
                 )
             )
+
             "img" -> appendImage(element, style)
             "ol", "ul" -> {
                 flushRichText()
@@ -58,14 +59,17 @@ private class PostContentParser(private val baseUrl: String) {
                 if (list != null) blocks.add(ContentBlock.ListBlock(list))
                 else processChildren(element, style)
             }
+
             "p" -> {
                 processChildren(element, style)
                 flushParagraph()
             }
+
             "div" -> {
                 if (element.hasClass("quote")) appendQuote(element)
                 else processChildren(element, style)
             }
+
             "script", "style", "form", "button" -> Unit
             else -> processChildren(element, style)
         }
@@ -83,8 +87,8 @@ private class PostContentParser(private val baseUrl: String) {
             return
         }
         val needsLeadingSpace = parts.isNotEmpty() &&
-            (pendingSpace || collapsed.firstOrNull()?.isWhitespace() == true) &&
-            !parts.last().text.endsWith(' ')
+                (pendingSpace || collapsed.firstOrNull()?.isWhitespace() == true) &&
+                !parts.last().text.endsWith(' ')
         if (needsLeadingSpace) {
             appendSeparator()
         }
@@ -145,8 +149,8 @@ private class PostContentParser(private val baseUrl: String) {
 
     private fun appendInlineImage(src: String, alt: String, style: InlineStyle) {
         val needsLeadingSpace = parts.isNotEmpty() &&
-            pendingSpace &&
-            !parts.last().text.endsWith(' ')
+                pendingSpace &&
+                !parts.last().text.endsWith(' ')
         if (needsLeadingSpace) appendSeparator()
         parts.add(style.toPart(text = "", inlineImageUrl = src, inlineImageAlt = alt))
         pendingSpace = false

@@ -1,8 +1,8 @@
 package me.jbusdriver.modern.ui.forum
 
-import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,6 +65,7 @@ class ForumBoardsViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             _uiState.update {
                                 it.copy(
@@ -77,12 +78,17 @@ class ForumBoardsViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, error = R.string.load_failed)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        error = R.string.load_failed
+                                    )
                                 }
                             }
                         }
@@ -109,6 +115,7 @@ class ForumBoardsViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(

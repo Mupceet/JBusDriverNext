@@ -6,6 +6,8 @@ import androidx.collection.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.CacheLoader.lruCached
+import me.jbusdriver.modern.core.CacheLoader.persistentCached
 import java.io.File
 
 /**
@@ -158,7 +160,8 @@ object CacheLoader {
         lru.put(key, value)
     }
 
-    suspend fun getDiskString(key: String): String? = withContext(Dispatchers.IO) { fileCache.get(key) }
+    suspend fun getDiskString(key: String): String? =
+        withContext(Dispatchers.IO) { fileCache.get(key) }
 
     suspend fun putDiskString(key: String, value: String) {
         withContext(Dispatchers.IO) { fileCache.put(key, value) }

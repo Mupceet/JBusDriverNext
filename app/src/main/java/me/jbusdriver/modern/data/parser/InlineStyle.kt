@@ -21,7 +21,7 @@ internal data class InlineStyle(
 /** Elements carrying these classes are editorial noise (status, mod actions, signatures). */
 internal fun Element.shouldIgnore(): Boolean =
     hasClass("pstatus") || hasClass("modact") || hasClass("locked") ||
-        hasClass("cm") || hasClass("sign")
+            hasClass("cm") || hasClass("sign")
 
 internal fun Element.inlineColor(): String? {
     val raw = attr("color").ifBlank {

@@ -42,7 +42,8 @@ class ForumPostParserTest {
 
     @Test
     fun capturesBoldAndLinkStylingAsDistinctParts() {
-        val html = """<div class="post"><strong>bold</strong> plain <a href="https://example.com">link</a></div>"""
+        val html =
+            """<div class="post"><strong>bold</strong> plain <a href="https://example.com">link</a></div>"""
         val root = Jsoup.parse(html, baseUrl).selectFirst("div.post")
 
         val blocks = parseForumPostContent(root, baseUrl)

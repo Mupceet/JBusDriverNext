@@ -127,8 +127,12 @@ fun ForumThreadDetailScreen(
                     }
                 },
                 actions = {
-                    val threadUrl = "${me.jbusdriver.modern.core.http.NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid"
-                    ShareButton(text = threadUrl, chooserTitle = stringResource(R.string.share_thread))
+                    val threadUrl =
+                        "${me.jbusdriver.modern.core.http.NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid"
+                    ShareButton(
+                        text = threadUrl,
+                        chooserTitle = stringResource(R.string.share_thread)
+                    )
                 }
             )
         },
@@ -136,9 +140,11 @@ fun ForumThreadDetailScreen(
             ThemedSnackbarHost(hostState = snackbarHostState)
         }
     ) { innerPadding ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = { viewModel.refresh() },
@@ -213,7 +219,9 @@ fun ForumThreadDetailScreen(
                                         autoLoadGifs = autoLoadGifs,
                                         onLoadGif = { viewModel.onLoadGif(it) },
                                         onLoadAllGifs = { viewModel.onLoadAllGifs() },
-                                        onLongClick = { dialogBlocks = detail.replies[index].contentBlocks }
+                                        onLongClick = {
+                                            dialogBlocks = detail.replies[index].contentBlocks
+                                        }
                                     )
                                 }
                             }
@@ -250,7 +258,8 @@ fun ForumThreadDetailScreen(
                     state.isLoading -> LoadingViewCentered()
                     else -> EmptyStateView(message = state.error?.let { stringResource(it) })
                 }
-                val pendingFreshMessage = stringResource(state.refreshMessage ?: R.string.new_data_available)
+                val pendingFreshMessage =
+                    stringResource(state.refreshMessage ?: R.string.new_data_available)
                 LaunchedEffect(state.pendingFreshDetail) {
                     if (state.pendingFreshDetail != null) {
                         val result = snackbarHostState.showSnackbar(

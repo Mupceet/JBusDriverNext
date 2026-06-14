@@ -3,12 +3,12 @@ package me.jbusdriver.modern.core
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
 import com.google.gson.TypeAdapter
 import com.google.gson.TypeAdapterFactory
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
+import me.jbusdriver.modern.domain.model.ContentBlockAdapterFactory
 import java.lang.reflect.Modifier.STATIC
 import java.lang.reflect.Modifier.TRANSIENT
 import java.text.DateFormat
@@ -16,7 +16,6 @@ import java.text.ParsePosition
 import java.time.Instant
 import java.util.Date
 import java.util.Locale
-import me.jbusdriver.modern.domain.model.ContentBlockAdapterFactory
 
 /**
  * 全局 Gson 实例

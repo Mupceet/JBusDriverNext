@@ -4,13 +4,13 @@ import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.lruCached
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.domain.model.MoviePageResult
-import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.domain.model.ActressInfo
-import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.data.parser.loadMovieFromDoc
 import me.jbusdriver.modern.data.parser.parseActressList
 import me.jbusdriver.modern.data.parser.parsePageInfo
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.MoviePageResult
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.SearchType
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -78,7 +78,8 @@ class DefaultSearchRepository @Inject constructor(
     ): MoviePageResult {
         val baseUrl = siteConfig.baseUrl
         val encodedQuery = encodeSearchPathSegment(query)
-        val url = "${baseUrl}${type.urlPathFormater.format(encodedQuery)}${if (page > 1) "/$page" else ""}"
+        val url =
+            "${baseUrl}${type.urlPathFormater.format(encodedQuery)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
 
         return cacheStore.lruCached(cacheKey, forceRefresh) {
@@ -96,7 +97,8 @@ class DefaultSearchRepository @Inject constructor(
         val baseUrl = siteConfig.baseUrl
         val type = SearchType.ACTRESS
         val encodedQuery = encodeSearchPathSegment(query)
-        val url = "${baseUrl}${type.urlPathFormater.format(encodedQuery)}${if (page > 1) "/$page" else ""}"
+        val url =
+            "${baseUrl}${type.urlPathFormater.format(encodedQuery)}${if (page > 1) "/$page" else ""}"
         val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
 
         return cacheStore.lruCached(cacheKey) {

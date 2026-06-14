@@ -1,8 +1,8 @@
 package me.jbusdriver.modern.core.cache
 
+import kotlinx.coroutines.test.runTest
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -17,9 +17,14 @@ class CacheStoreMetadataTest {
         val disk = linkedMapOf<String, String>()
 
         override fun readMemory(key: String): String? = memory[key]
-        override fun writeMemory(key: String, value: String) { memory[key] = value }
+        override fun writeMemory(key: String, value: String) {
+            memory[key] = value
+        }
+
         override suspend fun readDisk(key: String): String? = disk[key]
-        override suspend fun writeDisk(key: String, value: String) { disk[key] = value }
+        override suspend fun writeDisk(key: String, value: String) {
+            disk[key] = value
+        }
     }
 
     @Test
@@ -47,14 +52,16 @@ class CacheStoreMetadataTest {
         val diskJson = GSON.toJson(CacheEnvelope(1_000L, GSON.toJson(Sample("disk"))))
         store.disk["sample"] = diskJson
 
-        val diskEntry = store.readCached<Sample>("sample", ttlMillis = 10_000L, nowMillis = { 1_500L })
+        val diskEntry =
+            store.readCached<Sample>("sample", ttlMillis = 10_000L, nowMillis = { 1_500L })
 
         assertEquals(Sample("disk"), diskEntry?.value)
         assertEquals(CacheSource.Disk, diskEntry?.source)
         assertFalse(diskEntry?.isExpired ?: true)
         assertEquals(diskJson, store.memory["sample"])
 
-        val memoryEntry = store.readCached<Sample>("sample", ttlMillis = 10_000L, nowMillis = { 2_000L })
+        val memoryEntry =
+            store.readCached<Sample>("sample", ttlMillis = 10_000L, nowMillis = { 2_000L })
 
         assertEquals(Sample("disk"), memoryEntry?.value)
         assertEquals(CacheSource.Memory, memoryEntry?.source)

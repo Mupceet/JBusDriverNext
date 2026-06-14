@@ -1,8 +1,8 @@
 package me.jbusdriver.modern.test
 
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie

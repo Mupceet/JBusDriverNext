@@ -30,9 +30,11 @@ fun String.stripToPath(): String = when {
             if (pathStart < 0) "/" else substring(pathStart)
         }
     }
+
     startsWith("//") -> {
         val pathStart = indexOf('/', 2)
         if (pathStart < 0) "/" else substring(pathStart)
     }
+
     else -> this
 }

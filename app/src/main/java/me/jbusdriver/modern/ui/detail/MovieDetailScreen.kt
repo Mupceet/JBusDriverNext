@@ -5,7 +5,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,18 +20,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -63,7 +63,6 @@ import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
 import me.jbusdriver.modern.ui.HeaderUiModel
-import me.jbusdriver.modern.ui.ImageSampleUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.CollectButton
@@ -122,7 +121,10 @@ fun MovieDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = stringResource(R.string.back))
+                        Icon(
+                            painterResource(R.drawable.arrow_back_24px),
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 },
                 actions = {
@@ -340,7 +342,11 @@ private fun DetailContent(
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .clickable {
                                                     context.copy(header.value)
-                                                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        copiedMessage,
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                 },
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -442,7 +448,9 @@ private fun DetailContent(
                 }) { Text(stringResource(R.string.copy)) }
             },
             dismissButton = {
-                TextButton(onClick = { selectedHeader = null }) { Text(stringResource(R.string.close)) }
+                TextButton(onClick = {
+                    selectedHeader = null
+                }) { Text(stringResource(R.string.close)) }
             }
         )
     }

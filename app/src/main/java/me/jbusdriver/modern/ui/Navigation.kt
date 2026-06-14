@@ -15,10 +15,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -28,11 +28,11 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.StateFlow
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
+import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
+import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
-import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
-import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
 import me.jbusdriver.modern.ui.settings.LabSettingsScreen
 
 private const val ANIM_DURATION = 350
@@ -55,10 +55,12 @@ fun JBusNavigation(
                 key is RouteMain -> {
                     while (backStack.size > 1) backStack.removeLastOrNull()
                 }
+
                 backStack.last() is RouteSearch || backStack.last() is RouteImageViewer -> {
                     backStack.removeLastOrNull()
                     backStack.add(key)
                 }
+
                 else -> backStack.add(key)
             }
             onDeepLinkConsumed()
@@ -125,7 +127,12 @@ fun JBusNavigation(
                     },
                     onGenreClick = { genre, censorType ->
                         backStack.add(
-                            RouteLinkMovies(genre.link, genre.name, type = "genre", censorType = censorType)
+                            RouteLinkMovies(
+                                genre.link,
+                                genre.name,
+                                type = "genre",
+                                censorType = censorType
+                            )
                         )
                     },
                     onSearchClick = { searchType ->
@@ -146,30 +153,30 @@ fun JBusNavigation(
                             initialOffsetY = { it },
                             animationSpec = tween(ANIM_DURATION_SEARCH)
                         ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
-                            (scaleOut(
-                                targetScale = 0.9f,
-                                animationSpec = tween(ANIM_DURATION)
-                            ) + fadeOut(tween(ANIM_DURATION)))
+                                (scaleOut(
+                                    targetScale = 0.9f,
+                                    animationSpec = tween(ANIM_DURATION)
+                                ) + fadeOut(tween(ANIM_DURATION)))
                     }
                     put(NavDisplay.PopTransitionKey) {
                         (scaleIn(
                             initialScale = 0.9f,
                             animationSpec = tween(ANIM_DURATION)
                         ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                            (slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(ANIM_DURATION_SEARCH)
-                            ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
                     }
                     put(NavDisplay.PredictivePopTransitionKey) {
                         (scaleIn(
                             initialScale = 0.9f,
                             animationSpec = tween(ANIM_DURATION)
                         ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                            (slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(ANIM_DURATION_SEARCH)
-                            ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
                     }
                 }
             ) { key ->
@@ -216,7 +223,12 @@ fun JBusNavigation(
                     },
                     onGenreClick = { genre, censorType ->
                         backStack.add(
-                            RouteLinkMovies(genre.link, genre.name, type = "genre", censorType = censorType)
+                            RouteLinkMovies(
+                                genre.link,
+                                genre.name,
+                                type = "genre",
+                                censorType = censorType
+                            )
                         )
                     },
                     onHeaderClick = { header, censorType ->

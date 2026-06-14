@@ -1,5 +1,9 @@
 package me.jbusdriver.modern.ui.movielist
 
+import me.jbusdriver.modern.ui.movielist.SortOption.Companion.actressOptions
+import me.jbusdriver.modern.ui.movielist.SortOption.Companion.movieOptions
+
+
 /**
  * 內容類型篩選（有碼/無碼）
  */

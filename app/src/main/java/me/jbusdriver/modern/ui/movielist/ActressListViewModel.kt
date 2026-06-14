@@ -17,10 +17,10 @@ import me.jbusdriver.modern.core.cache.PageTracker
 import me.jbusdriver.modern.core.cache.decideFreshRevalidate
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
-import me.jbusdriver.modern.domain.model.DataSourceType
-import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
@@ -157,11 +157,13 @@ class ActressListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             // loadFirstPage 仅在列表为空时调用，直接应用
                             _uiState.update {
                                 it.copy(
-                                    actresses = event.entry.value.first.simulateCacheRefreshChange().map { a -> a.toActressUiModel() },
+                                    actresses = event.entry.value.first.simulateCacheRefreshChange()
+                                        .map { a -> a.toActressUiModel() },
                                     pageInfo = event.entry.value.second,
                                     isLoading = false,
                                     isRefreshing = false,
@@ -171,12 +173,22 @@ class ActressListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 if (event.hadCachedValue || hasContent) {
-                                    it.copy(isLoading = false, isRefreshing = false, isRevalidating = false)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRefreshing = false,
+                                        isRevalidating = false
+                                    )
                                 } else {
-                                    it.copy(isLoading = false, isRefreshing = false, isRevalidating = false, error = R.string.load_failed)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRefreshing = false,
+                                        isRevalidating = false,
+                                        error = R.string.load_failed
+                                    )
                                 }
                             }
                         }
@@ -203,12 +215,17 @@ class ActressListViewModel @Inject constructor(
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             val fresh = event.entry.value.copy(
                                 first = event.entry.value.first.simulateCacheRefreshChange()
                             )
                             val freshUiModels = fresh.first.map { it.toActressUiModel() }
-                            when (decideFreshRevalidate(_uiState.value.actresses, freshUiModels, atTop.isAtTop)) {
+                            when (decideFreshRevalidate(
+                                _uiState.value.actresses,
+                                freshUiModels,
+                                atTop.isAtTop
+                            )) {
                                 FreshRevalidateOutcome.ApplyImmediately -> {
                                     pages.startFirstPage()
                                     _uiState.update {
@@ -223,6 +240,7 @@ class ActressListViewModel @Inject constructor(
                                         )
                                     }
                                 }
+
                                 FreshRevalidateOutcome.StorePending -> {
                                     _uiState.update {
                                         it.copy(
@@ -232,11 +250,13 @@ class ActressListViewModel @Inject constructor(
                                         )
                                     }
                                 }
+
                                 FreshRevalidateOutcome.NoChange -> {
                                     _uiState.update { it.copy(isRevalidating = false) }
                                 }
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update { it.copy(isRevalidating = false) }
                         }
@@ -269,6 +289,7 @@ class ActressListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(

@@ -43,6 +43,7 @@ class SearchRepositoryUrlTest {
             override fun writeMemory(key: String, value: String) {
                 memory[key] = value
             }
+
             override suspend fun readDisk(key: String): String? = null
             override suspend fun writeDisk(key: String, value: String) = Unit
         }

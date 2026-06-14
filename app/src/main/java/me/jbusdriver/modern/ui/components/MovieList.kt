@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -15,15 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +38,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
 
@@ -101,20 +101,35 @@ fun MovieList(
                 if (header != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) { header() }
                 }
-                itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                itemsIndexed(
+                    movies,
+                    key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                     MovieGridItem(movie = movie, onClick = { onMovieClick(movie, null) })
                 }
                 if (isLoadingMore) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             CircularProgressIndicator()
                         }
                     }
                 }
                 if (!hasMore && movies.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.no_more), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.no_more),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -151,13 +166,17 @@ fun MovieList(
                 if (header != null) {
                     item { header() }
                 }
-                itemsIndexed(movies, key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
+                itemsIndexed(
+                    movies,
+                    key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
                     if (compact) {
                         CompactMovieItem(
                             movie = movie,
                             onClick = { onMovieClick(movie, null) },
                             isCollected = isCollected?.invoke(movie) == true,
-                            onToggleCollect = if (onToggleCollect != null) {{ onToggleCollect(movie) }} else null
+                            onToggleCollect = if (onToggleCollect != null) {
+                                { onToggleCollect(movie) }
+                            } else null
                         )
                     } else {
                         MovieItem(movie = movie, onClick = { onMovieClick(movie, null) })
@@ -165,15 +184,28 @@ fun MovieList(
                 }
                 if (isLoadingMore) {
                     item {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             CircularProgressIndicator()
                         }
                     }
                 }
                 if (!hasMore && movies.isNotEmpty()) {
                     item {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.no_more), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.no_more),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -383,7 +415,9 @@ fun CompactMovieItem(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
@@ -454,7 +488,9 @@ fun CompactMovieItem(
                         painter = painterResource(
                             if (isCollected) R.drawable.favorite_fill_24px else R.drawable.favorite_24px
                         ),
-                        contentDescription = if (isCollected) stringResource(R.string.uncollect_action) else stringResource(R.string.collect),
+                        contentDescription = if (isCollected) stringResource(R.string.uncollect_action) else stringResource(
+                            R.string.collect
+                        ),
                         tint = if (isCollected) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )

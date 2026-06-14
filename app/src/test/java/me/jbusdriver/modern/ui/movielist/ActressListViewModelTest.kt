@@ -14,13 +14,11 @@ import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.GenreGroup
-import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -38,14 +36,30 @@ class ActressListViewModelTest {
     private fun fullFakeRepo(
         onLoadActresses: (DataSourceType, Int) -> Pair<List<ActressInfo>, PageInfo>
     ) = object : MovieRepository {
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
+
         override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
             onLoadActresses(type, page)
-        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) = emptyList<GenreGroup>()
-        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+            emptyList<GenreGroup>()
+
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(), emptyList())
-        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+            null
     }
 
     @Before

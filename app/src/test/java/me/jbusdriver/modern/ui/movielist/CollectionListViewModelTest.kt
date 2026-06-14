@@ -11,9 +11,9 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -25,8 +25,8 @@ import me.jbusdriver.modern.test.FakeCollectionUiPrefs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -96,6 +96,7 @@ class CollectionListViewModelTest {
                     ActressDBType -> testActresses.map { it.toLinkItem() }
                     else -> emptyList()
                 }
+
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
@@ -132,6 +133,7 @@ class CollectionListViewModelTest {
                     ActressDBType -> testActresses.map { it.toLinkItem() }
                     else -> emptyList()
                 }
+
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
@@ -161,7 +163,9 @@ class CollectionListViewModelTest {
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = throw RuntimeException("DB error")
             override suspend fun getCollectedActresses() = throw RuntimeException("DB error")
-            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = throw RuntimeException("DB error")
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                throw RuntimeException("DB error")
+
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }

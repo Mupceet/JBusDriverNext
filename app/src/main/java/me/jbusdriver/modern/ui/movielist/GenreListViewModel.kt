@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -113,8 +113,10 @@ class GenreListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.simulateCacheRefreshChange().map { it.toUiModel() }
+                            val categories = event.entry.value.simulateCacheRefreshChange()
+                                .map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
@@ -124,12 +126,17 @@ class GenreListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 if (event.hadCachedValue || hasContent) {
                                     it.copy(isLoading = false, isRevalidating = false)
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, error = R.string.load_failed)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        error = R.string.load_failed
+                                    )
                                 }
                             }
                         }
@@ -152,8 +159,10 @@ class GenreListViewModel @Inject constructor(
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
+
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.simulateCacheRefreshChange().map { it.toUiModel() }
+                            val categories = event.entry.value.simulateCacheRefreshChange()
+                                .map { it.toUiModel() }
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
@@ -162,6 +171,7 @@ class GenreListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update { it.copy(isRevalidating = false) }
                         }
@@ -179,7 +189,11 @@ class GenreListViewModel @Inject constructor(
         if (_uiState.value.isRefreshing) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
-            repository.observeGenreCategories(dataSourceType, forceRefresh = true, revalidate = false)
+            repository.observeGenreCategories(
+                dataSourceType,
+                forceRefresh = true,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
@@ -192,6 +206,7 @@ class GenreListViewModel @Inject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(

@@ -22,7 +22,11 @@ import me.jbusdriver.modern.ui.RouteForumThreadDetail
 
 private const val TAG = "ForumVM"
 
-private fun logReplyDiff(oldReplies: List<me.jbusdriver.modern.domain.model.ForumReply>, newReplies: List<me.jbusdriver.modern.domain.model.ForumReply>, context: String) {
+private fun logReplyDiff(
+    oldReplies: List<me.jbusdriver.modern.domain.model.ForumReply>,
+    newReplies: List<me.jbusdriver.modern.domain.model.ForumReply>,
+    context: String
+) {
     me.jbusdriver.modern.core.logListDiff(
         oldItems = oldReplies,
         newItems = newReplies,
@@ -130,12 +134,32 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             var hasContent = _uiState.value.detail != null
             _uiState.update {
                 when {
-                    showLoading && !hasContent -> it.copy(isLoading = true, error = null, refreshMessage = null)
-                    showLoading -> it.copy(isRevalidating = true, error = null, refreshMessage = null)
-                    else -> it.copy(error = null, isChangingFloorOrder = true, refreshMessage = null)
+                    showLoading && !hasContent -> it.copy(
+                        isLoading = true,
+                        error = null,
+                        refreshMessage = null
+                    )
+
+                    showLoading -> it.copy(
+                        isRevalidating = true,
+                        error = null,
+                        refreshMessage = null
+                    )
+
+                    else -> it.copy(
+                        error = null,
+                        isChangingFloorOrder = true,
+                        refreshMessage = null
+                    )
                 }
             }
-            repository.observeThreadDetail(tid, currentPage, floorOrder, forceRefresh = forceRefresh, revalidate = false)
+            repository.observeThreadDetail(
+                tid,
+                currentPage,
+                floorOrder,
+                forceRefresh = forceRefresh,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -150,6 +174,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             val fresh = event.entry.value.copy(
                                 replies = event.entry.value.replies.simulateCacheRefreshChange()
@@ -157,17 +182,24 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             val oldDetail = _uiState.value.detail
                             val hasDetailChanged = if (oldDetail != null) {
                                 val headerChanged = oldDetail.title != fresh.title ||
-                                    oldDetail.viewCount != fresh.viewCount ||
-                                    oldDetail.replyCount != fresh.replyCount ||
-                                    oldDetail.typeName != fresh.typeName ||
-                                    oldDetail.contentBlocks != fresh.contentBlocks
+                                        oldDetail.viewCount != fresh.viewCount ||
+                                        oldDetail.replyCount != fresh.replyCount ||
+                                        oldDetail.typeName != fresh.typeName ||
+                                        oldDetail.contentBlocks != fresh.contentBlocks
                                 val oldFirstPageReplies = oldDetail.replies.take(fresh.replies.size)
                                 headerChanged || oldFirstPageReplies != fresh.replies
                             } else true
                             if (oldDetail != null) {
-                                logReplyDiff(oldDetail.replies.take(fresh.replies.size), fresh.replies, "Detail.loadDetail")
+                                logReplyDiff(
+                                    oldDetail.replies.take(fresh.replies.size),
+                                    fresh.replies,
+                                    "Detail.loadDetail"
+                                )
                                 if (oldDetail.viewCount != fresh.viewCount || oldDetail.replyCount != fresh.replyCount) {
-                                    KLog.d("[Detail.loadDetail] viewCount:${oldDetail.viewCount}→${fresh.viewCount}, replyCount:${oldDetail.replyCount}→${fresh.replyCount}", TAG)
+                                    KLog.d(
+                                        "[Detail.loadDetail] viewCount:${oldDetail.viewCount}→${fresh.viewCount}, replyCount:${oldDetail.replyCount}→${fresh.replyCount}",
+                                        TAG
+                                    )
                                 }
                             }
                             if (isAtTopForFreshUpdates || forceRefresh || !showLoading) {
@@ -193,16 +225,30 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 }
                             } else {
                                 _uiState.update {
-                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false
+                                    )
                                 }
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 if (event.hadCachedValue || hasContent) {
-                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false
+                                    )
                                 } else {
-                                    it.copy(isLoading = false, isRevalidating = false, isChangingFloorOrder = false, error = R.string.load_failed)
+                                    it.copy(
+                                        isLoading = false,
+                                        isRevalidating = false,
+                                        isChangingFloorOrder = false,
+                                        error = R.string.load_failed
+                                    )
                                 }
                             }
                         }
@@ -222,6 +268,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
                         }
+
                         is CachedLoadEvent.Fresh -> {
                             val fresh = event.entry.value.copy(
                                 replies = event.entry.value.replies.simulateCacheRefreshChange()
@@ -229,17 +276,24 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             val oldDetail = _uiState.value.detail
                             val hasDetailChanged = if (oldDetail != null) {
                                 val headerChanged = oldDetail.title != fresh.title ||
-                                    oldDetail.viewCount != fresh.viewCount ||
-                                    oldDetail.replyCount != fresh.replyCount ||
-                                    oldDetail.typeName != fresh.typeName ||
-                                    oldDetail.contentBlocks != fresh.contentBlocks
+                                        oldDetail.viewCount != fresh.viewCount ||
+                                        oldDetail.replyCount != fresh.replyCount ||
+                                        oldDetail.typeName != fresh.typeName ||
+                                        oldDetail.contentBlocks != fresh.contentBlocks
                                 val oldFirstPageReplies = oldDetail.replies.take(fresh.replies.size)
                                 headerChanged || oldFirstPageReplies != fresh.replies
                             } else true
                             if (oldDetail != null) {
-                                logReplyDiff(oldDetail.replies.take(fresh.replies.size), fresh.replies, "Detail.revalidate")
+                                logReplyDiff(
+                                    oldDetail.replies.take(fresh.replies.size),
+                                    fresh.replies,
+                                    "Detail.revalidate"
+                                )
                                 if (oldDetail.viewCount != fresh.viewCount || oldDetail.replyCount != fresh.replyCount) {
-                                    KLog.d("[Detail.revalidate] viewCount:${oldDetail.viewCount}→${fresh.viewCount}, replyCount:${oldDetail.replyCount}→${fresh.replyCount}", TAG)
+                                    KLog.d(
+                                        "[Detail.revalidate] viewCount:${oldDetail.viewCount}→${fresh.viewCount}, replyCount:${oldDetail.replyCount}→${fresh.replyCount}",
+                                        TAG
+                                    )
                                 }
                             }
                             if (isAtTopForFreshUpdates) {
@@ -265,6 +319,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 _uiState.update { it.copy(isRevalidating = false) }
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update { it.copy(isRevalidating = false) }
                         }
@@ -278,8 +333,21 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         val floorOrder = _uiState.value.floorOrder
         currentPage = 1
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null, pendingFreshDetail = null) }
-            repository.observeThreadDetail(tid, 1, floorOrder, forceRefresh = true, revalidate = false)
+            _uiState.update {
+                it.copy(
+                    isRefreshing = true,
+                    error = null,
+                    refreshMessage = null,
+                    pendingFreshDetail = null
+                )
+            }
+            repository.observeThreadDetail(
+                tid,
+                1,
+                floorOrder,
+                forceRefresh = true,
+                revalidate = false
+            )
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
@@ -292,6 +360,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 )
                             }
                         }
+
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(
@@ -353,7 +422,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         if (oldDetail != null) {
             logReplyDiff(oldDetail.replies, pending.replies, "Detail.applyPending")
             if (oldDetail.viewCount != pending.viewCount || oldDetail.replyCount != pending.replyCount) {
-                KLog.d("[Detail.applyPending] viewCount:${oldDetail.viewCount}→${pending.viewCount}, replyCount:${oldDetail.replyCount}→${pending.replyCount}", TAG)
+                KLog.d(
+                    "[Detail.applyPending] viewCount:${oldDetail.viewCount}→${pending.viewCount}, replyCount:${oldDetail.replyCount}→${pending.replyCount}",
+                    TAG
+                )
             }
         }
         currentPage = 1

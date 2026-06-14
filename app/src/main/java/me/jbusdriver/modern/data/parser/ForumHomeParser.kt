@@ -67,14 +67,16 @@ fun parseForumBoards(doc: Document): List<ForumBoardGroup> {
             val typeId = Regex("typeid=(\\d+)").find(href)?.groupValues?.get(1)?.toIntOrNull()
 
             val todayText = row.select("em.xw0.xi1").text()
-            val todayPosts = Regex("\\((\\d+)\\)").find(todayText)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            val todayPosts =
+                Regex("\\((\\d+)\\)").find(todayText)?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
             val statsSpans = row.select("td.fl_i span")
             val totalThreads = statsSpans.getOrNull(0)?.text()?.trim() ?: ""
             val totalPosts = statsSpans.getOrNull(2)?.text()?.trim() ?: ""
 
             val lastPostDiv = row.select("td.fl_by .forumlist").firstOrNull()
-            val lastPostTitle = lastPostDiv?.select("a.xi2, a[title]")?.firstOrNull()?.text()?.trim() ?: ""
+            val lastPostTitle =
+                lastPostDiv?.select("a.xi2, a[title]")?.firstOrNull()?.text()?.trim() ?: ""
             val lastPostAuthor = lastPostDiv?.select("cite a")?.text()?.trim() ?: ""
             val lastPostTime = lastPostDiv?.select("cite span[title]")?.text()?.trim()
                 ?: lastPostDiv?.select("cite span")?.text()?.trim() ?: ""

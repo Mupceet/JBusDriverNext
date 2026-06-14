@@ -30,7 +30,13 @@ private fun forumLogE(message: String) {
 
 interface ForumRepository {
     suspend fun loadForumBoards(forceRefresh: Boolean = false): ForumHomeData
-    suspend fun loadThreads(fid: Int, page: Int, typeId: Int? = null, forceRefresh: Boolean = false): ForumThreadPageResult
+    suspend fun loadThreads(
+        fid: Int,
+        page: Int,
+        typeId: Int? = null,
+        forceRefresh: Boolean = false
+    ): ForumThreadPageResult
+
     suspend fun loadThreadDetail(
         tid: Int,
         page: Int = 1,
@@ -174,7 +180,13 @@ class DefaultForumRepository @Inject constructor(
         typeId: Int?,
         forceRefresh: Boolean
     ): ForumThreadPageResult =
-        observeThreads(fid, page, typeId, forceRefresh = forceRefresh, revalidate = false).firstCachedOrFresh()
+        observeThreads(
+            fid,
+            page,
+            typeId,
+            forceRefresh = forceRefresh,
+            revalidate = false
+        ).firstCachedOrFresh()
 
     override suspend fun loadThreadDetail(
         tid: Int,
@@ -182,7 +194,13 @@ class DefaultForumRepository @Inject constructor(
         floorOrder: ForumFloorOrder,
         forceRefresh: Boolean
     ): ForumThreadDetail =
-        observeThreadDetail(tid, page, floorOrder, forceRefresh = forceRefresh, revalidate = false).firstCachedOrFresh()
+        observeThreadDetail(
+            tid,
+            page,
+            floorOrder,
+            forceRefresh = forceRefresh,
+            revalidate = false
+        ).firstCachedOrFresh()
 
     private fun forumCachePrefix(): String = "forum:${siteConfig.baseUrl}"
 

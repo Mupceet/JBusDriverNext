@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -132,7 +131,12 @@ fun CollectionFilterSheet(
                         selectedYear = filterState.publishYear,
                         years = availableYears.publishYears,
                         onSelect = { year ->
-                            onFilterChange(filterState.copy(publishYear = year, publishMonth = null))
+                            onFilterChange(
+                                filterState.copy(
+                                    publishYear = year,
+                                    publishMonth = null
+                                )
+                            )
                         }
                     )
 
@@ -257,7 +261,10 @@ private fun SortDropdown(
     val options = if (dbType == MovieDBType) SortOption.movieOptions else SortOption.actressOptions
 
     Box {
-        OutlinedButton(onClick = { expanded = true }, contentPadding = PaddingValues(horizontal = 12.dp)) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
             Text(current.label, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.width(2.dp))
             Text("▾", fontSize = 20.sp)

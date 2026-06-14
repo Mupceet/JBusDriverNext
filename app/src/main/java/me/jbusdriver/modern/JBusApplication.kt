@@ -3,9 +3,8 @@ package me.jbusdriver.modern
 import android.util.Log
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import coil.disk.DiskCache
 import coil.decode.GifDecoder
-import coil.memory.MemoryCache
+import coil.disk.DiskCache
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.HtmlClient

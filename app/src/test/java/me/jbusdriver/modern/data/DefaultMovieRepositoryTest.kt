@@ -1,14 +1,14 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.test.runTest
+import me.jbusdriver.modern.domain.model.ActressDetail
+import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.GenreGroup
+import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
-import me.jbusdriver.modern.domain.model.Movie
-import me.jbusdriver.modern.domain.model.DataSourceType
-import me.jbusdriver.modern.domain.model.ActressInfo
-import me.jbusdriver.modern.domain.model.ActressDetail
-import me.jbusdriver.modern.domain.model.GenreGroup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,7 +21,12 @@ class FakeMovieRepositoryTest {
     )
 
     private val repository = object : MovieRepository {
-        override suspend fun loadPage(type: DataSourceType, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(
                 pageInfo = PageInfo(page, page + 1, listOf(page, page + 1)),
                 movies = fakeMovies
@@ -33,10 +38,16 @@ class FakeMovieRepositoryTest {
         override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
             emptyList<GenreGroup>()
 
-        override suspend fun loadPageByUrl(url: String, page: Int, showAll: Boolean, forceRefresh: Boolean) =
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) =
             MoviePageResult(PageInfo(page, page + 1, listOf(page, page + 1)), fakeMovies)
 
-        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
+        override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+            null
     }
 
     @Test

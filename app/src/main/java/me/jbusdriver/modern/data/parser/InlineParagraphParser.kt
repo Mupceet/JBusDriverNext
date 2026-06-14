@@ -36,6 +36,7 @@ internal class InlineParagraphParser {
                         color = node.inlineColor() ?: style.color,
                         size = node.inlineSize(style.size)
                     )
+
                     else -> style
                 }
                 if (node.tagName().equals("br", ignoreCase = true)) flush()
@@ -52,8 +53,8 @@ internal class InlineParagraphParser {
             return
         }
         val needsLeadingSpace = parts.isNotEmpty() &&
-            (pendingSpace || collapsed.firstOrNull()?.isWhitespace() == true) &&
-            !parts.last().text.endsWith(' ')
+                (pendingSpace || collapsed.firstOrNull()?.isWhitespace() == true) &&
+                !parts.last().text.endsWith(' ')
         if (needsLeadingSpace) {
             val separator = TextPart(" ")
             if (parts.lastOrNull()?.sameStyle(separator) == true) {

@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import me.jbusdriver.R
-import me.jbusdriver.modern.core.copy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,9 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import me.jbusdriver.R
+import me.jbusdriver.modern.core.copy
 
 /**
  * 演员头像可组合组件。
@@ -103,7 +103,9 @@ fun ActressAvatar(
                 }) { Text(stringResource(R.string.copy)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.close)) }
+                TextButton(onClick = {
+                    showDialog = false
+                }) { Text(stringResource(R.string.close)) }
             }
         )
     }

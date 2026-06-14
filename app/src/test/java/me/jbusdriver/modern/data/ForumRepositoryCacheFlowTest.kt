@@ -30,8 +30,14 @@ class ForumRepositoryCacheFlowTest {
         val events = repository.observeForumBoards(nowMillis = { 1_100L }).toList()
 
         assertEquals(2, events.size)
-        assertEquals("Cached Board", (events[0] as CachedLoadEvent.Cached).entry.value.boardGroups.single().boards.single().name)
-        assertEquals("Fresh Board", (events[1] as CachedLoadEvent.Fresh).entry.value.boardGroups.single().boards.single().name)
+        assertEquals(
+            "Cached Board",
+            (events[0] as CachedLoadEvent.Cached).entry.value.boardGroups.single().boards.single().name
+        )
+        assertEquals(
+            "Fresh Board",
+            (events[1] as CachedLoadEvent.Fresh).entry.value.boardGroups.single().boards.single().name
+        )
         assertEquals(1, sessionClient.fetchCount)
     }
 
@@ -49,7 +55,10 @@ class ForumRepositoryCacheFlowTest {
         val events = repository.observeForumBoards(nowMillis = { 1_100L }).toList()
 
         assertEquals(2, events.size)
-        assertEquals("Cached Board", (events[0] as CachedLoadEvent.Cached).entry.value.boardGroups.single().boards.single().name)
+        assertEquals(
+            "Cached Board",
+            (events[0] as CachedLoadEvent.Cached).entry.value.boardGroups.single().boards.single().name
+        )
         val failure = events[1] as CachedLoadEvent.Failure
         assertTrue(failure.hadCachedValue)
         assertEquals("network down", failure.throwable.message)
@@ -63,20 +72,25 @@ class ForumRepositoryCacheFlowTest {
         val events = repository.observeForumBoards(nowMillis = { 1_000L }).toList()
 
         assertEquals(1, events.size)
-        assertEquals("Fresh Board", (events.single() as CachedLoadEvent.Fresh).entry.value.boardGroups.single().boards.single().name)
+        assertEquals(
+            "Fresh Board",
+            (events.single() as CachedLoadEvent.Fresh).entry.value.boardGroups.single().boards.single().name
+        )
     }
 
     @Test
-    fun `observeForumBoards emits failure without cached value when cache is missing`() = runBlocking {
-        val repository = repository(FakeCacheStore(), FakeSessionClient(IOException("network down")))
+    fun `observeForumBoards emits failure without cached value when cache is missing`() =
+        runBlocking {
+            val repository =
+                repository(FakeCacheStore(), FakeSessionClient(IOException("network down")))
 
-        val events = repository.observeForumBoards(nowMillis = { 1_000L }).toList()
+            val events = repository.observeForumBoards(nowMillis = { 1_000L }).toList()
 
-        assertEquals(1, events.size)
-        val failure = events.single() as CachedLoadEvent.Failure
-        assertFalse(failure.hadCachedValue)
-        assertEquals("network down", failure.throwable.message)
-    }
+            assertEquals(1, events.size)
+            val failure = events.single() as CachedLoadEvent.Failure
+            assertFalse(failure.hadCachedValue)
+            assertEquals("network down", failure.throwable.message)
+        }
 
     @Test
     fun `loadForumBoards refreshes expired cached data and returns fresh`() = runBlocking {
@@ -130,6 +144,7 @@ class ForumRepositoryCacheFlowTest {
         override fun writeMemory(key: String, value: String) {
             memory[key] = value
         }
+
         override suspend fun readDisk(key: String): String? = disk[key]
         override suspend fun writeDisk(key: String, value: String) {
             disk[key] = value

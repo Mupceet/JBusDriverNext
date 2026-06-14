@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.data
 
+import androidx.room.withTransaction
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
@@ -7,18 +8,17 @@ import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
-import androidx.room.withTransaction
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.convertDBItem
 import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
+import me.jbusdriver.modern.data.parser.wrapImage
 import me.jbusdriver.modern.domain.model.ActressCategory
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieCategory
-import me.jbusdriver.modern.data.parser.wrapImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -172,7 +172,10 @@ class DefaultCollectRepository @Inject constructor(
         val actresses = getCollectedActresses()
         val root = JsonObject().apply {
             addProperty("version", 1)
-            addProperty("exportTime", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date()))
+            addProperty(
+                "exportTime",
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
+            )
             add("movies", JsonArray().apply {
                 movies.forEach { movie ->
                     // categoryId is @Transient on Movie, must be added explicitly
@@ -248,7 +251,8 @@ class DefaultCollectRepository @Inject constructor(
                     MovieDBType -> {
                         val movie = GSON.fromJson(jsonStr, Movie::class.java)
                             .let { it.copy(imageUrl = it.imageUrl.wrapImage(siteConfig.baseUrl)) }
-                        val importedCategoryId = obj.get("categoryId")?.asInt ?: MovieCategory.id ?: 1
+                        val importedCategoryId =
+                            obj.get("categoryId")?.asInt ?: MovieCategory.id ?: 1
                         val item = movie.convertDBItem(categoryId = importedCategoryId)
                         if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++
@@ -257,10 +261,12 @@ class DefaultCollectRepository @Inject constructor(
                             imported++
                         }
                     }
+
                     ActressDBType -> {
                         val actress = GSON.fromJson(jsonStr, ActressInfo::class.java)
                             .let { it.copy(avatar = it.avatar.wrapImage(siteConfig.baseUrl)) }
-                        val importedCategoryId = obj.get("categoryId")?.asInt ?: ActressCategory.id ?: 2
+                        val importedCategoryId =
+                            obj.get("categoryId")?.asInt ?: ActressCategory.id ?: 2
                         val item = actress.convertDBItem(categoryId = importedCategoryId)
                         if (linkDao.hasByKey(item.dbType, item.key) >= 1) {
                             skipped++

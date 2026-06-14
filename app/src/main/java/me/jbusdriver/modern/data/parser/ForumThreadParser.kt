@@ -12,7 +12,8 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 fun parseForumTypeFilters(doc: Document): List<ForumTypeFilter> {
-    val currentPageTypeId = Regex("typeid=(\\d+)").find(doc.location())?.groupValues?.get(1)?.toIntOrNull()
+    val currentPageTypeId =
+        Regex("typeid=(\\d+)").find(doc.location())?.groupValues?.get(1)?.toIntOrNull()
     return doc.select("ul#thread_types > li > a").mapNotNull { link ->
         val href = link.attr("href")
         val li = link.parent()
@@ -63,12 +64,12 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         .map { it.attr("src").wrapForumImage(baseUrl) }
         .filter {
             it.isNotEmpty() &&
-                !it.contains("pin_") &&
-                !it.contains("small.gif") &&
-                !it.contains("hot.jpg") &&
-                !it.contains("recommend") &&
-                !it.contains("folder_lock") &&
-                !it.contains("arw_r")
+                    !it.contains("pin_") &&
+                    !it.contains("small.gif") &&
+                    !it.contains("hot.jpg") &&
+                    !it.contains("recommend") &&
+                    !it.contains("folder_lock") &&
+                    !it.contains("arw_r")
         }
 
     val pages = tbody.select(".tps a").lastOrNull()?.text()?.toIntOrNull() ?: 1
@@ -94,7 +95,7 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         isPinned = isPinned,
         isDigest = titleImages.any {
             it.attr("alt").equals("recommend", ignoreCase = true) ||
-                it.attr("src").contains("recommend", ignoreCase = true)
+                    it.attr("src").contains("recommend", ignoreCase = true)
         },
         pages = pages,
         isLocked = titleImages.any {
@@ -102,7 +103,7 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         },
         isHot = titleImages.any {
             it.attr("alt").equals("heatlevel", ignoreCase = true) ||
-                it.attr("src").contains("hot.jpg", ignoreCase = true)
+                    it.attr("src").contains("hot.jpg", ignoreCase = true)
         }
     )
 }
@@ -125,7 +126,8 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         ?: titleSubject?.text()?.trim()
         ?: ""
 
-    val typeLink = doc.select("h1.ts a[href*=typeid=], .nthread_info h1.ts a[href*=typeid=]").firstOrNull()
+    val typeLink =
+        doc.select("h1.ts a[href*=typeid=], .nthread_info h1.ts a[href*=typeid=]").firstOrNull()
     val typeId = typeLink?.attr("href")
         ?.let { Regex("typeid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
     val typeName = typeLink?.text()?.replace("[", "")?.replace("]", "")?.trim() ?: ""
@@ -144,17 +146,21 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
     val authorUid = authorLink?.attr("href")
         ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
     val postTime = (
-        doc.select(".nthread_other span.mr10").firstOrNull()?.text()?.trim()
-            ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim()
-            ?: ""
-        ).cleanForumPostTime()
+            doc.select(".nthread_other span.mr10").firstOrNull()?.text()?.trim()
+                ?: doc.select(".authi span.mr10").firstOrNull()?.text()?.trim()
+                ?: ""
+            ).cleanForumPostTime()
 
     val avatarSrc = doc.select(".nthread_firstpost .post_avatar img[src]").attr("src")
-        .ifBlank { doc.select("div.viewthread_authorinfo .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
+        .ifBlank {
+            doc.select("div.viewthread_authorinfo .avatar img[src]").firstOrNull()?.attr("src")
+                ?: ""
+        }
         .ifBlank { doc.select(".pls.favatar .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
 
     val typeOptionBlocks = parseForumPostContent(firstPost?.selectFirst("div.typeoption"), baseUrl)
-    val contentBlocks = typeOptionBlocks + parseForumPostContent(firstPost?.selectFirst("td.t_f"), baseUrl)
+    val contentBlocks =
+        typeOptionBlocks + parseForumPostContent(firstPost?.selectFirst("td.t_f"), baseUrl)
 
     val comments = firstPost?.select("div.cm div.pstl")?.map { pstl ->
         Comment(
@@ -168,27 +174,28 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         )
     } ?: emptyList()
 
-    val replies = doc.select(".nthread_postbox").filter { !it.hasClass("nthread_firstpostbox") }.mapNotNull { postBox ->
-        val floor = parseReplyFloor(postBox) ?: return@mapNotNull null
-        val replyAuthorLink = postBox.select("a.xw1").firstOrNull()
-        val replyAuthorUid = replyAuthorLink?.attr("href")
-            ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
-        val replyAvatar = postBox.select(".favatar .avatar img[src]").attr("src")
-            .ifBlank { postBox.select(".pls .avatar img[src]").attr("src") }
+    val replies = doc.select(".nthread_postbox").filter { !it.hasClass("nthread_firstpostbox") }
+        .mapNotNull { postBox ->
+            val floor = parseReplyFloor(postBox) ?: return@mapNotNull null
+            val replyAuthorLink = postBox.select("a.xw1").firstOrNull()
+            val replyAuthorUid = replyAuthorLink?.attr("href")
+                ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
+            val replyAvatar = postBox.select(".favatar .avatar img[src]").attr("src")
+                .ifBlank { postBox.select(".pls .avatar img[src]").attr("src") }
 
-        ForumReply(
-            floor = floor.number,
-            author = replyAuthorLink?.text()?.trim() ?: "",
-            authorUid = replyAuthorUid,
-            authorAvatar = replyAvatar,
-            authorGroup = postBox.select(".pls em a").text().trim(),
-            contentBlocks = parseReplyContent(postBox, baseUrl),
-            postTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
-                .ifBlank { postBox.select("em[id^=authorposton]").text().trim() }
-                .cleanForumPostTime(),
-            isPinned = floor.isPinned
-        )
-    }
+            ForumReply(
+                floor = floor.number,
+                author = replyAuthorLink?.text()?.trim() ?: "",
+                authorUid = replyAuthorUid,
+                authorAvatar = replyAvatar,
+                authorGroup = postBox.select(".pls em a").text().trim(),
+                contentBlocks = parseReplyContent(postBox, baseUrl),
+                postTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
+                    .ifBlank { postBox.select("em[id^=authorposton]").text().trim() }
+                    .cleanForumPostTime(),
+                isPinned = floor.isPinned
+            )
+        }
 
     return ForumThreadDetail(
         tid = tidMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0,
@@ -217,7 +224,7 @@ private fun parseReplyFloor(postBox: Element): ReplyFloor? {
         ?: Regex("(\\d+)\\s*#").find(anchor.text())?.groupValues?.get(1)?.toIntOrNull()
         ?: return null
     val isPinned = anchor.select("img[title*=置頂], img[src*=settop]").isNotEmpty() ||
-        anchor.text().contains("來自")
+            anchor.text().contains("來自")
     return ReplyFloor(number, isPinned)
 }
 

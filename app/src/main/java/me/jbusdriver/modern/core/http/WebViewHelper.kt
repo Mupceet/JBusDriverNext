@@ -5,12 +5,9 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.JBus
-import me.jbusdriver.modern.KLog
 import java.io.IOException
 
 object WebViewHelper {
@@ -85,12 +82,30 @@ object WebViewHelper {
         while (i < raw.length) {
             if (raw[i] == '\\' && i + 1 < raw.length) {
                 when (raw[i + 1]) {
-                    'n' -> { sb.append('\n'); i += 2 }
-                    'r' -> { sb.append('\r'); i += 2 }
-                    't' -> { sb.append('\t'); i += 2 }
-                    '"' -> { sb.append('"'); i += 2 }
-                    '\\' -> { sb.append('\\'); i += 2 }
-                    '/' -> { sb.append('/'); i += 2 }
+                    'n' -> {
+                        sb.append('\n'); i += 2
+                    }
+
+                    'r' -> {
+                        sb.append('\r'); i += 2
+                    }
+
+                    't' -> {
+                        sb.append('\t'); i += 2
+                    }
+
+                    '"' -> {
+                        sb.append('"'); i += 2
+                    }
+
+                    '\\' -> {
+                        sb.append('\\'); i += 2
+                    }
+
+                    '/' -> {
+                        sb.append('/'); i += 2
+                    }
+
                     'u' -> {
                         if (i + 5 < raw.length) {
                             val hex = raw.substring(i + 2, i + 6)
@@ -104,7 +119,10 @@ object WebViewHelper {
                             sb.append(raw[i]); i++
                         }
                     }
-                    else -> { sb.append(raw[i]); i++ }
+
+                    else -> {
+                        sb.append(raw[i]); i++
+                    }
                 }
             } else {
                 sb.append(raw[i]); i++

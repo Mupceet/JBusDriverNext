@@ -41,7 +41,6 @@ import androidx.core.net.toUri
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.MagnetUiModel
-import me.jbusdriver.modern.ui.MovieDetailUiModel
 
 /**
  * 磁力链接底部弹窗。
@@ -97,7 +96,10 @@ internal fun MagnetBottomSheet(
 
                     uiState.magnetsError != null && uiState.magnets.isEmpty() -> {
                         item {
-                            Text(stringResource(uiState.magnetsError ?: R.string.load_failed), color = MaterialTheme.colorScheme.error)
+                            Text(
+                                stringResource(uiState.magnetsError ?: R.string.load_failed),
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
 
@@ -136,9 +138,18 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                 if (magnet.link.isNotBlank()) {
                     try {
                         val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
-                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.select_download)))
+                        context.startActivity(
+                            Intent.createChooser(
+                                intent,
+                                context.getString(R.string.select_download)
+                            )
+                        )
                     } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(context, context.getString(R.string.no_handler), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.no_handler),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             },
@@ -189,13 +200,18 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
                 onClick = {
                     if (magnet.link.isNotBlank()) {
                         context.copy(magnet.link)
-                        Toast.makeText(context, context.getString(R.string.copied_magnet), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.copied_magnet),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             ) {
                 Icon(
                     painterResource(
-                        R.drawable.content_copy_24px),
+                        R.drawable.content_copy_24px
+                    ),
                     contentDescription = stringResource(R.string.copy_link),
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
