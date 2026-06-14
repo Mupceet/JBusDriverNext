@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.CacheLoader
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
@@ -161,6 +162,7 @@ inline fun <reified T> CacheStore.observeCached(
     forceRefresh: Boolean = false,
     revalidate: Boolean = true,
     noinline nowMillis: () -> Long = { System.currentTimeMillis() },
+    crossinline isCacheable: (T) -> Boolean = { true },
     crossinline fetch: suspend () -> T
 ): Flow<CachedLoadEvent<T>> = flow {
     var emittedCache = false
@@ -179,14 +181,37 @@ inline fun <reified T> CacheStore.observeCached(
     if (!shouldFetch) return@flow
 
     try {
-        val fresh = fetch()
-        val entry = writeCached(key, fresh, disk, nowMillis)
-        emit(CachedLoadEvent.Fresh(entry))
+        var fresh = fetch()
+        // 退化结果（如年龄验证/反爬中间页解析为 0 条）：重试一次；仍退化则不落缓存。
+        if (!isCacheable(fresh)) {
+            KLog.d("[Cache] fresh result not cacheable, retrying once: key=$key", "CacheSWR")
+            fresh = runCatching { fetch() }.getOrElse { fresh }
+        }
+
+        if (isCacheable(fresh)) {
+            val entry = writeCached(key, fresh, disk, nowMillis)
+            emit(CachedLoadEvent.Fresh(entry))
+        } else if (!emittedCache) {
+            // 无缓存可用时，仍把（空）结果交给 UI 以脱离加载态，但不持久化，避免毒化缓存。
+            emit(CachedLoadEvent.Fresh(ephemeralEntry(fresh, nowMillis())))
+        }
+        // 否则（已有缓存且结果退化）：保留缓存，既不发空 Fresh 也不落盘。
     } catch (throwable: Throwable) {
         if (throwable is CancellationException) throw throwable
         emit(CachedLoadEvent.Failure(throwable, emittedCache))
     }
 }
+
+/**
+ * 构造一个不持久化的 [CacheEntry]：仅在无缓存可用、且网络返回退化结果时，
+ * 临时把结果交给 UI，避免停留在加载态。
+ */
+fun <T> ephemeralEntry(value: T, now: Long): CacheEntry<T> = CacheEntry(
+    value = value,
+    storedAtMillis = now,
+    source = CacheSource.Network,
+    isExpired = false
+)
 
 /**
  * 从 [CachedLoadEvent] Flow 中获取最终值。

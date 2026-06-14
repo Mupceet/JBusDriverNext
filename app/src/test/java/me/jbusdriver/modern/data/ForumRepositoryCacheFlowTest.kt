@@ -10,11 +10,14 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
 class ForumRepositoryCacheFlowTest {
+
+    private val boardsKey = "forum:https://example.test:boards"
 
     @Test
     fun `observeForumBoards emits cached before fresh`() = runBlocking {
@@ -126,6 +129,72 @@ class ForumRepositoryCacheFlowTest {
         assertEquals(1, sessionClient.fetchCount)
     }
 
+    @Test
+    fun `observeForumBoards retries once when first fetch is empty and caches good result`() =
+        runBlocking {
+            val cacheStore = FakeCacheStore()
+            val sessionClient =
+                FakeSessionClient(listOf(emptyHomeHtml(), successHomeHtml("Fresh Board")))
+            val repository = repository(cacheStore, sessionClient)
+
+            val events = repository.observeForumBoards(nowMillis = { 1_000L }).toList()
+
+            assertEquals(1, events.size)
+            val fresh = events.single() as CachedLoadEvent.Fresh
+            assertEquals(
+                "Fresh Board",
+                fresh.entry.value.boardGroups.single().boards.single().name
+            )
+            assertEquals(2, sessionClient.fetchCount)
+            assertTrue(
+                (cacheStore.memory[boardsKey] ?: "").contains("Fresh Board")
+            )
+        }
+
+    @Test
+    fun `observeForumBoards keeps cached value and does not persist when all fetches empty`() =
+        runBlocking {
+            val cacheStore = FakeCacheStore()
+            cacheStore.writeCached(
+                key = boardsKey,
+                value = forumHomeData("Cached Board"),
+                nowMillis = { 1_000L }
+            )
+            val sessionClient = FakeSessionClient(listOf(emptyHomeHtml(), emptyHomeHtml()))
+            val repository = repository(cacheStore, sessionClient)
+
+            val events = repository.observeForumBoards(nowMillis = { 1_100L }).toList()
+
+            assertEquals(1, events.size)
+            val cached = events.single() as CachedLoadEvent.Cached
+            assertEquals(
+                "Cached Board",
+                cached.entry.value.boardGroups.single().boards.single().name
+            )
+            assertEquals(2, sessionClient.fetchCount)
+            // 缓存仍为好值，未被空结果覆盖。
+            assertTrue(
+                (cacheStore.memory[boardsKey] ?: "").contains("Cached Board")
+            )
+        }
+
+    @Test
+    fun `observeForumBoards emits ephemeral empty and does not cache when no cache and all empty`() =
+        runBlocking {
+            val cacheStore = FakeCacheStore()
+            val sessionClient = FakeSessionClient(listOf(emptyHomeHtml(), emptyHomeHtml()))
+            val repository = repository(cacheStore, sessionClient)
+
+            val events = repository.observeForumBoards(nowMillis = { 1_000L }).toList()
+
+            assertEquals(1, events.size)
+            val fresh = events.single() as CachedLoadEvent.Fresh
+            assertTrue(fresh.entry.value.boardGroups.isEmpty())
+            assertEquals(2, sessionClient.fetchCount)
+            assertNull(cacheStore.memory[boardsKey])
+            assertNull(cacheStore.disk[boardsKey])
+        }
+
     private fun repository(
         cacheStore: FakeCacheStore,
         sessionClient: FakeSessionClient
@@ -152,15 +221,17 @@ class ForumRepositoryCacheFlowTest {
     }
 
     private class FakeSessionClient(
-        private val response: Any
+        private val responses: List<Any>
     ) : ForumSessionClient {
         var fetchCount = 0
+
+        constructor(response: Any) : this(listOf(response))
 
         override suspend fun warmUp() = Unit
 
         override suspend fun fetchDocument(url: String): Document {
             fetchCount++
-            val value = response
+            val value = responses[minOf(fetchCount - 1, responses.lastIndex)]
             if (value is Throwable) throw value
             return Jsoup.parse(value as String, url)
         }
@@ -224,6 +295,14 @@ class ForumRepositoryCacheFlowTest {
               </div>
             </div>
           </body>
+        </html>
+    """.trimIndent()
+
+    /** 首页退化页（无版块结构），解析得 0 boards。 */
+    private fun emptyHomeHtml(): String = """
+        <html>
+          <head><title>JavBus</title></head>
+          <body></body>
         </html>
     """.trimIndent()
 }

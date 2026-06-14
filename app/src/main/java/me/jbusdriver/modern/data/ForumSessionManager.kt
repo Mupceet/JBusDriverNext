@@ -1,6 +1,8 @@
 package me.jbusdriver.modern.data
 
 import android.app.Activity
+import android.graphics.Bitmap
+import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -140,15 +142,21 @@ class ForumSessionManager @Inject constructor(
     suspend fun fetchDocument(url: String): Document {
         val wv = webView
             ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
-        val html = withContext(Dispatchers.Main) {
-            withTimeout(20_000) {
-                loadPageWithBlockedResources(wv, url)
-                KLog.d("[Forum] Page loaded: $url", TAG)
-                val raw = wv.evaluateJs("document.documentElement.outerHTML")
-                    ?: throw IOException("Failed to extract HTML from $url")
-                val html = unescapeJsString(raw)
-                KLog.d("[Forum] HTML extracted: ${html.length} chars", TAG)
-                html
+        // Serialize all navigations on the single shared WebView. Without this, two
+        // concurrent fetches (e.g. a duplicate load + a cache retry) each install their
+        // own WebViewClient and clobber each other's callbacks, so one fetch resumes on
+        // the other's page or never resumes at all.
+        val html = mutex.withLock {
+            withContext(Dispatchers.Main) {
+                withTimeout(20_000) {
+                    loadPageWithBlockedResources(wv, url)
+                    KLog.d("[Forum] Page loaded: $url", TAG)
+                    val raw = wv.evaluateJs("document.documentElement.outerHTML")
+                        ?: throw IOException("Failed to extract HTML from $url")
+                    val html = unescapeJsString(raw)
+                    KLog.d("[Forum] HTML extracted: ${html.length} chars", TAG)
+                    html
+                }
             }
         }
         return Jsoup.parse(html, url)
@@ -173,9 +181,22 @@ class ForumSessionManager @Inject constructor(
      * Load a URL with resource blocking (CSS/JS/images) for faster forum page loading.
      */
     private suspend fun loadPageWithBlockedResources(webView: WebView, url: String): String {
+        val expectedHost = runCatching { Uri.parse(url).host }.getOrNull()
         return withTimeout(20_000) {
             suspendCancellableCoroutine { cont ->
+                // A freshly installed WebViewClient can receive onPageFinished for a
+                // navigation it never started — e.g. a late hop of the previous page's
+                // redirect chain (the main-site load performed during session init).
+                // Resuming on that stale event captures the wrong DOM. Gate the resume
+                // on having seen onPageStarted for *our* loadUrl so a stale finish from
+                // an already-settled page (navigationStarted still false) is ignored.
+                // All WebView callbacks run on the main thread, so a plain var is safe.
+                var navigationStarted = false
                 webView.webViewClient = object : android.webkit.WebViewClient() {
+                    override fun onPageStarted(view: WebView?, pageUrl: String?, favicon: Bitmap?) {
+                        navigationStarted = true
+                    }
+
                     override fun shouldInterceptRequest(
                         view: WebView?,
                         request: WebResourceRequest?
@@ -198,10 +219,15 @@ class ForumSessionManager @Inject constructor(
                     }
 
                     override fun onPageFinished(view: WebView?, pageUrl: String?) {
-                        if (cont.isActive) {
-                            webView.webViewClient = android.webkit.WebViewClient()
-                            cont.resume(pageUrl ?: url) { _, _, _ -> }
-                        }
+                        if (!cont.isActive) return
+                        // Ignore finishes that belong to a prior, stale navigation.
+                        if (!navigationStarted) return
+                        // Sanity check: a cross-host interstitial (e.g. an age gate on a
+                        // different domain) is not our page. Same-host redirects still pass.
+                        val finishHost = pageUrl?.let { runCatching { Uri.parse(it).host }.getOrNull() }
+                        if (expectedHost != null && finishHost != null && finishHost != expectedHost) return
+                        webView.webViewClient = android.webkit.WebViewClient()
+                        cont.resume(pageUrl ?: url) { _, _, _ -> }
                     }
 
                     override fun onReceivedError(

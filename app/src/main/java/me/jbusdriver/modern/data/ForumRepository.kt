@@ -115,7 +115,8 @@ class DefaultForumRepository @Inject constructor(
             disk = true,
             forceRefresh = forceRefresh,
             revalidate = revalidate,
-            nowMillis = nowMillis
+            nowMillis = nowMillis,
+            isCacheable = { it.boardGroups.isNotEmpty() }
         ) {
             val doc = fetchForumDocument(url)
             val result = parseForumHomeData(doc, siteConfig.baseUrl)
