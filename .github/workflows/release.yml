@@ -59,7 +59,7 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
           echo "ORG_GRADLE_PROJECT_RELEASE_STORE_FILE=$keystore_path" >> "$GITHUB_ENV"
 
-      - name: Build signed release APK
+      - name: Verify and build signed release APK
         shell: bash
         env:
           ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -67,7 +67,7 @@ jobs:
           ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease --stacktrace
+          ./gradlew testDebugUnitTest lintDebug assembleRelease --stacktrace
 
       - name: Locate release APK
         id: apk
