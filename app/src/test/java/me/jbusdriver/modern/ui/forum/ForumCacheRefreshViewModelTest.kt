@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.forum
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -28,10 +29,11 @@ import org.junit.Before
 import org.junit.Test
 
 class ForumCacheRefreshViewModelTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
 
     @Before
     fun setup() {
+        testDispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 

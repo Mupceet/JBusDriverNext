@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.movielist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -27,7 +28,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActressListViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
 
     private val testActresses = listOf(
         ActressInfo("Alice", "http://avatar1.jpg", "http://link1"),
@@ -49,6 +50,7 @@ class ActressListViewModelTest {
 
     @Before
     fun setup() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 

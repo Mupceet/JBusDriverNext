@@ -3,7 +3,6 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,7 +78,7 @@ class CollectionListViewModel @Inject constructor(
      */
     fun loadCollection(dbType: Int) {
         currentDbType = dbType
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             // Restore persisted sort option on first load
@@ -133,7 +132,7 @@ class CollectionListViewModel @Inject constructor(
      * 从收藏中移除指定电影。
      */
     fun removeMovie(movie: MovieUiModel) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
                 val linkItem = LinkItem(
                     dbType = MovieDBType,
@@ -154,7 +153,7 @@ class CollectionListViewModel @Inject constructor(
      * 从收藏中移除指定演员。
      */
     fun removeActress(actress: ActressUiModel) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
                 val linkItem = LinkItem(
                     dbType = ActressDBType,

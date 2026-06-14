@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.movielist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -28,7 +29,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class GenreListViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
 
     private val testGenreCategories = listOf(
         GenreGroup("热门标签", listOf(Genre("高清", "/genre/hd"), Genre("VR", "/genre/vr")))
@@ -50,6 +51,7 @@ class GenreListViewModelTest {
 
     @Before
     fun setup() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 

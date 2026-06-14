@@ -1,10 +1,13 @@
 package me.jbusdriver.modern.ui.movielist
 
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -34,7 +37,8 @@ import org.junit.Test
 class MovieListViewModelTest {
 
     // Use a shared dispatcher for both Main and IO so test can control execution
-    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
+    private lateinit var viewModel: MovieListViewModel
 
     private val testMovies = listOf(
         Movie("Test Movie 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1"),
@@ -82,11 +86,15 @@ class MovieListViewModelTest {
 
     @Before
     fun setup() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
     }
 
     @After
     fun tearDown() {
+        // Cancel any viewModelScope coroutine still running on Dispatchers.IO so it doesn't
+        // access Dispatchers.Main after resetMain() (which surfaces as UncaughtExceptionsBeforeTest).
+        if (this::viewModel.isInitialized) viewModel.viewModelScope.cancel()
         Dispatchers.resetMain()
     }
 
@@ -95,7 +103,7 @@ class MovieListViewModelTest {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
         // ViewModel launches on Dispatchers.IO; give real IO threads time to complete
@@ -121,7 +129,7 @@ class MovieListViewModelTest {
                 else -> MoviePageResult(PageInfo(2, 3, listOf(1, 2, 3)), page2Movies)
             }
         }
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -143,7 +151,7 @@ class MovieListViewModelTest {
     @Test
     fun loadFirstPage_handlesError() = runTest(testDispatcher) {
         val repository = fullFakeRepo { _, _ -> throw RuntimeException("Network error") }
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -161,7 +169,7 @@ class MovieListViewModelTest {
             callCount++
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -183,7 +191,7 @@ class MovieListViewModelTest {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 1, listOf(1)), testMovies)
         }
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -214,7 +222,7 @@ class MovieListViewModelTest {
                 MoviePageResult(PageInfo(), emptyList())
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? = null
         }
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
 
         viewModel.setDataSourceType(DataSourceType.CENSORED)
         advanceUntilIdle()
@@ -252,7 +260,7 @@ class MovieListViewModelTest {
             ),
             revalidateArgs
         )
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
         viewModel.loadFirstPage()
         advanceUntilIdle()
         viewModel.setAtTopForFreshUpdates(false)
@@ -281,7 +289,7 @@ class MovieListViewModelTest {
             ),
             mutableListOf()
         )
-        val viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository)
         viewModel.loadFirstPage()
         advanceUntilIdle()
 

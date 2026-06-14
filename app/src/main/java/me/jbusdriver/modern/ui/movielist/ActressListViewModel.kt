@@ -3,7 +3,6 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,7 +64,7 @@ data class ActressListUiState(
  * 使用场景：在主界面的女优列表 Tab 页面中使用，通过 Hilt 注入。
  * 用户切换女优分类标签时切换数据源，支持分页加载和下拉刷新。
  *
- * 线程：所有网络请求在 [Dispatchers.IO] 上执行，UI 状态通过 [MutableStateFlow] 更新。
+ * 线程：网络 IO 由 Repository 内部在 IO/Default 线程执行，ViewModel 协程运行于 Main。
  *
  * @param repository 电影数据仓库，负责从网络获取和解析女优列表
  */
@@ -294,7 +293,7 @@ class ActressListViewModel @Inject constructor(
         if (!pages.shouldLoadMore(state.pageInfo)) return
 
         pages.advanceTo(nextPage)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = repository.loadActresses(dataSourceType, nextPage)

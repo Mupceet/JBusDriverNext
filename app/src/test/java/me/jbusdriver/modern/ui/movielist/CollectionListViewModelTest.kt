@@ -1,8 +1,11 @@
 package me.jbusdriver.modern.ui.movielist
 
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -30,7 +33,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class CollectionListViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
+    private lateinit var viewModel: CollectionListViewModel
 
     private val testMovies = listOf(
         Movie("Collected Movie", "http://img.jpg", "ABC-001", "2024-01-01", "http://link1")
@@ -58,6 +62,7 @@ class CollectionListViewModelTest {
 
     @Before
     fun setup() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         NetClient.siteConfig = object : SiteConfig {
             override var baseUrl: String = "https://www.javbus.com"
@@ -67,6 +72,9 @@ class CollectionListViewModelTest {
 
     @After
     fun tearDown() {
+        // Cancel any viewModelScope coroutine still running on Dispatchers.IO so it doesn't
+        // access Dispatchers.Main after resetMain() (which surfaces as UncaughtExceptionsBeforeTest).
+        if (this::viewModel.isInitialized) viewModel.viewModelScope.cancel()
         Dispatchers.resetMain()
     }
 
@@ -91,7 +99,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        val viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
 
         assertTrue(testMovies.first().toLinkItem().toILink() is Movie)
         viewModel.loadCollection(1) // MovieDBType
@@ -127,7 +135,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        val viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
 
         assertTrue(testActresses.first().toLinkItem().toILink() is ActressInfo)
         viewModel.loadCollection(2) // ActressDBType
@@ -157,7 +165,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        val viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
 
         viewModel.loadCollection(1)
         advanceUntilIdle()
