@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.AtTopGate
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
@@ -413,7 +414,8 @@ class LinkMovieListViewModel @AssistedInject constructor(
                 } else {
                     _uiState.update { it.copy(isLoadingActress = false) }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                KLog.e("loadActressDetail failed", e)
                 _uiState.update { it.copy(isLoadingActress = false) }
             }
         }

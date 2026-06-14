@@ -24,6 +24,7 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
 import me.jbusdriver.modern.ui.toUiModel
+import me.jbusdriver.modern.KLog
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -142,7 +143,10 @@ class CollectionListViewModel @Inject constructor(
                 )
                 collectRepository.removeCollect(linkItem)
                 loadCollection(MovieDBType)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                // 本地数据库删除失败时记录日志；列表不会刷新，影片仍保留在收藏中（UI 状态一致）
+                KLog.e("removeMovie failed", e)
+            }
         }
     }
 
@@ -160,7 +164,9 @@ class CollectionListViewModel @Inject constructor(
                 )
                 collectRepository.removeCollect(linkItem)
                 loadCollection(ActressDBType)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                KLog.e("removeActress failed", e)
+            }
         }
     }
 

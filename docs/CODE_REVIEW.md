@@ -328,22 +328,32 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 
 ## 九、架构建议
 
-### 9.1 缺少统一的错误处理策略
+### 9.1 ~~缺少统一的错误处理策略~~ 已统一（✅ 已处理）
 
-各 ViewModel 错误处理方式不一致：有的显示 `error` 状态，有的显示 Snackbar，有的静默忽略（`catch (_: Exception) {}`）。
+历史问题：各 ViewModel 错误处理方式不一致（`error` 状态 / Snackbar / 静默忽略）。
 
-**建议**: 定义统一的 `ErrorEvent` 或使用 `Channel<Error>` 向 UI 层传递错误。
+**采纳的策略（i18n 模式 A 之后已统一）**：ViewModel 一律不持有用户可见字符串，改为发出 `@StringRes Int`：
+
+| 场景 | 字段 | UI 表现 |
+|------|------|---------|
+| 阻断性加载失败（列表/详情为空） | `error: @StringRes Int?` | `ErrorView`/`EmptyStateView` 经 `stringResource` 解析 |
+| 后台刷新/暂态提示 | `refreshMessage: @StringRes Int?` | Snackbar，经 `context.getString` 解析 |
+| 最佳努力型操作（本地收藏删除等罕见失败） | 不抛到 UI | `KLog.e` 记录，UI 保持一致状态 |
+
+未采用 `Channel<ErrorEvent>`：当前 `error`/`refreshMessage` 两个 `@StringRes Int?` 字段已覆盖全部用户可见错误，且与模式 A 的资源化一致；引入 Channel 属过度设计。
+
+**残留**：`HtmlClient` 的重试编排（`NetClient` 为 `object`，无 mock 库）仍需可注入的 fetch 接口才能单测；本地删除失败的 Snackbar 反馈为可选增强。
 
 ### 9.2 缺少单元测试覆盖的模块
 
 以下核心模块缺少单元测试：
-- `ForumSessionManager`（WebView 相关）
-- `HtmlClient`（重试逻辑）
-- `SiteConfig`（URL 解析）
-- `CollectRepository`（数据库操作）
-- `ForumPostParser`（论坛内容解析）
-- `ForumRepository`（论坛数据）
-- 所有 ViewModel 的 `revalidate` 和 `loadMore` 逻辑
+- `ForumSessionManager`（WebView 相关）— 仍缺：依赖 WebView/设备，需 instrumented test
+- `HtmlClient`（重试逻辑）— ✅ 部分：`isDriverVerifyPage` 判定已测；完整重试编排需 `NetClient` 可注入
+- ~~`SiteConfig`（URL 解析）~~ — ✅ `resolveUrl` 已测
+- ~~`CollectRepository`（数据库操作）~~ — ✅ 已有 `CollectRepositoryTest`
+- ~~`ForumPostParser`（论坛内容解析）~~ — ✅ `parseForumPostContent`（列表/内联样式/null）已测
+- ~~`ForumRepository`（论坛数据）~~ — ✅ 已有 `ForumRepositoryCacheFlowTest`
+- ~~ViewModel `revalidate`/`loadMore`~~ — ✅ Movie/Link/Actress/Forum 均有覆盖（含 `PagedSwrStateTest`）
 
 ### 9.3 缺少深链路由单元测试
 
@@ -413,6 +423,8 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 | §10 | Task 1–7（ForumSession/Cookie/索引/FileCache 等） | 已核实全部实施 |
 | i18n | 6.1 字符串资源化 | 基本完成：`values/`(繁中默认) + `values-en/`(英文) 约 128 键；全部 Composable 与 ViewModel 文案已迁移。ViewModel 一律发出 `@StringRes Int`（error / refreshMessage / ScanState.error / 标题），UI 层 `stringResource`/`context.getString` 解析（模式 A）。仅余 debug diff-log 与解析数据比较串（非用户可见，刻意保留） |
 | i18n | 6.2 繁简混用 | 基本解决：硬编码文案全部上移到资源，简繁混用（如 磁力链接/連結、Refresh failed/刷新失敗）经统一 key 消除 |
+| 架构 | 9.1 统一错误处理策略 | ✅ 已统一：ViewModel 发出 `@StringRes Int`（error 阻断 / refreshMessage 暂态 / 最佳努力操作记日志）；详见 §9.1 |
+| 测试 | 9.2 单元测试 | ✅ 基本完成：新增 SiteConfig / ForumPostParser / HtmlClient verify 测试；CollectRepository/ForumRepository/各 ViewModel 均已有覆盖；仅 ForumSessionManager（设备相关）与 HtmlClient 完整重试编排待补 |
 
 ### 🔄 进行中 / 部分完成
 
@@ -425,6 +437,5 @@ ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按
 
 | 分类 | 问题 |
 |------|------|
-| 架构 | 9.1 统一错误处理策略 |
-| 测试/文档 | 9.2–9.4 ForumSessionManager/HtmlClient/SiteConfig/CollectRepository/ForumRepository 等单元测试与 KDoc |
+| 测试/文档 | 9.3 深链路由测试（`resolveJavbusRoute`）；9.4 公共 API KDoc；ForumSessionManager（设备相关）与 HtmlClient 完整重试编排（需 `NetClient` 可注入） |
 
