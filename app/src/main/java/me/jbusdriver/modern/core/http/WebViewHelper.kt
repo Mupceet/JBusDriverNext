@@ -9,6 +9,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.JBus
 import java.io.IOException
+import kotlin.time.Duration.Companion.milliseconds
 
 object WebViewHelper {
 
@@ -23,7 +24,7 @@ object WebViewHelper {
     }
 
     suspend fun WebView.loadUrlAwait(url: String, timeoutMs: Long = 20_000): String {
-        return withTimeout(timeoutMs) {
+        return withTimeout(timeoutMs.milliseconds) {
             suspendCancellableCoroutine { cont ->
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, pageUrl: String?) {
@@ -58,7 +59,7 @@ object WebViewHelper {
     }
 
     suspend fun WebView.evaluateJs(js: String): String? {
-        return withTimeout(10_000) {
+        return withTimeout(10_000.milliseconds) {
             suspendCancellableCoroutine { cont ->
                 cont.invokeOnCancellation {
                     post {

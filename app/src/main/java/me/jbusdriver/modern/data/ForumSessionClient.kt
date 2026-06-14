@@ -28,10 +28,6 @@ class DefaultForumSessionClient @Inject constructor(
 
     private suspend fun ensureSession() {
         if (sessionManager.isInitialized()) return
-        val activity = JBusManager.manager
-            .mapNotNull { it.get() }
-            .firstOrNull { !it.isFinishing && !it.isDestroyed }
-            ?: throw IllegalStateException("No valid activity available for forum session init")
-        sessionManager.ensureSession(activity)
+        sessionManager.ensureSession()
     }
 }

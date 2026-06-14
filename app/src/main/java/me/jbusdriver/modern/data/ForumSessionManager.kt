@@ -1,8 +1,6 @@
 package me.jbusdriver.modern.data
 
-import android.app.Activity
 import android.graphics.Bitmap
-import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -25,6 +23,8 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
 
 private const val TAG = "ForumSession"
 
@@ -68,7 +68,7 @@ private fun isImageResource(url: String): Boolean {
  * and uses it to fetch all forum pages, extracting HTML for Jsoup parsing.
  *
  * Lifecycle: WebView is created on first use and kept alive until
- * [destroy] is called (typically when the user leaves the forum tab).
+ * destroy is called (typically when the user leaves the forum tab).
  */
 interface ForumCookiePersister {
     suspend fun persistCookies()
@@ -87,7 +87,7 @@ class ForumSessionManager @Inject constructor(
 
     fun isInitialized(): Boolean = initialized.get()
 
-    suspend fun ensureSession(activity: Activity) {
+    suspend fun ensureSession() {
         if (initialized.get()) return
         mutex.withLock {
             if (initialized.get()) return
@@ -101,7 +101,7 @@ class ForumSessionManager @Inject constructor(
                 return
             }
 
-            initWebView(activity)
+            initWebView()
         }
     }
 
@@ -114,8 +114,8 @@ class ForumSessionManager @Inject constructor(
         }
     }
 
-    private suspend fun initWebView(activity: Activity) {
-        withTimeout(15_000) {
+    private suspend fun initWebView() {
+        withTimeout(15_000.milliseconds) {
             withContext(Dispatchers.Main) {
                 val wv = WebViewHelper.createWebView()
                 webView = wv
@@ -124,7 +124,7 @@ class ForumSessionManager @Inject constructor(
                     KLog.d("[Forum] Loading main site: $mainUrl", TAG)
                     loadPageWithBlockedResources(wv, mainUrl)
 
-                    delay(1000)
+                    delay(1000.milliseconds)
 
                     cookieStore.saveCookies(mainUrl)
                     initialized.set(true)
@@ -148,7 +148,7 @@ class ForumSessionManager @Inject constructor(
         // the other's page or never resumes at all.
         val html = mutex.withLock {
             withContext(Dispatchers.Main) {
-                withTimeout(20_000) {
+                withTimeout(20_000.milliseconds) {
                     loadPageWithBlockedResources(wv, url)
                     KLog.d("[Forum] Page loaded: $url", TAG)
                     val raw = wv.evaluateJs("document.documentElement.outerHTML")
@@ -181,8 +181,8 @@ class ForumSessionManager @Inject constructor(
      * Load a URL with resource blocking (CSS/JS/images) for faster forum page loading.
      */
     private suspend fun loadPageWithBlockedResources(webView: WebView, url: String): String {
-        val expectedHost = runCatching { Uri.parse(url).host }.getOrNull()
-        return withTimeout(20_000) {
+        val expectedHost = runCatching { url.toUri().host }.getOrNull()
+        return withTimeout(20_000.milliseconds) {
             suspendCancellableCoroutine { cont ->
                 // A freshly installed WebViewClient can receive onPageFinished for a
                 // navigation it never started — e.g. a late hop of the previous page's
@@ -224,7 +224,7 @@ class ForumSessionManager @Inject constructor(
                         if (!navigationStarted) return
                         // Sanity check: a cross-host interstitial (e.g. an age gate on a
                         // different domain) is not our page. Same-host redirects still pass.
-                        val finishHost = pageUrl?.let { runCatching { Uri.parse(it).host }.getOrNull() }
+                        val finishHost = pageUrl?.let { runCatching { it.toUri().host }.getOrNull() }
                         if (expectedHost != null && finishHost != null && finishHost != expectedHost) return
                         webView.webViewClient = android.webkit.WebViewClient()
                         cont.resume(pageUrl ?: url) { _, _, _ -> }
