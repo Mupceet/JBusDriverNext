@@ -3,14 +3,12 @@ package me.jbusdriver.modern.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
@@ -95,9 +93,7 @@ class MovieDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMagnets = true, magnetsError = null) }
             try {
-                val magnets = withContext(Dispatchers.IO) {
-                    magnetRepository.fetchMagnets(gid, uc).map { it.toUiModel() }
-                }
+                val magnets = magnetRepository.fetchMagnets(gid, uc).map { it.toUiModel() }
                 _uiState.update {
                     it.copy(magnets = magnets, isLoadingMagnets = false)
                 }
