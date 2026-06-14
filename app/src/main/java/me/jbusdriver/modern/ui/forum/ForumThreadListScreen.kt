@@ -48,7 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,7 +82,6 @@ fun ForumThreadListScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
     val refreshLabel = stringResource(R.string.refresh)
     val showScrollToTop = rememberScrollToTopVisibility(listState)
 
@@ -205,10 +203,11 @@ fun ForumThreadListScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 64.dp)
             )
+            val pendingFreshMessage = stringResource(state.refreshMessage ?: R.string.new_data_available)
             LaunchedEffect(state.pendingFreshThreads) {
                 if (state.pendingFreshThreads != null) {
                     val result = snackbarHostState.showSnackbar(
-                        message = context.getString(state.refreshMessage ?: R.string.new_data_available),
+                        message = pendingFreshMessage,
                         actionLabel = refreshLabel,
                         duration = SnackbarDuration.Long
                     )

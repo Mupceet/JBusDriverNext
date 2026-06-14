@@ -250,10 +250,11 @@ fun ForumThreadDetailScreen(
                     state.isLoading -> LoadingViewCentered()
                     else -> EmptyStateView(message = state.error?.let { stringResource(it) })
                 }
+                val pendingFreshMessage = stringResource(state.refreshMessage ?: R.string.new_data_available)
                 LaunchedEffect(state.pendingFreshDetail) {
                     if (state.pendingFreshDetail != null) {
                         val result = snackbarHostState.showSnackbar(
-                            message = context.getString(state.refreshMessage ?: R.string.new_data_available),
+                            message = pendingFreshMessage,
                             actionLabel = refreshLabel,
                             duration = SnackbarDuration.Long
                         )

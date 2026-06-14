@@ -45,7 +45,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,7 +97,6 @@ fun LinkMovieListScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
@@ -131,10 +129,12 @@ fun LinkMovieListScreen(
     }
 
     val refreshActionLabel = stringResource(R.string.refresh)
-    LaunchedEffect(uiState.refreshMessage) {
-        uiState.refreshMessage?.let { resId ->
+    val refreshMessageRes = uiState.refreshMessage
+    val refreshMessage = refreshMessageRes?.let { stringResource(it) }
+    LaunchedEffect(refreshMessageRes) {
+        if (refreshMessage != null) {
             val result = snackbarHostState.showSnackbar(
-                message = context.getString(resId),
+                message = refreshMessage,
                 actionLabel = refreshActionLabel,
                 duration = SnackbarDuration.Long
             )

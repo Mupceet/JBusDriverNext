@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +79,9 @@ fun CollectCategoryScreen(
     val movieState by movieVm.uiState.collectAsStateWithLifecycle()
     val actressState by actressVm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
+    val exportSuccessMessage = stringResource(R.string.export_success)
+    val cannotReadFileMessage = stringResource(R.string.cannot_read_file)
     val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -97,9 +101,9 @@ fun CollectCategoryScreen(
                 context.contentResolver.openOutputStream(uri)?.use { os ->
                     os.write(json.toByteArray(Charsets.UTF_8))
                 }
-                Toast.makeText(context, context.getString(R.string.export_success), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, exportSuccessMessage, Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(context, context.getString(R.string.export_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.export_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -114,7 +118,7 @@ fun CollectCategoryScreen(
                     context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                 }
                 if (json == null) {
-                    Toast.makeText(context, context.getString(R.string.cannot_read_file), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, cannotReadFileMessage, Toast.LENGTH_SHORT).show()
                     return@launch
                 }
                 actionVm.importCollectionsJson(
@@ -124,11 +128,11 @@ fun CollectCategoryScreen(
                         actressVm.loadCollection(ActressDBType)
                     },
                     onError = { e ->
-                        Toast.makeText(context, context.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, resources.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
                     }
                 )
             } catch (e: Exception) {
-                Toast.makeText(context, context.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, resources.getString(R.string.import_failed_detail, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -56,6 +56,7 @@ fun ActressAvatar(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
+    val copiedMessage = stringResource(R.string.copied)
 
     Box(
         modifier = modifier
@@ -97,7 +98,7 @@ fun ActressAvatar(
             confirmButton = {
                 TextButton(onClick = {
                     ctx.copy(contentDescription)
-                    Toast.makeText(ctx, ctx.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, copiedMessage, Toast.LENGTH_SHORT).show()
                     showDialog = false
                 }) { Text(stringResource(R.string.copy)) }
             },

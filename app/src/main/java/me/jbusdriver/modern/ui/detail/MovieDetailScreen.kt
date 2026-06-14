@@ -226,6 +226,8 @@ private fun DetailContent(
     val listState = rememberLazyListState()
     val coverHeight = remember { mutableStateOf(0) }
     val context = LocalContext.current
+    val copiedMessage = stringResource(R.string.copied)
+    val copiedTitleMessage = stringResource(R.string.copied_title)
     var selectedHeader by remember { mutableStateOf<HeaderUiModel?>(null) }
     var coverAspectRatio by remember {
         mutableFloatStateOf(1.49f)
@@ -276,7 +278,7 @@ private fun DetailContent(
                         onLongClick = {
 
                             context.copy(detail.title)
-                            Toast.makeText(context, context.getString(R.string.copied_title), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, copiedTitleMessage, Toast.LENGTH_SHORT).show()
                         },
                         onClick = {}
                     )
@@ -338,7 +340,7 @@ private fun DetailContent(
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .clickable {
                                                     context.copy(header.value)
-                                                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
                                                 },
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -435,7 +437,7 @@ private fun DetailContent(
             confirmButton = {
                 TextButton(onClick = {
                     context.copy(header.value)
-                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
                     selectedHeader = null
                 }) { Text(stringResource(R.string.copy)) }
             },
