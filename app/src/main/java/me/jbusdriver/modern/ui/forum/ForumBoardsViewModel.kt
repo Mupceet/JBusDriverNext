@@ -137,9 +137,4 @@ class ForumBoardsViewModel @Inject constructor(
     fun consumeRefreshMessage() {
         _uiState.update { it.copy(refreshMessage = null) }
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        repository.destroySession()
-    }
 }

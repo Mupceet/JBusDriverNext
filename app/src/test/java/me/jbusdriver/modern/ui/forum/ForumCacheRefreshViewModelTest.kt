@@ -87,7 +87,6 @@ class ForumCacheRefreshViewModelTest {
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
 
-        override fun destroySession() = Unit
     }
 
     private fun homeData(groups: Int = 0) = ForumHomeData(
@@ -240,7 +239,6 @@ class ForumCacheRefreshViewModelTest {
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
 
-        override fun destroySession() = Unit
     }
 
     private fun threadResult(count: Int) = ForumThreadPageResult(

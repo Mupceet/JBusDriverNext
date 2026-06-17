@@ -76,16 +76,21 @@ class DefaultSearchRepository @Inject constructor(
         page: Int,
         forceRefresh: Boolean
     ): MoviePageResult {
+        siteConfig.awaitReady()
         val baseUrl = siteConfig.baseUrl
         val encodedQuery = encodeSearchPathSegment(query)
         val url =
             "${baseUrl}${type.urlPathFormater.format(encodedQuery)}${if (page > 1) "/$page" else ""}"
-        val cacheKey = "search_${type.name}_${URLEncoder.encode(query, "UTF-8")}_$page"
+        val cacheKey = siteCacheKey(
+            baseUrl,
+            "search-${type.name}",
+            "${URLEncoder.encode(query, "UTF-8")}_$page"
+        )
 
         return cacheStore.lruCached(cacheKey, forceRefresh) {
             val doc = htmlClient.fetchDocument(url)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val movies = loadMovieFromDoc(doc, siteConfig.baseUrl)
+            val movies = loadMovieFromDoc(doc, baseUrl)
             MoviePageResult(pageInfo, movies)
         }
     }
@@ -94,17 +99,22 @@ class DefaultSearchRepository @Inject constructor(
         query: String,
         page: Int
     ): Pair<PageInfo, List<ActressInfo>> {
+        siteConfig.awaitReady()
         val baseUrl = siteConfig.baseUrl
         val type = SearchType.ACTRESS
         val encodedQuery = encodeSearchPathSegment(query)
         val url =
             "${baseUrl}${type.urlPathFormater.format(encodedQuery)}${if (page > 1) "/$page" else ""}"
-        val cacheKey = "search_actress_${URLEncoder.encode(query, "UTF-8")}_$page"
+        val cacheKey = siteCacheKey(
+            baseUrl,
+            "search-actress",
+            "${URLEncoder.encode(query, "UTF-8")}_$page"
+        )
 
         return cacheStore.lruCached(cacheKey) {
             val doc = htmlClient.fetchDocument(url)
             val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = page, nextPage = page)
-            val actresses = parseActressList(doc, siteConfig.baseUrl)
+            val actresses = parseActressList(doc, baseUrl)
             pageInfo to actresses
         }
     }

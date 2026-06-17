@@ -140,13 +140,13 @@ class ForumSessionManager @Inject constructor(
     }
 
     suspend fun fetchDocument(url: String): Document {
-        val wv = webView
-            ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
         // Serialize all navigations on the single shared WebView. Without this, two
         // concurrent fetches (e.g. a duplicate load + a cache retry) each install their
         // own WebViewClient and clobber each other's callbacks, so one fetch resumes on
         // the other's page or never resumes at all.
         val html = mutex.withLock {
+            val wv = webView
+                ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
             withContext(Dispatchers.Main) {
                 withTimeout(20_000.milliseconds) {
                     loadPageWithBlockedResources(wv, url)
@@ -166,15 +166,19 @@ class ForumSessionManager @Inject constructor(
         cookieStore.saveCookies(siteConfig.referer())
     }
 
-    fun destroy() {
-        val wv = webView
-        if (wv != null) {
-            KLog.d("[Forum] Destroying WebView", TAG)
-            wv.stopLoading()
-            wv.destroy()
-            webView = null
+    suspend fun destroy() {
+        mutex.withLock {
+            withContext(Dispatchers.Main.immediate) {
+                val wv = webView
+                if (wv != null) {
+                    KLog.d("[Forum] Destroying WebView", TAG)
+                    wv.stopLoading()
+                    wv.destroy()
+                    webView = null
+                }
+                initialized.set(false)
+            }
         }
-        initialized.set(false)
     }
 
     /**

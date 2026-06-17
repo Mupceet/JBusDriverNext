@@ -67,8 +67,6 @@ interface ForumRepository {
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
     ): Flow<CachedLoadEvent<ForumThreadDetail>>
-
-    fun destroySession()
 }
 
 @Singleton
@@ -95,11 +93,6 @@ class DefaultForumRepository @Inject constructor(
             }
         }
         return doc
-    }
-
-    override fun destroySession() {
-        sessionClient.destroy()
-        cookiesPersistedForForum.set(false)
     }
 
     override fun observeForumBoards(

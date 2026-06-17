@@ -236,7 +236,7 @@ class ForumRepositoryCacheFlowTest {
             return Jsoup.parse(value as String, url)
         }
 
-        override fun destroy() = Unit
+        override suspend fun destroy() = Unit
     }
 
     private class FakeCookiePersister : ForumCookiePersister {

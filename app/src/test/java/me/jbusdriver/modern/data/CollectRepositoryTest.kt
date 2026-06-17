@@ -1,9 +1,13 @@
 package me.jbusdriver.modern.data
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.convertDBItem
+import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
@@ -92,6 +96,58 @@ class CollectRepositoryTest {
         assertEquals("Alice", actresses.first().name)
     }
 
+    @Test
+    fun defaultRepository_importRunsInsideSingleTransaction() = runTest {
+        val transactionRunner = RecordingTransactionRunner()
+        val dao = TransactionCheckingLinkItemDao(transactionRunner)
+        val repository = DefaultCollectRepository(
+            linkDao = dao,
+            siteConfig = fakeSiteConfig(),
+            transactionRunner = transactionRunner
+        )
+        val json = """
+            {
+              "version": 1,
+              "movies": [
+                {
+                  "title": "Test",
+                  "imageUrl": "http://img.jpg",
+                  "code": "ABC-001",
+                  "date": "2024-01-01",
+                  "detailUrl": "http://link1",
+                  "categoryId": 1
+                }
+              ],
+              "actresses": []
+            }
+        """.trimIndent()
+
+        val result = repository.importCollectionsFromJson(json)
+
+        assertEquals(1 to 0, result)
+        assertEquals(1, transactionRunner.calls)
+        assertEquals(1, dao.items.size)
+    }
+
+    @Test
+    fun defaultRepository_toggleRunsInsideTransaction() = runTest {
+        val transactionRunner = RecordingTransactionRunner()
+        val dao = TransactionCheckingLinkItemDao(transactionRunner)
+        val repository = DefaultCollectRepository(
+            linkDao = dao,
+            siteConfig = fakeSiteConfig(),
+            transactionRunner = transactionRunner
+        )
+
+        val result = repository.toggleMovieCollect(
+            Movie("Test", "http://img.jpg", "ABC-001", "2024-01-01", "http://link1")
+        )
+
+        assertTrue(result)
+        assertEquals(1, transactionRunner.calls)
+        assertEquals(1, dao.items.size)
+    }
+
     private class FakeCollectRepository : CollectRepository {
         private val collectedMovies = mutableMapOf<String, Movie>()
         private val collectedActresses = mutableMapOf<String, ActressInfo>()
@@ -139,5 +195,65 @@ class CollectRepositoryTest {
         override suspend fun exportCollectionsJson() = "{}"
 
         override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+    }
+
+    private class RecordingTransactionRunner : CollectTransactionRunner {
+        var calls = 0
+        var inTransaction = false
+
+        override suspend fun <T> withTransaction(block: suspend () -> T): T {
+            calls += 1
+            inTransaction = true
+            return try {
+                block()
+            } finally {
+                inTransaction = false
+            }
+        }
+    }
+
+    private class TransactionCheckingLinkItemDao(
+        private val transactionRunner: RecordingTransactionRunner
+    ) : LinkItemDao {
+        val items = mutableListOf<LinkItem>()
+
+        override suspend fun insert(link: LinkItem): Long {
+            check(transactionRunner.inTransaction) { "insert must run in transaction" }
+            if (items.any { it.dbType == link.dbType && it.key == link.key }) return -1
+            items += link.copy(id = items.size + 1)
+            return items.size.toLong()
+        }
+
+        override suspend fun update(link: LinkItem): Int = 0
+
+        override suspend fun delete(dbType: Int, key: String): Int {
+            check(transactionRunner.inTransaction) { "delete must run in transaction" }
+            val before = items.size
+            items.removeAll { it.dbType == dbType && it.key == key }
+            return before - items.size
+        }
+
+        override fun listAll(): Flow<List<LinkItem>> = flow {
+            emit(items.toList())
+        }
+
+        override suspend fun listByType(dbType: Int): List<LinkItem> =
+            items.filter { it.dbType == dbType }
+
+        override suspend fun queryLink(): List<LinkItem> =
+            items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }
+
+        override suspend fun queryByCategoryId(categoryId: Int): List<LinkItem> =
+            items.filter { it.categoryId == categoryId }
+
+        override suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int = 0
+
+        override suspend fun hasByKey(dbType: Int, key: String): Int =
+            items.count { it.dbType == dbType && it.key == key }
+    }
+
+    private fun fakeSiteConfig() = object : SiteConfig {
+        override var baseUrl: String = "https://example.test"
+        override fun resolve(pathOrUrl: String): String = pathOrUrl
     }
 }

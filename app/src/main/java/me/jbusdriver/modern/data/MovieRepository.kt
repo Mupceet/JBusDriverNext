@@ -14,6 +14,7 @@ import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.cache.persistentCached
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.core.site.resolveUrl
 import me.jbusdriver.modern.data.parser.loadMovieFromDoc
 import me.jbusdriver.modern.data.parser.parseActressAttrs
 import me.jbusdriver.modern.data.parser.parseActressList
@@ -218,24 +219,35 @@ class DefaultMovieRepository @Inject constructor(
         revalidate: Boolean,
         nowMillis: () -> Long
     ): Flow<CachedLoadEvent<MoviePageResult>> {
-        val baseUrl = siteConfig.baseUrl
-        val basePath = when (type) {
-            DataSourceType.UNCENSORED -> "/uncensored"
-            DataSourceType.XYZ -> "/xyz"
-            else -> ""
-        }
-        val url = if (page == 1) "$baseUrl$basePath" else "$baseUrl$basePath${type.prefix}$page"
-        val cacheKey = "${movieCachePrefix()}:${type.key}_${showAll}_$page"
+        return flow {
+            siteConfig.awaitReady()
+            val baseUrl = siteConfig.baseUrl
+            val basePath = when (type) {
+                DataSourceType.UNCENSORED -> "/uncensored"
+                DataSourceType.XYZ -> "/xyz"
+                else -> ""
+            }
+            val url = if (page == 1) {
+                "$baseUrl$basePath"
+            } else {
+                "$baseUrl$basePath${type.prefix}$page"
+            }
+            val cacheKey = siteCacheKey(baseUrl, "movie-${type.key}", "${showAll}_$page")
 
-        return cacheStore.observeCached(
-            key = cacheKey,
-            ttlMillis = if (page == 1) MovieCacheTtl.MOVIE_LIST_FIRST_PAGE_MILLIS else MovieCacheTtl.MOVIE_LIST_NEXT_PAGE_MILLIS,
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate && page == 1,
-            nowMillis = nowMillis
-        ) {
-            fetchMoviePage(url, showAll)
+            cacheStore.observeCached(
+                key = cacheKey,
+                ttlMillis = if (page == 1) {
+                    MovieCacheTtl.MOVIE_LIST_FIRST_PAGE_MILLIS
+                } else {
+                    MovieCacheTtl.MOVIE_LIST_NEXT_PAGE_MILLIS
+                },
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate && page == 1,
+                nowMillis = nowMillis
+            ) {
+                fetchMoviePage(url, showAll, baseUrl)
+            }.collect { emit(it) }
         }
     }
 
@@ -246,22 +258,30 @@ class DefaultMovieRepository @Inject constructor(
         revalidate: Boolean,
         nowMillis: () -> Long
     ): Flow<CachedLoadEvent<Pair<List<ActressInfo>, PageInfo>>> {
-        val baseUrl = when (type) {
-            DataSourceType.UNCENSORED_ACTRESSES -> siteConfig.baseUrl + "/uncensored/actresses"
-            else -> siteConfig.baseUrl + "/actresses"
-        }
-        val url = if (page == 1) baseUrl else "$baseUrl/$page"
-        val cacheKey = "${movieCachePrefix()}:actresses_${type.key}_$page"
+        return flow {
+            siteConfig.awaitReady()
+            val siteBaseUrl = siteConfig.baseUrl
+            val baseUrl = when (type) {
+                DataSourceType.UNCENSORED_ACTRESSES -> "$siteBaseUrl/uncensored/actresses"
+                else -> "$siteBaseUrl/actresses"
+            }
+            val url = if (page == 1) baseUrl else "$baseUrl/$page"
+            val cacheKey = siteCacheKey(siteBaseUrl, "actresses-${type.key}", page.toString())
 
-        return cacheStore.observeCached(
-            key = cacheKey,
-            ttlMillis = if (page == 1) MovieCacheTtl.ACTRESS_LIST_FIRST_PAGE_MILLIS else MovieCacheTtl.ACTRESS_LIST_NEXT_PAGE_MILLIS,
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate && page == 1,
-            nowMillis = nowMillis
-        ) {
-            fetchActressPage(url, baseUrl)
+            cacheStore.observeCached(
+                key = cacheKey,
+                ttlMillis = if (page == 1) {
+                    MovieCacheTtl.ACTRESS_LIST_FIRST_PAGE_MILLIS
+                } else {
+                    MovieCacheTtl.ACTRESS_LIST_NEXT_PAGE_MILLIS
+                },
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate && page == 1,
+                nowMillis = nowMillis
+            ) {
+                fetchActressPage(url, siteBaseUrl)
+            }.collect { emit(it) }
         }
     }
 
@@ -271,21 +291,25 @@ class DefaultMovieRepository @Inject constructor(
         revalidate: Boolean,
         nowMillis: () -> Long
     ): Flow<CachedLoadEvent<List<GenreGroup>>> {
-        val baseUrl = when (type) {
-            DataSourceType.UNCENSORED_GENRE -> siteConfig.baseUrl + "/uncensored/genre"
-            else -> siteConfig.baseUrl + "/genre"
-        }
-        val cacheKey = "${movieCachePrefix()}:genres_v2_${type.key}"
+        return flow {
+            siteConfig.awaitReady()
+            val siteBaseUrl = siteConfig.baseUrl
+            val baseUrl = when (type) {
+                DataSourceType.UNCENSORED_GENRE -> "$siteBaseUrl/uncensored/genre"
+                else -> "$siteBaseUrl/genre"
+            }
+            val cacheKey = siteCacheKey(siteBaseUrl, "genres-v2", type.key)
 
-        return cacheStore.observeCached(
-            key = cacheKey,
-            ttlMillis = MovieCacheTtl.GENRE_CATEGORIES_MILLIS,
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate,
-            nowMillis = nowMillis
-        ) {
-            fetchGenreCategories(baseUrl)
+            cacheStore.observeCached(
+                key = cacheKey,
+                ttlMillis = MovieCacheTtl.GENRE_CATEGORIES_MILLIS,
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate,
+                nowMillis = nowMillis
+            ) {
+                fetchGenreCategories(baseUrl)
+            }.collect { emit(it) }
         }
     }
 
@@ -297,19 +321,27 @@ class DefaultMovieRepository @Inject constructor(
         revalidate: Boolean,
         nowMillis: () -> Long
     ): Flow<CachedLoadEvent<MoviePageResult>> {
-        val resolvedUrl = siteConfig.resolve(url)
-        val cacheKey = "${movieCachePrefix()}:page_${resolvedUrl.urlPath}_${showAll}_$page"
+        return flow {
+            siteConfig.awaitReady()
+            val baseUrl = siteConfig.baseUrl
+            val resolvedUrl = resolveUrl(baseUrl, url)
+            val cacheKey = siteCacheKey(baseUrl, "page", "${resolvedUrl.urlPath}_${showAll}_$page")
 
-        return cacheStore.observeCached(
-            key = cacheKey,
-            ttlMillis = if (page == 1) MovieCacheTtl.MOVIE_BY_URL_FIRST_PAGE_MILLIS else MovieCacheTtl.MOVIE_BY_URL_NEXT_PAGE_MILLIS,
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate && page == 1,
-            nowMillis = nowMillis
-        ) {
-            val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
-            fetchMoviePage(fullUrl, showAll)
+            cacheStore.observeCached(
+                key = cacheKey,
+                ttlMillis = if (page == 1) {
+                    MovieCacheTtl.MOVIE_BY_URL_FIRST_PAGE_MILLIS
+                } else {
+                    MovieCacheTtl.MOVIE_BY_URL_NEXT_PAGE_MILLIS
+                },
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate && page == 1,
+                nowMillis = nowMillis
+            ) {
+                val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
+                fetchMoviePage(fullUrl, showAll, baseUrl)
+            }.collect { emit(it) }
         }
     }
 
@@ -349,24 +381,24 @@ class DefaultMovieRepository @Inject constructor(
             .firstCachedOrFresh()
 
     override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail {
-        val cacheKey = "actress_${url.urlPath}"
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val cacheKey = siteCacheKey(baseUrl, "actress-detail", url.urlPath)
 
         return cacheStore.persistentCached(cacheKey, forceRefresh) {
-            val doc = htmlClient.fetchDocument(siteConfig.resolve(url))
-            val attrs = parseActressAttrs(doc, siteConfig.baseUrl)
+            val doc = htmlClient.fetchDocument(resolveUrl(baseUrl, url))
+            val attrs = parseActressAttrs(doc, baseUrl)
             ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
         }
     }
 
     // ── Private helpers ──
 
-    private fun movieCachePrefix(): String = "movie:${siteConfig.baseUrl}"
-
-    private suspend fun fetchMoviePage(url: String, showAll: Boolean): MoviePageResult {
+    private suspend fun fetchMoviePage(url: String, showAll: Boolean, baseUrl: String): MoviePageResult {
         KLog.d("fetchMoviePage: url=$url, showAll=$showAll", TAG)
         val doc = htmlClient.fetchDocument(url, showAll)
         val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = 1, nextPage = 1)
-        val movies = loadMovieFromDoc(doc, siteConfig.baseUrl)
+        val movies = loadMovieFromDoc(doc, baseUrl)
         val filterInfo = parseMovieFilterInfo(doc)
         return MoviePageResult(pageInfo, movies, filterInfo)
     }
@@ -377,7 +409,7 @@ class DefaultMovieRepository @Inject constructor(
     ): Pair<List<ActressInfo>, PageInfo> {
         KLog.d("fetchActressPage: url=$url", TAG)
         val doc = htmlClient.fetchDocument(url)
-        val actresses = parseActressList(doc, siteConfig.baseUrl)
+        val actresses = parseActressList(doc, baseUrl)
         val pageInfo = parsePageInfo(doc) ?: PageInfo(
             activePage = 1,
             nextPage = if (actresses.size >= 20) 2 else 1

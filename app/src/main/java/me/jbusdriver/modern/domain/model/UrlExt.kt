@@ -3,25 +3,27 @@ package me.jbusdriver.modern.domain.model
 import android.net.Uri
 import androidx.collection.LruCache
 import androidx.core.net.toUri
+import java.net.URI
 
-/** URL 解析结果缓存 */
 private val urlCache by lazy { LruCache<String, Uri>(512) }
 
-/** 从 URL 字符串提取 host 部分（scheme://host） */
+private fun String.cachedAndroidUri(): Uri? {
+    return urlCache[this] ?: runCatching { toUri() }.getOrNull()?.also {
+        urlCache.put(this, it)
+    }
+}
+
+private fun String.javaUri(): URI? = runCatching { URI(this) }.getOrNull()
+
 val String.urlHost: String
-    get() = (urlCache.get(this) ?: let {
-        val uri = Uri.parse(this)
-        urlCache.put(this, uri)
-        uri
-    }).let {
-        checkNotNull(it)
-        "${it.scheme}://${it.host}"
+    get() {
+        val androidUri = cachedAndroidUri()
+        val javaUri = javaUri()
+        val scheme = androidUri?.scheme ?: javaUri?.scheme
+        val host = androidUri?.host ?: javaUri?.host
+        require(scheme != null && host != null) { "Invalid URL host: $this" }
+        return "$scheme://$host"
     }
 
-/** 从 URL 字符串提取路径部分（不含 scheme 和 host） */
 val String.urlPath: String
-    get() = (urlCache[this] ?: let {
-        val uri = this.toUri()
-        urlCache.put(this, uri)
-        uri
-    }).path ?: ""
+    get() = cachedAndroidUri()?.path ?: javaUri()?.path ?: ""

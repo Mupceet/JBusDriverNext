@@ -1,16 +1,25 @@
 package me.jbusdriver.modern.core.site
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import me.jbusdriver.modern.data.LabSettingsStore
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
+const val DEFAULT_SITE_URL = "https://www.javbus.com"
+
+interface SitePreferenceSource {
+    suspend fun currentSelectedBaseUrl(): String
+}
+
 interface SiteConfig {
     var baseUrl: String
+
+    suspend fun awaitReady() = Unit
 
     fun resolve(pathOrUrl: String): String
 
@@ -31,32 +40,68 @@ internal fun resolveUrl(baseUrl: String, pathOrUrl: String): String {
     return baseUrl.trimEnd('/') + prefix + pathOrUrl
 }
 
+internal fun normalizeBaseUrl(rawUrl: String): String {
+    val trimmed = rawUrl.trim().trimEnd('/')
+    val uri = runCatching { URI(trimmed) }.getOrNull()
+    val scheme = uri?.scheme?.lowercase()
+    val host = uri?.host?.lowercase()
+    if (scheme == null || host == null) return trimmed
+
+    val port = uri.port.takeIf { it != -1 }?.let { ":$it" }.orEmpty()
+    val path = uri.rawPath?.trimEnd('/')?.takeIf { it.isNotEmpty() }.orEmpty()
+    return "$scheme://$host$port$path"
+}
+
 @Singleton
-class DefaultSiteConfig @Inject constructor(
-    private val labSettingsStore: LabSettingsStore
+class DefaultSiteConfig(
+    private val preferenceSource: SitePreferenceSource,
+    scope: CoroutineScope,
+    private val cancelScopeOnReady: Boolean = false
 ) : SiteConfig {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val ready = CompletableDeferred<Unit>()
 
     @Volatile
-    private var _baseUrl: String = LabSettingsStore.DEFAULT_BASE_URL
+    private var _baseUrl: String = DEFAULT_SITE_URL
 
     init {
         scope.launch {
-            val persisted = labSettingsStore.selectedBaseUrl.first()
-            if (persisted.isNotBlank()) {
-                _baseUrl = persisted.trimEnd('/')
+            try {
+                val persisted = preferenceSource.currentSelectedBaseUrl()
+                _baseUrl = persisted.takeIf { it.isNotBlank() }
+                    ?.let(::normalizeBaseUrl)
+                    ?: DEFAULT_SITE_URL
+            } catch (_: Exception) {
+                _baseUrl = DEFAULT_SITE_URL
+            } finally {
+                ready.complete(Unit)
+                if (cancelScopeOnReady) {
+                    scope.cancel()
+                }
             }
         }
     }
 
+    @Inject
+    constructor(
+        preferenceSource: SitePreferenceSource
+    ) : this(
+        preferenceSource = preferenceSource,
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        cancelScopeOnReady = true
+    )
+
     override var baseUrl: String
         get() = _baseUrl
         set(value) {
-            _baseUrl = value.trimEnd('/')
+            _baseUrl = normalizeBaseUrl(value)
         }
 
     suspend fun updateBaseUrl(url: String) {
-        _baseUrl = url.trimEnd('/')
+        _baseUrl = normalizeBaseUrl(url)
+    }
+
+    override suspend fun awaitReady() {
+        ready.await()
     }
 
     override fun resolve(pathOrUrl: String): String = resolveUrl(baseUrl, pathOrUrl)

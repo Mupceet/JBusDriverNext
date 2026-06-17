@@ -22,7 +22,7 @@ class DefaultForumSessionClient @Inject constructor(
         return sessionManager.fetchDocument(url)
     }
 
-    override fun destroy() {
+    override suspend fun destroy() {
         sessionManager.destroy()
     }
 

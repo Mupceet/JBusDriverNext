@@ -1,12 +1,14 @@
 package me.jbusdriver.modern.ui.search
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.SearchHistoryStore
@@ -137,5 +139,46 @@ class SearchViewModelTest {
 
         assertTrue(viewModel.uiState.value.results.isEmpty())
         assertFalse(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun staleRefreshResultDoesNotOverwriteNewSearch() = runTest(testDispatcher) {
+        val oldRefresh = CompletableDeferred<MoviePageResult>()
+        val oldMovie = Movie("Old", "http://img-old.jpg", "OLD-001", "2024-01-01", "http://old")
+        val newMovie = Movie("New", "http://img-new.jpg", "NEW-001", "2024-01-02", "http://new")
+        val staleMovie = Movie("Stale", "http://img-stale.jpg", "OLD-002", "2024-01-03", "http://stale")
+        val repository = object : SearchRepository {
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ): MoviePageResult {
+                if (query == "old" && forceRefresh) return oldRefresh.await()
+                val movie = if (query == "new") newMovie else oldMovie
+                return MoviePageResult(PageInfo(1, 1, listOf(1)), listOf(movie))
+            }
+
+            override suspend fun searchActresses(
+                query: String,
+                page: Int
+            ): Pair<PageInfo, List<ActressInfo>> =
+                PageInfo() to emptyList()
+        }
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+
+        viewModel.search("old")
+        advanceUntilIdle()
+        viewModel.refresh()
+        runCurrent()
+        viewModel.search("new")
+        advanceUntilIdle()
+
+        oldRefresh.complete(MoviePageResult(PageInfo(1, 1, listOf(1)), listOf(staleMovie)))
+        advanceUntilIdle()
+
+        assertEquals("new", viewModel.uiState.value.query)
+        assertEquals(listOf("New"), viewModel.uiState.value.results.map { it.title })
+        assertFalse(viewModel.uiState.value.isRefreshing)
     }
 }

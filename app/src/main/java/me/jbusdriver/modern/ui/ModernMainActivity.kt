@@ -46,7 +46,9 @@ class ModernMainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (isFinishing) {
-            browserSessionClient.destroy()
+            lifecycleScope.launch {
+                browserSessionClient.destroy()
+            }
         }
         super.onDestroy()
     }

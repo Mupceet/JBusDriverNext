@@ -1,508 +1,159 @@
-# JBusDriver 项目代码检视报告（合并版）
+# JBusDriver 代码检视报告
 
-**检视日期**: 2026-06-13（合并 2026-06-12 及 2026-05-28 审查结果）
-**检视范围**: 全项目架构、数据层、UI层、核心模块、i18n、重复代码、类划分
-**状态**: 仅审查并记录意见，未修改业务代码
+**更新日期**: 2026-06-17
+**检视范围**: `app/src/main`、`app/src/test`、Gradle/CI 配置、现有架构整改计划
+**检视目标**: 结合当前项目实际状态，对照 Android 推荐架构、Compose UDF、Data layer、DI、协程取消与测试最佳实践，记录仍然成立的问题和优先级。
 
----
-
-## 一、总体评价
-
-项目采用 **MVVM + Jetpack Compose + Hilt DI** 架构，整体结构清晰，模块划分合理。使用了 Navigation 3、stale-while-revalidate 缓存策略等较新的技术方案。以下按严重程度分类列出所有发现的问题。
+> 本文记录当前代码状态。Phase A 已开始落地，已修复项不再作为待办问题列入 P1。
 
 ---
 
-## 二、P0：必须立即处理
+## 一、总体结论
 
-### 2.1 认证 Cookie 已提交到仓库
+项目当前更准确的架构定位是：
 
-**文件**: `gradle.properties`, `app/build.gradle.kts:32-44`
+> **单模块 MVVM + Jetpack Compose + StateFlow/UDF + Repository + Hilt**
 
-`JAVBUS_AUTH_COOKIE` 值被写入 `BuildConfig`，debug/release 都会包含。任何能反编译 APK 的人都能取得该凭据。
+这个方向与 Android 推荐架构一致。当前不建议为了 “Clean Architecture” 或 “MVI” 标签强行拆多模块、强行增加空转 use case，或把所有页面一次性改成统一 Action 框架。
 
-**建议**: 从版本控制删除真实值，仅从 `local.properties`（已 gitignore）或环境变量注入。
+当前仍影响质量的风险集中在四类：
 
-### 2.2 默认 debug 构建启用"模拟缓存变化"
+1. **UI 边界仍可被绕过**：Screen 直接访问 Store，UI 层可见 Room entity。
+2. **列表状态机重复**：Movie/List/Forum/Link 列表仍有旧请求、刷新、加载更多互相覆盖的空间。
+3. **domain model 仍混入 UI/序列化/收藏可变状态**：`ILink.categoryId` 使多个 `@Immutable` 模型实际可变。
+4. **测试真实性仍不均衡**：部分测试仍在验证 Fake 自身，而不是生产 Repository、Room SQL、缓存契约和取消传播。
 
-**文件**: `gradle.properties:29`, `app/build.gradle.kts:115`
-
-`cacheRefreshTestMode=true` 导致 debug 构建中列表数据被主动 `drop(1)`，开发者看到的不是真实数据，且导致 4 个单元测试失败。
-
-**建议**: 仓库默认值应为 `false`，仅在手工测试时通过 `-P` 传入。
-
----
-
-## 三、P1：高优先级功能问题
-
-### 3.1 HTTP 4xx/5xx 被当作成功页面解析并写入缓存
-
-**文件**: `core/http/NetClient.kt:134-141`
-
-只检查响应体是否为空，不检查 `response.isSuccessful`。非 2xx 错误页会被解析并覆盖缓存，UI 表现为"内容突然消失"。
-
-**建议**: 网络层拒绝非 2xx 状态码；解析层增加业务标记校验。
-
-### 3.2 无码影片外部链接无法进入详情页
-
-**文件**: `ui/ModernMainActivity.kt:89-104`
-
-`/uncensored/{code}` 有两段路径，但代码仅把单段路径识别为影片。无码深链失效。
-
-**建议**: 先规范化 `uncensored`/`xyz` 前缀，再依据剩余路径识别影片或列表。
-
-### 3.3 搜索请求存在竞态
-
-**文件**: `ui/search/SearchViewModel.kt:125-169`
-
-每次搜索启动独立协程，不取消前一个请求。旧结果可覆盖新关键词或在清空操作后重新出现。
-
-**建议**: 维护单一搜索 Job 并在新搜索/清空时取消，或使用 `flatMapLatest`。
-
-### 3.4 `SiteConfig` 构造函数中使用 `runBlocking`
-
-**文件**: `core/site/SiteConfig.kt:22-24`
-
-`@Singleton` 构造函数中 `runBlocking { labSettingsStore.selectedBaseUrl.first() }` 阻塞主线程，冷启动有 ANR 风险。
-
-**建议**: 使用内存默认值启动，异步同步持久化值。
-
-### 3.5 `ForumSessionClient.ensureSession()` 持有 Activity 引用
-
-**文件**: `data/ForumSessionClient.kt:29-36`
-
-从 `JBusManager` 弱引用列表获取 Activity，可能获取到已销毁但未 GC 的引用。WebView 在主线程创建时若 Activity 正在销毁，可能产生窗口泄漏。
-
-**建议**: 添加生命周期检查；考虑使用 Application Context 创建 WebView。
-
-### 3.6 `ForumSessionManager` WebView 线程安全
-
-**文件**: `data/ForumSessionManager.kt`
-
-`destroy()` 在任意线程调用，`fetchDocument()` 在主线程执行，`@Volatile webView` 无同步保护，可能并发执行。
-
-**建议**: 使用 `Mutex` 保护 WebView 访问，确保 `destroy()` 在主线程执行。
-
-### 3.7 搜索请求竞态（详细）
-
-**文件**: `ui/search/SearchViewModel.kt:125-169`
-
-每次 `search()` 启动独立协程，不取消前一个请求。快速输入、切换类型或清空时，旧请求可能最后完成并覆盖新结果。
-
-**建议**: 维护单一 `searchJob`，新搜索时 `cancel()` 旧 Job；使用 `query` 快照校验。
+已有修正应明确保留：Release workflow 已执行 `testDebugUnitTest lintDebug assembleRelease`；`Category` 已改为 data class；`ContentBlockTypeAdapter` ProGuard keep 路径已修正；`GifLoadTracker.removeFirst()` 当前未再命中。
 
 ---
 
-## 四、P2：中优先级问题
+## 二、Phase A 已修复
 
-### 4.1 收藏写入结果和 UI 状态可能不一致
+1. **SiteConfig 冷启动镜像恢复**：`DefaultSiteConfig` 增加 `awaitReady()`，通过 `SitePreferenceSource.currentSelectedBaseUrl()` 直接读取持久化值；Repository 请求前等待 ready，并使用同一个 baseUrl 快照构造 URL 与缓存 key。
+2. **跨镜像缓存隔离**：新增 `siteCacheKey(baseUrl, namespace, identity)`，Movie/List、Search、MovieDetail、ActressDetail 等网络派生缓存 key 包含站点身份。
+3. **Search 请求竞态**：`SearchViewModel` 增加 request generation + query/type identity；`search/refresh/loadMore/clearSearch` 写回前统一校验，并重新抛出 `CancellationException`。
+4. **Forum WebView session 生命周期**：`ForumBoardsViewModel` 不再销毁应用级 session；`ForumSessionManager.destroy()` 切到 Main scope，并与 `fetchDocument()` 共用同一个 `Mutex` 边界。
+5. **收藏事务边界**：新增可注入 `CollectTransactionRunner`，`toggleMovieCollect/toggleActressCollect/importCollectionsFromJson` 使用注入事务，不再从 Repository 直接访问全局 `DB.collectDatabase`。
+6. **JVM URL 解析健壮性**：`urlHost/urlPath` 在 Android `Uri` 不可用时回退到 `java.net.URI`，避免 JVM unit test 的 Android stub 返回 null 后写入 non-null LRU。
 
-**文件**: `data/CollectRepository.kt:103-107, 120-128`
+覆盖测试：
 
-Room `insert()` 返回冲突值 `-1` 时仍返回 `true`；toggle 操作"先查询再增删"非原子。
-
-**建议**: 以 DAO 返回值决定成功状态；toggle 下沉为事务或改用明确 add/remove。
-
-### 4.2 镜像验证声称并发上限为 6，实际全部并发
-
-**文件**: `data/LabSettingsStore.kt:233-255`
-
-注释写明 `concurrency = 6`，实现却对所有 URL 直接 `async(Dispatchers.IO)`，无 Semaphore 控制。
-
-**建议**: 落实固定并发上限；对 URL 做去重和协议校验。
-
-### 4.3 ViewModel 代码大量重复
-
-**文件**: 多个 ViewModel
-
-以下模式在至少 5 个 ViewModel 中重复：
-- `loadFirstPage()` / `revalidate()` / `loadMore()` / `refresh()` 四段式结构
-- `CachedLoadEvent.Cached/Fresh/Failure` 状态处理
-- `pendingFreshResult` + Snackbar 新数据提示机制
-
-**涉及文件**:
-- `MovieListViewModel.kt` (429行)
-- `LinkMovieListViewModel.kt`
-- `ActressListViewModel.kt`
-- `GenreListViewModel.kt`
-- `ForumViewModels.kt` (822行)
-
-**建议**: 提供 `CachedViewModel` 基类或 `CachedDataDelegate`，封装公共 stale-while-revalidate 逻辑。
-
-### 4.4 `logMovieDiff` / `logThreadDiff` / `logReplyDiff` 三个几乎相同的 diff 日志函数
-
-**文件**:
-- `MovieListViewModel.kt:28-59` — `logMovieDiff()`
-- `ForumViewModels.kt:37-71` — `logThreadDiff()`
-- `ForumViewModels.kt:73-103` — `logReplyDiff()`
-
-三个函数逻辑完全相同：比较新旧列表，输出新增/移除/变更条目。仅类型参数不同。
-
-**建议**: 统一为一个泛型版本 `<T> fun logListDiff(old: List<T>, new: List<T>, context: String, key: (T) -> Any, describe: (T) -> String)`。
-
-### 4.5 `ForumViewModels.kt` 文件过大（822行）
-
-**文件**: `ui/forum/ForumViewModels.kt`
-
-单个文件包含 3 个 ViewModel + 3 个 UiState 数据类 + 3 个 diff 日志函数。文件过长，难以导航和维护。
-
-**建议**: 拆分为 `ForumBoardsViewModel.kt`、`ForumThreadListViewModel.kt`、`ForumThreadDetailViewModel.kt`。
-
-### 4.6 `MainScreen.kt` Composable 函数过大（378行）
-
-**文件**: `ui/MainScreen.kt`
-
-包含影片/演员/论坛/收藏四个 Tab 的全部逻辑，嵌套层级深，状态管理复杂（censorFilter、selectedGenreLinks、genreLinkMemory、showCategorySheet 等）。
-
-**建议**: 将每个 Tab 提取为独立 Composable（`MovieTabContent`、`ActressTabContent` 等）。
-
-### 4.7 `CollectRepository` 中 domain model 有可变字段
-
-**文件**: `data/CollectRepository.kt:208, 222`
-
-`Movie.categoryId` 和 `ActressInfo.categoryId` 是 `@Transient` 的 `var` 字段，import 时手动赋值。破坏 domain model 不可变性。
-
-**建议**: 将 `categoryId` 改为构造函数参数或在 UI 层单独传递。
-
-### 4.8 `CollectionListViewModel` 暴露 `collectRepository` 为 public
-
-**文件**: `ui/movielist/CollectionListViewModel.kt:57`
-
-Repository 作为 `val`（public）暴露，破坏封装性。
-
-**建议**: 改为 `private val`，测试时通过 Hilt 测试组件注入。
-
-### 4.9 `HtmlClient` fetchHtml/fetchDocument 重复重试逻辑
-
-**文件**: `core/http/HtmlClient.kt:27-55`
-
-`fetchHtml` 和 `fetchDocument` 都有几乎相同的 driver-verify 重试逻辑。
-
-**建议**: 提取为通用 `fetchWithVerifyFallback()` 方法。
-
-### 4.10 `GifLoadTracker` DataStore 溢出处理
-
-**文件**: `data/GifLoadTracker.kt:31-39`
-
-`stringSetPreferencesKey` 不保证顺序。`takeLast` 删除的可能不是最旧记录。
-
-**建议**: 使用 `listPreferencesKey` 替代，或改用 Room。
+```bash
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.core.site.SiteConfigTest" --tests "me.jbusdriver.modern.data.SiteCacheKeyTest" --tests "me.jbusdriver.modern.ui.search.SearchViewModelTest" --tests "me.jbusdriver.modern.ui.forum.ForumCacheRefreshViewModelTest" --tests "me.jbusdriver.modern.data.CollectRepositoryTest" --console=plain
+./gradlew.bat testDebugUnitTest --console=plain
+```
 
 ---
 
-## 五、重复 UI 组件问题
+## 三、P1：优先处理的正确性风险
 
-### 5.1 重复的加载中/空态/错误态模式
+### 3.1 List/Forum 分页请求仍缺少统一请求身份
 
-以下模式在至少 **12 个 Screen 文件**中重复出现：
+**位置**: `ui/movielist/LinkMovieListViewModel.kt`、`ui/movielist/MovieListViewModel.kt`、Forum 列表相关 ViewModel
 
-| 模式 | 出现次数 | 涉及文件 |
-|------|---------|---------|
-| `CircularProgressIndicator()` 居中加载 | 16处 | MovieListScreen, ActressListScreen, LinkMovieListScreen, ForumThreadListScreen, ForumThreadDetailScreen, ForumBoardsScreen, SearchScreen, MovieDetailScreen, CollectionListScreen, ImageViewScreen |
-| `state.error ?: "內容為空"` + `"下拉刷新重試"` | 5处 | ForumThreadListScreen:204, ForumThreadDetailScreen:292, ForumBoardsScreen:111 |
-| `"沒有更多了"` 底部提示 | 3处 | ActressGrid:100, MovieList:116, MovieList:175 |
-| `"載入失敗，請重試"` ErrorView | 5处 | MovieListScreen:118, ActressListScreen:105, MovieDetailScreen:198, SearchScreen:265, CollectionListScreen:54 |
-| TopAppBar + 返回按钮 | 8处 | 几乎所有二级页面 |
+Search 已完成 request generation 修复，但多个列表 ViewModel 仍由首屏、revalidate、refresh、loadMore 分散维护状态。切换 source/filter/showAll 后，旧请求晚返回时仍可能污染新列表。
 
-**建议**: 
-- 提取 `LoadingView`、`EmptyStateView`、`ErrorRetryView` 通用组件
-- 提取 `ScreenScaffold` 组件封装 TopAppBar + 返回按钮 + 内容区
+**建议**: 先选 `LinkMovieListViewModel` 作为代表页，引入 generation + source/filter identity。所有写回前校验 identity；`catch (Exception)` 中先重新抛出 `CancellationException`。验证通过后再迁移 Movie/Actress/Forum 列表。
 
-### 5.2 重复的收藏按钮逻辑
+### 3.2 LabSettings 取消扫描会被映射成失败
 
-以下位置都有相同的收藏/取消收藏按钮 + Toast 逻辑：
-- `MovieDetailScreen.kt:165-175`
-- `LinkMovieListScreen.kt:193-203`
-- `MovieList.kt:450-456`
+**位置**: `ui/settings/LabSettingsViewModel.kt`
 
-**建议**: 提取 `CollectButton` 组件。
+`cancelScan()` 会取消 Job 并重置状态，但 `startScan()` / `startVerify()` 捕获所有 `Exception`。协程取消属于 `CancellationException`，如果被捕获并转成失败消息，用户取消会被误报。
 
-### 5.3 重复的分享按钮逻辑
+**建议**:
 
-以下位置都有相同的分享 Intent 构建：
-- `MovieDetailScreen.kt:145-164`
-- `LinkMovieListScreen.kt:180-191`
-- `ForumThreadDetailScreen.kt:149-159`
-- `ImageViewScreen.kt:310-320`
+```kotlin
+catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    // map real failure
+}
+```
 
-**建议**: 提取 `shareText(context, text)` 工具函数 + `ShareButton` 组件。
+### 3.3 收藏导入语义仍需产品确认
+
+**位置**: `data/CollectRepository.kt`
+
+导入现在处于单个事务中，但产品语义还应明确：遇到坏数据时是整批回滚，还是跳过坏项并报告部分成功。当前实现更接近“异常即回滚”，需要用测试锁定。
+
+**建议**: 为新格式、旧格式、重复项、坏 JSON、字段缺失、事务回滚分别补测试。若目标是部分成功，应在解析层显式收集 item-level error，而不是依赖异常中断。
 
 ---
 
-## 六、多语言 / i18n 问题
+## 四、P2：架构边界与可维护性问题
 
-### 6.1 无字符串资源化
+### 4.1 Screen 仍直接访问 DataStore/Store
 
-**文件**: `app/src/main/res/values/strings.xml` — 仅包含 `app_name`
+**位置**: `ui/MainScreen.kt`、`ui/settings/LabSettingsScreen.kt`、`ui/search/SearchScreen.kt`、`ui/movielist/*Screen.kt`
 
-整个项目的 UI 文本全部以硬编码繁体中文写在 Kotlin 代码中。**未使用任何 `stringResource()` 或 `getString()` 调用**。
+多个 Screen 通过 `hiltViewModel<...>().store` 直接 collect Store Flow 或启动协程写 DataStore。`LabSettingsViewModel` 与 `UiPrefsViewModel` 也暴露 Store。这绕过 screen-level state holder，使 UI 层直接依赖 data source。
 
-统计发现的硬编码中文字符串（去重后）：
+**建议**: ViewModel 暴露单一 `UiState` 和语义方法，例如 `setGrid()`、`setForumEnabled()`、`selectBaseUrl()`。Screen 只收集 ViewModel state，不直接接触 Store。
 
-| 类别 | 字符串示例 | 出现次数 |
-|------|-----------|---------|
-| 状态提示 | "載入中..."、"沒有數據"、"內容為空"、"載入失敗"、"下拉刷新重試"、"沒有更多了" | 32处 |
-| 操作反馈 | "已複製"、"已複製標題"、"已複製磁力連結"、"收藏成功"、"已取消收藏" | 20+处 |
-| 菜单/按钮 | "返回"、"分享"、"複製"、"關閉"、"篩選"、"導出收藏"、"導入收藏" | 30+处 |
-| 页面标题 | "實驗室"、"我的收藏"、"搜索歷史"、"精彩评论"、"點評" | 10+处 |
-| 分类标签 | "有碼"、"無碼"、"影片"、"演員"、"論壇"、"收藏" | 10+处 |
-| 错误信息 | "導出失敗"、"導入失敗"、"搜尋失敗"、"未找到可處理的應用" | 10+处 |
+### 4.2 Data layer 仍存在全局 DB 与 Hilt 双轨
 
-**影响**:
-1. 无法切换语言（即使系统语言切换，UI 始终显示繁体中文）
-2. 无法在无障碍模式下被 TalkBack 正确朗读
-3. 无法通过翻译工具批量翻译
-4. 修改任何文案都需要改代码并重新编译
+**位置**: `data/db/DB.kt`、`data/di/DatabaseModule.kt`
 
-**建议**: 
-- 将所有 UI 字符串提取到 `res/values-zh-rTW/strings.xml`
-- 同时创建 `res/values/strings.xml`（英文默认值）
-- 代码中使用 `stringResource(R.string.xxx)` 引用
-- contentDescription 也应字符串资源化以支持无障碍
+`CollectRepository` 已从全局 `DB` 迁出，但项目仍保留 `object DB` 懒加载和 Hilt `DatabaseModule` 双入口。长期会削弱测试替换能力，也让数据库 owner 难判断。
 
-### 6.2 混用繁体和简体
+**建议**: 逐步收敛到 Hilt 单入口：`DatabaseModule` 使用 `Room.databaseBuilder(@ApplicationContext)` 提供 DB，Repository 只注入 DB/DAO。`object DB` 仅在迁移期作为兼容层。
 
-部分字符串为繁体（"導出"、"導入"、"複製"、"實驗室"），部分为简体（"收藏成功"中的"功"、"返回"中的"回"），但总体偏繁体。
+### 4.3 `ILink.categoryId` 破坏 domain model 不可变性
 
-**建议**: 统一为繁体中文作为默认，简体作为 `res/values-zh-rCN/strings.xml` 翻译。
+**位置**: `domain/model/ILink.kt`、`domain/model/Movie.kt`、`domain/model/MovieDetail.kt`、`domain/model/PageLink.kt`、`domain/model/Magnet.kt`
 
----
+多个 domain model 标注 `@Immutable`，但继承 `ILink` 后暴露 `var categoryId`。收藏分类是用户数据/数据库元数据，不属于影片、演员、磁力链接这些内容模型本身。
 
-## 七、文件过长问题
+**建议**: `ILink` 只保留 `val link: String`。收藏元数据使用 `CollectedEntry<T>(item, categoryId, createdAtMillis)` 或 mapper 参数传递。
 
-| 文件 | 行数 | 问题 |
-|------|------|------|
-| `ForumViewModels.kt` | 822 | 3个ViewModel + 3个UiState + 3个diff函数 |
-| ~~`MovieDetailScreen.kt`~~ | ~~833~~ | ✅ 已拆分为 MovieDetailScreen(447) + MovieDetailSections + MagnetBottomSheet |
-| ~~`ForumThreadDetailScreen.kt`~~ | ~~603~~ | ✅ 已拆分为 ForumThreadDetailScreen(275) + ForumThreadDetailSections |
-| ~~`MainScreen.kt`~~ | ~~378~~ | ✅ 已拆分（4.6） |
-| ~~`MovieListViewModel.kt`~~ | ~~429~~ | ✅ 已重构（8.5 策略 + 4.3 PagedSwrState） |
-| ~~`ForumPostParser.kt`~~ | ~~318~~ | ✅ 已拆分（8.2） |
-| ~~`LabSettingsStore.kt`~~ | ~~303~~ | ✅ 已提取 MirrorScanner（8.3） |
-| `CollectionListViewModel.kt` | 287 | 含筛选/排序扩展函数 |
-| `LinkMovieListScreen.kt` | 422 | 含完整的女优详情页 |
-| `SearchScreen.kt` | 373 | 含搜索历史/结果/实验入口 |
+### 4.4 大型 ViewModel 与重复 SWR 状态机仍未收口
 
-**建议**: 按上述 4.5、4.6 节建议拆分。注：上表已划掉的项目均已完成拆分/重构。
+**位置**: `LinkMovieListViewModel.kt`、`MovieListViewModel.kt`、`ActressListViewModel.kt`、Forum 多个 ViewModel
+
+`PagedSwrState` 已抽出部分 page tracker / at-top / fresh decision，但 loading/error/pending/revalidate/loadMore 的状态归约仍散落在多个 ViewModel。
+
+**建议**: 抽取纯函数 reducer 或小型 state producer，先迁移一个代表性列表，再逐页推进。`LinkMovieListViewModel` 至少拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
+
+### 4.5 UI 层仍承担平台 IO 和媒体流程
+
+**位置**: `ui/image/ImageViewScreen.kt`、`ui/movielist/CollectCategoryScreen.kt`
+
+Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件读写、bitmap 压缩和异常映射。这些逻辑难测，且把平台 IO 与 UI 组合生命周期绑在一起。
+
+**建议**: Activity Result launcher 可留在 Screen；实际文件读写、图片保存、分享文件准备放到 `CollectionDocumentGateway` / `ImageMediaGateway` 这类注入组件。结果归约为 ViewModel 中可确认消费的 `UserMessage`。
 
 ---
 
-## 八、类划分不合理问题
+## 五、测试与质量门槛
 
-### 8.1 `ForumViewModels.kt` — 3 个 ViewModel 在同一文件
+优先补齐以下测试：
 
-三个独立的 ViewModel（`ForumBoardsViewModel`、`ForumThreadListViewModel`、`ForumThreadDetailViewModel`）及其 UiState 全部放在一个文件中。
+1. Movie/Link/Forum 列表切换 source/filter/showAll 后，旧请求不能写回。
+2. LabSettings 取消扫描/验证不产生失败消息。
+3. 收藏导入坏数据时的回滚或部分成功语义。
+4. `ILink.categoryId` 移除后的收藏 mapper 回归测试。
+5. minified release 对 Gson/Forum `ContentBlock` 反序列化的 smoke test。
 
-**建议**: 每个 ViewModel 独立一个文件。
+建议本地合并前质量门槛：
 
-### 8.2 `ForumPostParser.kt` — 解析器混合了内联样式处理
+```bash
+./gradlew.bat testDebugUnitTest lintDebug assembleDebug --console=plain
+```
 
-`PostContentParser` 和 `InlineParagraphParser` 两个类在同一文件中，且 `InlineStyle`、`InlineParagraphParser` 等辅助类也混在其中。
+发布前质量门槛：
 
-**建议**: 将 `InlineStyle` 和 `InlineParagraphParser` 提取为独立文件。
-
-### 8.3 `LabSettingsStore.kt` — 职责过多
-
-单个文件包含：
-- DataStore 偏好读写（forumEnabled、autoLoadGifs、floorOrder、baseUrl）
-- WebView 扫描逻辑（scanMirrorUrls）
-- 并发验证逻辑（verifyUrlsParallel）
-- URL 排序逻辑（sortMirrorUrls）
-- 3 个数据类（MirrorUrl、ScanState、ScanPhase）
-- ForumSettingsReader 接口
-
-**建议**: 将扫描/验证逻辑提取到独立的 `MirrorScanner` 类；将 `ScanState`/`MirrorUrl` 提取到独立文件。
-
-### 8.4 `CollectCategoryScreen.kt` — 包含导入导出逻辑
-
-文件中包含 Activity Result Launcher、文件 I/O 操作和 Toast 反馈，这些本应在 ViewModel 中处理。
-
-**建议**: 将导入导出逻辑完全移到 `CollectCategoryViewModel` 中。
-
-### 8.5 `MovieListViewModel.kt` — genreUrl 混合职责
-
-ViewModel 同时管理 `dataSourceType`（按类型加载）和 `genreUrl`（按 URL 加载）两种模式，通过 `if (genreUrl != null)` 分支处理。
-
-**建议**: 拆分为 `MovieListViewModel`（按类型）和 `GenreMovieListViewModel`（按 URL），或使用策略模式。
+```bash
+./gradlew.bat testDebugUnitTest lintDebug assembleRelease --console=plain
+```
 
 ---
 
-## 九、架构建议
+## 六、Phase B 建议顺序
 
-### 9.1 ~~缺少统一的错误处理策略~~ 已统一（✅ 已处理）
-
-历史问题：各 ViewModel 错误处理方式不一致（`error` 状态 / Snackbar / 静默忽略）。
-
-**采纳的策略（i18n 模式 A 之后已统一）**：ViewModel 一律不持有用户可见字符串，改为发出 `@StringRes Int`：
-
-| 场景 | 字段 | UI 表现 |
-|------|------|---------|
-| 阻断性加载失败（列表/详情为空） | `error: @StringRes Int?` | `ErrorView`/`EmptyStateView` 经 `stringResource` 解析 |
-| 后台刷新/暂态提示 | `refreshMessage: @StringRes Int?` | Snackbar，经 `context.getString` 解析 |
-| 最佳努力型操作（本地收藏删除等罕见失败） | 不抛到 UI | `KLog.e` 记录，UI 保持一致状态 |
-
-未采用 `Channel<ErrorEvent>`：当前 `error`/`refreshMessage` 两个 `@StringRes Int?` 字段已覆盖全部用户可见错误，且与模式 A 的资源化一致；引入 Channel 属过度设计。
-
-**残留**：`HtmlClient` 的重试编排（`NetClient` 为 `object`，无 mock 库）仍需可注入的 fetch 接口才能单测；本地删除失败的 Snackbar 反馈为可选增强。
-
-### 9.2 缺少单元测试覆盖的模块
-
-以下核心模块缺少单元测试：
-- `ForumSessionManager`（WebView 相关）— 仍缺：依赖 WebView/设备，需 instrumented test
-- `HtmlClient`（重试逻辑）— ✅ 部分：`isDriverVerifyPage` 判定已测；完整重试编排需 `NetClient` 可注入
-- ~~`SiteConfig`（URL 解析）~~ — ✅ `resolveUrl` 已测
-- ~~`CollectRepository`（数据库操作）~~ — ✅ 已有 `CollectRepositoryTest`
-- ~~`ForumPostParser`（论坛内容解析）~~ — ✅ `parseForumPostContent`（列表/内联样式/null）已测
-- ~~`ForumRepository`（论坛数据）~~ — ✅ 已有 `ForumRepositoryCacheFlowTest`
-- ~~ViewModel `revalidate`/`loadMore`~~ — ✅ Movie/Link/Actress/Forum 均有覆盖（含 `PagedSwrStateTest`）
-
-### 9.3 缺少深链路由单元测试
-
-`ModernMainActivity.resolveJavbusRoute()` 的各种 URL 路径（有码、无码、XYZ、分类、演员）无测试覆盖。
-
-### 9.4 缺少 KDoc 文档
-
-大部分公共 API 缺少 KDoc 文档。建议为 Repository 接口方法、Domain model 字段、ViewModel 状态转换补充文档。
-
----
-
-## 十、已修复问题确认
-
-以下问题在 `2026-05-28-code-review-remediation.md` 中已有修复计划，截至 2026-06-13 已全部核实实施：
-
-| 问题 | 修复计划 | 状态 |
-|------|---------|------|
-| ForumSessionManager 恢复 Cookie 后未创建 WebView | Task 1 | ✅ 已修复（`ensureWebViewCreated()` + 恢复分支调用） |
-| WebView 协程取消路径不完整 | Task 2 | ✅ 已修复（`WebViewHelper` 两处 + `ForumSessionManager` 的 `invokeOnCancellation` 清理） |
-| Activity 销毁时未 destroy 浏览器会话 | Task 3 | ✅ 已修复（`BrowserSessionClient.destroy()` + `ModernMainActivity.onDestroy` 调用） |
-| 搜索 URL 编码问题 | Task 4 | ✅ 已修复 |
-| 收藏日期提取不一致 | Task 5 | ✅ 已修复（统一 `toCollectionMovie` 转换） |
-| 收藏唯一性索引不含 dbType | Task 6 | ✅ 已修复（`[dbType, key]` 唯一索引 + DB v2 迁移） |
-| FileCache key 哈希碰撞 | Task 7 | ✅ 已修复（SHA-256 文件名 + 旧 key 回退读取） |
-
----
-
-## 十一、总结
-
-| 优先级 | 数量 | 主要涉及 |
-|-------|------|---------|
-| P0 | 2 | Cookie 泄露、debug 模拟模式 |
-| P1 | 6 | HTTP 状态码、深链、搜索竞态、runBlocking、Activity 引用、WebView 线程安全 |
-| P2 | 10 | 代码重复、文件过大、封装性、DataStore 溢出 |
-| 重复 UI | 3类 | 加载/空态/错误态、收藏按钮、分享按钮 |
-| i18n | 严重 | 全部硬编码中文，无字符串资源化 |
-| 文件过长 | 10个 | ForumViewModels(822行)、MovieDetailScreen(833行) 等 |
-| 类划分 | 5处 | ForumViewModels 混放、LabSettingsStore 职责过多等 |
-| 测试缺口 | 7个模块 | ForumSessionManager、HtmlClient、SiteConfig 等 |
-
-**优先修复建议**:
-1. P0: Cookie 泄露 + debug 模拟模式
-2. P1: HTTP 状态码校验 + 搜索竞态 + runBlocking
-3. i18n: 字符串资源化（影响面最广）
-4. 重复 UI: 提取通用组件（减少约 30% 重复代码）
-5. 文件拆分: ForumViewModels + MainScreen + MovieDetailScreen
-
----
-
-## 十二、本轮修复进度（自 82436b0 起）
-
-**更新日期**: 2026-06-13
-
-### ✅ 已完成
-
-| 分类 | 问题 | 处理 |
-|------|------|------|
-| P0 | 2.1 Cookie 泄露 | 改为从 `local.properties` / Gradle property / 环境变量注入，移除仓库内明文 |
-| P0 | 2.2 debug 模拟缓存 | 改为 `-PcacheRefreshTestMode` 显式传入，仓库默认 false |
-| P1 | 3.1 HTTP 状态码 / 3.2 深链 / 3.3+3.7 搜索竞态 / 3.4 runBlocking | 全部修复 |
-| P1 | 3.5 Activity 引用 / 3.6 WebView 线程安全 | 生命周期校验 + `Mutex` 保护 |
-| P2 | 4.1 toggle 原子化 / 4.2 并发上限 / 4.4 logDiff 泛型化 / 4.9 HtmlClient 重试去重 | 全部修复 |
-| P2 | 4.5 ForumViewModels 拆分 / 4.6 MainScreen 拆分 | 每屏独立文件 |
-| P2 | 4.7 domain model 不可变 / 4.8 封装性 / 4.10 GifLoadTracker 顺序存储 | 全部修复 |
-| 重复 UI | 5.1 LoadingView/EmptyStateView/ErrorView / 5.2 CollectButton / 5.3 ShareButton | 通用组件已提取并迁移 |
-| 类划分 | 8.1 ForumViewModels / 8.2 ForumPostParser / 8.3 MirrorScanner / 8.4 CollectCategoryScreen / 8.5 MovieListViewModel | 全部拆分/职责下沉（8.5 用 `MoviePageSource` 策略封装 by-type / by-url 两种加载模式） |
-| §10 | Task 1–7（ForumSession/Cookie/索引/FileCache 等） | 已核实全部实施 |
-| i18n | 6.1 字符串资源化 | 基本完成：`values/`(繁中默认) + `values-en/`(英文) 约 128 键；全部 Composable 与 ViewModel 文案已迁移。ViewModel 一律发出 `@StringRes Int`（error / refreshMessage / ScanState.error / 标题），UI 层 `stringResource`/`context.getString` 解析（模式 A）。仅余 debug diff-log 与解析数据比较串（非用户可见，刻意保留） |
-| i18n | 6.2 繁简混用 | 基本解决：硬编码文案全部上移到资源，简繁混用（如 磁力链接/連結、Refresh failed/刷新失敗）经统一 key 消除 |
-| 架构 | 9.1 统一错误处理策略 | ✅ 已统一：ViewModel 发出 `@StringRes Int`（error 阻断 / refreshMessage 暂态 / 最佳努力操作记日志）；详见 §9.1 |
-| 测试 | 9.2 单元测试 | ✅ 基本完成：新增 SiteConfig / ForumPostParser / HtmlClient verify 测试；CollectRepository/ForumRepository/各 ViewModel 均已有覆盖；仅 ForumSessionManager（设备相关）与 HtmlClient 完整重试编排待补 |
-
-### 🔄 进行中 / 部分完成
-
-| 分类 | 问题 | 现状 |
-|------|------|------|
-| 文件过长 | 七 | MovieDetailScreen、ForumThreadDetailScreen 均已拆分；§7 表中仅余 CollectionListViewModel(287)、LinkMovieListScreen(422)、SearchScreen(373) 等中小文件 |
-| P2 | 4.3 SWR 四段式重复 | 提取 `core/cache/PagedSwrState` 工具（`PageTracker`/`AtTopGate`/`decideFreshRevalidate`），已迁移 MovieList/LinkMovieList/ActressList 三个分页 ViewModel；reducer 仍内联保留各 VM 字段差异。暂缓 ForumThreadList（`distinctBy`+typeFilters+首屏 pending 差异）、Genre/ForumBoards（非分页）、ForumThreadDetail（定制） |
-
-### ⬜ 待处理
-
-| 分类 | 问题 |
-|------|------|
-| 测试/文档 | 9.3 深链路由测试（`resolveJavbusRoute`）；9.4 公共 API KDoc；ForumSessionManager（设备相关）与 HtmlClient 完整重试编排（需 `NetClient` 可注入） |
-
----
-
-## 十三、Clean Code / 分层架构复审（2026-06-14）
-
-**复审方式**：3 个并行只读审计 agent 分别覆盖 `data+core+DI`、`ui+domain`、`跨模块+死代码`，已剔除 §12 中标记 ✅ 的旧项。下列为新发现。
-
-### P1 — 高价值 / 低风险
-
-| # | 位置 | 问题 | 建议 |
-|---|------|------|------|
-| 13.1 | `app/build.gradle.kts:156` + `libs.versions.toml` | `androidx-material`（非 Compose 旧版 Material）依赖全项目零引用，纯属死重，拖入 APK | 删除依赖与版本目录条目 |
-| 13.2 | `ui/ColorSchemeScreen.kt`（整文件） | 零引用的孤立调试页（无路由、无调用方） | 删除文件 |
-| 13.3 | `ui/theme/Color.kt`（整文件） | 8 个顶层颜色常量全部未引用（`Theme.kt` 走动态/种子配色） | 删除文件 |
-| 13.4 | `ui/detail/MovieDetailScreen.kt:233` | 死表达式 `detail.headers.firstOrNull()?.value ?: ""`（求值后丢弃，每次重组都跑） | 删除该行 |
-| 13.5 | `ui/forum/ForumThreadDetailScreen.kt:157` | i18n 漏网：`Toast.makeText(context, "已複製", …)` 硬编码，其余复制 Toast 均已 `R.string.copied` | 改 `context.getString(R.string.copied)` |
-| 13.6 | `domain/model/ILink.kt:16` | `var categoryId: Int` 强制所有 domain 模型（`Movie`/`Header`/`Genre`/`ActressInfo`/`Magnet`/`PageLink`/`SearchLink`）暴露可变 `categoryId`，data 层（导入路径）直接改写它——§4.7 仅改了默认值，可变契约仍在 | 改为 `val`，categoryId 经 data 层单独传递 |
-
-### P1/P2 — 架构（分层与全局状态）
-
-| # | 位置 | 问题 | 建议 |
-|---|------|------|------|
-| 13.7 | `JBus`(AppContext) / `NetClient` / `CacheLoader` / `JBusManager` | 四个全局可变单例绕过 Hilt，被 DI 管理的代码以静态引用触达 → 不可测（与 §9.2 残留一致），且 `NetClient.defaultFastUrl`/`siteConfig` 在 `onCreate` 前访问会 NPE | 长期：`@ApplicationContext` 注入、`NetClient`/`DB` 改 Hilt `@Singleton`；短期至少文档标注为有意逃逸口 |
-| 13.8 | `core/CacheLoader.kt` | 旧 `lruCached()`/`persistentCached()`/`getString()` 公共 API 已无调用方（仓库已迁 `CacheStore`），但 KDoc 仍宣称“核心读取 API”，形成两套并行缓存 API | 折叠为 `DefaultCacheStore` 的私有后端，删死方法与过期 KDoc |
-| 13.9 | `data/db/DB.kt` + `data/di/DatabaseModule.kt` | `DatabaseModule` 仅透传 `object DB`，双重间接；`DB.historyDao/categoryDao/linkDao` 懒加载委托零调用；`HistoryDao`（除 insert）/`LinkItemDao` 多数方法零调用；`CollectRepository` 还直接静态 `DB.collectDatabase.withTransaction{}` 绕过 Hilt | 二选一：Room 构造完全收归 `DatabaseModule`（删 `object DB`），或全部用 `object DB`（删 `@Provides`）；清理死 DAO 方法 |
-| 13.10 | `domain/model/SearchType.kt:16`、`DataSourceType.kt:18` | site URL 模板（`"/search/%s&DBtype=2"`、`"/page/"` 等）硬编码在 **domain** 枚举里，把站点路由结构泄漏给 domain/ui 层 | URL 模板下沉到 data 层路由表，枚举只保留语义身份 |
-
-### P2 — 中等
-
-| # | 位置 | 问题 | 建议 |
-|---|------|------|------|
-| 13.11 | `data/db/LinkMappers.kt:142` | `restoreUrlFields()` 直接读 `NetClient.siteConfig.baseUrl`，db/mapper 反向依赖 `core.http` | baseUrl/SiteConfig 作参数传入 |
-| 13.12 | `data/CollectRepository.kt:120-150,196-276` | `withTransaction` 用静态 `DB.collectDatabase`；导入路径 4 处近似“反序列化→查重→插入/跳过”重复块 | 注入 `CollectDatabase`；抽 `insertIfAbsent(item)` |
-| 13.13 | `ui/MainTabContent.kt:57-92,217-228` | `MovieTabContent`/`ActressTabContent` 重复审查筛选 chip 行与 pager↔filter `LaunchedEffect` 同步块 | 抽 `CensorFilterRow` + `rememberCensorPagerSync()` |
-| 13.14 | `ui/components/ScrollToTopButton.kt:60-110` | `rememberScrollToTopVisibility` 两份几乎相同实现（LazyList/LazyGrid） | 抽公共 helper（按 firstVisibleIndex/isScrollInProgress） |
-| 13.15 | `ui/components/CategoryBottomSheet.kt:81-92` | 12 行注释掉的多选 UI；`isMultiSelect` 状态仍在但永不可为 true（半成品死状态） | 恢复多选或删除注释块 + `isMultiSelect` |
-| 13.16 | `core/BaseExtension.kt:27` / `JBusManager.kt:54-56` | `formatFileSize()` 用 `manager.first().get()` 无空/生命周期守护（冷启动可能 NPE）；`context` 取首个注册 Activity 而非栈顶（KDoc 误导） | 用 `JBusManager.context`（有 Application 回退）；或追踪 resumed Activity |
-| 13.17 | `data/parser/MovieHtmlParser.kt:88` | `java.net.URL(url).path` 在 `mapNotNull` 内会抛异常（非过滤），畸形 href 导致整页解析失败；且 `java.net.URL` 在 Android 已弃用 | `runCatching` 或 `Uri.parse(url).path` |
-| 13.18 | `data/parser/ForumPostParser.kt:78-98` vs `InlineParagraphParser.kt:47-70` | §8.2 拆分时把“内联文本累加”逻辑复制成两份 ~20 行 | 抽公共 `InlineTextAccumulator` |
-| 13.19 | `app/proguard-rules.pro:26-134` | ~30 个 domain model 的逐类 Gson keep 规则，新增模型易漏（仅 release 崩） | 合并为包级 `-keep class me.jbusdriver.modern.domain.model.** { !static !transient <fields>; }`（内部类 `$` 仍需枚举） |
-| 13.20 | `ui/components/CollectButton.kt`、`ActressAvatar.kt:100` | Composable 内直接 `Toast.makeText`，绕过其他页面统一的 SnackbarHost | 统一经 Snackbar host |
-| 13.21 | `domain/model/Category.kt:21` | `var order`/`var id`，自定义 equals 依赖 `id` → 入库前后相等性不同；外加 `MovieCategory`/`ActressCategory`/`LinkCategory` 共享可变单例 | 冻结字段或拆分“插入结果”类型 |
-| 13.22 | `data/MovieRepository.kt:119-191` | 接口默认方法体实现了一套**绕过缓存**的 SWR，但唯一实现已全部 override，默认体永不执行且具误导性 | 删除默认体（声明为抽象） |
-
-### P3 — 小修 / 死代码清理
-
-- `core/BaseExtension.kt`：`Context.paste()`、零参 `arrayMapof()`、`Context.packageInfo` 均无调用。
-- `core/FileUtil.kt`（整文件）：`createDir()` 无外部调用 → 删文件。
-- `core/http/NetClient.kt`：`fetchDocument`(public)/`fetchHtml`(internal) 已无调用（仅 `fetchHtmlResponse` 在用）；`glideOkHttpClient` 命名误导（项目用 Coil）。
-- `core/site/SiteConfig.kt:56`：`updateBaseUrl()` 无调用且与 DataStore 不同步（竞态）。
-- `data/ForumFloorOrder.kt:31`：`forumThreadDetailCacheKey()` 无调用。
-- `data/GifLoadTracker.kt:47`：`clearAll()` 无调用。
-- `data/ForumRepository.kt:23-29`：`forumLogD/E` 用 `runCatching` 包 `KLog`（永不抛）。
-- `data/ForumSessionClient.kt:9`：空标记接口（无成员），或用 `BrowserSessionClient` 直连。
-- `data/db/DB.kt:9-10,21`：自引用 import；KDoc 提到 `allowMainThreadQueries()` 但构造未调用。
-- `AppContext.kt:28-34,49-55`：`isDebug` 仅用于一行 `Log.d`；`onLowMemory/onTrimMemory` 空实现。
-- `ui/UiModels.kt:50,114`：仅 `GenreUiModel`/`GenreCategory` 带 `@Keep`，其余兄弟类型没有（无明显 R8/反射依据）。
-- `domain/model/Movie.kt:32`：`tags: List<String>? = listOf()` 可空+非空默认（调用方需 `orEmpty()`）→ 改非空 `emptyList()`。
-- `data/UiPrefsStore.kt:55`：魔数 `1`（`// 1 = MovieDBType`）→ 用命名常量。
-
-### 复审结论
-
-- **最高杠杆、零风险**：删 `androidx-material` 依赖（13.1）+ 删 `ColorSchemeScreen.kt`/`theme/Color.kt`（13.2/13.3）+ 删死表达式/补 i18n（13.4/13.5）——合计数十行，立即收益。
-- **架构级**：全局单例收敛到 Hilt（13.7）、`CacheLoader` 折叠（13.8）、`DB` 双重间接收敛（13.9）、domain 去 URL 模板（13.10）——这是真正提升可测性与分层纯净度的方向。
-- **domain 不可变性**：§4.7 当年只改默认值，`ILink.categoryId` 的 `var`（13.6）仍是 data→domain 的可变缝，建议本次一并收口。
-- ui/domain VM 卫生已达标（无 Context/Resources 残留、`@StringRes Int` 一致）；剩余多为重复/死代码清理。
-
-
+1. 修复 List/Forum request generation 与取消传播。
+2. 修复 LabSettings 取消语义。
+3. 锁定收藏导入坏数据语义并补回滚测试。
+4. 收敛 Screen 直接访问 Store 的入口。
+5. 迁移剩余全局 `DB` 使用点。
+6. 处理 `ILink.categoryId` 可变 domain 状态。

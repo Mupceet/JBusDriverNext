@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +78,10 @@ class SearchViewModel @Inject constructor(
 
     /** 当前搜索请求的 Job，用于取消旧请求 */
     private var searchJob: Job? = null
+    private var requestGeneration = 0L
+    private var activeIdentity: RequestIdentity? = null
+
+    private data class RequestIdentity(val query: String, val type: SearchType)
 
     /** 搜索历史记录 */
     private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
@@ -105,13 +110,17 @@ class SearchViewModel @Inject constructor(
     /** 清空搜索内容，恢复空状态 */
     fun clearSearch() {
         searchJob?.cancel()
+        requestGeneration += 1
+        activeIdentity = null
         _uiState.update {
             it.copy(
                 query = "",
                 results = emptyList(),
                 actressResults = emptyList(),
                 error = null,
-                isLoading = false
+                isLoading = false,
+                isRefreshing = false,
+                isLoadingMore = false
             )
         }
     }
@@ -131,6 +140,8 @@ class SearchViewModel @Inject constructor(
     fun search(query: String, type: SearchType? = null) {
         if (query.isBlank()) return
         val searchType = type ?: _uiState.value.searchType
+        val identity = RequestIdentity(query, searchType)
+        val generation = beginRequest(identity)
         viewModelScope.launch {
             historyStore.addQuery(query)
             _searchHistory.value = historyStore.getHistory()
@@ -144,6 +155,8 @@ class SearchViewModel @Inject constructor(
                     query = activeQuery,
                     searchType = activeType,
                     isLoading = true,
+                    isRefreshing = false,
+                    isLoadingMore = false,
                     error = null,
                     currentPage = 1
                 )
@@ -151,7 +164,7 @@ class SearchViewModel @Inject constructor(
             try {
                 if (activeType == SearchType.ACTRESS) {
                     val result = repository.searchActresses(activeQuery, 1)
-                    if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
+                    if (!isCurrent(generation, identity)) return@launch
                     _uiState.update {
                         it.copy(
                             actressResults = result.second.map { a -> a.toActressUiModel() },
@@ -163,7 +176,7 @@ class SearchViewModel @Inject constructor(
                     }
                 } else {
                     val result = repository.searchMovies(activeType, activeQuery, 1)
-                    if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
+                    if (!isCurrent(generation, identity)) return@launch
                     _uiState.update {
                         it.copy(
                             results = result.movies.map { m -> m.toUiModel() },
@@ -174,8 +187,10 @@ class SearchViewModel @Inject constructor(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                if (_uiState.value.query != activeQuery || _uiState.value.searchType != activeType) return@launch
+                if (!isCurrent(generation, identity)) return@launch
                 _uiState.update { it.copy(isLoading = false, error = R.string.search_failed) }
             }
         }
@@ -189,11 +204,14 @@ class SearchViewModel @Inject constructor(
     fun refresh() {
         val state = _uiState.value
         if (state.isRefreshing || state.query.isBlank()) return
+        val identity = RequestIdentity(state.query, state.searchType)
+        val generation = beginRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 if (state.searchType == SearchType.ACTRESS) {
                     val result = repository.searchActresses(state.query, 1)
+                    if (!isCurrent(generation, identity)) return@launch
                     _uiState.update {
                         it.copy(
                             actressResults = result.second.map { a -> a.toActressUiModel() },
@@ -209,6 +227,7 @@ class SearchViewModel @Inject constructor(
                         1,
                         forceRefresh = true
                     )
+                    if (!isCurrent(generation, identity)) return@launch
                     _uiState.update {
                         it.copy(
                             results = result.movies.map { m -> m.toUiModel() },
@@ -218,7 +237,10 @@ class SearchViewModel @Inject constructor(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (!isCurrent(generation, identity)) return@launch
                 _uiState.update { it.copy(isRefreshing = false, error = R.string.search_failed) }
             }
         }
@@ -233,12 +255,15 @@ class SearchViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore || !state.hasMore) return
         val nextPage = state.currentPage + 1
+        val identity = RequestIdentity(state.query, state.searchType)
+        val generation = beginRequest(identity)
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 if (state.searchType == SearchType.ACTRESS) {
                     val result = repository.searchActresses(state.query, nextPage)
+                    if (!isCurrent(generation, identity)) return@launch
                     _uiState.update {
                         it.copy(
                             actressResults = it.actressResults + result.second.map { a -> a.toActressUiModel() },
@@ -249,6 +274,7 @@ class SearchViewModel @Inject constructor(
                     }
                 } else {
                     val result = repository.searchMovies(state.searchType, state.query, nextPage)
+                    if (!isCurrent(generation, identity)) return@launch
                     _uiState.update {
                         it.copy(
                             results = it.results + result.movies.map { m -> m.toUiModel() },
@@ -258,7 +284,10 @@ class SearchViewModel @Inject constructor(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (!isCurrent(generation, identity)) return@launch
                 _uiState.update { it.copy(isLoadingMore = false, error = R.string.search_failed) }
             }
         }
@@ -295,5 +324,16 @@ class SearchViewModel @Inject constructor(
      */
     fun setQuery(query: String) {
         _uiState.update { it.copy(query = query) }
+    }
+
+    private fun beginRequest(identity: RequestIdentity): Long {
+        requestGeneration += 1
+        activeIdentity = identity
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, identity: RequestIdentity): Boolean {
+        return generation == requestGeneration &&
+            activeIdentity == identity
     }
 }

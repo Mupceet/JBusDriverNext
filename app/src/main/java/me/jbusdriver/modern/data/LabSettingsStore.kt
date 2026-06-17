@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
+import me.jbusdriver.modern.core.site.SitePreferenceSource
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,7 +56,7 @@ interface ForumSettingsReader {
 class LabSettingsStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mirrorScanner: MirrorScanner
-) : ForumSettingsReader {
+) : ForumSettingsReader, SitePreferenceSource {
 
     private val dataStore = context.labSettingsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -89,6 +91,9 @@ class LabSettingsStore @Inject constructor(
         it[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
     }.stateIn(scope, SharingStarted.Eagerly, DEFAULT_BASE_URL)
 
+    override suspend fun currentSelectedBaseUrl(): String =
+        dataStore.data.first()[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
+
     val cachedMirrorUrls: StateFlow<List<String>> = dataStore.data.map {
         it[KEY_CACHED_MIRROR_URLS]?.toList() ?: PRESET_MIRROR_URLS
     }.stateIn(scope, SharingStarted.Eagerly, PRESET_MIRROR_URLS)
@@ -119,7 +124,7 @@ class LabSettingsStore @Inject constructor(
         private val KEY_FORUM_FLOOR_ORDER = stringPreferencesKey("forum_floor_order")
         private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")
         private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
-        const val DEFAULT_BASE_URL = "https://www.javbus.com"
+        const val DEFAULT_BASE_URL = DEFAULT_SITE_URL
         private val PRESET_MIRROR_URLS = listOf(
             "https://www.javbus.com",
             "https://www.cdnbus.bond",

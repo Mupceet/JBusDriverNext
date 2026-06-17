@@ -4,6 +4,7 @@ import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.persistentCached
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.core.site.resolveUrl
 import me.jbusdriver.modern.data.parser.parseMovieDetails
 import me.jbusdriver.modern.domain.model.MovieDetail
 import me.jbusdriver.modern.domain.model.urlPath
@@ -54,12 +55,14 @@ class DefaultMovieDetailRepository @Inject constructor(
 ) : MovieDetailRepository {
 
     override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
-        val cacheKey = url.urlPath
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val cacheKey = siteCacheKey(baseUrl, "movie-detail", url.urlPath)
 
         return cacheStore.persistentCached(cacheKey, forceRefresh) {
-            val resolvedUrl = siteConfig.resolve(url)
+            val resolvedUrl = resolveUrl(baseUrl, url)
             val doc = htmlClient.fetchDocument(resolvedUrl)
-            parseMovieDetails(doc, siteConfig.baseUrl)
+            parseMovieDetails(doc, baseUrl)
         }
     }
 }

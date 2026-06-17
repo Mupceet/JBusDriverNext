@@ -9,6 +9,7 @@ import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.data.db.ActressDBType
+import me.jbusdriver.modern.data.db.CollectDatabase
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.convertDBItem
 import me.jbusdriver.modern.data.db.dao.LinkItemDao
@@ -83,6 +84,21 @@ interface CollectRepository {
     suspend fun importCollectionsFromJson(json: String): Pair<Int, Int>
 }
 
+interface CollectTransactionRunner {
+    suspend fun <T> withTransaction(block: suspend () -> T): T
+}
+
+@Singleton
+class RoomCollectTransactionRunner @Inject constructor(
+    private val database: CollectDatabase
+) : CollectTransactionRunner {
+    override suspend fun <T> withTransaction(block: suspend () -> T): T {
+        return database.withTransaction {
+            block()
+        }
+    }
+}
+
 /**
  * 职责：收藏功能的默认实现，通过 Room DAO 操作数据库
  *
@@ -92,7 +108,8 @@ interface CollectRepository {
 @Singleton
 class DefaultCollectRepository @Inject constructor(
     private val linkDao: LinkItemDao,
-    private val siteConfig: SiteConfig
+    private val siteConfig: SiteConfig,
+    private val transactionRunner: CollectTransactionRunner
 ) : CollectRepository {
 
     override suspend fun isCollected(linkItem: LinkItem): Boolean {
@@ -119,7 +136,7 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun toggleMovieCollect(movie: Movie): Boolean {
         val item = movie.convertDBItem()
-        return me.jbusdriver.modern.data.db.DB.collectDatabase.withTransaction {
+        return transactionRunner.withTransaction {
             val exists = linkDao.hasByKey(item.dbType, item.key) >= 1
             if (exists) {
                 linkDao.delete(item.dbType, item.key)
@@ -137,7 +154,7 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun toggleActressCollect(actress: ActressInfo): Boolean {
         val item = actress.convertDBItem()
-        return me.jbusdriver.modern.data.db.DB.collectDatabase.withTransaction {
+        return transactionRunner.withTransaction {
             val exists = linkDao.hasByKey(item.dbType, item.key) >= 1
             if (exists) {
                 linkDao.delete(item.dbType, item.key)
@@ -198,10 +215,12 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun importCollectionsFromJson(json: String): Pair<Int, Int> {
         val element = GSON.fromJson(json, com.google.gson.JsonElement::class.java)
-        return if (element.isJsonArray) {
-            importLegacyFormat(element.asJsonArray)
-        } else {
-            importNewFormat(element.asJsonObject)
+        return transactionRunner.withTransaction {
+            if (element.isJsonArray) {
+                importLegacyFormat(element.asJsonArray)
+            } else {
+                importNewFormat(element.asJsonObject)
+            }
         }
     }
 
