@@ -33,7 +33,8 @@ fun CollectionListScreen(
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
+    val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
+    val isGrid = uiPrefsState.isGrid
 
     LaunchedEffect(dbType, active) {
         if (active) {

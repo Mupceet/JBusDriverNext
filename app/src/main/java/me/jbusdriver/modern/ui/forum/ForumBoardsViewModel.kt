@@ -37,6 +37,14 @@ class ForumBoardsViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ForumBoardsUiState())
     val uiState: StateFlow<ForumBoardsUiState> = _uiState.asStateFlow()
+    private var requestGeneration = 0L
+
+    private fun beginRequest(): Long {
+        requestGeneration += 1
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long): Boolean = generation == requestGeneration
 
     init {
         KLog.d("[Forum] ForumBoardsViewModel init", TAG)
@@ -45,12 +53,21 @@ class ForumBoardsViewModel @Inject constructor(
 
     fun loadBoards() {
         if (_uiState.value.isLoading) return
+        val generation = beginRequest()
         KLog.d("[Forum] loadBoards started", TAG)
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             var hasContent = false
             repository.observeForumBoards(revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -98,10 +115,12 @@ class ForumBoardsViewModel @Inject constructor(
     }
 
     fun refresh() {
+        val generation = beginRequest()
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             repository.observeForumBoards(forceRefresh = true, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {

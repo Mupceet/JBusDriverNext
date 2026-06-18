@@ -192,6 +192,53 @@ class ForumCacheRefreshViewModelTest {
         assertFalse(state.isRefreshing)
     }
 
+    @Test
+    fun `home stale refresh does not overwrite newer revalidation`() = runTest(testDispatcher) {
+        val staleRefresh = CompletableDeferred<ForumHomeData>()
+        val repository = FakeHomeRepository(
+            mutableListOf(
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(homeData(1), 1_000L, CacheSource.Network, false)
+                        )
+                    )
+                },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(staleRefresh.await(), 2_000L, CacheSource.Network, false)
+                        )
+                    )
+                },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(homeData(2), 3_000L, CacheSource.Network, false)
+                        )
+                    )
+                }
+            )
+        )
+        val viewModel = ForumBoardsViewModel(repository)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.groups.size)
+
+        viewModel.refresh()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        viewModel.revalidate()
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.groups.size)
+
+        staleRefresh.complete(homeData(4))
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.groups.size)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
     // --- Thread List Tests ---
 
     private class FakeThreadListRepository(

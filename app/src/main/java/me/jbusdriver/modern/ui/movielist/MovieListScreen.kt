@@ -47,7 +47,8 @@ fun MovieListScreen(
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isGrid by hiltViewModel<UiPrefsViewModel>().store.isGrid.collectAsStateWithLifecycle()
+    val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
+    val isGrid = uiPrefsState.isGrid
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
@@ -55,7 +56,7 @@ fun MovieListScreen(
     val refreshLabel = stringResource(R.string.refresh)
     val isAtTop by remember(isGrid) {
         derivedStateOf {
-            if (isGrid == true) {
+            if (isGrid) {
                 gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset < 20
             } else {
                 listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 20

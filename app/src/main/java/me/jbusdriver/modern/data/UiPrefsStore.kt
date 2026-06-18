@@ -24,19 +24,24 @@ interface CollectionUiPrefs {
     suspend fun setSortOption(dbType: Int, optionName: String)
 }
 
+interface UiPrefsStoreContract {
+    val isGrid: StateFlow<Boolean>
+    suspend fun setGrid(isGrid: Boolean)
+}
+
 @Singleton
 class UiPrefsStore @Inject constructor(
     @ApplicationContext private val context: Context
-) : CollectionUiPrefs {
+) : CollectionUiPrefs, UiPrefsStoreContract {
     private val dataStore = context.uiPrefsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Cached grid/list preference — StateFlow avoids re-reading from disk on each subscription. */
-    val isGrid: StateFlow<Boolean> = dataStore.data
+    override val isGrid: StateFlow<Boolean> = dataStore.data
         .map { it[IS_GRID] ?: false }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
-    suspend fun setGrid(isGrid: Boolean) {
+    override suspend fun setGrid(isGrid: Boolean) {
         dataStore.edit { it[IS_GRID] = isGrid }
     }
 

@@ -1,0 +1,56 @@
+package me.jbusdriver.modern.ui.settings
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import me.jbusdriver.modern.data.UiPrefsStoreContract
+import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class UiPrefsViewModelTest {
+    private val dispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun uiStateReflectsGridPreferenceAndIntents() = runTest(dispatcher) {
+        val store = FakeUiPrefsStore()
+        val viewModel = UiPrefsViewModel(store)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isGrid)
+
+        viewModel.setGrid(true)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isGrid)
+
+        viewModel.toggleGrid()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isGrid)
+    }
+
+    private class FakeUiPrefsStore : UiPrefsStoreContract {
+        override val isGrid = MutableStateFlow(false)
+
+        override suspend fun setGrid(isGrid: Boolean) {
+            this.isGrid.value = isGrid
+        }
+    }
+}

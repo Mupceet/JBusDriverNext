@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -25,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
@@ -62,14 +60,12 @@ fun MainScreen(
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
     val labSettingsViewModel = hiltViewModel<LabSettingsViewModel>()
-    val uiPrefsStore = hiltViewModel<UiPrefsViewModel>().store
+    val uiPrefsViewModel = hiltViewModel<UiPrefsViewModel>()
     val labSettingsUiState by labSettingsViewModel.uiState.collectAsStateWithLifecycle()
+    val uiPrefsUiState by uiPrefsViewModel.uiState.collectAsStateWithLifecycle()
     val forumEnabled = labSettingsUiState.forumEnabled
-    val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle()
-    val coroutineScope = rememberCoroutineScope()
-    val toggleGrid: () -> Unit = {
-        coroutineScope.launch { uiPrefsStore.setGrid(!isGrid) }
-    }
+    val isGrid = uiPrefsUiState.isGrid
+    val toggleGrid: () -> Unit = uiPrefsViewModel::toggleGrid
 
     // Auto-switch away from Forum tab when disabled
     LaunchedEffect(forumEnabled) {

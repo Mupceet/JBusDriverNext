@@ -39,6 +39,7 @@ import me.jbusdriver.modern.data.RoomCollectTransactionRunner
 import me.jbusdriver.modern.data.SearchHistoryStore
 import me.jbusdriver.modern.data.SearchRepository
 import me.jbusdriver.modern.data.UiPrefsStore
+import me.jbusdriver.modern.data.UiPrefsStoreContract
 import javax.inject.Singleton
 
 /**
@@ -107,6 +108,12 @@ abstract class DataModule {
     abstract fun bindCollectionUiPrefs(
         impl: UiPrefsStore
     ): CollectionUiPrefs
+
+    @Binds
+    @Singleton
+    abstract fun bindUiPrefsStoreContract(
+        impl: UiPrefsStore
+    ): UiPrefsStoreContract
 
     /** 绑定 [CollectRepository] 到 [DefaultCollectRepository]。 */
     @Binds

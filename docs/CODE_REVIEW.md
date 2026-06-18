@@ -53,8 +53,8 @@
 
 ## 四、Phase C 已修复
 
-1. **剩余 List/Forum detail request identity**：`ActressListViewModel`、`GenreListViewModel`、`ForumThreadDetailViewModel` 已补齐 request generation / identity。旧 `refresh/loadMore/revalidate/loadDetail` 在 source 或 floorOrder 切换后返回时会被丢弃，不再覆盖新状态。
-2. **LabSettings Screen Store 边界**：`LabSettingsViewModel` 新增 `LabSettingsUiState` 与 `setForumEnabled/setAutoLoadGifs/setForumFloorOrder/selectUrl` 等语义方法。`LabSettingsScreen` 与 `MainScreen` 不再直接访问 `LabSettingsStoreContract`。
+1. **剩余 List/Forum request identity**：`ActressListViewModel`、`GenreListViewModel`、`ForumThreadDetailViewModel`、`ForumBoardsViewModel` 已补齐 request generation / identity。旧 `refresh/loadMore/revalidate/loadDetail` 晚返回时会被丢弃，不再覆盖新状态。
+2. **Screen Store 边界**：`LabSettingsViewModel` 新增 `LabSettingsUiState` 与 `setForumEnabled/setAutoLoadGifs/setForumFloorOrder/selectUrl` 等语义方法；`UiPrefsViewModel` 新增 `UiPrefsUiState` 与 `setGrid/toggleGrid`。相关 Screen 不再直接访问 `LabSettingsStoreContract` 或 `UiPrefsStore`。
 3. **数据库 Hilt 单入口推进**：新增 `RoomDatabaseFactory` 复用 Room 构建和迁移定义；`DatabaseModule` 改为通过 `@ApplicationContext` 直接提供 `JBusDatabase` / `CollectDatabase`。`object DB` 保留为遗留兼容层，不再作为 Hilt provider 的来源。
 
 关键新增/扩展测试：
@@ -63,22 +63,16 @@
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.ActressListViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.GenreListViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.forum.ForumThreadDetailViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.forum.ForumCacheRefreshViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.LabSettingsViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.UiPrefsViewModelTest" --console=plain
 ```
 
 ---
 
 ## 五、P1：剩余正确性风险
 
-### 5.1 ForumBoardsViewModel 尚未迁移 request identity
-
-**位置**: `ui/forum/ForumBoardsViewModel.kt`
-
-List 与 Forum detail 的高风险切换场景已迁移。`ForumBoardsViewModel` 没有 source/filter/floorOrder 切换，旧请求覆盖风险较低，但仍可为了状态机一致性补 request generation。
-
-**建议**: 如继续统一 SWR 状态机，可在抽 reducer 前顺手补齐 boards 的 generation guard。
-
-### 5.2 收藏导入坏数据的产品语义仍需确认
+### 5.1 收藏导入坏数据的产品语义仍需确认
 
 **位置**: `data/CollectRepository.kt`
 
@@ -90,15 +84,7 @@ List 与 Forum detail 的高风险切换场景已迁移。`ForumBoardsViewModel`
 
 ## 六、P2：架构边界与可维护性问题
 
-### 6.1 部分 Screen 仍直接访问 Store
-
-**位置**: `ui/search/SearchScreen.kt`、`ui/movielist/*Screen.kt`
-
-LabSettings 入口已收敛到 ViewModel state / intent。剩余直接 Store 访问主要集中在 `UiPrefsViewModel.store.isGrid`，属于 UI 偏好读取与写入，风险低于 DataStore 业务配置直通，但仍会让 Screen 依赖 Store surface。
-
-**建议**: 为 `UiPrefsViewModel` 暴露 `UiPrefsUiState` 与 `setGrid/toggleGrid`，让 Screen 只收集 ViewModel state，不直接接触 Store。
-
-### 6.2 `object DB` 仍作为迁移期兼容层存在
+### 6.1 `object DB` 仍作为迁移期兼容层存在
 
 **位置**: `data/db/DB.kt`、`data/di/DatabaseModule.kt`
 
@@ -106,7 +92,7 @@ LabSettings 入口已收敛到 ViewModel state / intent。剩余直接 Store 访
 
 **建议**: 后续新增代码禁止使用 `DB.xxx`。确认无遗留调用后，可删除 `object DB` 或将其降级到 debug/test-only 辅助。
 
-### 6.3 `ILink.categoryId` 破坏 domain model 不可变性
+### 6.2 `ILink.categoryId` 破坏 domain model 不可变性
 
 **位置**: `domain/model/ILink.kt`、`domain/model/Movie.kt`、`domain/model/MovieDetail.kt`、`domain/model/PageLink.kt`、`domain/model/Magnet.kt`
 
@@ -114,7 +100,7 @@ LabSettings 入口已收敛到 ViewModel state / intent。剩余直接 Store 访
 
 **建议**: `ILink` 只保留 `val link: String`。收藏元数据使用 `CollectedEntry<T>(item, categoryId, createdAtMillis)` 或 mapper 参数传递。
 
-### 6.4 大型 ViewModel 与重复 SWR 状态机仍未收口
+### 6.3 大型 ViewModel 与重复 SWR 状态机仍未收口
 
 **位置**: `LinkMovieListViewModel.kt`、`MovieListViewModel.kt`、`ActressListViewModel.kt`、Forum 多个 ViewModel
 
@@ -122,7 +108,7 @@ Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading
 
 **建议**: 抽取纯函数 reducer 或小型 state producer，先迁移一个代表性列表，再逐页推进。`LinkMovieListViewModel` 至少拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
 
-### 6.5 UI 层仍承担平台 IO 和媒体流程
+### 6.4 UI 层仍承担平台 IO 和媒体流程
 
 **位置**: `ui/image/ImageViewScreen.kt`、`ui/movielist/CollectCategoryScreen.kt`
 
@@ -157,7 +143,7 @@ Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件�
 
 ## 八、后续建议顺序
 
-1. 迁移剩余 `UiPrefsViewModel.store` 直通入口。
-2. 处理 `ILink.categoryId` 可变 domain 状态。
-3. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
-4. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。
+1. 处理 `ILink.categoryId` 可变 domain 状态。
+2. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
+3. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。
+4. 收敛 UI 层平台 IO 到可注入 gateway。
