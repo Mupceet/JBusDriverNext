@@ -59,6 +59,7 @@
 5. **收藏导入/导出平台 IO 收敛**：新增 `CollectionDocumentGateway`，`CollectCategoryViewModel` 负责导入/导出 document URI 流程；`CollectCategoryScreen` 只保留 Activity Result launcher 和结果提示，不再直接读写 `ContentResolver`。
 6. **图片保存/分享平台 IO 收敛**：新增 `ImageMediaGateway` 与 `ImageActionsViewModel`，图片查看页只触发保存/分享 intent 并消费消息；MediaStore、FileProvider、bitmap 压缩和异常映射移出 Composable。
 7. **MovieList SWR reducer 代表性迁移**：新增 `MovieListStateReducers`，将首页 cached/fresh/failure 与 revalidate fresh 状态归约抽成可单测纯函数；`MovieListViewModel` 保留请求 identity、日志和分页副作用。
+8. **LinkMovieList 列表 SWR reducer 迁移**：新增 `LinkMovieListStateReducers`，将关联影片列表的首页加载、revalidate fresh 与 breadcrumb title 归约移出 ViewModel；女优详情/收藏子状态仍保留在后续拆分范围内。
 
 关键新增/扩展测试：
 
@@ -71,6 +72,7 @@
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.UiPrefsViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.image.ImageActionsViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.MovieListStateReducerTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.LinkMovieListStateReducerTest" --console=plain
 ```
 
 ---
@@ -99,11 +101,11 @@
 
 ### 6.2 大型 ViewModel 与重复 SWR 状态机仍需继续收口
 
-**位置**: `LinkMovieListViewModel.kt`、`MovieListViewModel.kt`、`ActressListViewModel.kt`、Forum 多个 ViewModel
+**位置**: `ActressListViewModel.kt`、`GenreListViewModel.kt`、Forum 多个 ViewModel；`LinkMovieListViewModel.kt` 的女优详情/收藏子状态
 
-`MovieListViewModel` 已先把首页 SWR 与 revalidate fresh 归约迁到 `MovieListStateReducers`，但 `LinkMovieListViewModel`、`ActressListViewModel`、`GenreListViewModel` 和 Forum 多个 ViewModel 仍保留相似的 loading/error/pending/revalidate/loadMore 分支。
+`MovieListViewModel` 和 `LinkMovieListViewModel` 的列表 SWR 归约已迁到 reducer 文件，但 `ActressListViewModel`、`GenreListViewModel` 和 Forum 多个 ViewModel 仍保留相似的 loading/error/pending/revalidate/loadMore 分支。`LinkMovieListViewModel` 也仍混有女优详情与收藏状态。
 
-**建议**: 沿用 `MovieListStateReducers` 的方式逐页迁移，优先处理 `LinkMovieListViewModel`；它至少应拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
+**建议**: 沿用 reducer 方式逐页迁移，下一步优先处理 `ActressListViewModel` 或将 `LinkMovieListViewModel` 的 `ActressHeaderState` 独立出来。
 
 ---
 

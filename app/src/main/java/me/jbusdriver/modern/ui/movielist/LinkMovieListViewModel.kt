@@ -19,8 +19,6 @@ import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
-import me.jbusdriver.modern.core.cache.decideFreshRevalidate
-import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -219,65 +217,16 @@ class LinkMovieListViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            val result = event.entry.value
-                            _uiState.update { state ->
-                                state.copy(
-                                    movies = result.movies.map { m -> m.toUiModel() },
-                                    pageInfo = result.pageInfo,
-                                    isLoading = false,
-                                    isFilterSwitching = false,
-                                    hasMore = result.pageInfo.hasNext,
-                                    error = if (result.movies.isEmpty()) R.string.no_data else null,
-                                    filterInfo = result.filterInfo,
-                                    isRevalidating = event.entry.isExpired,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis,
-                                    resolvedTitle = result.filterInfo?.let {
-                                        resolveBreadcrumbTitle(it)
-                                    } ?: state.resolvedTitle
-                                )
-                            }
+                            _uiState.update { it.applyFirstPageCached(event.entry) }
                         }
 
                         is CachedLoadEvent.Fresh -> {
                             // loadFirstPage 仅在列表为空时调用，直接应用
-                            val result = event.entry.value
-                            _uiState.update { state ->
-                                state.copy(
-                                    movies = result.movies.simulateCacheRefreshChange()
-                                        .map { m -> m.toUiModel() },
-                                    pageInfo = result.pageInfo,
-                                    isLoading = false,
-                                    isFilterSwitching = false,
-                                    isRevalidating = false,
-                                    hasMore = result.pageInfo.hasNext,
-                                    filterInfo = result.filterInfo,
-                                    pendingFreshResult = null,
-                                    refreshMessage = null,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis,
-                                    resolvedTitle = result.filterInfo?.let {
-                                        resolveBreadcrumbTitle(it)
-                                    } ?: state.resolvedTitle
-                                )
-                            }
+                            _uiState.update { it.applyFirstPageFresh(event.entry) }
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                if (event.hadCachedValue || hasContent) {
-                                    it.copy(
-                                        isLoading = false,
-                                        isFilterSwitching = false,
-                                        isRevalidating = false
-                                    )
-                                } else {
-                                    it.copy(
-                                        isLoading = false,
-                                        isFilterSwitching = false,
-                                        isRevalidating = false,
-                                        error = R.string.load_failed
-                                    )
-                                }
-                            }
+                            _uiState.update { it.applyFirstPageFailure(event, hasContent) }
                         }
                     }
                 }
@@ -351,43 +300,22 @@ class LinkMovieListViewModel @AssistedInject constructor(
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            val fresh = event.entry.value.copy(
-                                movies = event.entry.value.movies.simulateCacheRefreshChange()
+                            val reduction = _uiState.value.applyFreshRevalidate(
+                                event.entry,
+                                isAtTop = atTop.isAtTop
                             )
-                            val freshUiModels = fresh.movies.map { it.toUiModel() }
-                            when (decideFreshRevalidate(
-                                _uiState.value.movies,
-                                freshUiModels,
-                                atTop.isAtTop
-                            )) {
+                            when (reduction.outcome) {
                                 FreshRevalidateOutcome.ApplyImmediately -> {
                                     pages.startFirstPage()
-                                    _uiState.update {
-                                        it.copy(
-                                            movies = freshUiModels,
-                                            pageInfo = fresh.pageInfo,
-                                            hasMore = fresh.pageInfo.hasNext,
-                                            filterInfo = fresh.filterInfo,
-                                            isRevalidating = false,
-                                            pendingFreshResult = null,
-                                            refreshMessage = null,
-                                            lastUpdatedAtMillis = event.entry.storedAtMillis
-                                        )
-                                    }
+                                    _uiState.value = reduction.state
                                 }
 
                                 FreshRevalidateOutcome.StorePending -> {
-                                    _uiState.update {
-                                        it.copy(
-                                            isRevalidating = false,
-                                            pendingFreshResult = fresh,
-                                            refreshMessage = R.string.new_data_available
-                                        )
-                                    }
+                                    _uiState.value = reduction.state
                                 }
 
                                 FreshRevalidateOutcome.NoChange -> {
-                                    _uiState.update { it.copy(isRevalidating = false) }
+                                    _uiState.value = reduction.state
                                 }
                             }
                         }
@@ -525,16 +453,6 @@ class LinkMovieListViewModel @AssistedInject constructor(
     /** 消费轻量刷新消息（Snackbar） */
     fun consumeRefreshMessage() {
         _uiState.update { it.copy(refreshMessage = null) }
-    }
-
-    private fun resolveBreadcrumbTitle(filterInfo: MovieFilterInfo): ResolvedTitle? {
-        val name = filterInfo.breadcrumbName ?: return null
-        if (filterInfo.breadcrumbType == null) return null
-        return if (filterInfo.breadcrumbType == "女優") {
-            ResolvedTitle.Actress(name)
-        } else {
-            ResolvedTitle.Genre(name)
-        }
     }
 
     private fun currentListIdentity(): ListRequestIdentity =
