@@ -61,6 +61,7 @@
 7. **MovieList SWR reducer 代表性迁移**：新增 `MovieListStateReducers`，将首页 cached/fresh/failure 与 revalidate fresh 状态归约抽成可单测纯函数；`MovieListViewModel` 保留请求 identity、日志和分页副作用。
 8. **LinkMovieList 列表 SWR reducer 迁移**：新增 `LinkMovieListStateReducers`，将关联影片列表的首页加载、revalidate fresh 与 breadcrumb title 归约移出 ViewModel；女优详情/收藏子状态仍保留在后续拆分范围内。
 9. **ActressList SWR reducer 迁移**：新增 `ActressListStateReducers`，将女优列表首页 cached/fresh/failure 与 revalidate fresh 状态归约移出 ViewModel，并用纯函数测试覆盖 pending/new-data 分支。
+10. **GenreList SWR reducer 迁移**：新增 `GenreListStateReducers`，将分类列表 cached/fresh/failure 与 revalidate fresh 状态归约移出 ViewModel；movielist 四个主要列表页的 SWR reducer 已完成代表性收口。
 
 关键新增/扩展测试：
 
@@ -75,6 +76,7 @@
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.MovieListStateReducerTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.LinkMovieListStateReducerTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.ActressListStateReducerTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.GenreListStateReducerTest" --console=plain
 ```
 
 ---
@@ -103,11 +105,11 @@
 
 ### 6.2 大型 ViewModel 与重复 SWR 状态机仍需继续收口
 
-**位置**: `GenreListViewModel.kt`、Forum 多个 ViewModel；`LinkMovieListViewModel.kt` 的女优详情/收藏子状态
+**位置**: Forum 多个 ViewModel；`LinkMovieListViewModel.kt` 的女优详情/收藏子状态
 
-`MovieListViewModel`、`LinkMovieListViewModel` 和 `ActressListViewModel` 的列表 SWR 归约已迁到 reducer 文件，但 `GenreListViewModel` 和 Forum 多个 ViewModel 仍保留相似的 loading/error/pending/revalidate/loadMore 分支。`LinkMovieListViewModel` 也仍混有女优详情与收藏状态。
+movielist 四个主要列表页的列表 SWR 归约已迁到 reducer 文件，但 Forum 多个 ViewModel 仍保留相似的 loading/error/pending/revalidate/loadMore 分支。`LinkMovieListViewModel` 也仍混有女优详情与收藏状态。
 
-**建议**: 沿用 reducer 方式逐页迁移，下一步优先处理 `GenreListViewModel`，或将 `LinkMovieListViewModel` 的 `ActressHeaderState` 独立出来。
+**建议**: 沿用 reducer 方式迁移 Forum 列表/详情状态，或先将 `LinkMovieListViewModel` 的 `ActressHeaderState` 独立出来。
 
 ---
 

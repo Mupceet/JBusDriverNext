@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
-import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreCategory
@@ -123,43 +122,15 @@ class GenreListViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            val categories = event.entry.value.map { it.toUiModel() }
-                            _uiState.update {
-                                it.copy(
-                                    genreCategories = categories,
-                                    isLoading = false,
-                                    error = if (categories.isEmpty()) R.string.no_data else null,
-                                    isRevalidating = event.entry.isExpired,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyGenresCached(event.entry) }
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.simulateCacheRefreshChange()
-                                .map { it.toUiModel() }
-                            _uiState.update {
-                                it.copy(
-                                    genreCategories = categories,
-                                    isLoading = false,
-                                    isRevalidating = false,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyGenresFresh(event.entry) }
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                if (event.hadCachedValue || hasContent) {
-                                    it.copy(isLoading = false, isRevalidating = false)
-                                } else {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRevalidating = false,
-                                        error = R.string.load_failed
-                                    )
-                                }
-                            }
+                            _uiState.update { it.applyGenresFailure(event, hasContent) }
                         }
                     }
                 }
@@ -185,15 +156,7 @@ class GenreListViewModel @Inject constructor(
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            val categories = event.entry.value.simulateCacheRefreshChange()
-                                .map { it.toUiModel() }
-                            _uiState.update {
-                                it.copy(
-                                    genreCategories = categories,
-                                    isRevalidating = false,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyGenresRevalidateFresh(event.entry) }
                         }
 
                         is CachedLoadEvent.Failure -> {
