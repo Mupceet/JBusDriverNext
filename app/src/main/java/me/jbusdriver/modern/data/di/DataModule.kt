@@ -31,6 +31,8 @@ import me.jbusdriver.modern.data.ForumSessionClient
 import me.jbusdriver.modern.data.ForumSessionManager
 import me.jbusdriver.modern.data.ForumSettingsReader
 import me.jbusdriver.modern.data.GifLoadTracker
+import me.jbusdriver.modern.data.AndroidImageMediaGateway
+import me.jbusdriver.modern.data.ImageMediaGateway
 import me.jbusdriver.modern.data.LabSettingsStore
 import me.jbusdriver.modern.data.LabSettingsStoreContract
 import me.jbusdriver.modern.data.LoadedGifTracker
@@ -116,6 +118,12 @@ abstract class DataModule {
     abstract fun bindCollectionDocumentGateway(
         impl: AndroidCollectionDocumentGateway
     ): CollectionDocumentGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindImageMediaGateway(
+        impl: AndroidImageMediaGateway
+    ): ImageMediaGateway
 
     @Binds
     @Singleton

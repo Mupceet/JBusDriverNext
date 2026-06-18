@@ -1,13 +1,6 @@
 package me.jbusdriver.modern.ui.image
 
 import android.app.Activity
-import android.content.ClipData
-import android.content.ContentValues
-import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,29 +47,23 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
-import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.WindowCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
-import coil.imageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.jbusdriver.R
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageViewScreen(
     images: List<String>,
     startIndex: Int = 0,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    viewModel: ImageActionsViewModel = hiltViewModel()
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -96,6 +83,15 @@ fun ImageViewScreen(
         initialPage = startIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0)),
         pageCount = { images.size }
     )
+
+    LaunchedEffect(viewModel, context) {
+        viewModel.messages.collect { message ->
+            val text = message.formatArg?.let {
+                context.getString(message.messageRes, it)
+            } ?: context.getString(message.messageRes)
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -152,9 +148,7 @@ fun ImageViewScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        scope.launch {
-                            saveToGallery(context, images[pagerState.currentPage])
-                        }
+                        viewModel.saveImage(images[pagerState.currentPage])
                     }) {
                         Icon(
                             painterResource(R.drawable.download_24px),
@@ -164,9 +158,7 @@ fun ImageViewScreen(
                         )
                     }
                     IconButton(onClick = {
-                        scope.launch {
-                            shareImage(context, images[pagerState.currentPage])
-                        }
+                        viewModel.shareImage(images[pagerState.currentPage])
                     }) {
                         Icon(
                             painterResource(R.drawable.share_24px),
@@ -238,108 +230,6 @@ private fun ThumbnailStrip(
                     )
                     .clickable { onPageClick(index) }
             )
-        }
-    }
-}
-
-private suspend fun getCachedBitmap(context: Context, imageUrl: String) =
-    withContext(Dispatchers.IO) {
-        val request = ImageRequest.Builder(context)
-            .data(imageUrl)
-            .allowHardware(false)
-            .build()
-        val result = context.imageLoader.execute(request)
-        (result as? SuccessResult)?.drawable?.toBitmap()
-            ?: throw IllegalStateException(context.getString(R.string.image_not_loaded))
-    }
-
-private suspend fun saveToGallery(context: Context, imageUrl: String) {
-    try {
-        val bitmap = getCachedBitmap(context, imageUrl)
-
-        withContext(Dispatchers.IO) {
-            val filename = "JBus_${System.currentTimeMillis()}.jpg"
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(
-                        MediaStore.Images.Media.RELATIVE_PATH,
-                        Environment.DIRECTORY_PICTURES + "/JBus"
-                    )
-                    put(MediaStore.Images.Media.IS_PENDING, 1)
-                }
-            }
-            val uri = context.contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
-            ) ?: throw IllegalStateException("Failed to create media store entry")
-
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                context.contentResolver.update(uri, contentValues, null, null)
-            }
-        }
-        withContext(Dispatchers.Main) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.saved_to_gallery),
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    } catch (e: Exception) {
-        withContext(Dispatchers.Main) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.save_failed_detail, e.message.orEmpty()),
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-}
-
-private suspend fun shareImage(context: Context, imageUrl: String) {
-    try {
-        val bitmap = getCachedBitmap(context, imageUrl)
-
-        val file = withContext(Dispatchers.IO) {
-            val shareDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
-            val file = File(shareDir, "share_${System.currentTimeMillis()}.jpg")
-            file.outputStream()
-                .use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
-            file
-        }
-
-        withContext(Dispatchers.Main) {
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/jpeg"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                clipData = ClipData.newRawUri("", uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(
-                Intent.createChooser(
-                    intent,
-                    context.getString(R.string.share_image)
-                )
-            )
-        }
-    } catch (e: Exception) {
-        withContext(Dispatchers.Main) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.share_failed_detail, e.message.orEmpty()),
-                Toast.LENGTH_SHORT
-            ).show()
         }
     }
 }

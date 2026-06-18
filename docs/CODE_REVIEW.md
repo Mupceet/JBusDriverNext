@@ -16,8 +16,8 @@
 
 当前仍影响质量的风险集中在两类：
 
-1. **架构重复仍偏多**：列表 SWR reducer、一次性事件、平台 IO gateway 还没有统一收口。
-2. **UI 层仍承担部分平台 IO**：文件导入导出、图片保存/分享等流程仍在 Composable 附近，测试替换和错误归一较弱。
+1. **架构重复仍偏多**：列表 SWR reducer、一次性事件和局部 UI state producer 还没有统一收口。
+2. **大型 UI/ViewModel 文件仍偏重**：Forum、Detail 与部分列表页面仍混合较多状态归约、事件处理和渲染细节，后续拆分应优先围绕真实复用点推进。
 
 ---
 
@@ -57,6 +57,7 @@
 3. **数据库 Hilt 单入口推进**：新增 `RoomDatabaseFactory` 复用 Room 构建和迁移定义；`DatabaseModule` 改为通过 `@ApplicationContext` 直接提供 `JBusDatabase` / `CollectDatabase`。`object DB` 保留为遗留兼容层，不再作为 Hilt provider 的来源。
 4. **`ILink.categoryId` 可变状态移除**：`ILink` 只保留 `val link`，Movie/Actress/Genre/Header/PageLink/Magnet 等 domain model 不再暴露收藏分类。收藏分类改由 `LinkItem.categoryId`、`convertDBItem(categoryId)` 参数和导出 mapper 显式传递。
 5. **收藏导入/导出平台 IO 收敛**：新增 `CollectionDocumentGateway`，`CollectCategoryViewModel` 负责导入/导出 document URI 流程；`CollectCategoryScreen` 只保留 Activity Result launcher 和结果提示，不再直接读写 `ContentResolver`。
+6. **图片保存/分享平台 IO 收敛**：新增 `ImageMediaGateway` 与 `ImageActionsViewModel`，图片查看页只触发保存/分享 intent 并消费消息；MediaStore、FileProvider、bitmap 压缩和异常映射移出 Composable。
 
 关键新增/扩展测试：
 
@@ -67,6 +68,7 @@
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.forum.ForumCacheRefreshViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.LabSettingsViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.UiPrefsViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.image.ImageActionsViewModelTest" --console=plain
 ```
 
 ---
@@ -101,14 +103,6 @@ Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading
 
 **建议**: 抽取纯函数 reducer 或小型 state producer，先迁移一个代表性列表，再逐页推进。`LinkMovieListViewModel` 至少拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
 
-### 6.3 UI 层仍承担平台 IO 和媒体流程
-
-**位置**: `ui/image/ImageViewScreen.kt`
-
-图片查看页仍在 Composable 附近直接执行 MediaStore、FileProvider、文件写入、bitmap 压缩和异常映射。这些逻辑难测，且把平台 IO 与 UI 组合生命周期绑在一起。
-
-**建议**: 实际图片保存、分享文件准备放到 `ImageMediaGateway` 这类注入组件。结果归约为 ViewModel 中可确认消费的 `UserMessage`。
-
 ---
 
 ## 七、测试与质量门槛
@@ -138,4 +132,3 @@ Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading
 
 1. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
 2. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。
-3. 收敛图片保存/分享平台 IO 到可注入 gateway。
