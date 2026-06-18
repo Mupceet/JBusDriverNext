@@ -15,6 +15,8 @@ import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.CollectTransactionRunner
 import me.jbusdriver.modern.data.CollectionUiPrefs
+import me.jbusdriver.modern.data.AndroidCollectionDocumentGateway
+import me.jbusdriver.modern.data.CollectionDocumentGateway
 import me.jbusdriver.modern.data.DefaultCollectRepository
 import me.jbusdriver.modern.data.DefaultForumRepository
 import me.jbusdriver.modern.data.DefaultForumSessionClient
@@ -108,6 +110,12 @@ abstract class DataModule {
     abstract fun bindCollectionUiPrefs(
         impl: UiPrefsStore
     ): CollectionUiPrefs
+
+    @Binds
+    @Singleton
+    abstract fun bindCollectionDocumentGateway(
+        impl: AndroidCollectionDocumentGateway
+    ): CollectionDocumentGateway
 
     @Binds
     @Singleton

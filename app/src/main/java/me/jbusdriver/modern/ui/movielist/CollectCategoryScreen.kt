@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,9 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -82,7 +78,6 @@ fun CollectCategoryScreen(
     val resources = LocalResources.current
     val exportSuccessMessage = stringResource(R.string.export_success)
     val cannotReadFileMessage = stringResource(R.string.cannot_read_file)
-    val scope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
 
@@ -95,59 +90,40 @@ fun CollectCategoryScreen(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            try {
-                val json = actionVm.exportCollectionsJson()
-                context.contentResolver.openOutputStream(uri)?.use { os ->
-                    os.write(json.toByteArray(Charsets.UTF_8))
-                }
+        actionVm.exportCollectionsToDocument(
+            documentUri = uri.toString(),
+            onDone = {
                 Toast.makeText(context, exportSuccessMessage, Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
+            },
+            onError = { e ->
                 Toast.makeText(
                     context,
                     resources.getString(R.string.export_failed_detail, e.message.orEmpty()),
                     Toast.LENGTH_SHORT
                 ).show()
             }
-        }
+        )
     }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            try {
-                val json = withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader()
-                        ?.use { it.readText() }
+        actionVm.importCollectionsFromDocument(
+            documentUri = uri.toString(),
+            onDone = {
+                movieVm.loadCollection(MovieDBType)
+                actressVm.loadCollection(ActressDBType)
+            },
+            onError = { e ->
+                val message = if (e is IllegalStateException) {
+                    cannotReadFileMessage
+                } else {
+                    resources.getString(R.string.import_failed_detail, e.message.orEmpty())
                 }
-                if (json == null) {
-                    Toast.makeText(context, cannotReadFileMessage, Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                actionVm.importCollectionsJson(
-                    json,
-                    onDone = {
-                        movieVm.loadCollection(MovieDBType)
-                        actressVm.loadCollection(ActressDBType)
-                    },
-                    onError = { e ->
-                        Toast.makeText(
-                            context,
-                            resources.getString(R.string.import_failed_detail, e.message.orEmpty()),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    resources.getString(R.string.import_failed_detail, e.message.orEmpty()),
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
-        }
+        )
     }
 
     Column(modifier = modifier.fillMaxSize()) {

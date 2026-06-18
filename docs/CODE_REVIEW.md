@@ -56,6 +56,7 @@
 2. **Screen Store 边界**：`LabSettingsViewModel` 新增 `LabSettingsUiState` 与 `setForumEnabled/setAutoLoadGifs/setForumFloorOrder/selectUrl` 等语义方法；`UiPrefsViewModel` 新增 `UiPrefsUiState` 与 `setGrid/toggleGrid`。相关 Screen 不再直接访问 `LabSettingsStoreContract` 或 `UiPrefsStore`。
 3. **数据库 Hilt 单入口推进**：新增 `RoomDatabaseFactory` 复用 Room 构建和迁移定义；`DatabaseModule` 改为通过 `@ApplicationContext` 直接提供 `JBusDatabase` / `CollectDatabase`。`object DB` 保留为遗留兼容层，不再作为 Hilt provider 的来源。
 4. **`ILink.categoryId` 可变状态移除**：`ILink` 只保留 `val link`，Movie/Actress/Genre/Header/PageLink/Magnet 等 domain model 不再暴露收藏分类。收藏分类改由 `LinkItem.categoryId`、`convertDBItem(categoryId)` 参数和导出 mapper 显式传递。
+5. **收藏导入/导出平台 IO 收敛**：新增 `CollectionDocumentGateway`，`CollectCategoryViewModel` 负责导入/导出 document URI 流程；`CollectCategoryScreen` 只保留 Activity Result launcher 和结果提示，不再直接读写 `ContentResolver`。
 
 关键新增/扩展测试：
 
@@ -102,11 +103,11 @@ Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading
 
 ### 6.3 UI 层仍承担平台 IO 和媒体流程
 
-**位置**: `ui/image/ImageViewScreen.kt`、`ui/movielist/CollectCategoryScreen.kt`
+**位置**: `ui/image/ImageViewScreen.kt`
 
-Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件读写、bitmap 压缩和异常映射。这些逻辑难测，且把平台 IO 与 UI 组合生命周期绑在一起。
+图片查看页仍在 Composable 附近直接执行 MediaStore、FileProvider、文件写入、bitmap 压缩和异常映射。这些逻辑难测，且把平台 IO 与 UI 组合生命周期绑在一起。
 
-**建议**: Activity Result launcher 可留在 Screen；实际文件读写、图片保存、分享文件准备放到 `CollectionDocumentGateway` / `ImageMediaGateway` 这类注入组件。结果归约为 ViewModel 中可确认消费的 `UserMessage`。
+**建议**: 实际图片保存、分享文件准备放到 `ImageMediaGateway` 这类注入组件。结果归约为 ViewModel 中可确认消费的 `UserMessage`。
 
 ---
 
@@ -137,4 +138,4 @@ Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件�
 
 1. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
 2. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。
-3. 收敛 UI 层平台 IO 到可注入 gateway。
+3. 收敛图片保存/分享平台 IO 到可注入 gateway。
