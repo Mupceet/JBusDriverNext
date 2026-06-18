@@ -1,12 +1,14 @@
 package me.jbusdriver.modern.ui.forum
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
@@ -300,5 +302,56 @@ class ForumCacheRefreshViewModelTest {
 
         assertEquals(5, viewModel.uiState.value.threads.size)
         assertNull(viewModel.uiState.value.pendingFreshThreads)
+    }
+
+    @Test
+    fun `thread list stale refresh does not overwrite type filter switch`() = runTest(testDispatcher) {
+        val staleRefresh = CompletableDeferred<ForumThreadPageResult>()
+        val repository = FakeThreadListRepository(
+            mutableListOf(
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(threadResult(1), 1_000L, CacheSource.Network, false)
+                        )
+                    )
+                },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(staleRefresh.await(), 2_000L, CacheSource.Network, false)
+                        )
+                    )
+                },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(threadResult(2), 3_000L, CacheSource.Network, false)
+                        )
+                    )
+                }
+            )
+        )
+        val viewModel = ForumThreadListViewModel(
+            repository, me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+        )
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.threads.size)
+
+        viewModel.refresh()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isRefreshing)
+
+        viewModel.filterByType(3)
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.currentTypeId)
+        assertEquals(2, viewModel.uiState.value.threads.size)
+
+        staleRefresh.complete(threadResult(4))
+        advanceUntilIdle()
+
+        assertEquals(3, viewModel.uiState.value.currentTypeId)
+        assertEquals(2, viewModel.uiState.value.threads.size)
+        assertFalse(viewModel.uiState.value.isRefreshing)
     }
 }

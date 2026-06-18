@@ -30,6 +30,7 @@ import me.jbusdriver.modern.data.ForumSessionManager
 import me.jbusdriver.modern.data.ForumSettingsReader
 import me.jbusdriver.modern.data.GifLoadTracker
 import me.jbusdriver.modern.data.LabSettingsStore
+import me.jbusdriver.modern.data.LabSettingsStoreContract
 import me.jbusdriver.modern.data.LoadedGifTracker
 import me.jbusdriver.modern.data.MagnetRepository
 import me.jbusdriver.modern.data.MovieDetailRepository
@@ -61,6 +62,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindSitePreferenceSource(impl: LabSettingsStore): SitePreferenceSource
+
+    @Binds
+    @Singleton
+    abstract fun bindLabSettingsStoreContract(impl: LabSettingsStore): LabSettingsStoreContract
 
     @Binds
     @Singleton

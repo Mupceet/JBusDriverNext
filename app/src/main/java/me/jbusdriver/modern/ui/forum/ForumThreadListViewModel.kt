@@ -6,6 +6,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,6 +78,13 @@ class ForumThreadListViewModel @AssistedInject constructor(
     private var currentPage = 0
 
     private var isAtTopForFreshUpdates: Boolean = true
+    private var requestGeneration = 0L
+    private var activeListIdentity: ThreadListIdentity? = null
+
+    private data class ThreadListIdentity(
+        val fid: Int,
+        val typeId: Int?
+    )
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
         isAtTopForFreshUpdates = isAtTop
@@ -113,11 +121,22 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (_uiState.value.isLoading) return
         currentPage = 1
         KLog.d("[Forum] loadFirstPage: fid=$fid, typeId=${_uiState.value.currentTypeId}", TAG)
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             var hasContent = false
-            repository.observeThreads(fid, 1, _uiState.value.currentTypeId, revalidate = false)
+            repository.observeThreads(identity.fid, 1, identity.typeId, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -275,16 +294,19 @@ class ForumThreadListViewModel @AssistedInject constructor(
 
     fun refresh() {
         if (_uiState.value.isRefreshing) return
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             repository.observeThreads(
-                fid,
+                identity.fid,
                 1,
-                _uiState.value.currentTypeId,
+                identity.typeId,
                 forceRefresh = true,
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
@@ -328,6 +350,18 @@ class ForumThreadListViewModel @AssistedInject constructor(
         }
         loadFirstPage()
     }
+
+    private fun currentListIdentity(): ThreadListIdentity =
+        ThreadListIdentity(fid, _uiState.value.currentTypeId)
+
+    private fun beginListRequest(identity: ThreadListIdentity): Long {
+        requestGeneration += 1
+        activeListIdentity = identity
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, identity: ThreadListIdentity): Boolean =
+        generation == requestGeneration && activeListIdentity == identity
 
     @AssistedFactory
     interface Factory {

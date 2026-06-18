@@ -1,10 +1,8 @@
 # JBusDriver 代码检视报告
 
-**更新日期**: 2026-06-17
+**更新日期**: 2026-06-18
 **检视范围**: `app/src/main`、`app/src/test`、Gradle/CI 配置、现有架构整改计划
 **检视目标**: 结合当前项目实际状态，对照 Android 推荐架构、Compose UDF、Data layer、DI、协程取消与测试最佳实践，记录仍然成立的问题和优先级。
-
-> 本文记录当前代码状态。Phase A 已开始落地，已修复项不再作为待办问题列入 P1。
 
 ---
 
@@ -16,14 +14,11 @@
 
 这个方向与 Android 推荐架构一致。当前不建议为了 “Clean Architecture” 或 “MVI” 标签强行拆多模块、强行增加空转 use case，或把所有页面一次性改成统一 Action 框架。
 
-当前仍影响质量的风险集中在四类：
+当前仍影响质量的风险集中在三类：
 
-1. **UI 边界仍可被绕过**：Screen 直接访问 Store，UI 层可见 Room entity。
-2. **列表状态机重复**：Movie/List/Forum/Link 列表仍有旧请求、刷新、加载更多互相覆盖的空间。
-3. **domain model 仍混入 UI/序列化/收藏可变状态**：`ILink.categoryId` 使多个 `@Immutable` 模型实际可变。
-4. **测试真实性仍不均衡**：部分测试仍在验证 Fake 自身，而不是生产 Repository、Room SQL、缓存契约和取消传播。
-
-已有修正应明确保留：Release workflow 已执行 `testDebugUnitTest lintDebug assembleRelease`；`Category` 已改为 data class；`ContentBlockTypeAdapter` ProGuard keep 路径已修正；`GifLoadTracker.removeFirst()` 当前未再命中。
+1. **UI 边界仍可被绕过**：Screen 仍直接访问 Store，UI 层可见部分 data source surface。
+2. **domain model 仍混入 UI/序列化/收藏可变状态**：`ILink.categoryId` 使多个 `@Immutable` 模型实际可变。
+3. **架构重复仍偏多**：列表 SWR reducer、一次性事件、平台 IO gateway 还没有统一收口。
 
 ---
 
@@ -32,74 +27,86 @@
 1. **SiteConfig 冷启动镜像恢复**：`DefaultSiteConfig` 增加 `awaitReady()`，通过 `SitePreferenceSource.currentSelectedBaseUrl()` 直接读取持久化值；Repository 请求前等待 ready，并使用同一个 baseUrl 快照构造 URL 与缓存 key。
 2. **跨镜像缓存隔离**：新增 `siteCacheKey(baseUrl, namespace, identity)`，Movie/List、Search、MovieDetail、ActressDetail 等网络派生缓存 key 包含站点身份。
 3. **Search 请求竞态**：`SearchViewModel` 增加 request generation + query/type identity；`search/refresh/loadMore/clearSearch` 写回前统一校验，并重新抛出 `CancellationException`。
-4. **Forum WebView session 生命周期**：`ForumBoardsViewModel` 不再销毁应用级 session；`ForumSessionManager.destroy()` 切到 Main scope，并与 `fetchDocument()` 共用同一个 `Mutex` 边界。
+4. **Forum WebView session 生命周期**：`ForumBoardsViewModel` 不再销毁应用级 session；`ForumSessionManager.destroy()` 改为可等待的 suspend API，并与 `fetchDocument()` 共用同一个 `Mutex` 边界。
 5. **收藏事务边界**：新增可注入 `CollectTransactionRunner`，`toggleMovieCollect/toggleActressCollect/importCollectionsFromJson` 使用注入事务，不再从 Repository 直接访问全局 `DB.collectDatabase`。
-6. **JVM URL 解析健壮性**：`urlHost/urlPath` 在 Android `Uri` 不可用时回退到 `java.net.URI`，避免 JVM unit test 的 Android stub 返回 null 后写入 non-null LRU。
+6. **JVM URL 解析健壮性**：`urlHost/urlPath` 在 Android `Uri` 不可用时回退到 `java.net.URI`；`urlHost` 仍保留无效 URL 抛错语义。
 
-覆盖测试：
+---
+
+## 三、Phase B 已修复
+
+1. **List/Forum request generation**：`LinkMovieListViewModel`、`MovieListViewModel`、`ForumThreadListViewModel` 增加请求 identity。旧 `refresh/loadMore/revalidate` 晚返回时，不再覆盖 source/filter/showAll/typeId 切换后的新列表。
+2. **LabSettings 取消语义**：`LabSettingsViewModel` 对 `CancellationException` 重新抛出，取消扫描/验证不再映射为失败消息。新增 `LabSettingsStoreContract` 使 ViewModel 可用 fake store 测试。
+3. **收藏导入回滚语义**：新增回归测试锁定当前语义：导入在单个事务内执行，任一 item 写入失败时整批回滚，不留下部分导入结果。
+
+关键新增/扩展测试：
 
 ```bash
-./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.core.site.SiteConfigTest" --tests "me.jbusdriver.modern.data.SiteCacheKeyTest" --tests "me.jbusdriver.modern.ui.search.SearchViewModelTest" --tests "me.jbusdriver.modern.ui.forum.ForumCacheRefreshViewModelTest" --tests "me.jbusdriver.modern.data.CollectRepositoryTest" --console=plain
-./gradlew.bat testDebugUnitTest --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.LinkMovieListViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.MovieListViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.forum.ForumCacheRefreshViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.LabSettingsViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.data.CollectRepositoryTest" --console=plain
 ```
 
 ---
 
-## 三、P1：优先处理的正确性风险
+## 四、Phase C 已修复
 
-### 3.1 List/Forum 分页请求仍缺少统一请求身份
+1. **剩余 List/Forum detail request identity**：`ActressListViewModel`、`GenreListViewModel`、`ForumThreadDetailViewModel` 已补齐 request generation / identity。旧 `refresh/loadMore/revalidate/loadDetail` 在 source 或 floorOrder 切换后返回时会被丢弃，不再覆盖新状态。
+2. **LabSettings Screen Store 边界**：`LabSettingsViewModel` 新增 `LabSettingsUiState` 与 `setForumEnabled/setAutoLoadGifs/setForumFloorOrder/selectUrl` 等语义方法。`LabSettingsScreen` 与 `MainScreen` 不再直接访问 `LabSettingsStoreContract`。
+3. **数据库 Hilt 单入口推进**：新增 `RoomDatabaseFactory` 复用 Room 构建和迁移定义；`DatabaseModule` 改为通过 `@ApplicationContext` 直接提供 `JBusDatabase` / `CollectDatabase`。`object DB` 保留为遗留兼容层，不再作为 Hilt provider 的来源。
 
-**位置**: `ui/movielist/LinkMovieListViewModel.kt`、`ui/movielist/MovieListViewModel.kt`、Forum 列表相关 ViewModel
+关键新增/扩展测试：
 
-Search 已完成 request generation 修复，但多个列表 ViewModel 仍由首屏、revalidate、refresh、loadMore 分散维护状态。切换 source/filter/showAll 后，旧请求晚返回时仍可能污染新列表。
-
-**建议**: 先选 `LinkMovieListViewModel` 作为代表页，引入 generation + source/filter identity。所有写回前校验 identity；`catch (Exception)` 中先重新抛出 `CancellationException`。验证通过后再迁移 Movie/Actress/Forum 列表。
-
-### 3.2 LabSettings 取消扫描会被映射成失败
-
-**位置**: `ui/settings/LabSettingsViewModel.kt`
-
-`cancelScan()` 会取消 Job 并重置状态，但 `startScan()` / `startVerify()` 捕获所有 `Exception`。协程取消属于 `CancellationException`，如果被捕获并转成失败消息，用户取消会被误报。
-
-**建议**:
-
-```kotlin
-catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    // map real failure
-}
+```bash
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.ActressListViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.GenreListViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.forum.ForumThreadDetailViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.LabSettingsViewModelTest" --console=plain
 ```
 
-### 3.3 收藏导入语义仍需产品确认
+---
+
+## 五、P1：剩余正确性风险
+
+### 5.1 ForumBoardsViewModel 尚未迁移 request identity
+
+**位置**: `ui/forum/ForumBoardsViewModel.kt`
+
+List 与 Forum detail 的高风险切换场景已迁移。`ForumBoardsViewModel` 没有 source/filter/floorOrder 切换，旧请求覆盖风险较低，但仍可为了状态机一致性补 request generation。
+
+**建议**: 如继续统一 SWR 状态机，可在抽 reducer 前顺手补齐 boards 的 generation guard。
+
+### 5.2 收藏导入坏数据的产品语义仍需确认
 
 **位置**: `data/CollectRepository.kt`
 
-导入现在处于单个事务中，但产品语义还应明确：遇到坏数据时是整批回滚，还是跳过坏项并报告部分成功。当前实现更接近“异常即回滚”，需要用测试锁定。
+当前已经用测试锁定“异常即整批回滚”。如果产品希望“跳过坏项并报告部分成功”，需要显式调整解析层和结果模型，而不是依赖异常中断。
 
-**建议**: 为新格式、旧格式、重复项、坏 JSON、字段缺失、事务回滚分别补测试。若目标是部分成功，应在解析层显式收集 item-level error，而不是依赖异常中断。
+**建议**: 保持当前回滚语义，除非 UI 需要展示 item-level import error。
 
 ---
 
-## 四、P2：架构边界与可维护性问题
+## 六、P2：架构边界与可维护性问题
 
-### 4.1 Screen 仍直接访问 DataStore/Store
+### 6.1 部分 Screen 仍直接访问 Store
 
-**位置**: `ui/MainScreen.kt`、`ui/settings/LabSettingsScreen.kt`、`ui/search/SearchScreen.kt`、`ui/movielist/*Screen.kt`
+**位置**: `ui/search/SearchScreen.kt`、`ui/movielist/*Screen.kt`
 
-多个 Screen 通过 `hiltViewModel<...>().store` 直接 collect Store Flow 或启动协程写 DataStore。`LabSettingsViewModel` 与 `UiPrefsViewModel` 也暴露 Store。这绕过 screen-level state holder，使 UI 层直接依赖 data source。
+LabSettings 入口已收敛到 ViewModel state / intent。剩余直接 Store 访问主要集中在 `UiPrefsViewModel.store.isGrid`，属于 UI 偏好读取与写入，风险低于 DataStore 业务配置直通，但仍会让 Screen 依赖 Store surface。
 
-**建议**: ViewModel 暴露单一 `UiState` 和语义方法，例如 `setGrid()`、`setForumEnabled()`、`selectBaseUrl()`。Screen 只收集 ViewModel state，不直接接触 Store。
+**建议**: 为 `UiPrefsViewModel` 暴露 `UiPrefsUiState` 与 `setGrid/toggleGrid`，让 Screen 只收集 ViewModel state，不直接接触 Store。
 
-### 4.2 Data layer 仍存在全局 DB 与 Hilt 双轨
+### 6.2 `object DB` 仍作为迁移期兼容层存在
 
 **位置**: `data/db/DB.kt`、`data/di/DatabaseModule.kt`
 
-`CollectRepository` 已从全局 `DB` 迁出，但项目仍保留 `object DB` 懒加载和 Hilt `DatabaseModule` 双入口。长期会削弱测试替换能力，也让数据库 owner 难判断。
+`DatabaseModule` 已改为通过 `@ApplicationContext` 直接构建数据库，Repository/DAO 注入走 Hilt。`object DB` 仍保留公开属性，作为遗留调用点兼容层。
 
-**建议**: 逐步收敛到 Hilt 单入口：`DatabaseModule` 使用 `Room.databaseBuilder(@ApplicationContext)` 提供 DB，Repository 只注入 DB/DAO。`object DB` 仅在迁移期作为兼容层。
+**建议**: 后续新增代码禁止使用 `DB.xxx`。确认无遗留调用后，可删除 `object DB` 或将其降级到 debug/test-only 辅助。
 
-### 4.3 `ILink.categoryId` 破坏 domain model 不可变性
+### 6.3 `ILink.categoryId` 破坏 domain model 不可变性
 
 **位置**: `domain/model/ILink.kt`、`domain/model/Movie.kt`、`domain/model/MovieDetail.kt`、`domain/model/PageLink.kt`、`domain/model/Magnet.kt`
 
@@ -107,15 +114,15 @@ catch (e: CancellationException) {
 
 **建议**: `ILink` 只保留 `val link: String`。收藏元数据使用 `CollectedEntry<T>(item, categoryId, createdAtMillis)` 或 mapper 参数传递。
 
-### 4.4 大型 ViewModel 与重复 SWR 状态机仍未收口
+### 6.4 大型 ViewModel 与重复 SWR 状态机仍未收口
 
 **位置**: `LinkMovieListViewModel.kt`、`MovieListViewModel.kt`、`ActressListViewModel.kt`、Forum 多个 ViewModel
 
-`PagedSwrState` 已抽出部分 page tracker / at-top / fresh decision，但 loading/error/pending/revalidate/loadMore 的状态归约仍散落在多个 ViewModel。
+Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading/error/pending/revalidate/loadMore 的状态归约仍有大量重复。
 
 **建议**: 抽取纯函数 reducer 或小型 state producer，先迁移一个代表性列表，再逐页推进。`LinkMovieListViewModel` 至少拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
 
-### 4.5 UI 层仍承担平台 IO 和媒体流程
+### 6.5 UI 层仍承担平台 IO 和媒体流程
 
 **位置**: `ui/image/ImageViewScreen.kt`、`ui/movielist/CollectCategoryScreen.kt`
 
@@ -125,15 +132,14 @@ Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件�
 
 ---
 
-## 五、测试与质量门槛
+## 七、测试与质量门槛
 
 优先补齐以下测试：
 
-1. Movie/Link/Forum 列表切换 source/filter/showAll 后，旧请求不能写回。
-2. LabSettings 取消扫描/验证不产生失败消息。
-3. 收藏导入坏数据时的回滚或部分成功语义。
-4. `ILink.categoryId` 移除后的收藏 mapper 回归测试。
-5. minified release 对 Gson/Forum `ContentBlock` 反序列化的 smoke test。
+1. 剩余列表/详情 ViewModel 的旧请求隔离测试。
+2. `ILink.categoryId` 移除后的收藏 mapper 回归测试。
+3. minified release 对 Gson/Forum `ContentBlock` 反序列化的 smoke test。
+4. Screen 不直接访问 Store 后的 UI state / intent 测试。
 
 建议本地合并前质量门槛：
 
@@ -149,11 +155,9 @@ Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件�
 
 ---
 
-## 六、Phase B 建议顺序
+## 八、后续建议顺序
 
-1. 修复 List/Forum request generation 与取消传播。
-2. 修复 LabSettings 取消语义。
-3. 锁定收藏导入坏数据语义并补回滚测试。
-4. 收敛 Screen 直接访问 Store 的入口。
-5. 迁移剩余全局 `DB` 使用点。
-6. 处理 `ILink.categoryId` 可变 domain 状态。
+1. 迁移剩余 `UiPrefsViewModel.store` 直通入口。
+2. 处理 `ILink.categoryId` 可变 domain 状态。
+3. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
+4. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。

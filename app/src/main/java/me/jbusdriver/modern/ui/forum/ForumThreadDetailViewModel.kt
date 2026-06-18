@@ -6,6 +6,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,11 +59,19 @@ data class ForumThreadDetailUiState(
     val isChangingFloorOrder: Boolean = false
 )
 
+private data class DetailRequestIdentity(
+    val tid: Int,
+    val page: Int,
+    val floorOrder: ForumFloorOrder
+)
+
 fun ForumThreadDetailUiState.prepareFloorOrderReload(order: ForumFloorOrder): ForumThreadDetailUiState =
     copy(
         floorOrder = order,
         error = null,
         isLoading = false,
+        isRefreshing = false,
+        isRevalidating = false,
         isLoadingMore = false,
         isChangingFloorOrder = true
     )
@@ -76,6 +85,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 ) : ViewModel() {
     private val tid: Int = navKey.tid
     private var currentPage = 1
+    private var requestGeneration = 0L
+    private var activeIdentity: DetailRequestIdentity? = null
 
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
@@ -84,6 +95,15 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
     val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
     val autoLoadGifs: StateFlow<Boolean> = forumSettingsReader.autoLoadGifs
+
+    private fun beginRequest(identity: DetailRequestIdentity): Long {
+        requestGeneration += 1
+        activeIdentity = identity
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, identity: DetailRequestIdentity): Boolean =
+        generation == requestGeneration && activeIdentity == identity
 
     fun onLoadGif(url: String) {
         _loadedGifUrls.update { it + url }
@@ -129,7 +149,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun loadDetail(forceRefresh: Boolean = false, showLoading: Boolean = true) {
         if (showLoading && _uiState.value.isLoading) return
         val floorOrder = _uiState.value.floorOrder
-        KLog.d("[Forum] loadDetail: tid=$tid, page=$currentPage, floorOrder=$floorOrder", TAG)
+        val page = currentPage
+        val identity = DetailRequestIdentity(tid, page, floorOrder)
+        val generation = beginRequest(identity)
+        KLog.d("[Forum] loadDetail: tid=$tid, page=$page, floorOrder=$floorOrder", TAG)
         viewModelScope.launch {
             var hasContent = _uiState.value.detail != null
             _uiState.update {
@@ -155,12 +178,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             }
             repository.observeThreadDetail(
                 tid,
-                currentPage,
+                page,
                 floorOrder,
                 forceRefresh = forceRefresh,
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -260,10 +284,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun revalidate() {
         val state = _uiState.value
         if (state.detail == null || state.isLoading || state.isRevalidating || state.isRefreshing) return
+        val identity = DetailRequestIdentity(tid, 1, state.floorOrder)
+        val generation = beginRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
             repository.observeThreadDetail(tid, 1, state.floorOrder, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
@@ -332,6 +359,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         if (_uiState.value.isRefreshing) return
         val floorOrder = _uiState.value.floorOrder
         currentPage = 1
+        val identity = DetailRequestIdentity(tid, 1, floorOrder)
+        val generation = beginRequest(identity)
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -349,6 +378,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
@@ -383,10 +413,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
         currentPage = nextPage
         val floorOrder = _uiState.value.floorOrder
+        val identity = DetailRequestIdentity(tid, nextPage, floorOrder)
+        val generation = beginRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
+                if (!isCurrent(generation, identity)) return@launch
                 _uiState.update {
                     it.copy(
                         detail = detail.copy(
@@ -397,6 +430,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                     )
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                if (!isCurrent(generation, identity)) return@launch
                 currentPage = detail.pageInfo.activePage
                 _uiState.update { it.copy(isLoadingMore = false) }
             }

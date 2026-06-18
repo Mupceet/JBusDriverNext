@@ -6,6 +6,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -129,6 +130,14 @@ class LinkMovieListViewModel @AssistedInject constructor(
     private var listType: String = ""
     private val atTop = AtTopGate()
     private var firstPageJob: Job? = null
+    private var requestGeneration = 0L
+    private var activeListIdentity: ListRequestIdentity? = null
+
+    private data class ListRequestIdentity(
+        val linkUrl: String,
+        val listType: String,
+        val showAll: Boolean
+    )
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
         atTop.isAtTop = isAtTop
@@ -186,16 +195,27 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (_uiState.value.isLoading || linkUrl.isBlank()) return
         pages.startFirstPage()
         firstPageJob?.cancel()
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         firstPageJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             var hasContent = false
             repository.observePageByUrl(
-                linkUrl,
+                identity.linkUrl,
                 1,
-                showAll = _uiState.value.showAll,
+                showAll = identity.showAll,
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -277,11 +297,14 @@ class LinkMovieListViewModel @AssistedInject constructor(
         if (!pages.shouldLoadMore(state.pageInfo)) return
 
         pages.advanceTo(nextPage)
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result =
-                    repository.loadPageByUrl(linkUrl, nextPage, showAll = _uiState.value.showAll)
+                    repository.loadPageByUrl(identity.linkUrl, nextPage, showAll = identity.showAll)
+                if (!isCurrent(generation, identity)) return@launch
                 _uiState.update {
                     it.copy(
                         movies = it.movies + result.movies.map { m -> m.toUiModel() },
@@ -291,7 +314,10 @@ class LinkMovieListViewModel @AssistedInject constructor(
                         filterInfo = result.filterInfo ?: it.filterInfo
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (!isCurrent(generation, identity)) return@launch
                 pages.rollbackTo(state.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false, error = R.string.load_failed) }
             }
@@ -307,15 +333,18 @@ class LinkMovieListViewModel @AssistedInject constructor(
         val state = _uiState.value
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.movies.isEmpty() || linkUrl.isBlank()) return
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
             repository.observePageByUrl(
-                linkUrl,
+                identity.linkUrl,
                 1,
-                showAll = _uiState.value.showAll,
+                showAll = identity.showAll,
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
@@ -380,16 +409,19 @@ class LinkMovieListViewModel @AssistedInject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing || linkUrl.isBlank()) return
         pages.startFirstPage()
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             repository.observePageByUrl(
-                linkUrl,
+                identity.linkUrl,
                 1,
-                showAll = _uiState.value.showAll,
+                showAll = identity.showAll,
                 forceRefresh = true,
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
@@ -504,6 +536,18 @@ class LinkMovieListViewModel @AssistedInject constructor(
             ResolvedTitle.Genre(name)
         }
     }
+
+    private fun currentListIdentity(): ListRequestIdentity =
+        ListRequestIdentity(linkUrl, listType, _uiState.value.showAll)
+
+    private fun beginListRequest(identity: ListRequestIdentity): Long {
+        requestGeneration += 1
+        activeListIdentity = identity
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, identity: ListRequestIdentity): Boolean =
+        generation == requestGeneration && activeListIdentity == identity
 
     @AssistedFactory
     interface Factory {

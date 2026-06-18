@@ -61,9 +61,10 @@ fun MainScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
-    val labSettingsStore = hiltViewModel<LabSettingsViewModel>().store
+    val labSettingsViewModel = hiltViewModel<LabSettingsViewModel>()
     val uiPrefsStore = hiltViewModel<UiPrefsViewModel>().store
-    val forumEnabled by labSettingsStore.forumEnabled.collectAsStateWithLifecycle()
+    val labSettingsUiState by labSettingsViewModel.uiState.collectAsStateWithLifecycle()
+    val forumEnabled = labSettingsUiState.forumEnabled
     val isGrid by uiPrefsStore.isGrid.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val toggleGrid: () -> Unit = {

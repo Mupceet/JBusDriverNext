@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,6 +87,17 @@ class ActressListViewModel @Inject constructor(
     private var dataSourceType: DataSourceType = DataSourceType.ACTRESSES
     private val atTop = AtTopGate()
     private var firstPageJob: Job? = null
+    private var requestGeneration = 0L
+    private var activeIdentity: DataSourceType? = null
+
+    private fun beginRequest(type: DataSourceType): Long {
+        requestGeneration += 1
+        activeIdentity = type
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, type: DataSourceType): Boolean =
+        generation == requestGeneration && activeIdentity == type
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
         atTop.isAtTop = isAtTop
@@ -136,11 +148,22 @@ class ActressListViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
         pages.startFirstPage()
         firstPageJob?.cancel()
+        val type = dataSourceType
+        val generation = beginRequest(type)
         firstPageJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             var hasContent = false
-            repository.observeActresses(dataSourceType, 1, revalidate = false)
+            repository.observeActresses(type, 1, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -207,10 +230,13 @@ class ActressListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.actresses.isEmpty()) return
+        val type = dataSourceType
+        val generation = beginRequest(type)
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
-            repository.observeActresses(dataSourceType, 1, revalidate = false)
+            repository.observeActresses(type, 1, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
@@ -273,10 +299,13 @@ class ActressListViewModel @Inject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         pages.startFirstPage()
+        val type = dataSourceType
+        val generation = beginRequest(type)
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
-            repository.observeActresses(dataSourceType, 1, forceRefresh = true, revalidate = false)
+            repository.observeActresses(type, 1, forceRefresh = true, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
@@ -314,10 +343,13 @@ class ActressListViewModel @Inject constructor(
         if (!pages.shouldLoadMore(state.pageInfo)) return
 
         pages.advanceTo(nextPage)
+        val type = dataSourceType
+        val generation = beginRequest(type)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val result = repository.loadActresses(dataSourceType, nextPage)
+                val result = repository.loadActresses(type, nextPage)
+                if (!isCurrent(generation, type)) return@launch
                 _uiState.update {
                     it.copy(
                         actresses = it.actresses + result.first.map { a -> a.toActressUiModel() },
@@ -326,7 +358,10 @@ class ActressListViewModel @Inject constructor(
                         hasMore = result.second.hasNext
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (!isCurrent(generation, type)) return@launch
                 pages.rollbackTo(state.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false, error = R.string.load_failed) }
             }

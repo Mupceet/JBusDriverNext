@@ -39,7 +39,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.MirrorUrl
@@ -64,27 +62,7 @@ fun LabSettingsScreen(
     onBack: () -> Unit,
     viewModel: LabSettingsViewModel = hiltViewModel()
 ) {
-    val forumEnabled by viewModel.store.forumEnabled.collectAsStateWithLifecycle()
-    val autoLoadGifs by viewModel.store.autoLoadGifs.collectAsStateWithLifecycle()
-    val forumFloorOrder by viewModel.store.forumFloorOrder.collectAsStateWithLifecycle()
-    val selectedBaseUrl by viewModel.store.selectedBaseUrl.collectAsStateWithLifecycle()
-    val cachedMirrorUrls by viewModel.store.cachedMirrorUrls.collectAsStateWithLifecycle()
-    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-
-    val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
-        scanState.discoveredUrls
-    } else if (!scanState.isScanning && cachedMirrorUrls.isNotEmpty()) {
-        val defaultHost = "www.javbus.com"
-        cachedMirrorUrls.map { MirrorUrl(it, true) }.sortedWith(
-            compareBy<MirrorUrl> { it.url.contains(defaultHost, ignoreCase = true).not() }
-                .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
-                .thenBy { it.url }
-        )
-    } else {
-        emptyList()
-    }
-    val hasCachedUrls = mirrorUrls.isNotEmpty() || cachedMirrorUrls.isNotEmpty()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -117,20 +95,20 @@ fun LabSettingsScreen(
 
             // Forum card
             ForumCard(
-                forumEnabled = forumEnabled,
-                autoLoadGifs = autoLoadGifs,
-                forumFloorOrder = forumFloorOrder,
-                onForumEnabledChange = { scope.launch { viewModel.store.setForumEnabled(it) } },
-                onAutoLoadGifsChange = { scope.launch { viewModel.store.setAutoLoadGifs(it) } },
-                onForumFloorOrderChange = { scope.launch { viewModel.store.setForumFloorOrder(it) } }
+                forumEnabled = uiState.forumEnabled,
+                autoLoadGifs = uiState.autoLoadGifs,
+                forumFloorOrder = uiState.forumFloorOrder,
+                onForumEnabledChange = viewModel::setForumEnabled,
+                onAutoLoadGifsChange = viewModel::setAutoLoadGifs,
+                onForumFloorOrderChange = viewModel::setForumFloorOrder
             )
 
             // URL selection card
             UrlSelectionCard(
-                selectedBaseUrl = selectedBaseUrl,
-                mirrorUrls = mirrorUrls,
-                scanState = scanState,
-                hasCachedUrls = hasCachedUrls,
+                selectedBaseUrl = uiState.selectedBaseUrl,
+                mirrorUrls = uiState.mirrorUrls,
+                scanState = uiState.scanState,
+                hasCachedUrls = uiState.hasCachedUrls,
                 onScan = { viewModel.startScan() },
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },

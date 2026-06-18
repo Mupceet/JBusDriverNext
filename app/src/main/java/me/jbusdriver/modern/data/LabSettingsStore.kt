@@ -53,18 +53,33 @@ interface ForumSettingsReader {
     suspend fun currentForumFloorOrder(): ForumFloorOrder
 }
 
+interface LabSettingsStoreContract {
+    val forumEnabled: StateFlow<Boolean>
+    val autoLoadGifs: StateFlow<Boolean>
+    val forumFloorOrder: StateFlow<ForumFloorOrder>
+    val selectedBaseUrl: StateFlow<String>
+    val cachedMirrorUrls: StateFlow<List<String>>
+
+    suspend fun setForumEnabled(enabled: Boolean)
+    suspend fun setAutoLoadGifs(enabled: Boolean)
+    suspend fun setForumFloorOrder(order: ForumFloorOrder)
+    suspend fun selectUrl(url: String)
+    suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String)
+    suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>)
+}
+
 class LabSettingsStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mirrorScanner: MirrorScanner
-) : ForumSettingsReader, SitePreferenceSource {
+) : ForumSettingsReader, SitePreferenceSource, LabSettingsStoreContract {
 
     private val dataStore = context.labSettingsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val forumEnabled: StateFlow<Boolean> = dataStore.data.map { it[KEY_FORUM_ENABLED] ?: false }
+    override val forumEnabled: StateFlow<Boolean> = dataStore.data.map { it[KEY_FORUM_ENABLED] ?: false }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
-    suspend fun setForumEnabled(enabled: Boolean) {
+    override suspend fun setForumEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_FORUM_ENABLED] = enabled }
     }
 
@@ -72,39 +87,39 @@ class LabSettingsStore @Inject constructor(
         dataStore.data.map { it[KEY_AUTO_LOAD_GIFS] ?: false }
             .stateIn(scope, SharingStarted.Eagerly, false)
 
-    suspend fun setAutoLoadGifs(enabled: Boolean) {
+    override suspend fun setAutoLoadGifs(enabled: Boolean) {
         dataStore.edit { it[KEY_AUTO_LOAD_GIFS] = enabled }
     }
 
-    val forumFloorOrder: StateFlow<ForumFloorOrder> = dataStore.data.map {
+    override val forumFloorOrder: StateFlow<ForumFloorOrder> = dataStore.data.map {
         ForumFloorOrder.fromPreferenceValue(it[KEY_FORUM_FLOOR_ORDER])
     }.stateIn(scope, SharingStarted.Eagerly, ForumFloorOrder.REGULAR)
 
     override suspend fun currentForumFloorOrder(): ForumFloorOrder =
         ForumFloorOrder.fromPreferenceValue(dataStore.data.first()[KEY_FORUM_FLOOR_ORDER])
 
-    suspend fun setForumFloorOrder(order: ForumFloorOrder) {
+    override suspend fun setForumFloorOrder(order: ForumFloorOrder) {
         dataStore.edit { it[KEY_FORUM_FLOOR_ORDER] = order.preferenceValue }
     }
 
-    val selectedBaseUrl: StateFlow<String> = dataStore.data.map {
+    override val selectedBaseUrl: StateFlow<String> = dataStore.data.map {
         it[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
     }.stateIn(scope, SharingStarted.Eagerly, DEFAULT_BASE_URL)
 
     override suspend fun currentSelectedBaseUrl(): String =
         dataStore.data.first()[KEY_SELECTED_BASE_URL] ?: DEFAULT_BASE_URL
 
-    val cachedMirrorUrls: StateFlow<List<String>> = dataStore.data.map {
+    override val cachedMirrorUrls: StateFlow<List<String>> = dataStore.data.map {
         it[KEY_CACHED_MIRROR_URLS]?.toList() ?: PRESET_MIRROR_URLS
     }.stateIn(scope, SharingStarted.Eagerly, PRESET_MIRROR_URLS)
 
-    suspend fun selectUrl(url: String) {
+    override suspend fun selectUrl(url: String) {
         val trimmed = url.trimEnd('/')
         dataStore.edit { it[KEY_SELECTED_BASE_URL] = trimmed }
         NetClient.defaultFastUrl = trimmed
     }
 
-    suspend fun scanMirrorUrls(
+    override suspend fun scanMirrorUrls(
         state: MutableStateFlow<ScanState>,
         seedUrl: String
     ) {
@@ -113,7 +128,7 @@ class LabSettingsStore @Inject constructor(
         dataStore.edit { it[KEY_CACHED_MIRROR_URLS] = discoveredUrls }
     }
 
-    suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>) {
+    override suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>) {
         val urls = cachedMirrorUrls.first()
         mirrorScanner.verifyOnly(state, urls)
     }

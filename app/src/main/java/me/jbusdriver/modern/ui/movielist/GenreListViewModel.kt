@@ -68,6 +68,17 @@ class GenreListViewModel @Inject constructor(
     /** 当前的数据源类型（默认为分类类型） */
     private var dataSourceType: DataSourceType = DataSourceType.GENRE
     private var loadJob: Job? = null
+    private var requestGeneration = 0L
+    private var activeIdentity: DataSourceType? = null
+
+    private fun beginRequest(type: DataSourceType): Long {
+        requestGeneration += 1
+        activeIdentity = type
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, type: DataSourceType): Boolean =
+        generation == requestGeneration && activeIdentity == type
 
     /**
      * 设置数据源类型并重新加载分类列表。
@@ -94,11 +105,21 @@ class GenreListViewModel @Inject constructor(
     private fun loadGenres() {
         if (_uiState.value.isLoading) return
         loadJob?.cancel()
+        val type = dataSourceType
+        val generation = beginRequest(type)
         loadJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             var hasContent = false
-            repository.observeGenreCategories(dataSourceType, revalidate = false)
+            repository.observeGenreCategories(type, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -152,9 +173,12 @@ class GenreListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.genreCategories.isEmpty()) return
+        val type = dataSourceType
+        val generation = beginRequest(type)
         viewModelScope.launch {
-            repository.observeGenreCategories(dataSourceType, revalidate = false)
+            repository.observeGenreCategories(type, revalidate = false)
                 .collect { event ->
+                    if (!isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
@@ -187,14 +211,17 @@ class GenreListViewModel @Inject constructor(
      */
     fun refresh() {
         if (_uiState.value.isRefreshing) return
+        val type = dataSourceType
+        val generation = beginRequest(type)
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             repository.observeGenreCategories(
-                dataSourceType,
+                type,
                 forceRefresh = true,
                 revalidate = false
             )
                 .collect { event ->
+                    if (!isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {

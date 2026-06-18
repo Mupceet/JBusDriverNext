@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -175,6 +176,13 @@ class MovieListViewModel @Inject constructor(
 
     private val atTop = AtTopGate()
     private var firstPageJob: Job? = null
+    private var requestGeneration = 0L
+    private var activeListIdentity: ListRequestIdentity? = null
+
+    private data class ListRequestIdentity(
+        val sourceKey: String,
+        val showAll: Boolean
+    )
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
         atTop.isAtTop = isAtTop
@@ -249,16 +257,27 @@ class MovieListViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
         pages.startFirstPage()
         firstPageJob?.cancel()
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         firstPageJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             var hasContent = false
             val source = pageSource
             val flow = source.observeFirstPage(
-                showAll = _uiState.value.showAll,
+                showAll = identity.showAll,
                 forceRefresh = false,
                 revalidate = false
             )
             flow.collect { event ->
+                if (!isCurrent(generation, identity)) return@collect
                 when (event) {
                     is CachedLoadEvent.Cached -> {
                         hasContent = true
@@ -333,15 +352,18 @@ class MovieListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.movies.isEmpty()) return
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
+        val source = pageSource
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
-            val source = pageSource
             val flow = source.observeFirstPage(
-                showAll = _uiState.value.showAll,
+                showAll = identity.showAll,
                 forceRefresh = false,
                 revalidate = false
             )
             flow.collect { event ->
+                if (!isCurrent(generation, identity)) return@collect
                 when (event) {
                     is CachedLoadEvent.Cached -> {
                         _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
@@ -404,15 +426,18 @@ class MovieListViewModel @Inject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         pages.startFirstPage()
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
             val source = pageSource
             val flow = source.observeFirstPage(
-                showAll = _uiState.value.showAll,
+                showAll = identity.showAll,
                 forceRefresh = true,
                 revalidate = false
             )
             flow.collect { event ->
+                if (!isCurrent(generation, identity)) return@collect
                 when (event) {
                     is CachedLoadEvent.Cached -> Unit
                     is CachedLoadEvent.Fresh -> {
@@ -454,10 +479,14 @@ class MovieListViewModel @Inject constructor(
         if (!pages.shouldLoadMore(state.pageInfo)) return
 
         pages.advanceTo(nextPage)
+        val identity = currentListIdentity()
+        val generation = beginListRequest(identity)
+        val source = pageSource
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             try {
-                val result = pageSource.loadNextPage(nextPage, showAll = _uiState.value.showAll)
+                val result = source.loadNextPage(nextPage, showAll = identity.showAll)
+                if (!isCurrent(generation, identity)) return@launch
                 _uiState.update {
                     it.copy(
                         movies = it.movies + result.movies.map { m -> m.toUiModel() },
@@ -467,7 +496,10 @@ class MovieListViewModel @Inject constructor(
                         filterInfo = result.filterInfo ?: it.filterInfo
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (!isCurrent(generation, identity)) return@launch
                 pages.rollbackTo(state.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false, error = R.string.load_failed) }
             }
@@ -495,4 +527,16 @@ class MovieListViewModel @Inject constructor(
         pages.reset()
         loadFirstPage()
     }
+
+    private fun currentListIdentity(): ListRequestIdentity =
+        ListRequestIdentity(pageSource.key, _uiState.value.showAll)
+
+    private fun beginListRequest(identity: ListRequestIdentity): Long {
+        requestGeneration += 1
+        activeListIdentity = identity
+        return requestGeneration
+    }
+
+    private fun isCurrent(generation: Long, identity: ListRequestIdentity): Boolean =
+        generation == requestGeneration && activeListIdentity == identity
 }

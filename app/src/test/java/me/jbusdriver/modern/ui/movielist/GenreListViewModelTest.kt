@@ -1,14 +1,21 @@
 package me.jbusdriver.modern.ui.movielist
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.cache.CacheEntry
+import me.jbusdriver.modern.core.cache.CacheSource
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
@@ -123,6 +130,72 @@ class GenreListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, callCount)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun staleRefreshResultDoesNotOverwriteDataSourceSwitch() = runTest(testDispatcher) {
+        val oldRefresh = CompletableDeferred<List<GenreGroup>>()
+        val genre = listOf(GenreGroup("Genre", listOf(Genre("A", "/genre/a"))))
+        val uncensored = listOf(GenreGroup("Uncensored", listOf(Genre("B", "/uncensored/genre/b"))))
+        val repository = object : MovieRepository {
+            override fun observeGenreCategories(
+                type: DataSourceType,
+                forceRefresh: Boolean,
+                revalidate: Boolean,
+                nowMillis: () -> Long
+            ): Flow<CachedLoadEvent<List<GenreGroup>>> = flow {
+                val value = when {
+                    forceRefresh -> oldRefresh.await()
+                    type == DataSourceType.UNCENSORED_GENRE -> uncensored
+                    else -> genre
+                }
+                emit(CachedLoadEvent.Fresh(CacheEntry(value, 1L, CacheSource.Network, false)))
+            }
+
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) =
+                MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) =
+                MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+                null
+        }
+        val viewModel = GenreListViewModel(repository)
+
+        viewModel.setDataSourceType(DataSourceType.GENRE)
+        advanceUntilIdle()
+        assertEquals("Genre", viewModel.uiState.value.genreCategories.single().title)
+
+        viewModel.refresh()
+        runCurrent()
+        assertFalse(viewModel.uiState.value.genreCategories.isEmpty())
+
+        viewModel.setDataSourceType(DataSourceType.UNCENSORED_GENRE)
+        advanceUntilIdle()
+        assertEquals("Uncensored", viewModel.uiState.value.genreCategories.single().title)
+
+        oldRefresh.complete(listOf(GenreGroup("Stale", listOf(Genre("C", "/genre/c")))))
+        advanceUntilIdle()
+
+        assertEquals("Uncensored", viewModel.uiState.value.genreCategories.single().title)
         assertFalse(viewModel.uiState.value.isRefreshing)
     }
 }

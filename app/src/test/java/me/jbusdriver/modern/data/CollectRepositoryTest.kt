@@ -148,6 +148,52 @@ class CollectRepositoryTest {
         assertEquals(1, dao.items.size)
     }
 
+    @Test
+    fun defaultRepository_importRollsBackWhenOneItemFails() = runTest {
+        val transactionRunner = RollbackTransactionRunner()
+        val dao = RollbackCheckingLinkItemDao(transactionRunner, failOnKey = "/link2")
+        transactionRunner.dao = dao
+        val repository = DefaultCollectRepository(
+            linkDao = dao,
+            siteConfig = fakeSiteConfig(),
+            transactionRunner = transactionRunner
+        )
+        val json = """
+            {
+              "version": 1,
+              "movies": [
+                {
+                  "title": "First",
+                  "imageUrl": "http://img.jpg",
+                  "code": "ABC-001",
+                  "date": "2024-01-01",
+                  "detailUrl": "https://example.test/link1",
+                  "categoryId": 1
+                },
+                {
+                  "title": "Second",
+                  "imageUrl": "http://img.jpg",
+                  "code": "ABC-002",
+                  "date": "2024-01-02",
+                  "detailUrl": "https://example.test/link2",
+                  "categoryId": 1
+                }
+              ],
+              "actresses": []
+            }
+        """.trimIndent()
+
+        try {
+            repository.importCollectionsFromJson(json)
+            org.junit.Assert.fail("Expected import failure")
+        } catch (_: IllegalStateException) {
+            // Expected.
+        }
+
+        assertEquals(1, transactionRunner.calls)
+        assertTrue(dao.items.isEmpty())
+    }
+
     private class FakeCollectRepository : CollectRepository {
         private val collectedMovies = mutableMapOf<String, Movie>()
         private val collectedActresses = mutableMapOf<String, ActressInfo>()
@@ -219,6 +265,69 @@ class CollectRepositoryTest {
 
         override suspend fun insert(link: LinkItem): Long {
             check(transactionRunner.inTransaction) { "insert must run in transaction" }
+            if (items.any { it.dbType == link.dbType && it.key == link.key }) return -1
+            items += link.copy(id = items.size + 1)
+            return items.size.toLong()
+        }
+
+        override suspend fun update(link: LinkItem): Int = 0
+
+        override suspend fun delete(dbType: Int, key: String): Int {
+            check(transactionRunner.inTransaction) { "delete must run in transaction" }
+            val before = items.size
+            items.removeAll { it.dbType == dbType && it.key == key }
+            return before - items.size
+        }
+
+        override fun listAll(): Flow<List<LinkItem>> = flow {
+            emit(items.toList())
+        }
+
+        override suspend fun listByType(dbType: Int): List<LinkItem> =
+            items.filter { it.dbType == dbType }
+
+        override suspend fun queryLink(): List<LinkItem> =
+            items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }
+
+        override suspend fun queryByCategoryId(categoryId: Int): List<LinkItem> =
+            items.filter { it.categoryId == categoryId }
+
+        override suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int = 0
+
+        override suspend fun hasByKey(dbType: Int, key: String): Int =
+            items.count { it.dbType == dbType && it.key == key }
+    }
+
+    private class RollbackTransactionRunner : CollectTransactionRunner {
+        lateinit var dao: RollbackCheckingLinkItemDao
+        var calls = 0
+        var inTransaction = false
+
+        override suspend fun <T> withTransaction(block: suspend () -> T): T {
+            calls += 1
+            val snapshot = dao.items.toList()
+            inTransaction = true
+            return try {
+                block()
+            } catch (e: Throwable) {
+                dao.items.clear()
+                dao.items.addAll(snapshot)
+                throw e
+            } finally {
+                inTransaction = false
+            }
+        }
+    }
+
+    private class RollbackCheckingLinkItemDao(
+        private val transactionRunner: RollbackTransactionRunner,
+        private val failOnKey: String
+    ) : LinkItemDao {
+        val items = mutableListOf<LinkItem>()
+
+        override suspend fun insert(link: LinkItem): Long {
+            check(transactionRunner.inTransaction) { "insert must run in transaction" }
+            if (link.key == failOnKey) error("simulated insert failure")
             if (items.any { it.dbType == link.dbType && it.key == link.key }) return -1
             items += link.copy(id = items.size + 1)
             return items.size.toLong()
