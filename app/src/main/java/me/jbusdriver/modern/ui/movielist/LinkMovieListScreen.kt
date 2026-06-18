@@ -196,9 +196,9 @@ fun LinkMovieListScreen(
                         }
                         ShareButton(text = shareText)
                     }
-                    if (type == "actress" && uiState.actressDetail != null) {
+                    if (type == "actress" && uiState.actressHeader.detail != null) {
                         CollectButton(
-                            isCollected = uiState.isCollected,
+                            isCollected = uiState.actressHeader.isCollected,
                             onToggle = { viewModel.toggleActressCollect() }
                         )
                     }
@@ -244,11 +244,11 @@ fun LinkMovieListScreen(
                             type == "actress" && filterBar != null -> {
                                 {
                                     Column {
-                                        val actress = uiState.actressDetail
-                                        val actressError = uiState.actressError
+                                        val actress = uiState.actressHeader.detail
+                                        val actressError = uiState.actressHeader.error
                                         when {
                                             actress != null -> ActressDetailCard(actress)
-                                            uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                            uiState.actressHeader.isLoading -> ActressDetailLoadingPlaceholder()
                                             actressError != null -> ActressDetailErrorCard(
                                                 actressError
                                             )
@@ -260,11 +260,11 @@ fun LinkMovieListScreen(
 
                             type == "actress" -> {
                                 {
-                                    val actress = uiState.actressDetail
-                                    val actressError = uiState.actressError
+                                    val actress = uiState.actressHeader.detail
+                                    val actressError = uiState.actressHeader.error
                                     when {
                                         actress != null -> ActressDetailCard(actress)
-                                        uiState.isLoadingActress -> ActressDetailLoadingPlaceholder()
+                                        uiState.actressHeader.isLoading -> ActressDetailLoadingPlaceholder()
                                         actressError != null -> ActressDetailErrorCard(actressError)
                                     }
                                 }

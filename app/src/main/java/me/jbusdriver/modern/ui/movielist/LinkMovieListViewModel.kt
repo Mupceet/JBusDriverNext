@@ -26,7 +26,6 @@ import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
-import me.jbusdriver.modern.ui.ActressDetailUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.toUiModel
@@ -62,14 +61,8 @@ data class LinkMovieListUiState(
     val hasMore: Boolean = true,
     /** 错误信息，正常时为 null */
     val error: Int? = null,
-    /** 女优详情数据，仅在女优页面时有值 */
-    val actressDetail: ActressDetailUiModel? = null,
-    /** 是否正在加载女优详情 */
-    val isLoadingActress: Boolean = false,
-    /** 女优详情加载错误信息 */
-    val actressError: String? = null,
-    /** 当前女优是否已收藏 */
-    val isCollected: Boolean = false,
+    /** 女优头部详情、加载、错误和收藏状态 */
+    val actressHeader: ActressHeaderState = ActressHeaderState(),
     /** 是否显示全部影片（含无磁力链接的影片） */
     val showAll: Boolean = false,
     /** 筛选信息（磁力数量与总数），仅在筛选模式下有值 */
@@ -158,7 +151,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
         pages.reset()
         _uiState.value = LinkMovieListUiState()
         if (type == "actress") {
-            _uiState.update { it.copy(isLoadingActress = true, actressError = null) }
+            _uiState.update { it.copy(actressHeader = it.actressHeader.startLoading()) }
         }
         loadFirstPage()
         if (type == "actress" && linkUrl.isNotBlank()) {
@@ -388,18 +381,13 @@ class LinkMovieListViewModel @AssistedInject constructor(
      */
     private fun loadActressDetail(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingActress = true) }
+            _uiState.update { it.copy(actressHeader = it.actressHeader.startLoading()) }
             try {
                 val detail = repository.loadActressDetail(linkUrl, forceRefresh = forceRefresh)
                 if (detail != null) {
                     _uiState.update {
                         it.copy(
-                            actressDetail = ActressDetailUiModel(
-                                detail.name,
-                                detail.avatar,
-                                detail.info
-                            ),
-                            isLoadingActress = false,
+                            actressHeader = it.actressHeader.applyLoaded(detail),
                             resolvedTitle = ResolvedTitle.Actress(detail.name)
                         )
                     }
@@ -409,13 +397,19 @@ class LinkMovieListViewModel @AssistedInject constructor(
                         link = linkUrl
                     )
                     val collected = collectRepository.isActressCollected(actress)
-                    _uiState.update { it.copy(isCollected = collected) }
+                    _uiState.update {
+                        it.copy(actressHeader = it.actressHeader.withCollected(collected))
+                    }
                 } else {
-                    _uiState.update { it.copy(isLoadingActress = false) }
+                    _uiState.update {
+                        it.copy(actressHeader = it.actressHeader.finishWithoutDetail())
+                    }
                 }
             } catch (e: Exception) {
                 KLog.e("loadActressDetail failed", e)
-                _uiState.update { it.copy(isLoadingActress = false) }
+                _uiState.update {
+                    it.copy(actressHeader = it.actressHeader.finishWithError(e.message))
+                }
             }
         }
     }
@@ -426,7 +420,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
      * 如果已收藏则取消收藏，反之则添加收藏。仅在女优详情已加载时生效。
      */
     fun toggleActressCollect() {
-        val actressDetail = _uiState.value.actressDetail ?: return
+        val actressDetail = _uiState.value.actressHeader.detail ?: return
         viewModelScope.launch {
             val actress = ActressInfo(
                 name = actressDetail.name,
@@ -434,7 +428,9 @@ class LinkMovieListViewModel @AssistedInject constructor(
                 link = linkUrl
             )
             val newState = collectRepository.toggleActressCollect(actress)
-            _uiState.update { it.copy(isCollected = newState) }
+            _uiState.update {
+                it.copy(actressHeader = it.actressHeader.withCollected(newState))
+            }
         }
     }
 
