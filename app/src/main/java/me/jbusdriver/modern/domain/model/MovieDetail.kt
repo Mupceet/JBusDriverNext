@@ -63,11 +63,8 @@ interface IAttr : Serializable
  * @property link 相关跳转链接，无链接时为空字符串
  */
 @Immutable
-data class Header(val name: String, val value: String, override val link: String) : ILink {
+data class Header(val name: String, val value: String, override val link: String) : ILink
     /** 所属收藏分类 ID，默认关联 [LinkCategory] */
-    @Transient
-    override var categoryId: Int = LinkCategory.id ?: 10
-}
 
 /**
  * 类别标签，表示影片所属的一个分类（如 "高清"、"某系列" 等）。
@@ -82,11 +79,8 @@ data class Header(val name: String, val value: String, override val link: String
  * @property link 类别列表页 URL
  */
 @Immutable
-data class Genre(val name: String, override val link: String) : ILink {
+data class Genre(val name: String, override val link: String) : ILink
     /** 所属收藏分类 ID，默认关联 [LinkCategory] */
-    @Transient
-    override var categoryId: Int = LinkCategory.id ?: 10
-}
 
 /**
  * 女优信息，表示影片详情页中的一个出演女优。
@@ -110,11 +104,8 @@ data class ActressInfo(
 ) : ILink {
 
     /** 所属收藏分类 ID，默认关联 [ActressCategory] */
-    @Transient
-    override var categoryId: Int = ActressCategory.id ?: 2
-
     override fun toString() =
-        "ActressInfo(name='$name', avatar='$avatar', link='$link', tag=$tag  categoryId $categoryId) "
+        "ActressInfo(name='$name', avatar='$avatar', link='$link', tag=$tag) "
 }
 
 /**

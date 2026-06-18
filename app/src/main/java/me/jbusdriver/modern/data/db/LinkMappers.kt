@@ -10,12 +10,14 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.parser.stripToPath
 import me.jbusdriver.modern.data.parser.wrapImage
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.ActressCategory
 import me.jbusdriver.modern.domain.model.AllFirstParentDBCategoryGroup
 import me.jbusdriver.modern.domain.model.Genre
 import me.jbusdriver.modern.domain.model.Header
 import me.jbusdriver.modern.domain.model.ILink
 import me.jbusdriver.modern.domain.model.LinkCategory
 import me.jbusdriver.modern.domain.model.Movie
+import me.jbusdriver.modern.domain.model.MovieCategory
 import me.jbusdriver.modern.domain.model.PageLink
 import me.jbusdriver.modern.domain.model.SearchLink
 import me.jbusdriver.modern.domain.model.urlPath
@@ -66,7 +68,7 @@ val ILink.uniqueKey: String
  *
  * @return 可直接插入数据库的 [LinkItem] 实体
  */
-fun ILink.convertDBItem(categoryId: Int = this.categoryId): LinkItem {
+fun ILink.convertDBItem(categoryId: Int = defaultCategoryId()): LinkItem {
     val stripped = stripUrlFields(this)
     return LinkItem(
         dbType = this.DBtype,
@@ -105,12 +107,16 @@ fun History.toILink(): ILink = when (dbType) {
 fun LinkItem.toILink(): ILink? {
     return kotlin.runCatching {
         val raw = deserializeLink(dbType, jsonStr)
-        val link = restoreUrlFields(raw)
-        link.categoryId = this.categoryId
-        link
+        restoreUrlFields(raw)
     }.onFailure {
         KLog.w("error toILink : $this")
     }.getOrNull()
+}
+
+private fun ILink.defaultCategoryId(): Int = when (this) {
+    is Movie -> MovieCategory.id ?: 1
+    is ActressInfo -> ActressCategory.id ?: 2
+    else -> AllFirstParentDBCategoryGroup[this.DBtype]?.id ?: LinkCategory.id ?: -1
 }
 
 /**

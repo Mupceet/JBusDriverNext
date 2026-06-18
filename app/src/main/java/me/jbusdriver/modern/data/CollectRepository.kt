@@ -50,7 +50,7 @@ interface CollectRepository {
      *
      * @return 切换后的状态：true=已收藏，false=未收藏
      */
-    suspend fun toggleMovieCollect(movie: Movie): Boolean
+    suspend fun toggleMovieCollect(movie: Movie, categoryId: Int? = null): Boolean
 
     /** 检查演员是否已收藏 */
     suspend fun isActressCollected(actress: ActressInfo): Boolean
@@ -134,8 +134,8 @@ class DefaultCollectRepository @Inject constructor(
         return isCollected(movie.convertDBItem())
     }
 
-    override suspend fun toggleMovieCollect(movie: Movie): Boolean {
-        val item = movie.convertDBItem()
+    override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?): Boolean {
+        val item = if (categoryId != null) movie.convertDBItem(categoryId) else movie.convertDBItem()
         return transactionRunner.withTransaction {
             val exists = linkDao.hasByKey(item.dbType, item.key) >= 1
             if (exists) {
@@ -185,8 +185,8 @@ class DefaultCollectRepository @Inject constructor(
     }
 
     override suspend fun exportCollectionsJson(): String {
-        val movies = getCollectedMovies()
-        val actresses = getCollectedActresses()
+        val movies = withContext(Dispatchers.IO) { linkDao.listByType(MovieDBType) }
+        val actresses = withContext(Dispatchers.IO) { linkDao.listByType(ActressDBType) }
         val root = JsonObject().apply {
             addProperty("version", 1)
             addProperty(
@@ -194,18 +194,18 @@ class DefaultCollectRepository @Inject constructor(
                 SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date())
             )
             add("movies", JsonArray().apply {
-                movies.forEach { movie ->
-                    // categoryId is @Transient on Movie, must be added explicitly
+                movies.forEach { item ->
+                    val movie = item.toILink() as? Movie ?: return@forEach
                     add(GSON.fromJson(movie.toJsonString(), JsonObject::class.java).apply {
-                        addProperty("categoryId", movie.categoryId)
+                        addProperty("categoryId", item.categoryId)
                     })
                 }
             })
             add("actresses", JsonArray().apply {
-                actresses.forEach { actress ->
-                    // categoryId is @Transient on ActressInfo, must be added explicitly
+                actresses.forEach { item ->
+                    val actress = item.toILink() as? ActressInfo ?: return@forEach
                     add(GSON.fromJson(actress.toJsonString(), JsonObject::class.java).apply {
-                        addProperty("categoryId", actress.categoryId)
+                        addProperty("categoryId", item.categoryId)
                     })
                 }
             })

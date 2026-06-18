@@ -47,7 +47,7 @@ class MovieDetailViewModelTest {
         override suspend fun addCollect(linkItem: LinkItem) = true
         override suspend fun removeCollect(linkItem: LinkItem) = true
         override suspend fun isMovieCollected(movie: Movie) = false
-        override suspend fun toggleMovieCollect(movie: Movie) = true
+        override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
         override suspend fun isActressCollected(actress: ActressInfo) = false
         override suspend fun toggleActressCollect(actress: ActressInfo) = true
         override suspend fun getCollectedMovies(): List<Movie> = emptyList()

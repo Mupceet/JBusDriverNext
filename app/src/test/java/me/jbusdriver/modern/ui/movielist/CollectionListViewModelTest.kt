@@ -49,7 +49,7 @@ class CollectionListViewModelTest {
         key = link,
         jsonStr = toJsonString(),
         createTime = createTime,
-        categoryId = categoryId
+        categoryId = 1
     )
 
     private fun ActressInfo.toLinkItem(createTime: Long = 1_000L) = LinkItem(
@@ -57,7 +57,7 @@ class CollectionListViewModelTest {
         key = link,
         jsonStr = toJsonString(),
         createTime = createTime,
-        categoryId = categoryId
+        categoryId = 2
     )
 
     @Before
@@ -85,7 +85,7 @@ class CollectionListViewModelTest {
             override suspend fun addCollect(linkItem: LinkItem) = true
             override suspend fun removeCollect(linkItem: LinkItem) = true
             override suspend fun isMovieCollected(movie: Movie) = false
-            override suspend fun toggleMovieCollect(movie: Movie) = true
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
             override suspend fun isActressCollected(actress: ActressInfo) = false
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = testMovies
@@ -122,7 +122,7 @@ class CollectionListViewModelTest {
             override suspend fun addCollect(linkItem: LinkItem) = true
             override suspend fun removeCollect(linkItem: LinkItem) = true
             override suspend fun isMovieCollected(movie: Movie) = false
-            override suspend fun toggleMovieCollect(movie: Movie) = true
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
             override suspend fun isActressCollected(actress: ActressInfo) = false
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = testMovies
@@ -158,7 +158,7 @@ class CollectionListViewModelTest {
             override suspend fun addCollect(linkItem: LinkItem) = true
             override suspend fun removeCollect(linkItem: LinkItem) = true
             override suspend fun isMovieCollected(movie: Movie) = false
-            override suspend fun toggleMovieCollect(movie: Movie) = true
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
             override suspend fun isActressCollected(actress: ActressInfo) = false
             override suspend fun toggleActressCollect(actress: ActressInfo) = true
             override suspend fun getCollectedMovies() = throw RuntimeException("DB error")

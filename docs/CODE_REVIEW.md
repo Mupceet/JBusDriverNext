@@ -14,11 +14,10 @@
 
 这个方向与 Android 推荐架构一致。当前不建议为了 “Clean Architecture” 或 “MVI” 标签强行拆多模块、强行增加空转 use case，或把所有页面一次性改成统一 Action 框架。
 
-当前仍影响质量的风险集中在三类：
+当前仍影响质量的风险集中在两类：
 
-1. **UI 边界仍可被绕过**：Screen 仍直接访问 Store，UI 层可见部分 data source surface。
-2. **domain model 仍混入 UI/序列化/收藏可变状态**：`ILink.categoryId` 使多个 `@Immutable` 模型实际可变。
-3. **架构重复仍偏多**：列表 SWR reducer、一次性事件、平台 IO gateway 还没有统一收口。
+1. **架构重复仍偏多**：列表 SWR reducer、一次性事件、平台 IO gateway 还没有统一收口。
+2. **UI 层仍承担部分平台 IO**：文件导入导出、图片保存/分享等流程仍在 Composable 附近，测试替换和错误归一较弱。
 
 ---
 
@@ -56,6 +55,7 @@
 1. **剩余 List/Forum request identity**：`ActressListViewModel`、`GenreListViewModel`、`ForumThreadDetailViewModel`、`ForumBoardsViewModel` 已补齐 request generation / identity。旧 `refresh/loadMore/revalidate/loadDetail` 晚返回时会被丢弃，不再覆盖新状态。
 2. **Screen Store 边界**：`LabSettingsViewModel` 新增 `LabSettingsUiState` 与 `setForumEnabled/setAutoLoadGifs/setForumFloorOrder/selectUrl` 等语义方法；`UiPrefsViewModel` 新增 `UiPrefsUiState` 与 `setGrid/toggleGrid`。相关 Screen 不再直接访问 `LabSettingsStoreContract` 或 `UiPrefsStore`。
 3. **数据库 Hilt 单入口推进**：新增 `RoomDatabaseFactory` 复用 Room 构建和迁移定义；`DatabaseModule` 改为通过 `@ApplicationContext` 直接提供 `JBusDatabase` / `CollectDatabase`。`object DB` 保留为遗留兼容层，不再作为 Hilt provider 的来源。
+4. **`ILink.categoryId` 可变状态移除**：`ILink` 只保留 `val link`，Movie/Actress/Genre/Header/PageLink/Magnet 等 domain model 不再暴露收藏分类。收藏分类改由 `LinkItem.categoryId`、`convertDBItem(categoryId)` 参数和导出 mapper 显式传递。
 
 关键新增/扩展测试：
 
@@ -92,15 +92,7 @@
 
 **建议**: 后续新增代码禁止使用 `DB.xxx`。确认无遗留调用后，可删除 `object DB` 或将其降级到 debug/test-only 辅助。
 
-### 6.2 `ILink.categoryId` 破坏 domain model 不可变性
-
-**位置**: `domain/model/ILink.kt`、`domain/model/Movie.kt`、`domain/model/MovieDetail.kt`、`domain/model/PageLink.kt`、`domain/model/Magnet.kt`
-
-多个 domain model 标注 `@Immutable`，但继承 `ILink` 后暴露 `var categoryId`。收藏分类是用户数据/数据库元数据，不属于影片、演员、磁力链接这些内容模型本身。
-
-**建议**: `ILink` 只保留 `val link: String`。收藏元数据使用 `CollectedEntry<T>(item, categoryId, createdAtMillis)` 或 mapper 参数传递。
-
-### 6.3 大型 ViewModel 与重复 SWR 状态机仍未收口
+### 6.2 大型 ViewModel 与重复 SWR 状态机仍未收口
 
 **位置**: `LinkMovieListViewModel.kt`、`MovieListViewModel.kt`、`ActressListViewModel.kt`、Forum 多个 ViewModel
 
@@ -108,7 +100,7 @@ Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading
 
 **建议**: 抽取纯函数 reducer 或小型 state producer，先迁移一个代表性列表，再逐页推进。`LinkMovieListViewModel` 至少拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
 
-### 6.4 UI 层仍承担平台 IO 和媒体流程
+### 6.3 UI 层仍承担平台 IO 和媒体流程
 
 **位置**: `ui/image/ImageViewScreen.kt`、`ui/movielist/CollectCategoryScreen.kt`
 
@@ -143,7 +135,6 @@ Composable 中直接执行 ContentResolver、MediaStore、FileProvider、文件�
 
 ## 八、后续建议顺序
 
-1. 处理 `ILink.categoryId` 可变 domain 状态。
-2. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
-3. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。
-4. 收敛 UI 层平台 IO 到可注入 gateway。
+1. 抽取 SWR reducer / state producer，降低 ViewModel 重复。
+2. 继续拆分大型 Forum / Detail ViewModel 与 Screen 文件。
+3. 收敛 UI 层平台 IO 到可注入 gateway。

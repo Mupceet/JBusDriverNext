@@ -116,12 +116,9 @@ class MovieDetailViewModel @Inject constructor(
         val url = currentUrl
         val isUncensored = censorType == "UNCENSORED"
         viewModelScope.launch {
-            val movie = detail.toCollectionMovie(url).apply {
-                if (isUncensored) {
-                    categoryId = UncensoredMovieCategory.id ?: 3
-                }
-            }
-            val newState = collectRepository.toggleMovieCollect(movie)
+            val movie = detail.toCollectionMovie(url)
+            val categoryId = if (isUncensored) UncensoredMovieCategory.id ?: 3 else null
+            val newState = collectRepository.toggleMovieCollect(movie, categoryId)
             _uiState.update { it.copy(isCollected = newState) }
         }
     }

@@ -11,11 +11,8 @@ package me.jbusdriver.modern.domain.model
  * @property title 类别名称（如 "XX类型"）
  * @property link 该页的完整列表 URL
  */
-data class PageLink(val page: Int, val title: String, override val link: String) : ILink {
+data class PageLink(val page: Int, val title: String, override val link: String) : ILink
     /** 所属收藏分类 ID，默认关联 [LinkCategory] */
-    @Transient
-    override var categoryId: Int = LinkCategory.id ?: 10
-}
 
 /**
  * 搜索链接数据类，表示一次搜索操作的可收藏快照。
@@ -34,9 +31,6 @@ data class SearchLink(
     private val baseUrl: String = ""
 ) : ILink {
     /** 所属收藏分类 ID，默认关联 [LinkCategory] */
-    @Transient
-    override var categoryId: Int = LinkCategory.id ?: 10
-
     /** 动态计算的搜索 URL，基于当前生效的服务器地址和搜索路径模板 */
     override val link: String
         get() = baseUrl.trimEnd('/') + type.urlPathFormater.format(query)

@@ -204,7 +204,7 @@ class CollectRepositoryTest {
 
         override suspend fun isMovieCollected(movie: Movie) = movie.link in collectedMovies
 
-        override suspend fun toggleMovieCollect(movie: Movie): Boolean {
+        override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?): Boolean {
             return if (movie.link in collectedMovies) {
                 collectedMovies.remove(movie.link)
                 false
