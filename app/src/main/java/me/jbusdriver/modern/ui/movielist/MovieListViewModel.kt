@@ -16,8 +16,6 @@ import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
-import me.jbusdriver.modern.core.cache.decideFreshRevalidate
-import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
@@ -281,60 +279,19 @@ class MovieListViewModel @Inject constructor(
                 when (event) {
                     is CachedLoadEvent.Cached -> {
                         hasContent = true
-                        _uiState.update {
-                            it.copy(
-                                movies = event.entry.value.movies.map { m -> m.toUiModel() },
-                                pageInfo = event.entry.value.pageInfo,
-                                filterInfo = event.entry.value.filterInfo,
-                                isLoading = false,
-                                isFilterSwitching = false,
-                                hasMore = event.entry.value.pageInfo.hasNext,
-                                error = if (event.entry.value.movies.isEmpty()) R.string.no_data else null,
-                                isRevalidating = event.entry.isExpired,
-                                lastUpdatedAtMillis = event.entry.storedAtMillis
-                            )
-                        }
+                        _uiState.update { it.applyFirstPageCached(event.entry) }
                     }
 
                     is CachedLoadEvent.Fresh -> {
                         // loadFirstPage 仅在列表为空时调用，直接应用
-                        val freshMovies = event.entry.value.movies.simulateCacheRefreshChange()
-                            .map { m -> m.toUiModel() }
+                        val nextState = _uiState.value.applyFirstPageFresh(event.entry)
+                        val freshMovies = nextState.movies
                         logMovieDiff(_uiState.value.movies, freshMovies, "MovieList.loadFirstPage")
-                        _uiState.update {
-                            it.copy(
-                                movies = freshMovies,
-                                pageInfo = event.entry.value.pageInfo,
-                                filterInfo = event.entry.value.filterInfo,
-                                isLoading = false,
-                                isFilterSwitching = false,
-                                isRevalidating = false,
-                                hasMore = event.entry.value.pageInfo.hasNext,
-                                pendingFreshResult = null,
-                                refreshMessage = null,
-                                lastUpdatedAtMillis = event.entry.storedAtMillis,
-                                error = if (event.entry.value.movies.isEmpty()) R.string.no_data else null
-                            )
-                        }
+                        _uiState.value = nextState
                     }
 
                     is CachedLoadEvent.Failure -> {
-                        _uiState.update {
-                            if (event.hadCachedValue || hasContent) {
-                                it.copy(
-                                    isLoading = false,
-                                    isFilterSwitching = false,
-                                    isRevalidating = false
-                                )
-                            } else {
-                                it.copy(
-                                    isLoading = false,
-                                    isFilterSwitching = false,
-                                    isRevalidating = false,
-                                    error = R.string.load_failed
-                                )
-                            }
-                        }
+                        _uiState.update { it.applyFirstPageFailure(event, hasContent) }
                     }
                 }
             }
@@ -370,42 +327,26 @@ class MovieListViewModel @Inject constructor(
                     }
 
                     is CachedLoadEvent.Fresh -> {
-                        val fresh = event.entry.value.copy(
-                            movies = event.entry.value.movies.simulateCacheRefreshChange()
+                        val reduction = _uiState.value.applyFreshRevalidate(
+                            event.entry,
+                            isAtTop = atTop.isAtTop
                         )
-                        val freshUiModels = fresh.movies.map { it.toUiModel() }
+                        val freshUiModels = reduction.fresh.movies.map { it.toUiModel() }
                         val oldMovies = _uiState.value.movies
                         val oldFirstPage = oldMovies.take(freshUiModels.size)
                         logMovieDiff(oldFirstPage, freshUiModels, "MovieList.revalidate")
-                        when (decideFreshRevalidate(oldMovies, freshUiModels, atTop.isAtTop)) {
+                        when (reduction.outcome) {
                             FreshRevalidateOutcome.ApplyImmediately -> {
                                 pages.startFirstPage()
-                                _uiState.update {
-                                    it.copy(
-                                        movies = fresh.movies.map { movie -> movie.toUiModel() },
-                                        pageInfo = fresh.pageInfo,
-                                        hasMore = fresh.pageInfo.hasNext,
-                                        filterInfo = fresh.filterInfo,
-                                        isRevalidating = false,
-                                        pendingFreshResult = null,
-                                        refreshMessage = null,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis
-                                    )
-                                }
+                                _uiState.value = reduction.state
                             }
 
                             FreshRevalidateOutcome.StorePending -> {
-                                _uiState.update {
-                                    it.copy(
-                                        isRevalidating = false,
-                                        pendingFreshResult = fresh,
-                                        refreshMessage = R.string.new_data_available
-                                    )
-                                }
+                                _uiState.value = reduction.state
                             }
 
                             FreshRevalidateOutcome.NoChange -> {
-                                _uiState.update { it.copy(isRevalidating = false) }
+                                _uiState.value = reduction.state
                             }
                         }
                     }

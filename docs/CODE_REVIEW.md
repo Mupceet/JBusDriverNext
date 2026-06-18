@@ -58,6 +58,7 @@
 4. **`ILink.categoryId` 可变状态移除**：`ILink` 只保留 `val link`，Movie/Actress/Genre/Header/PageLink/Magnet 等 domain model 不再暴露收藏分类。收藏分类改由 `LinkItem.categoryId`、`convertDBItem(categoryId)` 参数和导出 mapper 显式传递。
 5. **收藏导入/导出平台 IO 收敛**：新增 `CollectionDocumentGateway`，`CollectCategoryViewModel` 负责导入/导出 document URI 流程；`CollectCategoryScreen` 只保留 Activity Result launcher 和结果提示，不再直接读写 `ContentResolver`。
 6. **图片保存/分享平台 IO 收敛**：新增 `ImageMediaGateway` 与 `ImageActionsViewModel`，图片查看页只触发保存/分享 intent 并消费消息；MediaStore、FileProvider、bitmap 压缩和异常映射移出 Composable。
+7. **MovieList SWR reducer 代表性迁移**：新增 `MovieListStateReducers`，将首页 cached/fresh/failure 与 revalidate fresh 状态归约抽成可单测纯函数；`MovieListViewModel` 保留请求 identity、日志和分页副作用。
 
 关键新增/扩展测试：
 
@@ -69,6 +70,7 @@
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.LabSettingsViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.settings.UiPrefsViewModelTest" --console=plain
 ./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.image.ImageActionsViewModelTest" --console=plain
+./gradlew.bat testDebugUnitTest --tests "me.jbusdriver.modern.ui.movielist.MovieListStateReducerTest" --console=plain
 ```
 
 ---
@@ -95,13 +97,13 @@
 
 **建议**: 后续新增代码禁止使用 `DB.xxx`。确认无遗留调用后，可删除 `object DB` 或将其降级到 debug/test-only 辅助。
 
-### 6.2 大型 ViewModel 与重复 SWR 状态机仍未收口
+### 6.2 大型 ViewModel 与重复 SWR 状态机仍需继续收口
 
 **位置**: `LinkMovieListViewModel.kt`、`MovieListViewModel.kt`、`ActressListViewModel.kt`、Forum 多个 ViewModel
 
-Phase B 给多个页面加了 request identity，但 reducer 仍分散。loading/error/pending/revalidate/loadMore 的状态归约仍有大量重复。
+`MovieListViewModel` 已先把首页 SWR 与 revalidate fresh 归约迁到 `MovieListStateReducers`，但 `LinkMovieListViewModel`、`ActressListViewModel`、`GenreListViewModel` 和 Forum 多个 ViewModel 仍保留相似的 loading/error/pending/revalidate/loadMore 分支。
 
-**建议**: 抽取纯函数 reducer 或小型 state producer，先迁移一个代表性列表，再逐页推进。`LinkMovieListViewModel` 至少拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
+**建议**: 沿用 `MovieListStateReducers` 的方式逐页迁移，优先处理 `LinkMovieListViewModel`；它至少应拆成 `LinkedMoviesState` 与 `ActressHeaderState` 两个子状态。
 
 ---
 
