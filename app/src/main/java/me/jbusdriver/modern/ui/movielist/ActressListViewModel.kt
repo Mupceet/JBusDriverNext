@@ -15,8 +15,6 @@ import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
-import me.jbusdriver.modern.core.cache.decideFreshRevalidate
-import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
@@ -167,53 +165,16 @@ class ActressListViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            _uiState.update {
-                                it.copy(
-                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
-                                    pageInfo = event.entry.value.second,
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    hasMore = event.entry.value.second.hasNext,
-                                    error = if (event.entry.value.first.isEmpty()) R.string.no_data else null,
-                                    isRevalidating = event.entry.isExpired,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyFirstPageCached(event.entry) }
                         }
 
                         is CachedLoadEvent.Fresh -> {
                             // loadFirstPage 仅在列表为空时调用，直接应用
-                            _uiState.update {
-                                it.copy(
-                                    actresses = event.entry.value.first.simulateCacheRefreshChange()
-                                        .map { a -> a.toActressUiModel() },
-                                    pageInfo = event.entry.value.second,
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    isRevalidating = false,
-                                    hasMore = event.entry.value.second.hasNext,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyFirstPageFresh(event.entry) }
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                if (event.hadCachedValue || hasContent) {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        isRevalidating = false
-                                    )
-                                } else {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRefreshing = false,
-                                        isRevalidating = false,
-                                        error = R.string.load_failed
-                                    )
-                                }
-                            }
+                            _uiState.update { it.applyFirstPageFailure(event, hasContent) }
                         }
                     }
                 }
@@ -243,42 +204,22 @@ class ActressListViewModel @Inject constructor(
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            val fresh = event.entry.value.copy(
-                                first = event.entry.value.first.simulateCacheRefreshChange()
+                            val reduction = _uiState.value.applyFreshRevalidate(
+                                event.entry,
+                                isAtTop = atTop.isAtTop
                             )
-                            val freshUiModels = fresh.first.map { it.toActressUiModel() }
-                            when (decideFreshRevalidate(
-                                _uiState.value.actresses,
-                                freshUiModels,
-                                atTop.isAtTop
-                            )) {
+                            when (reduction.outcome) {
                                 FreshRevalidateOutcome.ApplyImmediately -> {
                                     pages.startFirstPage()
-                                    _uiState.update {
-                                        it.copy(
-                                            actresses = freshUiModels,
-                                            pageInfo = fresh.second,
-                                            hasMore = fresh.second.hasNext,
-                                            isRevalidating = false,
-                                            pendingFreshActresses = null,
-                                            refreshMessage = null,
-                                            lastUpdatedAtMillis = event.entry.storedAtMillis
-                                        )
-                                    }
+                                    _uiState.value = reduction.state
                                 }
 
                                 FreshRevalidateOutcome.StorePending -> {
-                                    _uiState.update {
-                                        it.copy(
-                                            isRevalidating = false,
-                                            pendingFreshActresses = fresh,
-                                            refreshMessage = R.string.new_data_available
-                                        )
-                                    }
+                                    _uiState.value = reduction.state
                                 }
 
                                 FreshRevalidateOutcome.NoChange -> {
-                                    _uiState.update { it.copy(isRevalidating = false) }
+                                    _uiState.value = reduction.state
                                 }
                             }
                         }
