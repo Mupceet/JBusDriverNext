@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -67,6 +68,7 @@ fun ImageViewScreen(
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+    val resources = LocalResources.current
     val isDarkTheme = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
 
@@ -84,11 +86,11 @@ fun ImageViewScreen(
         pageCount = { images.size }
     )
 
-    LaunchedEffect(viewModel, context) {
+    LaunchedEffect(viewModel, context, resources) {
         viewModel.messages.collect { message ->
             val text = message.formatArg?.let {
-                context.getString(message.messageRes, it)
-            } ?: context.getString(message.messageRes)
+                resources.getString(message.messageRes, it)
+            } ?: resources.getString(message.messageRes)
             Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
         }
     }

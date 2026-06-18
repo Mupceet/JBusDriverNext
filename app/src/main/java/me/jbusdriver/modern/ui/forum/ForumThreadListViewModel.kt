@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumThread
@@ -140,16 +141,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            _uiState.update {
-                                it.copy(
-                                    threads = event.entry.value.threads,
-                                    pageInfo = event.entry.value.pageInfo,
-                                    typeFilters = event.entry.value.typeFilters.ifEmpty { it.typeFilters },
-                                    isLoading = false,
-                                    isRevalidating = event.entry.isExpired,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyFirstPageCached(event.entry) }
                         }
 
                         is CachedLoadEvent.Fresh -> {
@@ -158,53 +150,16 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             )
                             val oldThreads = _uiState.value.threads
                             val oldFirstPage = oldThreads.take(fresh.threads.size)
-                            val hasChanged = oldFirstPage != fresh.threads
                             logThreadDiff(oldFirstPage, fresh.threads, "ThreadList.loadFirstPage")
-                            if (isAtTopForFreshUpdates) {
-                                _uiState.update {
-                                    it.copy(
-                                        threads = fresh.threads,
-                                        pageInfo = fresh.pageInfo,
-                                        typeFilters = fresh.typeFilters,
-                                        hasMore = fresh.pageInfo.hasNext,
-                                        isLoading = false,
-                                        isRevalidating = false,
-                                        pendingFreshThreads = null,
-                                        refreshMessage = null,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis
-                                    )
-                                }
-                            } else if (hasChanged) {
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRevalidating = false,
-                                        pendingFreshThreads = fresh,
-                                        refreshMessage = R.string.new_data_available
-                                    )
-                                }
-                            } else {
-                                _uiState.update {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRevalidating = false
-                                    )
-                                }
-                            }
+                            val reduction = _uiState.value.applyFirstPageFresh(
+                                event.entry.copy(value = fresh),
+                                isAtTop = isAtTopForFreshUpdates
+                            )
+                            _uiState.value = reduction.state
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                if (event.hadCachedValue || hasContent) {
-                                    it.copy(isLoading = false, isRevalidating = false)
-                                } else {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRevalidating = false,
-                                        error = R.string.load_failed
-                                    )
-                                }
-                            }
+                            _uiState.update { it.applyFirstPageFailure(event, hasContent) }
                         }
                     }
                 }
@@ -229,33 +184,15 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             )
                             val oldThreads = _uiState.value.threads
                             val oldFirstPage = oldThreads.take(fresh.threads.size)
-                            val hasChanged = oldFirstPage != fresh.threads
                             logThreadDiff(oldFirstPage, fresh.threads, "ThreadList.revalidate")
-                            if (isAtTopForFreshUpdates) {
+                            val reduction = _uiState.value.applyFreshRevalidate(
+                                event.entry.copy(value = fresh),
+                                isAtTop = isAtTopForFreshUpdates
+                            )
+                            if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
                                 currentPage = 1
-                                _uiState.update {
-                                    it.copy(
-                                        threads = fresh.threads,
-                                        pageInfo = fresh.pageInfo,
-                                        typeFilters = fresh.typeFilters,
-                                        hasMore = fresh.pageInfo.hasNext,
-                                        isRevalidating = false,
-                                        pendingFreshThreads = null,
-                                        refreshMessage = null,
-                                        lastUpdatedAtMillis = event.entry.storedAtMillis
-                                    )
-                                }
-                            } else if (hasChanged) {
-                                _uiState.update {
-                                    it.copy(
-                                        isRevalidating = false,
-                                        pendingFreshThreads = fresh,
-                                        refreshMessage = R.string.new_data_available
-                                    )
-                                }
-                            } else {
-                                _uiState.update { it.copy(isRevalidating = false) }
                             }
+                            _uiState.value = reduction.state
                         }
 
                         is CachedLoadEvent.Failure -> {

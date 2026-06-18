@@ -49,14 +49,12 @@ me.jbusdriver.modern/
       NetClient.kt          - OkHttp singleton, fetchDocument() for HTML→Jsoup parsing
   data/
     db/
-      DB.kt                 - Lazy Room database instances (JBusDatabase, CollectDatabase)
       DBTypes.kt            - DB type constants (MovieDBType, ActressDBType)
       LinkMappers.kt        - DB entity ↔ domain model mappers
       JBusDatabase.kt       - Room DB for history tracking
-      CollectDatabase.kt    - Room DB for categories/link items (SD card for persistence)
+      CollectDatabase.kt    - Room DB for categories/link items
       dao/                  - CategoryDao, HistoryDao, LinkItemDao
       entity/               - Category, History, LinkItem (Room entities)
-      SDCardDatabaseContext.kt - SD card database context
     parser/
       HtmlParser.kt         - All HTML→domain parsing (loadMovieFromDoc, parseMovieDetails, etc.)
     magnet/

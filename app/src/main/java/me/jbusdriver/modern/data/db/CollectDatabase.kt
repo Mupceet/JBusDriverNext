@@ -12,8 +12,8 @@ import me.jbusdriver.modern.data.db.entity.LinkItem
  *
  * 职责：管理收藏相关的两个实体表（[Category] 和 [LinkItem]），并提供对应的 DAO。
  *
- * 使用场景：由 [DB] 单例创建实例，通过 [DatabaseModule] 注入到 Hilt 依赖图中。
- * 数据库文件通过 [SDCardDatabaseContext] 存储在 SD 卡上，以在应用卸载后保留收藏数据。
+ * 使用场景：由 [DatabaseModule] 创建实例并注入到 Hilt 依赖图中。
+ * 数据库文件通过标准 Room 构建流程创建，迁移定义集中在数据库构建层。
  *
  * 线程：Room 保证数据库实例本身线程安全；DAO 操作的线程安全由调用方保证。
  */

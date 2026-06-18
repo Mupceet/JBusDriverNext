@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.ForumRepository
@@ -71,43 +70,15 @@ class ForumBoardsViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            _uiState.update {
-                                it.copy(
-                                    banners = event.entry.value.banners,
-                                    summary = event.entry.value.summary,
-                                    groups = event.entry.value.boardGroups,
-                                    isLoading = false,
-                                    isRevalidating = event.entry.isExpired,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyBoardsCached(event.entry) }
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            _uiState.update {
-                                it.copy(
-                                    banners = event.entry.value.banners,
-                                    summary = event.entry.value.summary,
-                                    groups = event.entry.value.boardGroups,
-                                    isLoading = false,
-                                    isRevalidating = false,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyBoardsFresh(event.entry) }
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                if (event.hadCachedValue || hasContent) {
-                                    it.copy(isLoading = false, isRevalidating = false)
-                                } else {
-                                    it.copy(
-                                        isLoading = false,
-                                        isRevalidating = false,
-                                        error = R.string.load_failed
-                                    )
-                                }
-                            }
+                            _uiState.update { it.applyBoardsFailure(event, hasContent) }
                         }
                     }
                 }
@@ -124,25 +95,11 @@ class ForumBoardsViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
-                            _uiState.update {
-                                it.copy(
-                                    banners = event.entry.value.banners,
-                                    summary = event.entry.value.summary,
-                                    groups = event.entry.value.boardGroups,
-                                    isRefreshing = false,
-                                    lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
-                            }
+                            _uiState.update { it.applyBoardsRefreshFresh(event.entry) }
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                it.copy(
-                                    isRefreshing = false,
-                                    error = if (it.groups.isEmpty()) R.string.load_failed else it.error,
-                                    refreshMessage = if (it.groups.isNotEmpty()) R.string.refresh_failed else null
-                                )
-                            }
+                            _uiState.update { it.applyBoardsRefreshFailure() }
                         }
                     }
                 }
