@@ -250,6 +250,64 @@ class ForumThreadParserTest {
         assertEquals(2, pageInfo.nextPage)
     }
 
+    @Test
+    fun `legacy plain-text dateline is extracted when the span has no title`() {
+        // 旧版板块页发帖时间写作 <span class="dateline">2017-9-9</span>（叶子 span，无 title），
+        // 新版则是 <span class="dateline"><span title="...">...</span></span>。
+        // 此前用 ".dateline span" 取后代 span，对叶子 span 取不到，旧格式时间丢失。
+        val doc = Jsoup.parse(
+            """
+                <table>
+                  <tbody id="normalthread_15172">
+                    <tr><th>
+                      <div class="post_infolist_tit">
+                        <a class="s" href="forum.php?mod=viewthread&amp;tid=15172">Thread title</a>
+                      </div>
+                    </th></tr>
+                    <tr>
+                      <td class="by">
+                        <span class="dateline">2017-9-9</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/"
+        )
+
+        val thread = parseForumThreads(doc, "https://www.javbus.com").threads.single()
+
+        assertEquals("2017-9-9", thread.dateLine)
+    }
+
+    @Test
+    fun `titled dateline still preferred over plain text`() {
+        // 新格式带 title 的 dateline 仍应取 title（更精确的绝对时间），不走文本回退。
+        val doc = Jsoup.parse(
+            """
+                <table>
+                  <tbody id="normalthread_42">
+                    <tr><th>
+                      <div class="post_infolist_tit">
+                        <a class="s" href="forum.php?mod=viewthread&amp;tid=42">Thread title</a>
+                      </div>
+                    </th></tr>
+                    <tr>
+                      <td class="by">
+                        <span class="dateline"><span title="2026-6-6">前天&nbsp;00:35</span></span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/"
+        )
+
+        val thread = parseForumThreads(doc, "https://www.javbus.com").threads.single()
+
+        assertEquals("2026-6-6", thread.dateLine)
+    }
+
     private fun parsedPinnedReply(floor: Int) = parseForumThreadDetail(
         fixture(
             "pinned-rich-replies.html",

@@ -85,7 +85,7 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         authorUid = authorUid,
         authorAvatar = tbody.select(".post_avatar img[src]").attr("src"),
         dateLine = tbody.select(".dateline span[title]").attr("title")
-            .ifBlank { tbody.select(".dateline span").text().trim() },
+            .ifBlank { tbody.select(".dateline").firstOrNull()?.text()?.trim().orEmpty() },
         viewCount = tbody.select(".views").text().trim().toIntOrNull() ?: 0,
         replyCount = tbody.select(".reply").text().trim().toIntOrNull() ?: 0,
         lastReplyAuthor = tbody.select(".time a").text().trim(),
