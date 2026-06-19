@@ -121,7 +121,7 @@ private fun parseDateOrNow(raw: String): Date {
  * 泛型 JSON 反序列化
  *
  * 通过 reified 类型参数避免传入 TypeToken
- * 使用场景：CacheLoader 读取缓存时反序列化为具体类型
+ * 使用场景：CacheStore 读取缓存时反序列化为具体类型
  *
  * @param T 目标类型
  * @param json JSON 字符串

@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.data
 
-import me.jbusdriver.modern.core.JBusManager
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import org.jsoup.nodes.Document
 import javax.inject.Inject

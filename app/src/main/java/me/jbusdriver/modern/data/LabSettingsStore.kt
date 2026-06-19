@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
 import javax.inject.Inject
@@ -116,7 +115,6 @@ class LabSettingsStore @Inject constructor(
     override suspend fun selectUrl(url: String) {
         val trimmed = url.trimEnd('/')
         dataStore.edit { it[KEY_SELECTED_BASE_URL] = trimmed }
-        NetClient.defaultFastUrl = trimmed
     }
 
     override suspend fun scanMirrorUrls(

@@ -7,8 +7,10 @@ import dagger.hilt.components.SingletonComponent
 import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.DefaultCacheStore
 import me.jbusdriver.modern.core.http.BrowserSessionClient
+import me.jbusdriver.modern.core.http.AndroidWebViewFactory
 import me.jbusdriver.modern.core.http.DefaultHtmlClient
 import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.http.WebViewFactory
 import me.jbusdriver.modern.core.site.DefaultSiteConfig
 import me.jbusdriver.modern.core.site.SitePreferenceSource
 import me.jbusdriver.modern.core.site.SiteConfig
@@ -79,6 +81,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindCacheStore(impl: DefaultCacheStore): CacheStore
+
+    @Binds
+    @Singleton
+    abstract fun bindWebViewFactory(impl: AndroidWebViewFactory): WebViewFactory
 
     /** 绑定 [MovieRepository] 到 [DefaultMovieRepository]。 */
     @Binds

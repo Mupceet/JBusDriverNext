@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.CollectRepository
 import me.jbusdriver.modern.data.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
@@ -56,7 +57,8 @@ data class CollectionListUiState(
 @HiltViewModel
 class CollectionListViewModel @Inject constructor(
     private val collectRepository: CollectRepository,
-    private val uiPrefsStore: CollectionUiPrefs
+    private val uiPrefsStore: CollectionUiPrefs,
+    private val siteConfig: SiteConfig
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionListUiState())
@@ -100,13 +102,14 @@ class CollectionListViewModel @Inject constructor(
             try {
                 val movieItems = collectRepository.getCollectedLinkItems(MovieDBType)
                 val actressItems = collectRepository.getCollectedLinkItems(ActressDBType)
+                val baseUrl = siteConfig.baseUrl
 
                 allMovies = movieItems.mapNotNull { item ->
-                    ((item.toILink() as? Movie)?.toUiModel())
+                    ((item.toILink(baseUrl) as? Movie)?.toUiModel())
                         ?.copy(createTime = item.createTime, categoryId = item.categoryId)
                 }
                 allActresses = actressItems.mapNotNull { item ->
-                    ((item.toILink() as? ActressInfo)?.toActressUiModel())
+                    ((item.toILink(baseUrl) as? ActressInfo)?.toActressUiModel())
                         ?.copy(createTime = item.createTime)
                 }
 

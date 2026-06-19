@@ -168,13 +168,15 @@ class DefaultCollectRepository @Inject constructor(
 
     override suspend fun getCollectedMovies(): List<Movie> {
         return withContext(Dispatchers.IO) {
-            linkDao.listByType(MovieDBType).mapNotNull { it.toILink() as? Movie }
+            val baseUrl = siteConfig.baseUrl
+            linkDao.listByType(MovieDBType).mapNotNull { it.toILink(baseUrl) as? Movie }
         }
     }
 
     override suspend fun getCollectedActresses(): List<ActressInfo> {
         return withContext(Dispatchers.IO) {
-            linkDao.listByType(ActressDBType).mapNotNull { it.toILink() as? ActressInfo }
+            val baseUrl = siteConfig.baseUrl
+            linkDao.listByType(ActressDBType).mapNotNull { it.toILink(baseUrl) as? ActressInfo }
         }
     }
 
@@ -187,6 +189,7 @@ class DefaultCollectRepository @Inject constructor(
     override suspend fun exportCollectionsJson(): String {
         val movies = withContext(Dispatchers.IO) { linkDao.listByType(MovieDBType) }
         val actresses = withContext(Dispatchers.IO) { linkDao.listByType(ActressDBType) }
+        val baseUrl = siteConfig.baseUrl
         val root = JsonObject().apply {
             addProperty("version", 1)
             addProperty(
@@ -195,7 +198,7 @@ class DefaultCollectRepository @Inject constructor(
             )
             add("movies", JsonArray().apply {
                 movies.forEach { item ->
-                    val movie = item.toILink() as? Movie ?: return@forEach
+                    val movie = item.toILink(baseUrl) as? Movie ?: return@forEach
                     add(GSON.fromJson(movie.toJsonString(), JsonObject::class.java).apply {
                         addProperty("categoryId", item.categoryId)
                     })
@@ -203,7 +206,7 @@ class DefaultCollectRepository @Inject constructor(
             })
             add("actresses", JsonArray().apply {
                 actresses.forEach { item ->
-                    val actress = item.toILink() as? ActressInfo ?: return@forEach
+                    val actress = item.toILink(baseUrl) as? ActressInfo ?: return@forEach
                     add(GSON.fromJson(actress.toJsonString(), JsonObject::class.java).apply {
                         addProperty("categoryId", item.categoryId)
                     })

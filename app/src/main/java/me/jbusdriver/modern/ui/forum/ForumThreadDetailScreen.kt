@@ -127,10 +127,8 @@ fun ForumThreadDetailScreen(
                     }
                 },
                 actions = {
-                    val threadUrl =
-                        "${me.jbusdriver.modern.core.http.NetClient.defaultFastUrl}/forum/forum.php?mod=viewthread&tid=$tid"
                     ShareButton(
-                        text = threadUrl,
+                        text = viewModel.shareThreadUrl,
                         chooserTitle = stringResource(R.string.share_thread)
                     )
                 }

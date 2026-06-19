@@ -12,9 +12,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.http.WebViewHelper
 import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
 import me.jbusdriver.modern.core.http.WebViewHelper.unescapeJsString
+import me.jbusdriver.modern.core.http.WebViewFactory
 import me.jbusdriver.modern.core.site.SiteConfig
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -77,7 +77,8 @@ interface ForumCookiePersister {
 @Singleton
 class ForumSessionManager @Inject constructor(
     private val siteConfig: SiteConfig,
-    private val cookieStore: SessionCookieStore
+    private val cookieStore: SessionCookieStore,
+    private val webViewFactory: WebViewFactory
 ) : ForumCookiePersister {
 
     @Volatile
@@ -109,7 +110,7 @@ class ForumSessionManager @Inject constructor(
         if (webView != null) return
         withContext(Dispatchers.Main) {
             if (webView == null) {
-                webView = WebViewHelper.createWebView()
+                webView = webViewFactory.createWebView()
             }
         }
     }
@@ -117,7 +118,7 @@ class ForumSessionManager @Inject constructor(
     private suspend fun initWebView() {
         withTimeout(15_000.milliseconds) {
             withContext(Dispatchers.Main) {
-                val wv = WebViewHelper.createWebView()
+                val wv = webViewFactory.createWebView()
                 webView = wv
                 try {
                     val mainUrl = siteConfig.referer()

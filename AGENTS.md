@@ -35,12 +35,12 @@ The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `grad
 ```
 me.jbusdriver.modern/
   JBusApplication.kt       - @HiltAndroidApp entry point, provides Coil ImageLoader
-  AppContext.kt             - Application base, initializes JBus global ref and JBusManager
+  AppContext.kt             - Application base, registers JBusManager lifecycle callbacks
   KLog.kt                   - Logging utility
   core/
     GsonExt.kt              - GSON instance, generic fromJson/toJson extensions
     BaseExtension.kt        - SharedPreferences, Context extensions
-    CacheLoader.kt          - Two-tier cache: LruCache (memory) + FileCache (disk)
+    cache/CacheStore.kt     - Hilt-backed two-tier cache: LruCache (memory) + FileCache (disk)
     FileCache.kt            - Disk cache implementation (replaces former ACache.java)
     FileUtil.kt             - File size formatting helpers
     JBusManager.kt          - Activity lifecycle tracker, context provider
@@ -97,17 +97,17 @@ me.jbusdriver.modern/
 - **Hilt DI**: ViewModels use `hiltViewModel()` (from `hilt-navigation-compose`), repositories are interface+impl pairs bound via `@Binds` in `DataModule`. Navigation-arg ViewModels use `@AssistedInject` + `@AssistedFactory`.
 - **Repository pattern**: Each screen has a ViewModel that delegates to a Hilt-provided repository
 - **HTML scraping**: `NetClient.fetchDocument()` (OkHttp → Jsoup) → domain models via top-level functions in `HtmlParser.kt`
-- **Two-tier cache**: `CacheLoader.lruCached()` (memory only) for lists; `CacheLoader.persistentCached()` (memory + disk) for details
+- **Two-tier cache**: `CacheStore.lruCached()` (memory only) for lists; `CacheStore.persistentCached()` (memory + disk) for details
 - **Coroutines throughout**: All repositories use `suspend` functions, no RxJava
 
 ## Data Flow
 
-1. **Network**: `NetClient.fetchDocument(url)` fetches HTML via OkHttp and parses to Jsoup `Document`. Base URL (`defaultFastUrl`) is switchable at runtime.
+1. **Network**: `HtmlClient` / `NetClient` fetch HTML via OkHttp and parse to Jsoup `Document`. Runtime base URL is owned by `SiteConfig`.
 2. **Parsing**: Top-level functions in `HtmlParser.kt` convert `Document` → domain models. All Jsoup CSS selectors are centralized there.
-3. **Caching**: `CacheLoader` — `lruCached()` for volatile list data, `persistentCached()` for stable detail/genre data. Both use Gson serialization under the hood.
+3. **Caching**: `CacheStore` — `lruCached()` for volatile list data, `persistentCached()` for stable detail/genre data. Both use Gson serialization under the hood.
 4. **Database**: Room with two databases:
    - `JBusDatabase`: history tracking
-   - `CollectDatabase`: categories and link items (stored on SD card for persistence across reinstalls)
+   - `CollectDatabase`: categories and link items, built through the Hilt database module
 
 ## Navigation Routes (Nav3)
 
@@ -126,7 +126,7 @@ me.jbusdriver.modern/
 | UI | Jetpack Compose + Material3 (BOM-managed) |
 | DI | Hilt |
 | Async | Kotlin Coroutines |
-| Network | OkHttp 5.3 |
+| Network | OkHttp 5.4 |
 | HTML Parsing | Jsoup 1.22 |
 | Database | Room 2.8 (KSP) |
 | Image Loading | Coil 2.7 |
@@ -149,9 +149,9 @@ me.jbusdriver.modern/
 
 ## Global State
 
-- `JBus` (top-level `lateinit var` in `AppContext.kt`): Application context reference.
-- `NetClient.defaultFastUrl`: Current base URL for the target site, switchable at runtime.
-- `CacheLoader.lru` / `CacheLoader.fileCache`: Global caches (memory LRU + disk FileCache).
+- `JBusManager`: Activity lifecycle tracker only; do not use it as a Context provider. Its internal Activity list is private; use `currentActivity` / `activeActivityCount` for read-only queries.
+- `SiteConfig`: Hilt-managed runtime base URL for the target site.
+- `DefaultCacheStore`: Hilt-managed memory + disk cache using `@ApplicationContext`.
 
 ## Testing
 
@@ -172,23 +172,23 @@ Test files are in `app/src/test/` (unit) and `app/src/androidTest/` (instrumente
 
 See `docs/CODE_REVIEW.md` for the full code review report. Key findings:
 
-### Known Architectural Issues
-- `lateinit var JBus` in `AppContext.kt` — global mutable singleton, prefer Hilt `@ApplicationContext`
-- `SiteConfig` constructor uses `runBlocking` — may cause ANR on cold start
-- `ForumSessionClient.ensureSession()` holds Activity reference — lifecycle risk
-- `ForumSessionManager` WebView thread safety — `destroy()` and `fetchDocument()` lack synchronization
-- ViewModel `loadFirstPage/revalidate/loadMore/refresh` pattern is heavily duplicated across 5+ ViewModels
-- `ForumViewModels.kt` contains 3 ViewModels in one file (822 lines) — should be split
-- **i18n**: All UI strings are hardcoded Traditional Chinese — zero `stringResource()` usage; `strings.xml` contains only `app_name`
-- **Duplicate UI**: Loading/Empty/Error state patterns repeated in 12+ Screen files; CollectButton and ShareButton logic duplicated across 3-4 files
-- **File overlong**: `MovieDetailScreen.kt` (833 lines), `ForumViewModels.kt` (822 lines), `ForumThreadDetailScreen.kt` (603 lines)
-- **LabSettingsStore.kt** (303 lines) mixes DataStore prefs, WebView scanning, concurrent verification, and URL sorting — should be split
+### Current Status
+- No current P0/P1 correctness issue is known from the latest review.
+- Phase A/B/C remediation is closed for: `SiteConfig.awaitReady()`, site-aware cache keys, request identity/race guards, forum WebView session synchronization, collection transaction boundaries, JVM URL parsing, Hilt database entry points, platform IO gateway boundaries, and movielist/forum SWR reducers.
+- The latest quality gates used were `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and `assembleRelease`.
+
+### Remaining Non-Blocking Technical Debt
+- The former `JBus`, `JBusManager.context`, public `JBusManager.manager`, `NetClient.defaultFastUrl`, and `CacheLoader` global cache entry points have been removed from production code. Prefer Hilt `@ApplicationContext`, `SiteConfig`, `WebViewFactory`, and `CacheStore` for new code.
+- UI i18n is only partially complete. New visible UI strings, Toast messages, dialog labels, and content descriptions should use resources; count labels should use plurals.
+- Several files remain large, including `MovieList.kt`, `ForumPostContent.kt`, `LinkMovieListViewModel.kt`, `LinkMovieListScreen.kt`, `MovieDetailScreen.kt`, `MovieListViewModel.kt`, `LabSettingsScreen.kt`, `MovieRepository.kt`, `ForumBoardsScreen.kt`, and `ForumThreadDetailViewModel.kt`. Prefer small section/helper extraction when touching those files.
+- ViewModel `loadFirstPage/revalidate/loadMore/refresh` orchestration still repeats across list-style screens. Reducers already cover state transitions; avoid broad abstraction until a stable shared shape is obvious.
+- If release minify/Gson/forum rich-text code changes, add or run a release smoke test for JSON deserialization and `ContentBlock` payloads.
 
 ### Data Flow (Stale-While-Revalidate)
-All list screens use the same caching pattern via `CacheStore.observeCached()`:
+List and forum screens use the same stale-while-revalidate pattern via `CacheStore.observeCached()`:
 1. Emit `CachedLoadEvent.Cached` from memory/disk cache (immediate)
-2. Background fetch → emit `CachedLoadEvent.Fresh` (new data)
-3. ViewModel decides: apply immediately if at top, or show "有新數據" Snackbar if scrolled down
+2. Background fetch emits `CachedLoadEvent.Fresh` (new data)
+3. Reducer/ViewModel logic applies fresh data immediately when appropriate, or stores pending fresh data while the user is away from the top
 
 ### Navigation Routes (Nav3)
 
@@ -210,7 +210,7 @@ All list screens use the same caching pattern via `CacheStore.observeCached()`:
 | UI | Jetpack Compose + Material3 (BOM-managed) |
 | DI | Hilt |
 | Async | Kotlin Coroutines |
-| Network | OkHttp 5.3 |
+| Network | OkHttp 5.4 |
 | HTML Parsing | Jsoup 1.22 |
 | Database | Room 2.8 (KSP) |
 | Image Loading | Coil 2.7 |

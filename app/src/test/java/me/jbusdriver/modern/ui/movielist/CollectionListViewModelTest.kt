@@ -11,7 +11,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.data.CollectRepository
@@ -64,10 +63,6 @@ class CollectionListViewModelTest {
     fun setup() {
         testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
-        NetClient.siteConfig = object : SiteConfig {
-            override var baseUrl: String = "https://www.javbus.com"
-            override fun resolve(pathOrUrl: String): String = pathOrUrl
-        }
     }
 
     @After
@@ -100,9 +95,9 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
 
-        assertTrue(testMovies.first().toLinkItem().toILink() is Movie)
+        assertTrue(testMovies.first().toLinkItem().toILink(FakeSiteConfig().baseUrl) is Movie)
         viewModel.loadCollection(1) // MovieDBType
         advanceUntilIdle()
         Thread.sleep(500)
@@ -137,9 +132,9 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
 
-        assertTrue(testActresses.first().toLinkItem().toILink() is ActressInfo)
+        assertTrue(testActresses.first().toLinkItem().toILink(FakeSiteConfig().baseUrl) is ActressInfo)
         viewModel.loadCollection(2) // ActressDBType
         advanceUntilIdle()
         Thread.sleep(500)
@@ -169,7 +164,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
 
         viewModel.loadCollection(1)
         advanceUntilIdle()
@@ -178,5 +173,10 @@ class CollectionListViewModelTest {
 
         assertEquals(R.string.collect_load_failed, viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
+    }
+
+    private class FakeSiteConfig : SiteConfig {
+        override var baseUrl: String = "https://www.javbus.com"
+        override fun resolve(pathOrUrl: String): String = pathOrUrl
     }
 }

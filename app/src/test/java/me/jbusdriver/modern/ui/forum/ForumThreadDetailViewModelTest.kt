@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.data.ForumSettingsReader
@@ -55,6 +56,7 @@ class ForumThreadDetailViewModelTest {
             repository = repository,
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
             navKey = RouteForumThreadDetail(42)
         )
         advanceUntilIdle()
@@ -75,6 +77,22 @@ class ForumThreadDetailViewModelTest {
         assertEquals(ForumFloorOrder.REVERSE, viewModel.uiState.value.floorOrder)
         assertEquals("Reverse", viewModel.uiState.value.detail?.title)
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun `share thread url uses injected site config`() = runTest(testDispatcher) {
+        val viewModel = ForumThreadDetailViewModel(
+            repository = FakeForumDetailRepository(CompletableDeferred()),
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            siteConfig = FakeSiteConfig("https://Mirror.Example.test/base/"),
+            navKey = RouteForumThreadDetail(42)
+        )
+
+        assertEquals(
+            "https://Mirror.Example.test/base/forum/forum.php?mod=viewthread&tid=42",
+            viewModel.shareThreadUrl
+        )
     }
 
     private class FakeForumDetailRepository(
@@ -137,6 +155,12 @@ class ForumThreadDetailViewModelTest {
     private class FakeLoadedGifTracker : LoadedGifTracker {
         override suspend fun loadedUrls(): Set<String> = emptySet()
         override suspend fun markLoaded(url: String) = Unit
+    }
+
+    private class FakeSiteConfig(initialBaseUrl: String) : SiteConfig {
+        override var baseUrl: String = initialBaseUrl
+        override fun resolve(pathOrUrl: String): String =
+            baseUrl.trimEnd('/') + if (pathOrUrl.startsWith("/")) pathOrUrl else "/$pathOrUrl"
     }
 }
 

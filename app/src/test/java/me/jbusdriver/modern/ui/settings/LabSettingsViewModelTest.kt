@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.LabSettingsStoreContract
 import me.jbusdriver.modern.data.ScanState
@@ -46,7 +47,7 @@ class LabSettingsViewModelTest {
                 blocked.await()
             }
         )
-        val viewModel = LabSettingsViewModel(store, dispatcher)
+        val viewModel = LabSettingsViewModel(store, FakeSiteConfig(), dispatcher)
 
         viewModel.startScan()
         runCurrent()
@@ -58,6 +59,19 @@ class LabSettingsViewModelTest {
     }
 
     @Test
+    fun selectUrlUpdatesStoreAndRuntimeSiteConfig() = runTest(dispatcher) {
+        val store = FakeLabSettingsStore()
+        val siteConfig = FakeSiteConfig("https://old.example.test")
+        val viewModel = LabSettingsViewModel(store, siteConfig, dispatcher)
+
+        viewModel.selectUrl("https://new.example.test/")
+        advanceUntilIdle()
+
+        assertEquals("https://new.example.test/", store.selectedUrl)
+        assertEquals("https://new.example.test/", siteConfig.baseUrl)
+    }
+
+    @Test
     fun cancelledVerifyDoesNotPublishFailure() = runTest(dispatcher) {
         val blocked = CompletableDeferred<Unit>()
         val store = FakeLabSettingsStore(
@@ -65,7 +79,7 @@ class LabSettingsViewModelTest {
                 blocked.await()
             }
         )
-        val viewModel = LabSettingsViewModel(store, dispatcher)
+        val viewModel = LabSettingsViewModel(store, FakeSiteConfig(), dispatcher)
 
         viewModel.startVerify()
         runCurrent()
@@ -83,7 +97,7 @@ class LabSettingsViewModelTest {
                 error("network")
             }
         )
-        val viewModel = LabSettingsViewModel(store, dispatcher)
+        val viewModel = LabSettingsViewModel(store, FakeSiteConfig(), dispatcher)
 
         viewModel.startScan()
         advanceUntilIdle()
@@ -94,7 +108,7 @@ class LabSettingsViewModelTest {
     @Test
     fun uiStateReflectsStoreAndSettingsIntents() = runTest(dispatcher) {
         val store = FakeLabSettingsStore()
-        val viewModel = LabSettingsViewModel(store, dispatcher)
+        val viewModel = LabSettingsViewModel(store, FakeSiteConfig(), dispatcher)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.forumEnabled)
@@ -121,6 +135,7 @@ class LabSettingsViewModelTest {
             MutableStateFlow(ForumFloorOrder.REGULAR)
         override val selectedBaseUrl: StateFlow<String> = MutableStateFlow("https://example.test")
         override val cachedMirrorUrls: StateFlow<List<String>> = MutableStateFlow(emptyList())
+        var selectedUrl: String? = null
 
         override suspend fun setForumEnabled(enabled: Boolean) {
             forumEnabled.value = enabled
@@ -134,7 +149,9 @@ class LabSettingsViewModelTest {
             forumFloorOrder.value = order
         }
 
-        override suspend fun selectUrl(url: String) = Unit
+        override suspend fun selectUrl(url: String) {
+            selectedUrl = url
+        }
 
         override suspend fun scanMirrorUrls(
             state: MutableStateFlow<ScanState>,
@@ -146,5 +163,11 @@ class LabSettingsViewModelTest {
         override suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>) {
             verify()
         }
+    }
+
+    private class FakeSiteConfig(initialBaseUrl: String = "https://example.test") : SiteConfig {
+        override var baseUrl: String = initialBaseUrl
+        override fun resolve(pathOrUrl: String): String =
+            baseUrl.trimEnd('/') + if (pathOrUrl.startsWith("/")) pathOrUrl else "/$pathOrUrl"
     }
 }

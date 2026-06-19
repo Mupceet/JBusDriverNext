@@ -3,7 +3,6 @@ package me.jbusdriver.modern.data.db
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.fromJson
-import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.data.db.entity.History
 import me.jbusdriver.modern.data.db.entity.LinkItem
@@ -104,10 +103,10 @@ fun History.toILink(): ILink = when (dbType) {
  *
  * @return 反序列化后的领域对象，失败时返回 null
  */
-fun LinkItem.toILink(): ILink? {
+fun LinkItem.toILink(baseUrl: String): ILink? {
     return kotlin.runCatching {
         val raw = deserializeLink(dbType, jsonStr)
-        restoreUrlFields(raw)
+        restoreUrlFields(raw, baseUrl)
     }.onFailure {
         KLog.w("error toILink : $this")
     }.getOrNull()
@@ -155,8 +154,7 @@ private fun stripUrlFields(link: ILink): ILink {
     }
 }
 
-private fun restoreUrlFields(link: ILink): ILink {
-    val baseUrl = NetClient.siteConfig.baseUrl
+private fun restoreUrlFields(link: ILink, baseUrl: String): ILink {
     return when (link) {
         is Movie -> link.copy(
             link = link.link.wrapImage(baseUrl),

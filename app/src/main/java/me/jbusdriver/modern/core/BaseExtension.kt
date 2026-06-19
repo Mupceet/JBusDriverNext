@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageInfo
-import android.text.format.Formatter
 import androidx.collection.ArrayMap
 
 // region 文件大小常量与格式化
@@ -18,13 +17,6 @@ const val TB = GB * 1024
 inline val Int.MB: Int
     get() = this * 1024 * 1024
 
-/**
- * 将字节数格式化为人类可读的文件大小字符串
- *
- * 使用场景：CacheLoader 初始化时显示可用内存大小
- */
-fun Long.formatFileSize(): String =
-    Formatter.formatFileSize(JBusManager.manager.first().get(), this)
 // endregion
 
 // region ArrayMap 工具

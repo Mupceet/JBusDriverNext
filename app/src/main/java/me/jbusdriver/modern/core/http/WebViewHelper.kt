@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.core.http
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -8,15 +9,14 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
-import me.jbusdriver.modern.JBus
 import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 
 object WebViewHelper {
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun createWebView(): WebView {
-        return WebView(JBus).apply {
+    fun createWebView(context: Context): WebView {
+        return WebView(context.applicationContext).apply {
             // Required for forum session bootstrap and mirror verification pages.
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true

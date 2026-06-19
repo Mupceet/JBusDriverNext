@@ -8,16 +8,9 @@ import me.jbusdriver.modern.core.JBusManager
 import java.io.File
 
 /**
- * 全局 Application Context 引用，在 AppContext.onCreate() 中初始化
- *
- * 使用场景：非 Activity 组件（Repository、CacheLoader 等）通过 JBus 访问 Application Context
- */
-lateinit var JBus: AppContext
-
-/**
  * 职责：Application 基类，管理全局状态和生命周期
  *
- * 使用场景：JBusApplication 的父类，负责初始化 JBusManager、注册 Activity 生命周期回调
+ * 使用场景：JBusApplication 的父类，负责注册 Activity 生命周期回调
  * 线程：onCreate 在主线程
  *
  * 继承关系：JBusApplication → AppContext → Application
@@ -35,8 +28,6 @@ open class AppContext : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        JBusManager.setContext(this)
-        JBus = this
 
         if (isDebug) {
             Log.d("AppContext", "Debug mode enabled")

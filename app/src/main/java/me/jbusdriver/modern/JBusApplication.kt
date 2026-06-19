@@ -8,7 +8,6 @@ import coil.disk.DiskCache
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.HtmlClient
-import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.site.SiteConfig
 import okhttp3.Interceptor
 import javax.inject.Inject
@@ -32,7 +31,6 @@ class JBusApplication : AppContext(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
-        NetClient.siteConfig = siteConfig
         if (BuildConfig.DEBUG) {
             Log.d("JBusApplication", "Hilt initialization complete")
         }

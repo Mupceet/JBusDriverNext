@@ -13,10 +13,10 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.core.http.WebViewHelper
 import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
 import me.jbusdriver.modern.core.http.WebViewHelper.loadUrlAwait
 import me.jbusdriver.modern.core.http.WebViewHelper.unescapeJsString
+import me.jbusdriver.modern.core.http.WebViewFactory
 import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,7 +41,9 @@ private val EXTRACT_MIRROR_JS = """
 """
 
 @Singleton
-class MirrorScanner @Inject constructor() {
+class MirrorScanner @Inject constructor(
+    private val webViewFactory: WebViewFactory
+) {
 
     suspend fun scanAndVerify(
         state: MutableStateFlow<ScanState>,
@@ -61,7 +63,7 @@ class MirrorScanner @Inject constructor() {
             discovered.addAll(allSeeds)
 
             withContext(Dispatchers.Main) {
-                val webView = WebViewHelper.createWebView()
+                val webView = webViewFactory.createWebView()
                 try {
                     val seeds = allSeeds.toList()
                     val completed = java.util.concurrent.atomic.AtomicInteger(0)

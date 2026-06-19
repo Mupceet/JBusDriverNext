@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.LabSettingsStoreContract
 import me.jbusdriver.modern.data.MirrorUrl
@@ -36,14 +37,16 @@ data class LabSettingsUiState(
 
 @HiltViewModel
 class LabSettingsViewModel @Inject constructor(
-    private val store: LabSettingsStoreContract
+    private val store: LabSettingsStoreContract,
+    private val siteConfig: SiteConfig
 ) : ViewModel() {
     private var scanDispatcher: CoroutineDispatcher = Dispatchers.IO
 
     constructor(
         store: LabSettingsStoreContract,
+        siteConfig: SiteConfig,
         scanDispatcher: CoroutineDispatcher
-    ) : this(store) {
+    ) : this(store, siteConfig) {
         this.scanDispatcher = scanDispatcher
     }
 
@@ -115,7 +118,10 @@ class LabSettingsViewModel @Inject constructor(
     }
 
     fun selectUrl(url: String) {
-        viewModelScope.launch { store.selectUrl(url) }
+        viewModelScope.launch {
+            store.selectUrl(url)
+            siteConfig.baseUrl = url
+        }
     }
 
     fun setForumEnabled(enabled: Boolean) {

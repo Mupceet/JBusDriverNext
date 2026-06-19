@@ -1,13 +1,22 @@
 package me.jbusdriver.modern.core.cache
 
+import android.app.ActivityManager
+import android.content.Context
+import android.text.format.Formatter
+import androidx.collection.LruCache
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.core.CacheLoader
+import me.jbusdriver.modern.core.FileCache
 import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.MB
 import me.jbusdriver.modern.core.fromJson
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,17 +28,59 @@ interface CacheStore {
 }
 
 @Singleton
-class DefaultCacheStore @Inject constructor() : CacheStore {
-    override fun readMemory(key: String): String? = CacheLoader.getLruString(key)
+class DefaultCacheStore @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) : CacheStore {
+    private val appContext = context.applicationContext
 
-    override fun writeMemory(key: String, value: String) {
-        CacheLoader.putLruString(key, value)
+    private val memoryCache: LruCache<String, String> by lazy { initMemoryCache() }
+
+    private val diskCache: FileCache by lazy {
+        FileCache(
+            File(appContext.cacheDir, "ACache"),
+            300.MB.toLong()
+        )
     }
 
-    override suspend fun readDisk(key: String): String? = CacheLoader.getDiskString(key)
+    override fun readMemory(key: String): String? = memoryCache.get(key)
+
+    override fun writeMemory(key: String, value: String) {
+        memoryCache.put(key, value)
+    }
+
+    override suspend fun readDisk(key: String): String? =
+        withContext(Dispatchers.IO) { diskCache.get(key) }
 
     override suspend fun writeDisk(key: String, value: String) {
-        CacheLoader.putDiskString(key, value)
+        withContext(Dispatchers.IO) { diskCache.put(key, value) }
+    }
+
+    private fun initMemoryCache(): LruCache<String, String> {
+        val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memoryInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        KLog.t(TAG).d("max availMem = ${Formatter.formatFileSize(appContext, memoryInfo.availMem)}")
+        if (memoryInfo.lowMemory) {
+            KLog.w("Possible low memory when initializing cache")
+        }
+        val cacheSize = if (memoryInfo.availMem > 64.MB) 32.MB else 8.MB
+        KLog.t(TAG).d("max cacheSize = ${Formatter.formatFileSize(appContext, cacheSize.toLong())}")
+        return object : LruCache<String, String>(cacheSize) {
+            override fun entryRemoved(
+                evicted: Boolean,
+                key: String,
+                oldValue: String,
+                newValue: String?
+            ) {
+                KLog.i("entryRemoved : evicted = $evicted , key = $key")
+            }
+
+            override fun sizeOf(key: String, value: String): Int = value.toByteArray().size
+        }
+    }
+
+    private companion object {
+        const val TAG = "CacheStore"
     }
 }
 

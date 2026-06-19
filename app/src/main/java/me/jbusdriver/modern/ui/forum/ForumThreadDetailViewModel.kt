@@ -17,6 +17,7 @@ import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.ForumFloorOrder
 import me.jbusdriver.modern.data.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
@@ -82,9 +83,12 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
     private val forumSettingsReader: me.jbusdriver.modern.data.ForumSettingsReader,
     private val loadedGifTracker: me.jbusdriver.modern.data.LoadedGifTracker,
+    private val siteConfig: SiteConfig,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
     private val tid: Int = navKey.tid
+    val shareThreadUrl: String
+        get() = siteConfig.resolve("/forum/forum.php?mod=viewthread&tid=$tid")
     private var currentPage = 1
     private var requestGeneration = 0L
     private var activeIdentity: DetailRequestIdentity? = null

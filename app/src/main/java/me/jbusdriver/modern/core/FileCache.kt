@@ -6,12 +6,12 @@ import java.security.MessageDigest
 /**
  * 极简磁盘缓存，仅支持 String 键值对的读写删除。
  *
- * 职责：作为 CacheLoader 的磁盘持久层，将缓存值以文件形式存储在应用缓存目录。
+ * 职责：作为 CacheStore 的磁盘持久层，将缓存值以文件形式存储在应用缓存目录。
  * 写入时自动淘汰旧文件，保证总大小不超过 [maxSizeBytes]。
  *
- * 使用场景：CacheLoader.persistentCached 和 getString 的磁盘读写。
+ * 使用场景：DefaultCacheStore 和 CacheStore.persistentCached 的磁盘读写。
  *
- * 线程：非线程安全，调用方需在 IO 调度器上执行（CacheLoader 已通过
+ * 线程：非线程安全，调用方需在 IO 调度器上执行（DefaultCacheStore 已通过
  * withContext(Dispatchers.IO) 保证）。
  *
  * @param cacheDir 缓存文件存放目录
