@@ -40,8 +40,8 @@ fun LoadingViewCentered(modifier: Modifier = Modifier) {
 
 @Composable
 fun EmptyStateView(
-    message: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    message: String? = null
 ) {
     Column(
         modifier = modifier

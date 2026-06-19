@@ -31,7 +31,7 @@ interface UiPrefsStoreContract {
 
 @Singleton
 class UiPrefsStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : CollectionUiPrefs, UiPrefsStoreContract {
     private val dataStore = context.uiPrefsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

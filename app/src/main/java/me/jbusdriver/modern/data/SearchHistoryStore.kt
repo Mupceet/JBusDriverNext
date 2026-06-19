@@ -23,7 +23,7 @@ private val Context.searchHistoryDataStore by preferencesDataStore("search_histo
 
 @Singleton
 class DefaultSearchHistoryStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : SearchHistoryStore {
 
     private val dataStore = context.searchHistoryDataStore

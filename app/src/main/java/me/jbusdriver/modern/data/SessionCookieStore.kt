@@ -16,7 +16,7 @@ import javax.inject.Inject
 private val Context.sessionCookieDataStore by preferencesDataStore("session_cookies")
 
 class SessionCookieStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val dataStore = context.sessionCookieDataStore
 

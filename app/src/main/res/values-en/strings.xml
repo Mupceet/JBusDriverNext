@@ -34,7 +34,14 @@
     <string name="genre">Genre</string>
     <string name="censored">Censored</string>
     <string name="uncensored">Uncensored</string>
-    <string name="view_count">%1$d views · %2$d replies</string>
+    <plurals name="view_count_label">
+        <item quantity="one">%d view</item>
+        <item quantity="other">%d views</item>
+    </plurals>
+    <plurals name="reply_count_label">
+        <item quantity="one">%d reply</item>
+        <item quantity="other">%d replies</item>
+    </plurals>
     <string name="screenshot">Screenshots</string>
     <string name="actresses">Actresses</string>
     <string name="related">Related</string>
@@ -51,8 +58,6 @@
     <string name="export_collect">Export Collection</string>
     <string name="import_collect">Import Collection</string>
     <string name="export_success">Export successful</string>
-    <string name="export_failed">Export failed</string>
-    <string name="import_failed">Import failed</string>
     <string name="collect_load_failed">Failed to load collection</string>
 
     <!-- Search -->
@@ -78,7 +83,6 @@
     <string name="select_download">Select download method</string>
     <string name="no_handler">No app found to handle this</string>
     <string name="share_image">Share Image</string>
-    <string name="share_failed">Share failed</string>
     <string name="forum_tab_latest">Latest Threads</string>
     <string name="forum_tab_latest_reply">Latest Replies</string>
     <string name="forum_tab_hot">Hot Topics</string>
@@ -106,12 +110,9 @@
     <string name="delete">Delete</string>
     <string name="actress_type">Actress: %1$s</string>
     <string name="genre_type">Genre: %1$s</string>
-    <string name="header_type">Other: %1$s</string>
-    <string name="folder">Actress</string>
 
     <!-- Common actions -->
     <string name="clear">Clear</string>
-    <string name="settings">Settings</string>
     <string name="reset">Reset</string>
     <string name="save">Save</string>
 
@@ -144,7 +145,6 @@
     <string name="expand_all">Expand all</string>
     <string name="collapse_all">Collapse all</string>
     <string name="selected_count">Selected %1$d</string>
-    <string name="multi_select">Multi-select</string>
     <string name="no_filter_match">No matching results</string>
     <string name="no_collection_yet">No collections yet</string>
 

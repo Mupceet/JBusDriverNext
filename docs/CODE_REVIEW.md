@@ -48,6 +48,8 @@
 7. **movielist SWR reducer 收口**：`MovieList`、`LinkMovieList`、`ActressList`、`GenreList` 的 cached/fresh/failure 与 revalidate fresh 分支已迁移到 reducer 文件。
 8. **LinkMovieList 女优头部子状态拆分**：新增 `ActressHeaderState`，女优详情、加载、错误和收藏状态通过 `uiState.actressHeader` 渲染。
 9. **Forum SWR reducer 收口**：新增 `ForumBoardsStateReducers`、`ForumThreadListStateReducers`、`ForumThreadDetailStateReducers`，Forum cached/fresh/failure、pending/new-data 与 refresh failure 分支已迁移到可单测纯函数。
+10. **Lint 剩余项清理**：修复 Compose modifier 参数顺序、Compose 资源读取、KTX API、Material3 deprecated alias、复数资源、未使用资源、Hilt qualifier 注解目标等 lint/compiler warning；`lintDebug` 当前无 error/warning。
+11. **依赖小版本升级**：OkHttp 升级到 5.4.0，kotlinx-coroutines 升级到 1.11.0，KSP 升级到 2.3.9，并通过 debug 编译/lint 验证。Kotlin 2.4.0 已实测被当前 Hilt metadata 读取上限阻塞，暂缓升级并用窄范围 lint ignore 记录原因。
 
 ---
 

@@ -340,7 +340,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        stringResource(R.string.view_count, thread.viewCount, thread.replyCount),
+                        forumViewReplyCountText(thread.viewCount, thread.replyCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

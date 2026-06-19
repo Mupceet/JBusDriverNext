@@ -50,9 +50,9 @@ import me.jbusdriver.modern.core.copy
 fun ActressAvatar(
     avatarUrl: String,
     contentDescription: String?,
+    modifier: Modifier = Modifier,
     size: Dp = 96.dp,
-    onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    onClick: (() -> Unit)? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val ctx = LocalContext.current

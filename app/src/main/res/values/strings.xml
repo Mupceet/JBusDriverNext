@@ -34,7 +34,12 @@
     <string name="genre">類別</string>
     <string name="censored">有碼</string>
     <string name="uncensored">無碼</string>
-    <string name="view_count">%1$d 瀏覽 · %2$d 回復</string>
+    <plurals name="view_count_label">
+        <item quantity="other">%d 瀏覽</item>
+    </plurals>
+    <plurals name="reply_count_label">
+        <item quantity="other">%d 回復</item>
+    </plurals>
     <string name="screenshot">截圖</string>
     <string name="actresses">演員</string>
     <string name="related">推薦</string>
@@ -51,8 +56,6 @@
     <string name="export_collect">導出收藏</string>
     <string name="import_collect">導入收藏</string>
     <string name="export_success">導出成功</string>
-    <string name="export_failed">導出失敗</string>
-    <string name="import_failed">導入失敗</string>
     <string name="collect_load_failed">載入收藏失敗</string>
 
     <!-- Search -->
@@ -78,7 +81,6 @@
     <string name="select_download">選擇下載方式</string>
     <string name="no_handler">未找到可處理的應用</string>
     <string name="share_image">分享圖片</string>
-    <string name="share_failed">分享失敗</string>
     <string name="forum_tab_latest">最新主題</string>
     <string name="forum_tab_latest_reply">最新回復</string>
     <string name="forum_tab_hot">熱點話題</string>
@@ -106,12 +108,9 @@
     <string name="delete">刪除</string>
     <string name="actress_type">演員: %1$s</string>
     <string name="genre_type">類別: %1$s</string>
-    <string name="header_type">其他: %1$s</string>
-    <string name="folder">女優</string>
 
     <!-- Common actions -->
     <string name="clear">清除</string>
-    <string name="settings">設置</string>
     <string name="reset">重置</string>
     <string name="save">保存</string>
 
@@ -144,7 +143,6 @@
     <string name="expand_all">全部展開</string>
     <string name="collapse_all">全部摺疊</string>
     <string name="selected_count">已選 %1$d</string>
-    <string name="multi_select">多選</string>
     <string name="no_filter_match">沒有匹配的篩選結果</string>
     <string name="no_collection_yet">還沒有收藏</string>
 

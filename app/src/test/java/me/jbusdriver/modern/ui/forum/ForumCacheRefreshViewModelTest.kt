@@ -2,6 +2,7 @@ package me.jbusdriver.modern.ui.forum
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestDispatcher
@@ -28,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ForumCacheRefreshViewModelTest {
     private lateinit var testDispatcher: TestDispatcher
 
@@ -309,12 +311,12 @@ class ForumCacheRefreshViewModelTest {
     fun `thread list stores pending fresh when user is away from top`() = runTest(testDispatcher) {
         val cached = threadResult(3)
         val fresh = threadResult(5)
+        val freshGate = CompletableDeferred<Unit>()
         var emitFresh: (() -> Unit)? = null
         val repository = FakeThreadListRepository(mutableListOf(flow {
             emit(CachedLoadEvent.Cached(CacheEntry(cached, 1_000L, CacheSource.Disk, true)))
-            kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-                emitFresh = { cont.resume(Unit) {} }
-            }
+            emitFresh = { freshGate.complete(Unit) }
+            freshGate.await()
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
         val viewModel = ForumThreadListViewModel(

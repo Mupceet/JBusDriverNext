@@ -71,7 +71,7 @@ internal fun ThreadHeader(detail: ForumThreadDetail) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                stringResource(R.string.view_count, detail.viewCount, detail.replyCount),
+                forumViewReplyCountText(detail.viewCount, detail.replyCount),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

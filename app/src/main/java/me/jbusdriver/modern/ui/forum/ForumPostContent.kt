@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.forum
 
-import android.graphics.Color.parseColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -50,6 +49,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
@@ -222,7 +222,7 @@ private fun TextPart.toSpanStyle(onSurface: Color, surface: Color, primary: Colo
 
 private fun readableColor(value: String?, background: Color, fallback: Color): Color {
     if (value.isNullOrBlank()) return fallback
-    val candidate = runCatching { Color(parseColor(value)).copy(alpha = 1f) }.getOrNull()
+    val candidate = runCatching { Color(value.toColorInt()).copy(alpha = 1f) }.getOrNull()
         ?: return fallback
     return adaptForumTextColor(candidate, background)
 }

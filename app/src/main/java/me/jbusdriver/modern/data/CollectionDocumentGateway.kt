@@ -1,7 +1,7 @@
 package me.jbusdriver.modern.data
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,17 +15,17 @@ interface CollectionDocumentGateway {
 
 @Singleton
 class AndroidCollectionDocumentGateway @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : CollectionDocumentGateway {
     override suspend fun readText(documentUri: String): String? = withContext(Dispatchers.IO) {
-        context.contentResolver.openInputStream(Uri.parse(documentUri))
+        context.contentResolver.openInputStream(documentUri.toUri())
             ?.bufferedReader()
             ?.use { it.readText() }
     }
 
     override suspend fun writeText(documentUri: String, text: String) {
         withContext(Dispatchers.IO) {
-            context.contentResolver.openOutputStream(Uri.parse(documentUri))?.use { output ->
+            context.contentResolver.openOutputStream(documentUri.toUri())?.use { output ->
                 output.write(text.toByteArray(Charsets.UTF_8))
             } ?: throw IllegalStateException("Unable to open document for writing")
         }

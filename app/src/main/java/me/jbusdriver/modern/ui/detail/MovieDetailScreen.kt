@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -226,7 +227,7 @@ private fun DetailContent(
     hasMagnets: Boolean = false
 ) {
     val listState = rememberLazyListState()
-    val coverHeight = remember { mutableStateOf(0) }
+    val coverHeight = remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val copiedMessage = stringResource(R.string.copied)
     val copiedTitleMessage = stringResource(R.string.copied_title)
@@ -256,7 +257,7 @@ private fun DetailContent(
                     .aspectRatio(coverAspectRatio)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onImageClick(allImages, 0) }
-                    .onSizeChanged { size -> coverHeight.value = size.height },
+                    .onSizeChanged { size -> coverHeight.intValue = size.height },
                 onSuccess = { result ->
                     val drawable = result.result.drawable
                     val width = drawable.intrinsicWidth

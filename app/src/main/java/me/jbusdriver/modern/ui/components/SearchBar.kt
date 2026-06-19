@@ -21,9 +21,9 @@ import me.jbusdriver.R
 
 @Composable
 fun SearchBar(
+    modifier: Modifier = Modifier,
     hint: String? = null,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,

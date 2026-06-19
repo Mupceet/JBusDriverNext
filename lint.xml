@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Kotlin 2.4.0 is blocked until Hilt supports Kotlin metadata 2.4. -->
+    <issue id="NewerVersionAvailable">
+        <ignore path="gradle/libs.versions.toml" />
+    </issue>
+
+    <!-- Adaptive icon XML must stay in v26; moving it broke AAPT resource linking. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="app/src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

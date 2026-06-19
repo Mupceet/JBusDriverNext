@@ -69,7 +69,7 @@ interface LabSettingsStoreContract {
 }
 
 class LabSettingsStore @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val mirrorScanner: MirrorScanner
 ) : ForumSettingsReader, SitePreferenceSource, LabSettingsStoreContract {
 
