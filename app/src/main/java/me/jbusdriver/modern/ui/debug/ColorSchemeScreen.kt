@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.ui
+package me.jbusdriver.modern.ui.debug
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
