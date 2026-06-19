@@ -8,7 +8,7 @@ import com.google.gson.TypeAdapterFactory
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
-import me.jbusdriver.modern.domain.model.ContentBlockAdapterFactory
+import me.jbusdriver.modern.core.serialization.ContentBlockAdapterFactory
 import java.lang.reflect.Modifier.STATIC
 import java.lang.reflect.Modifier.TRANSIENT
 import java.text.DateFormat
