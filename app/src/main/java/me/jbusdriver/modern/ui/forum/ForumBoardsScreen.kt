@@ -421,14 +421,25 @@ private fun BoardCard(board: ForumBoard, onClick: () -> Unit) {
                 )
             }
             if (board.lastPost.title.isNotEmpty()) {
-                Text(
-                    "${board.lastPost.title} · ${board.lastPost.author} · ${board.lastPost.time}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        board.lastPost.title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Text(
+                        " · ${board.lastPost.author} · ${board.lastPost.time}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
