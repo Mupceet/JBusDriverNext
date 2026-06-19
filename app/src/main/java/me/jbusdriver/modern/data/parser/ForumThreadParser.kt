@@ -84,8 +84,9 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         author = authorLink?.text()?.trim() ?: "",
         authorUid = authorUid,
         authorAvatar = tbody.select(".post_avatar img[src]").attr("src"),
-        dateLine = tbody.select(".dateline span[title]").attr("title")
-            .ifBlank { tbody.select(".dateline").firstOrNull()?.text()?.trim().orEmpty() },
+        // 统一取 .dateline 的可见文本：新格式 <span class="dateline"><span title="2026-6-6">前天 00:35</span></span>
+        // 显示人性化的相对时间，比 title 里的绝对日期更直观；旧格式叶子 span 的文本同样取到。
+        dateLine = tbody.select(".dateline").firstOrNull()?.text()?.trim().orEmpty(),
         viewCount = tbody.select(".views").text().trim().toIntOrNull() ?: 0,
         replyCount = tbody.select(".reply").text().trim().toIntOrNull() ?: 0,
         lastReplyAuthor = tbody.select(".time a").text().trim(),

@@ -281,8 +281,9 @@ class ForumThreadParserTest {
     }
 
     @Test
-    fun `titled dateline still preferred over plain text`() {
-        // 新格式带 title 的 dateline 仍应取 title（更精确的绝对时间），不走文本回退。
+    fun `dateline shows humanized text instead of titled absolute date`() {
+        // 新格式 <span class="dateline"><span title="2026-6-6">前天 00:35</span></span>
+        // 应显示可见文本 "前天 00:35"（更直观），而非 title 里的绝对日期 "2026-6-6"。
         val doc = Jsoup.parse(
             """
                 <table>
@@ -305,7 +306,9 @@ class ForumThreadParserTest {
 
         val thread = parseForumThreads(doc, "https://www.javbus.com").threads.single()
 
-        assertEquals("2026-6-6", thread.dateLine)
+        assertTrue(thread.dateLine.contains("前天"))
+        assertTrue(thread.dateLine.contains("00:35"))
+        assertFalse(thread.dateLine.contains("2026-6-6"))
     }
 
     private fun parsedPinnedReply(floor: Int) = parseForumThreadDetail(
