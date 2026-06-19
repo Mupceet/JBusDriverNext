@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.gateway
 
 import android.content.Context
 import androidx.core.net.toUri

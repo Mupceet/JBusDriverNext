@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.data
 
+import me.jbusdriver.modern.data.repository.MovieRepository
 import kotlinx.coroutines.test.runTest
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo

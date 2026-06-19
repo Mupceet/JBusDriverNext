@@ -1,4 +1,4 @@
-﻿package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.repository
 
 import kotlinx.coroutines.flow.Flow
 import me.jbusdriver.modern.KLog
@@ -11,6 +11,10 @@ import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.parser.parseForumHomeData
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
 import me.jbusdriver.modern.data.parser.parseForumThreads
+import me.jbusdriver.modern.data.session.ForumCookiePersister
+import me.jbusdriver.modern.data.session.ForumSessionClient
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult

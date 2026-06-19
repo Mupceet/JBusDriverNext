@@ -18,10 +18,10 @@ import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.data.ForumFloorOrder
-import me.jbusdriver.modern.data.ForumRepository
-import me.jbusdriver.modern.data.ForumSettingsReader
-import me.jbusdriver.modern.data.LoadedGifTracker
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.repository.ForumRepository
+import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.session.LoadedGifTracker
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult

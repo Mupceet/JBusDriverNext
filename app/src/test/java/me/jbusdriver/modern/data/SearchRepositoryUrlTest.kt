@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.data
 
+import me.jbusdriver.modern.data.repository.DefaultSearchRepository
 import kotlinx.coroutines.test.runTest
 import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.http.HtmlClient

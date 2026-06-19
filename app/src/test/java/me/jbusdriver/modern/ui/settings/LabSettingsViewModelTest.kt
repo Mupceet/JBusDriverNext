@@ -13,9 +13,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.data.ForumFloorOrder
-import me.jbusdriver.modern.data.LabSettingsStoreContract
-import me.jbusdriver.modern.data.ScanState
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.LabSettingsStoreContract
+import me.jbusdriver.modern.data.mirror.ScanState
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

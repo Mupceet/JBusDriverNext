@@ -16,7 +16,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
-import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType

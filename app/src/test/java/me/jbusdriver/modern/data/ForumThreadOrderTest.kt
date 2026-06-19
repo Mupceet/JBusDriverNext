@@ -1,5 +1,8 @@
 package me.jbusdriver.modern.data
 
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
+import me.jbusdriver.modern.data.settings.forumThreadDetailCacheKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

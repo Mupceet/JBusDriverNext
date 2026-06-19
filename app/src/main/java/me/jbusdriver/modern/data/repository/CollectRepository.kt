@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.repository
 
 import androidx.room.withTransaction
 import com.google.gson.JsonArray

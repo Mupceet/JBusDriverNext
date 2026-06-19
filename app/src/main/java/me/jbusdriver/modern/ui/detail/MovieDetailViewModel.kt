@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.CollectRepository
-import me.jbusdriver.modern.data.MagnetRepository
-import me.jbusdriver.modern.data.MovieDetailRepository
+import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.MagnetRepository
+import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 import me.jbusdriver.modern.ui.MagnetUiModel

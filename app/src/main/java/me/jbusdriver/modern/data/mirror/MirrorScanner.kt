@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.mirror
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +39,29 @@ private val EXTRACT_MIRROR_JS = """
         return JSON.stringify(urls);
     })()
 """
+
+data class MirrorUrl(
+    val url: String,
+    val isReachable: Boolean = false,
+    val latencyMs: Long = -1L
+)
+
+data class ScanState(
+    val isScanning: Boolean = false,
+    val phase: ScanPhase = ScanPhase.IDLE,
+    val scannedCount: Int = 0,
+    val totalCount: Int = 0,
+    val currentUrl: String = "",
+    val discoveredUrls: List<MirrorUrl> = emptyList(),
+    val error: Int? = null
+)
+
+enum class ScanPhase {
+    IDLE,
+    DISCOVERING,
+    VERIFYING,
+    DONE
+}
 
 @Singleton
 class MirrorScanner @Inject constructor(

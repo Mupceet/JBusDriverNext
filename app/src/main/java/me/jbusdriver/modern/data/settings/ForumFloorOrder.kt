@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.settings
 
 enum class ForumFloorOrder(
     val preferenceValue: String,

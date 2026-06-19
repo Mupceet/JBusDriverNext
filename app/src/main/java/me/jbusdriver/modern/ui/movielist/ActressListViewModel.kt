@@ -15,7 +15,7 @@ import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
-import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.PageInfo

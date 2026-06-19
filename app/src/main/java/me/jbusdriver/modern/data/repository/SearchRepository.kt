@@ -1,9 +1,10 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.repository
 
 import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.lruCached
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.cache.siteCacheKey
 import me.jbusdriver.modern.data.parser.loadMovieFromDoc
 import me.jbusdriver.modern.data.parser.parseActressList
 import me.jbusdriver.modern.data.parser.parsePageInfo

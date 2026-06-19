@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply

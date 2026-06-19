@@ -9,9 +9,9 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.CollectRepository
-import me.jbusdriver.modern.data.MagnetRepository
-import me.jbusdriver.modern.data.MovieDetailRepository
+import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.MagnetRepository
+import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Header

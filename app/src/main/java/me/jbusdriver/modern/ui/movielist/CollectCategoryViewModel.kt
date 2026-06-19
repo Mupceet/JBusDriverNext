@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import me.jbusdriver.modern.data.CollectRepository
-import me.jbusdriver.modern.data.CollectionDocumentGateway
+import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
 import javax.inject.Inject
 
 data class CollectionImportResult(val imported: Int, val skipped: Int)

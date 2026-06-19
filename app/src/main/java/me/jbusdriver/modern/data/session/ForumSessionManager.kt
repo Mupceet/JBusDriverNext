@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.session
 
 import android.graphics.Bitmap
 import android.webkit.WebResourceRequest

@@ -18,8 +18,8 @@ import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.data.ForumFloorOrder
-import me.jbusdriver.modern.data.ForumRepository
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 
@@ -81,8 +81,8 @@ fun ForumThreadDetailUiState.prepareFloorOrderReload(order: ForumFloorOrder): Fo
 @HiltViewModel(assistedFactory = ForumThreadDetailViewModel.Factory::class)
 class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
-    private val forumSettingsReader: me.jbusdriver.modern.data.ForumSettingsReader,
-    private val loadedGifTracker: me.jbusdriver.modern.data.LoadedGifTracker,
+    private val forumSettingsReader: me.jbusdriver.modern.data.settings.ForumSettingsReader,
+    private val loadedGifTracker: me.jbusdriver.modern.data.session.LoadedGifTracker,
     private val siteConfig: SiteConfig,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {

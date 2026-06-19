@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.cache
 
 import me.jbusdriver.modern.core.site.normalizeBaseUrl
 

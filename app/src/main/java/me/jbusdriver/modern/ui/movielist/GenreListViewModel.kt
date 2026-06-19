@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
-import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.GenreCategory
 import me.jbusdriver.modern.ui.toUiModel

@@ -11,8 +11,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.SearchHistoryStore
-import me.jbusdriver.modern.data.SearchRepository
+import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult

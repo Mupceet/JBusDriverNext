@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.SearchHistoryStore
-import me.jbusdriver.modern.data.SearchRepository
+import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.ActressUiModel

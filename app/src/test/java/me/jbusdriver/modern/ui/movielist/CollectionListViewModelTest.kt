@@ -13,7 +13,7 @@ import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
-import me.jbusdriver.modern.data.CollectRepository
+import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem

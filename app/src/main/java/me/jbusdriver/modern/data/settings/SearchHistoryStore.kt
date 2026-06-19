@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit

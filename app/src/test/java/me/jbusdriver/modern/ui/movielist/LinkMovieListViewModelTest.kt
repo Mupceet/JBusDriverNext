@@ -11,8 +11,8 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.CollectRepository
-import me.jbusdriver.modern.data.MovieRepository
+import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo

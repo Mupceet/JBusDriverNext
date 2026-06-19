@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.data
 
+import me.jbusdriver.modern.data.cache.siteCacheKey
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test

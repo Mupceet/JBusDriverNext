@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.ImageMediaGateway
+import me.jbusdriver.modern.data.gateway.ImageMediaGateway
 import javax.inject.Inject
 
 data class ImageActionMessage(

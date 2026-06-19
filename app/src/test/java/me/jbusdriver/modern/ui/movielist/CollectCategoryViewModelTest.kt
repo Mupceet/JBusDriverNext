@@ -7,7 +7,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import me.jbusdriver.modern.data.CollectionDocumentGateway
+import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.test.StubCollectRepository

@@ -1,5 +1,9 @@
 package me.jbusdriver.modern.data
 
+import me.jbusdriver.modern.data.repository.DefaultForumRepository
+import me.jbusdriver.modern.data.repository.ForumRepository
+import me.jbusdriver.modern.data.session.ForumCookiePersister
+import me.jbusdriver.modern.data.session.ForumSessionClient
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import me.jbusdriver.modern.core.cache.CacheStore

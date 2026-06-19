@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -18,31 +18,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
+import me.jbusdriver.modern.data.mirror.MirrorScanner
+import me.jbusdriver.modern.data.mirror.ScanState
 import javax.inject.Inject
 import javax.inject.Singleton
-
-data class MirrorUrl(
-    val url: String,
-    val isReachable: Boolean = false,
-    val latencyMs: Long = -1L
-)
-
-data class ScanState(
-    val isScanning: Boolean = false,
-    val phase: ScanPhase = ScanPhase.IDLE,
-    val scannedCount: Int = 0,
-    val totalCount: Int = 0,
-    val currentUrl: String = "",
-    val discoveredUrls: List<MirrorUrl> = emptyList(),
-    val error: Int? = null
-)
-
-enum class ScanPhase {
-    IDLE,
-    DISCOVERING,
-    VERIFYING,
-    DONE
-}
 
 private val Context.labSettingsDataStore by preferencesDataStore("lab_settings")
 

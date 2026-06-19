@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.data.CollectRepository
-import me.jbusdriver.modern.data.CollectionUiPrefs
+import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.settings.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem

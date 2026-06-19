@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import me.jbusdriver.modern.data.UiPrefsStoreContract
+import me.jbusdriver.modern.data.settings.UiPrefsStoreContract
 import javax.inject.Inject
 
 data class UiPrefsUiState(

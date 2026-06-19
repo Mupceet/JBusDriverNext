@@ -51,10 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.ForumFloorOrder
-import me.jbusdriver.modern.data.MirrorUrl
-import me.jbusdriver.modern.data.ScanPhase
-import me.jbusdriver.modern.data.ScanState
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.mirror.MirrorUrl
+import me.jbusdriver.modern.data.mirror.ScanPhase
+import me.jbusdriver.modern.data.mirror.ScanState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

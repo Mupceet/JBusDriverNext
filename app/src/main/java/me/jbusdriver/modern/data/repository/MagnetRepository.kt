@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.repository
 
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.HtmlClient

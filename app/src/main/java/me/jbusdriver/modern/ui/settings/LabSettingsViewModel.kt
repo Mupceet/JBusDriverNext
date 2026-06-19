@@ -17,11 +17,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.data.ForumFloorOrder
-import me.jbusdriver.modern.data.LabSettingsStoreContract
-import me.jbusdriver.modern.data.MirrorUrl
-import me.jbusdriver.modern.data.ScanPhase
-import me.jbusdriver.modern.data.ScanState
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.LabSettingsStoreContract
+import me.jbusdriver.modern.data.mirror.MirrorUrl
+import me.jbusdriver.modern.data.mirror.ScanPhase
+import me.jbusdriver.modern.data.mirror.ScanState
 import javax.inject.Inject
 
 data class LabSettingsUiState(

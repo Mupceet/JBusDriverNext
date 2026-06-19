@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data
+package me.jbusdriver.modern.data.session
 
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import org.jsoup.nodes.Document
