@@ -115,6 +115,7 @@ android {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", cacheRefreshTestMode.toString())
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
+            enableUnitTestCoverage = true
             manifestPlaceholders["allowBackup"] = "true"
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }

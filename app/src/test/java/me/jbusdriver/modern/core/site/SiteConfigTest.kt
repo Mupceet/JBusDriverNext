@@ -86,4 +86,88 @@ class SiteConfigTest {
             normalizeBaseUrl("HTTPS://WWW.JavBus.COM/CaseSensitivePath/")
         )
     }
+
+    @Test
+    fun normalizeBaseUrlKeepsExplicitPort() {
+        assertEquals("https://host.com:8080", normalizeBaseUrl("https://host.com:8080/"))
+    }
+
+    @Test
+    fun normalizeBaseUrlFallsBackToTrimmedWhenNoScheme() {
+        assertEquals("not-a-url", normalizeBaseUrl("  not-a-url  "))
+    }
+
+    @Test
+    fun normalizeBaseUrlTrimsWhitespace() {
+        assertEquals("https://host.com", normalizeBaseUrl("  https://host.com  "))
+    }
+
+    @Test
+    fun baseUrlSetterNormalizesAssignedValue() = runTest {
+        val config = DefaultSiteConfig(
+            preferenceSource = object : SitePreferenceSource {
+                override suspend fun currentSelectedBaseUrl(): String = DEFAULT_SITE_URL
+            },
+            scope = backgroundScope
+        )
+        config.awaitReady()
+
+        config.baseUrl = "HTTPS://Mirror.Example/Path/"
+
+        assertEquals("https://mirror.example/Path", config.baseUrl)
+    }
+
+    @Test
+    fun updateBaseUrlNormalizesValue() = runTest {
+        val config = DefaultSiteConfig(
+            preferenceSource = object : SitePreferenceSource {
+                override suspend fun currentSelectedBaseUrl(): String = DEFAULT_SITE_URL
+            },
+            scope = backgroundScope
+        )
+        config.awaitReady()
+
+        config.updateBaseUrl("https://mirror.example/")
+
+        assertEquals("https://mirror.example", config.baseUrl)
+    }
+
+    @Test
+    fun resolveUsesCurrentBaseUrl() = runTest {
+        val config = DefaultSiteConfig(
+            preferenceSource = object : SitePreferenceSource {
+                override suspend fun currentSelectedBaseUrl(): String = "https://mirror.example/"
+            },
+            scope = backgroundScope
+        )
+        config.awaitReady()
+
+        assertEquals("https://mirror.example/genre/1", config.resolve("/genre/1"))
+    }
+
+    @Test
+    fun refererAppendsTrailingSlash() = runTest {
+        val config = DefaultSiteConfig(
+            preferenceSource = object : SitePreferenceSource {
+                override suspend fun currentSelectedBaseUrl(): String = "https://mirror.example"
+            },
+            scope = backgroundScope
+        )
+        config.awaitReady()
+
+        assertEquals("https://mirror.example/", config.referer())
+    }
+
+    @Test
+    fun blankPersistedBaseUrlFallsBackToDefault() = runTest {
+        val config = DefaultSiteConfig(
+            preferenceSource = object : SitePreferenceSource {
+                override suspend fun currentSelectedBaseUrl(): String = "   "
+            },
+            scope = backgroundScope
+        )
+        config.awaitReady()
+
+        assertEquals(DEFAULT_SITE_URL, config.baseUrl)
+    }
 }

@@ -37,7 +37,7 @@ val GSON by lazy {
             }
             try {
                 return@JsonDeserializer json.asInt
-            } catch (e: NumberFormatException) {
+            } catch (e: RuntimeException) {
                 return@JsonDeserializer null
             }
         }).registerTypeAdapter(Date::class.java, JsonDeserializer { json, _, _ ->
@@ -128,7 +128,7 @@ private fun parseDateOrNow(raw: String): Date {
  * @return 反序列化结果，JSON 无效时返回 null
  */
 inline fun <reified T> Gson.fromJson(json: String): T? =
-    this.fromJson<T>(json, object : TypeToken<T>() {}.type)
+    runCatching { this.fromJson<T>(json, object : TypeToken<T>() {}.type) }.getOrNull()
 
 /**
  * 将任意对象序列化为 JSON 字符串

@@ -22,7 +22,7 @@ class SessionCookieStore @Inject constructor(
 
     suspend fun saveCookies(url: String) {
         val cookieString = CookieManager.getInstance().getCookie(url) ?: return
-        val cookies = parseCookieString(cookieString)
+        val cookies = parseSessionCookieString(cookieString)
         val entries = mutableMapOf<String, PersistedCookie>()
         for ((name, value) in cookies) {
             if (name in TRACKED_COOKIES) {
@@ -61,12 +61,9 @@ class SessionCookieStore @Inject constructor(
         val json = dataStore.data.map { it[prefsKey(url)] }.first() ?: return false
         val entries = tryParse(json) ?: return false
         val now = System.currentTimeMillis() / 1000
-        for (name in CRITICAL_COOKIES) {
-            val cookie = entries[name] ?: return false
-            if (cookie.expiresAt != 0L && cookie.expiresAt <= now) {
-                KLog.d("[SessionCookieStore] Cookie $name expired", TAG)
-                return false
-            }
+        if (!isPersistedSessionValid(entries, now)) {
+            KLog.d("[SessionCookieStore] Session expired or missing critical cookies", TAG)
+            return false
         }
         return true
     }
@@ -86,13 +83,6 @@ class SessionCookieStore @Inject constructor(
             GSON.fromJson<Map<String, PersistedCookie>>(json)
         } catch (_: Exception) {
             null
-        }
-    }
-
-    private fun parseCookieString(cookieString: String): Map<String, String> {
-        return cookieString.split(";").map { it.trim() }.filter { it.contains("=") }.associate {
-            val parts = it.split("=", limit = 2)
-            parts[0].trim() to parts[1].trim()
         }
     }
 
@@ -117,4 +107,22 @@ class SessionCookieStore @Inject constructor(
             "4fJN_2132_lastact" to 24 * 3600L
         )
     }
+}
+
+internal fun parseSessionCookieString(cookieString: String): Map<String, String> {
+    return cookieString.split(";").map { it.trim() }.filter { it.contains("=") }.associate {
+        val parts = it.split("=", limit = 2)
+        parts[0].trim() to parts[1].trim()
+    }
+}
+
+internal fun isPersistedSessionValid(
+    entries: Map<String, SessionCookieStore.PersistedCookie>,
+    nowSeconds: Long
+): Boolean {
+    for (name in setOf("age", "4fJN_2132_saltkey")) {
+        val cookie = entries[name] ?: return false
+        if (cookie.expiresAt != 0L && cookie.expiresAt <= nowSeconds) return false
+    }
+    return true
 }

@@ -21,7 +21,7 @@ fun createDir(collectDir: String): String? {
                 } else {
                     // 同名文件存在时先删除再重建
                     it.delete()
-                    createDir(collectDir)
+                    return createDir(collectDir)
                 }
             }
         } catch (e: Exception) {

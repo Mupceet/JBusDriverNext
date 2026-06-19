@@ -142,6 +142,90 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun actressSearch_loadsActressResultsAndClearsMovieResults() = runTest(testDispatcher) {
+        val repository = object : SearchRepository {
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), testMovies)
+
+            override suspend fun searchActresses(
+                query: String,
+                page: Int
+            ): Pair<PageInfo, List<ActressInfo>> =
+                PageInfo(1, 1) to listOf(ActressInfo("Alice", "http://avatar.jpg", "http://alice"))
+        }
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+
+        viewModel.search("alice", SearchType.ACTRESS)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.results.isEmpty())
+        assertEquals("Alice", viewModel.uiState.value.actressResults.single().name)
+        assertFalse(viewModel.uiState.value.hasMore)
+    }
+
+    @Test
+    fun loadMore_appendsNextPageAndThenStopsWhenNoMore() = runTest(testDispatcher) {
+        val repository = object : SearchRepository {
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ): MoviePageResult {
+                val movie = Movie("Page $page", "http://img$page.jpg", "ABC-00$page", "2024-01-0$page", "http://link$page")
+                return MoviePageResult(PageInfo(page, if (page == 1) 2 else 2), listOf(movie))
+            }
+
+            override suspend fun searchActresses(query: String, page: Int) =
+                PageInfo() to emptyList<ActressInfo>()
+        }
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+
+        viewModel.search("abc")
+        advanceUntilIdle()
+        viewModel.loadMore()
+        advanceUntilIdle()
+        viewModel.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Page 1", "Page 2"), viewModel.uiState.value.results.map { it.title })
+        assertFalse(viewModel.uiState.value.hasMore)
+        assertFalse(viewModel.uiState.value.isLoadingMore)
+    }
+
+    @Test
+    fun loadMoreErrorKeepsExistingResultsAndReportsError() = runTest(testDispatcher) {
+        val repository = object : SearchRepository {
+            override suspend fun searchMovies(
+                type: SearchType,
+                query: String,
+                page: Int,
+                forceRefresh: Boolean
+            ): MoviePageResult {
+                if (page > 1) error("next page failed")
+                return MoviePageResult(PageInfo(1, 2), testMovies)
+            }
+
+            override suspend fun searchActresses(query: String, page: Int) =
+                PageInfo() to emptyList<ActressInfo>()
+        }
+        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+
+        viewModel.search("abc")
+        advanceUntilIdle()
+        viewModel.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Result 1"), viewModel.uiState.value.results.map { it.title })
+        assertEquals(R.string.search_failed, viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.isLoadingMore)
+    }
+
+    @Test
     fun staleRefreshResultDoesNotOverwriteNewSearch() = runTest(testDispatcher) {
         val oldRefresh = CompletableDeferred<MoviePageResult>()
         val oldMovie = Movie("Old", "http://img-old.jpg", "OLD-001", "2024-01-01", "http://old")

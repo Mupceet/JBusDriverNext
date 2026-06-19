@@ -134,6 +134,42 @@ class ActressListViewModelTest {
     }
 
     @Test
+    fun loadMore_appendsNextPage() = runTest(testDispatcher) {
+        val repository = fullFakeRepo { _, page ->
+            val actresses = listOf(ActressInfo("Page $page", "http://avatar$page.jpg", "http://link$page"))
+            actresses to PageInfo(page, if (page == 1) 2 else 2)
+        }
+        val viewModel = ActressListViewModel(repository)
+
+        viewModel.setDataSourceType(DataSourceType.ACTRESSES)
+        advanceUntilIdle()
+        viewModel.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Page 1", "Page 2"), viewModel.uiState.value.actresses.map { it.name })
+        assertFalse(viewModel.uiState.value.hasMore)
+        assertFalse(viewModel.uiState.value.isLoadingMore)
+    }
+
+    @Test
+    fun loadMoreErrorKeepsExistingActressesAndRollsBackLoadingState() = runTest(testDispatcher) {
+        val repository = fullFakeRepo { _, page ->
+            if (page > 1) error("next page failed")
+            testActresses to PageInfo(1, 2)
+        }
+        val viewModel = ActressListViewModel(repository)
+
+        viewModel.setDataSourceType(DataSourceType.ACTRESSES)
+        advanceUntilIdle()
+        viewModel.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Alice", "Bob"), viewModel.uiState.value.actresses.map { it.name })
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.isLoadingMore)
+    }
+
+    @Test
     fun staleRefreshResultDoesNotOverwriteDataSourceSwitch() = runTest(testDispatcher) {
         val oldRefresh = CompletableDeferred<Pair<List<ActressInfo>, PageInfo>>()
         val censored = listOf(ActressInfo("Censored", "http://avatar.jpg", "http://censored"))

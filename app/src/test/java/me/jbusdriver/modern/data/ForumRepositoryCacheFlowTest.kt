@@ -4,6 +4,7 @@ import me.jbusdriver.modern.data.repository.DefaultForumRepository
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.session.ForumCookiePersister
 import me.jbusdriver.modern.data.session.ForumSessionClient
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import me.jbusdriver.modern.core.cache.CacheStore
@@ -14,6 +15,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -199,12 +201,113 @@ class ForumRepositoryCacheFlowTest {
             assertNull(cacheStore.disk[boardsKey])
         }
 
+    // ---------- threads / detail / cookie 持久化 ----------
+
+    @Test
+    fun `observeThreads builds url without typeId filter when null`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadListHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreads(fid = 5, page = 1, typeId = null).toList()
+
+        assertEquals(1, sessionClient.urls.size)
+        assertTrue(sessionClient.urls.single().contains("fid=5"))
+        assertFalse(sessionClient.urls.single().contains("typeid"))
+    }
+
+    @Test
+    fun `observeThreads builds url with typeId filter when provided`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadListHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreads(fid = 5, page = 1, typeId = 7).toList()
+
+        assertTrue(sessionClient.urls.single().contains("filter=typeid&typeid=7"))
+    }
+
+    @Test
+    fun `loadThreads returns cached value without refetching on second call`() = runBlocking {
+        val cacheStore = FakeCacheStore()
+        val sessionClient = FakeSessionClient(threadListHtml())
+        val repository = repository(cacheStore, sessionClient)
+
+        repository.loadThreads(fid = 5, page = 1)
+        repository.loadThreads(fid = 5, page = 1)
+
+        assertEquals(1, sessionClient.fetchCount)
+    }
+
+    @Test
+    fun `loadThreads returns parsed page result`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadListHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        val result = repository.loadThreads(fid = 5, page = 1)
+
+        assertNotNull(result.pageInfo)
+    }
+
+    @Test
+    fun `observeThreadDetail builds url with ordertype for reverse floor order`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadDetailHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreadDetail(tid = 9, page = 1, floorOrder = ForumFloorOrder.REVERSE).toList()
+
+        assertTrue(sessionClient.urls.single().contains("ordertype=1"))
+    }
+
+    @Test
+    fun `observeThreadDetail builds url without ordertype for regular floor order`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadDetailHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreadDetail(tid = 9, page = 1, floorOrder = ForumFloorOrder.REGULAR).toList()
+
+        assertFalse(sessionClient.urls.single().contains("ordertype"))
+    }
+
+    @Test
+    fun `loadThreadDetail returns parsed detail title`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadDetailHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        val result = repository.loadThreadDetail(tid = 9, page = 1)
+
+        assertEquals("Thread Title", result.title)
+    }
+
+    @Test
+    fun `first successful forum fetch persists cookies`() = runBlocking {
+        val persister = FakeCookiePersister()
+        val sessionClient = FakeSessionClient(successHomeHtml("Board"))
+        val repository = repository(FakeCacheStore(), sessionClient, persister)
+
+        repository.observeForumBoards().toList()
+
+        assertEquals(1, persister.persistCount)
+    }
+
+    @Test
+    fun `cookie persist failure allows retry on subsequent fetch`() = runBlocking {
+        val persister = FakeCookiePersister(error = RuntimeException("persist fail"))
+        val sessionClient = FakeSessionClient(successHomeHtml("Board"))
+        val repository = repository(FakeCacheStore(), sessionClient, persister)
+
+        repository.observeForumBoards().toList()
+        // 首次 persist 抛异常后标志位回退，下次 fetch 应再次尝试 persist
+        repository.observeForumBoards(forceRefresh = true).toList()
+
+        assertEquals(2, persister.persistCount)
+    }
+
     private fun repository(
         cacheStore: FakeCacheStore,
-        sessionClient: FakeSessionClient
+        sessionClient: FakeSessionClient,
+        cookiePersister: FakeCookiePersister = FakeCookiePersister()
     ): ForumRepository = DefaultForumRepository(
         sessionClient = sessionClient,
-        cookiePersister = FakeCookiePersister(),
+        cookiePersister = cookiePersister,
         cacheStore = cacheStore,
         siteConfig = FakeSiteConfig()
     )
@@ -228,6 +331,7 @@ class ForumRepositoryCacheFlowTest {
         private val responses: List<Any>
     ) : ForumSessionClient {
         var fetchCount = 0
+        val urls = mutableListOf<String>()
 
         constructor(response: Any) : this(listOf(response))
 
@@ -235,6 +339,7 @@ class ForumRepositoryCacheFlowTest {
 
         override suspend fun fetchDocument(url: String): Document {
             fetchCount++
+            urls += url
             val value = responses[minOf(fetchCount - 1, responses.lastIndex)]
             if (value is Throwable) throw value
             return Jsoup.parse(value as String, url)
@@ -243,8 +348,14 @@ class ForumRepositoryCacheFlowTest {
         override suspend fun destroy() = Unit
     }
 
-    private class FakeCookiePersister : ForumCookiePersister {
-        override suspend fun persistCookies() = Unit
+    private class FakeCookiePersister(
+        private val error: Throwable? = null
+    ) : ForumCookiePersister {
+        var persistCount = 0
+        override suspend fun persistCookies() {
+            persistCount++
+            error?.let { throw it }
+        }
     }
 
     private class FakeSiteConfig : SiteConfig {
@@ -307,6 +418,24 @@ class ForumRepositoryCacheFlowTest {
         <html>
           <head><title>JavBus</title></head>
           <body></body>
+        </html>
+    """.trimIndent()
+
+    /** 帖子列表页（最小结构），解析得空列表 + 默认分页。 */
+    private fun threadListHtml(): String = """
+        <html>
+          <body>
+            <div class="pg"><strong>1</strong></div>
+          </body>
+        </html>
+    """.trimIndent()
+
+    /** 帖子详情页（最小结构），解析得标题。 */
+    private fun threadDetailHtml(): String = """
+        <html>
+          <body>
+            <h1 id="thread_subject">Thread Title</h1>
+          </body>
         </html>
     """.trimIndent()
 }

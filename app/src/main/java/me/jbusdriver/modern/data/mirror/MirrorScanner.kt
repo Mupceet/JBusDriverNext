@@ -175,15 +175,6 @@ class MirrorScanner @Inject constructor(
         deferreds.awaitAll()
     }
 
-    private fun sortMirrorUrls(urls: List<MirrorUrl>): List<MirrorUrl> {
-        val defaultHost = "www.javbus.com"
-        return urls.sortedWith(
-            compareBy<MirrorUrl> { it.url.contains(defaultHost, ignoreCase = true).not() }
-                .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
-                .thenBy { it.url }
-        )
-    }
-
     private suspend fun loadAndExtractMirrorUrls(
         webView: android.webkit.WebView,
         url: String
@@ -204,4 +195,13 @@ class MirrorScanner @Inject constructor(
             emptyList()
         }
     }
+}
+
+internal fun sortMirrorUrls(urls: List<MirrorUrl>): List<MirrorUrl> {
+    val defaultHost = "www.javbus.com"
+    return urls.sortedWith(
+        compareBy<MirrorUrl> { it.url.contains(defaultHost, ignoreCase = true).not() }
+            .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
+            .thenBy { it.url }
+    )
 }

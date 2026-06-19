@@ -145,6 +145,53 @@ class CollectRepositoryTest {
     }
 
     @Test
+    fun defaultRepository_addRemoveAndIsCollectedUseDaoResult() = runTest {
+        val dao = SimpleLinkItemDao()
+        val repository = defaultRepository(dao, PassthroughTransactionRunner())
+        val item = Movie(
+            "Test",
+            "http://img.jpg",
+            "ABC-001",
+            "2024-01-01",
+            "https://example.test/link1"
+        ).convertDBItem()
+
+        assertFalse(repository.isCollected(item))
+        assertTrue(repository.addCollect(item))
+        assertFalse(repository.addCollect(item))
+        assertTrue(repository.isCollected(item))
+        assertTrue(repository.removeCollect(item))
+        assertFalse(repository.removeCollect(item))
+        assertFalse(repository.isCollected(item))
+    }
+
+    @Test
+    fun defaultRepository_getCollectedItemsRestoresUrlsWithCurrentBaseUrl() = runTest {
+        val dao = SimpleLinkItemDao()
+        val repository = defaultRepository(dao, PassthroughTransactionRunner())
+        dao.items += Movie(
+            "Test",
+            "https://old.test/img.jpg",
+            "ABC-001",
+            "2024-01-01",
+            "https://old.test/link1"
+        ).convertDBItem()
+        dao.items += ActressInfo(
+            "Alice",
+            "https://old.test/avatar.jpg",
+            "https://old.test/star/alice"
+        ).convertDBItem()
+
+        val movies = repository.getCollectedMovies()
+        val actresses = repository.getCollectedActresses()
+
+        assertEquals("https://example.test/link1", movies.single().link)
+        assertEquals("https://example.test/img.jpg", movies.single().imageUrl)
+        assertEquals("https://example.test/star/alice", actresses.single().link)
+        assertEquals("https://example.test/avatar.jpg", actresses.single().avatar)
+    }
+
+    @Test
     fun defaultRepository_importRollsBackWhenOneItemFails() = runTest {
         val transactionRunner = RollbackTransactionRunner()
         val dao = RollbackCheckingLinkItemDao(transactionRunner, failOnKey = "/link2")
@@ -309,6 +356,62 @@ class CollectRepositoryTest {
                 inTransaction = false
             }
         }
+    }
+
+    private class PassthroughTransactionRunner : CollectTransactionRunner {
+        override suspend fun <T> withTransaction(block: suspend () -> T): T = block()
+    }
+
+    private class SimpleLinkItemDao : LinkItemDao {
+        val items = mutableListOf<LinkItem>()
+
+        override suspend fun insert(link: LinkItem): Long {
+            if (items.any { it.dbType == link.dbType && it.key == link.key }) return -1
+            items += link.copy(id = items.size + 1)
+            return items.size.toLong()
+        }
+
+        override suspend fun update(link: LinkItem): Int {
+            val index = items.indexOfFirst { it.id == link.id }
+            if (index < 0) return 0
+            items[index] = link
+            return 1
+        }
+
+        override suspend fun delete(dbType: Int, key: String): Int {
+            val before = items.size
+            items.removeAll { it.dbType == dbType && it.key == key }
+            return before - items.size
+        }
+
+        override fun listAll(): Flow<List<LinkItem>> = flow {
+            emit(items.toList())
+        }
+
+        override suspend fun listByType(dbType: Int): List<LinkItem> =
+            items.filter { it.dbType == dbType }
+
+        override suspend fun queryLink(): List<LinkItem> =
+            items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }
+
+        override suspend fun queryByCategoryId(categoryId: Int): List<LinkItem> =
+            items.filter { it.categoryId == categoryId }
+
+        override suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int {
+            var count = 0
+            items.replaceAll {
+                if (it.categoryId == categoryId && it.dbType == dbType) {
+                    count++
+                    it.copy(categoryId = setId)
+                } else {
+                    it
+                }
+            }
+            return count
+        }
+
+        override suspend fun hasByKey(dbType: Int, key: String): Int =
+            items.count { it.dbType == dbType && it.key == key }
     }
 
     private class RollbackCheckingLinkItemDao(
