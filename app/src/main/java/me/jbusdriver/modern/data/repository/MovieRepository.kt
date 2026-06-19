@@ -3,7 +3,6 @@ package me.jbusdriver.modern.data.repository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CacheStore
@@ -12,27 +11,16 @@ import me.jbusdriver.modern.core.cache.MovieCacheTtl
 import me.jbusdriver.modern.core.cache.firstCachedOrFresh
 import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.cache.persistentCached
-import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.data.cache.siteCacheKey
-import me.jbusdriver.modern.core.site.resolveUrl
-import me.jbusdriver.modern.data.parser.loadMovieFromDoc
-import me.jbusdriver.modern.data.parser.parseActressAttrs
-import me.jbusdriver.modern.data.parser.parseActressList
-import me.jbusdriver.modern.data.parser.parseGenreCategories
-import me.jbusdriver.modern.data.parser.parseMovieFilterInfo
-import me.jbusdriver.modern.data.parser.parsePageInfo
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
-import me.jbusdriver.modern.domain.model.urlPath
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val TAG = "MovieRepo"
 
 /**
  * 影片列表数据仓库接口，定义按分类、URL 加载影片和演员列表的异步方法。
@@ -205,7 +193,7 @@ interface MovieRepository {
  */
 @Singleton
 class DefaultMovieRepository @Inject constructor(
-    private val htmlClient: HtmlClient,
+    private val fetcher: MoviePageFetcher,
     private val cacheStore: CacheStore,
     private val siteConfig: SiteConfig
 ) : MovieRepository {
@@ -223,17 +211,8 @@ class DefaultMovieRepository @Inject constructor(
         return flow {
             siteConfig.awaitReady()
             val baseUrl = siteConfig.baseUrl
-            val basePath = when (type) {
-                DataSourceType.UNCENSORED -> "/uncensored"
-                DataSourceType.XYZ -> "/xyz"
-                else -> ""
-            }
-            val url = if (page == 1) {
-                "$baseUrl$basePath"
-            } else {
-                "$baseUrl$basePath${type.prefix}$page"
-            }
-            val cacheKey = siteCacheKey(baseUrl, "movie-${type.key}", "${showAll}_$page")
+            val url = MovieRepositoryUrls.moviePage(baseUrl, type, page)
+            val cacheKey = MovieRepositoryCacheKeys.moviePage(baseUrl, type, showAll, page)
 
             cacheStore.observeCached(
                 key = cacheKey,
@@ -247,7 +226,7 @@ class DefaultMovieRepository @Inject constructor(
                 revalidate = revalidate && page == 1,
                 nowMillis = nowMillis
             ) {
-                fetchMoviePage(url, showAll, baseUrl)
+                fetcher.fetchMoviePage(url, showAll, baseUrl)
             }.collect { emit(it) }
         }
     }
@@ -262,12 +241,8 @@ class DefaultMovieRepository @Inject constructor(
         return flow {
             siteConfig.awaitReady()
             val siteBaseUrl = siteConfig.baseUrl
-            val baseUrl = when (type) {
-                DataSourceType.UNCENSORED_ACTRESSES -> "$siteBaseUrl/uncensored/actresses"
-                else -> "$siteBaseUrl/actresses"
-            }
-            val url = if (page == 1) baseUrl else "$baseUrl/$page"
-            val cacheKey = siteCacheKey(siteBaseUrl, "actresses-${type.key}", page.toString())
+            val url = MovieRepositoryUrls.actressPage(siteBaseUrl, type, page)
+            val cacheKey = MovieRepositoryCacheKeys.actressPage(siteBaseUrl, type, page)
 
             cacheStore.observeCached(
                 key = cacheKey,
@@ -281,7 +256,7 @@ class DefaultMovieRepository @Inject constructor(
                 revalidate = revalidate && page == 1,
                 nowMillis = nowMillis
             ) {
-                fetchActressPage(url, siteBaseUrl)
+                fetcher.fetchActressPage(url, siteBaseUrl)
             }.collect { emit(it) }
         }
     }
@@ -295,11 +270,8 @@ class DefaultMovieRepository @Inject constructor(
         return flow {
             siteConfig.awaitReady()
             val siteBaseUrl = siteConfig.baseUrl
-            val baseUrl = when (type) {
-                DataSourceType.UNCENSORED_GENRE -> "$siteBaseUrl/uncensored/genre"
-                else -> "$siteBaseUrl/genre"
-            }
-            val cacheKey = siteCacheKey(siteBaseUrl, "genres-v2", type.key)
+            val url = MovieRepositoryUrls.genreCategories(siteBaseUrl, type)
+            val cacheKey = MovieRepositoryCacheKeys.genreCategories(siteBaseUrl, type)
 
             cacheStore.observeCached(
                 key = cacheKey,
@@ -309,7 +281,7 @@ class DefaultMovieRepository @Inject constructor(
                 revalidate = revalidate,
                 nowMillis = nowMillis
             ) {
-                fetchGenreCategories(baseUrl)
+                fetcher.fetchGenreCategories(url)
             }.collect { emit(it) }
         }
     }
@@ -325,8 +297,8 @@ class DefaultMovieRepository @Inject constructor(
         return flow {
             siteConfig.awaitReady()
             val baseUrl = siteConfig.baseUrl
-            val resolvedUrl = resolveUrl(baseUrl, url)
-            val cacheKey = siteCacheKey(baseUrl, "page", "${resolvedUrl.urlPath}_${showAll}_$page")
+            val resolvedUrl = MovieRepositoryUrls.resolvedPageUrl(baseUrl, url)
+            val cacheKey = MovieRepositoryCacheKeys.pageByUrl(baseUrl, resolvedUrl, showAll, page)
 
             cacheStore.observeCached(
                 key = cacheKey,
@@ -340,8 +312,8 @@ class DefaultMovieRepository @Inject constructor(
                 revalidate = revalidate && page == 1,
                 nowMillis = nowMillis
             ) {
-                val fullUrl = if (page == 1) resolvedUrl else "$resolvedUrl/$page"
-                fetchMoviePage(fullUrl, showAll, baseUrl)
+                val fullUrl = MovieRepositoryUrls.pageByUrl(resolvedUrl, page)
+                fetcher.fetchMoviePage(fullUrl, showAll, baseUrl)
             }.collect { emit(it) }
         }
     }
@@ -384,54 +356,10 @@ class DefaultMovieRepository @Inject constructor(
     override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail {
         siteConfig.awaitReady()
         val baseUrl = siteConfig.baseUrl
-        val cacheKey = siteCacheKey(baseUrl, "actress-detail", url.urlPath)
+        val cacheKey = MovieRepositoryCacheKeys.actressDetail(baseUrl, url)
 
         return cacheStore.persistentCached(cacheKey, forceRefresh) {
-            val doc = htmlClient.fetchDocument(resolveUrl(baseUrl, url))
-            val attrs = parseActressAttrs(doc, baseUrl)
-            ActressDetail(attrs.title, attrs.imageUrl, attrs.info)
-        }
-    }
-
-    // ── Private helpers ──
-
-    private suspend fun fetchMoviePage(url: String, showAll: Boolean, baseUrl: String): MoviePageResult {
-        KLog.d("fetchMoviePage: url=$url, showAll=$showAll", TAG)
-        val doc = htmlClient.fetchDocument(url, showAll)
-        val pageInfo = parsePageInfo(doc) ?: PageInfo(activePage = 1, nextPage = 1)
-        val movies = loadMovieFromDoc(doc, baseUrl)
-        val filterInfo = parseMovieFilterInfo(doc)
-        return MoviePageResult(pageInfo, movies, filterInfo)
-    }
-
-    private suspend fun fetchActressPage(
-        url: String,
-        baseUrl: String
-    ): Pair<List<ActressInfo>, PageInfo> {
-        KLog.d("fetchActressPage: url=$url", TAG)
-        val doc = htmlClient.fetchDocument(url)
-        val actresses = parseActressList(doc, baseUrl)
-        val pageInfo = parsePageInfo(doc) ?: PageInfo(
-            activePage = 1,
-            nextPage = if (actresses.size >= 20) 2 else 1
-        )
-        return actresses to pageInfo
-    }
-
-    private suspend fun fetchGenreCategories(url: String): List<GenreGroup> {
-        KLog.d("fetchGenreCategories: url=$url", TAG)
-        val doc = htmlClient.fetchDocument(url)
-        val rawCategories = parseGenreCategories(doc)
-        val allGenres = rawCategories.flatMap { it.second }
-        allGenres.groupBy { it.link }
-            .filter { it.value.size > 1 }
-            .forEach { (link, items) ->
-                KLog.w("Duplicate genre link=$link, names=${items.map { it.name }}")
-            }
-        val seen = mutableSetOf<String>()
-        return rawCategories.mapNotNull { (title, genres) ->
-            val deduped = genres.filter { seen.add(it.link) }
-            if (deduped.isEmpty()) null else GenreGroup(title, deduped)
+            fetcher.fetchActressDetail(baseUrl, url)
         }
     }
 }
