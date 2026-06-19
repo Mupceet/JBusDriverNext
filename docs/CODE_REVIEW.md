@@ -90,10 +90,10 @@
     OkHttp 升级到 5.4.0，kotlinx-coroutines 升级到 1.11.0，KSP 升级到 2.3.9。Kotlin 2.4.0 已实测被当前 Hilt metadata 读取上限阻塞，暂缓升级，并在窄范围 lint ignore 中记录原因。
 
 12. **全局 Context / Site URL 入口收口**
-    删除 `lateinit var JBus`、`JBusManager.context/setContext`、`CacheLoader` 与 `NetClient.defaultFastUrl/siteConfig` 兼容入口。WebView 创建改由 `WebViewFactory` 注入 `@ApplicationContext`；默认缓存改由 `DefaultCacheStore` 注入 `@ApplicationContext`；收藏 mapper 显式接收 `baseUrl`；设置页通过 `SiteConfig` 更新运行时站点 URL。
+    删除 `lateinit var JBus`、`AppContext`、`JBusManager.context/setContext`、`CacheLoader` 与 `NetClient.defaultFastUrl/siteConfig` 兼容入口。`JBusApplication` 直接继承 `Application`；WebView 创建改由 `WebViewFactory` 注入 `@ApplicationContext`；默认缓存改由 `DefaultCacheStore` 注入 `@ApplicationContext`；收藏 mapper 显式接收 `baseUrl`；设置页通过 `SiteConfig` 更新运行时站点 URL。
 
-13. **JBusManager 可变列表收口**
-    `JBusManager.manager` 不再作为公开可变列表暴露；内部 Activity 弱引用列表改为私有实现细节，仅提供 `currentActivity` 与 `activeActivityCount` 只读查询 API，并用单测锁定不再生成公开 `getManager()`。
+13. **JBusManager 完全移除**
+    复查确认没有生产代码读取 Activity tracker 后，删除 `JBusManager`、对应生命周期注册和单测。应用不再维护全局 Activity 弱引用列表。
 
 ---
 
@@ -156,13 +156,13 @@ git diff --check
 
 ```bash
 rg -n "runBlocking|lateinit var JBus|object DB|DB\.|ContentResolver|Uri\.parse|Color\.parseColor|MenuAnchorType|@ApplicationContext" app/src/main/java app/src/test/java docs AGENTS.md
-rg -n "lateinit var JBus|JBusManager\.context|JBusManager\.setContext|NetClient\.defaultFastUrl|NetClient\.siteConfig|CacheLoader" app/src/main/java app/src/test/java
+rg -n "lateinit var JBus|AppContext|JBusManager|NetClient\.defaultFastUrl|NetClient\.siteConfig|CacheLoader" app/src/main/java app/src/test/java
 ```
 
 结论：
 
 1. 生产代码未发现 `runBlocking`、`object DB`、`DB.xxx`、旧 `Uri.parse`、旧 `Color.parseColor`、旧 `MenuAnchorType` 回归。
-2. `lateinit var JBus`、`JBusManager.context`、`JBusManager.setContext`、`JBusManager.manager`、`NetClient.defaultFastUrl`、`NetClient.siteConfig`、`CacheLoader` 未在生产代码中继续作为入口存在。`JBusManager` 仅保留 Activity lifecycle tracking 和只读查询 API。
+2. `lateinit var JBus`、`AppContext`、`JBusManager`、`NetClient.defaultFastUrl`、`NetClient.siteConfig`、`CacheLoader` 未在生产代码中继续作为入口存在。
 
 ---
 

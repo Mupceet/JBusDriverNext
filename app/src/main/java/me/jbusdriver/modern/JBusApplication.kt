@@ -1,5 +1,6 @@
 package me.jbusdriver.modern
 
+import android.app.Application
 import android.util.Log
 import coil.ImageLoader
 import coil.ImageLoaderFactory
@@ -18,10 +19,10 @@ import javax.inject.Inject
  * 使用场景：AndroidManifest 中声明的 Application 类，Hilt 在此完成依赖图初始化
  * 线程：onCreate 在主线程；newImageLoader 由 Coil 在需要时调用
  *
- * 继承关系：JBusApplication → AppContext → Application
+ * 继承关系：JBusApplication → Application
  */
 @HiltAndroidApp
-class JBusApplication : AppContext(), ImageLoaderFactory {
+class JBusApplication : Application(), ImageLoaderFactory {
 
     @Inject
     lateinit var htmlClient: HtmlClient

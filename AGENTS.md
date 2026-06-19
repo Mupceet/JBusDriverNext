@@ -35,7 +35,6 @@ The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `grad
 ```
 me.jbusdriver.modern/
   JBusApplication.kt       - @HiltAndroidApp entry point, provides Coil ImageLoader
-  AppContext.kt             - Application base, registers JBusManager lifecycle callbacks
   KLog.kt                   - Logging utility
   core/
     GsonExt.kt              - GSON instance, generic fromJson/toJson extensions
@@ -43,7 +42,6 @@ me.jbusdriver.modern/
     cache/CacheStore.kt     - Hilt-backed two-tier cache: LruCache (memory) + FileCache (disk)
     FileCache.kt            - Disk cache implementation (replaces former ACache.java)
     FileUtil.kt             - File size formatting helpers
-    JBusManager.kt          - Activity lifecycle tracker, context provider
     C.kt                    - Constants (cache durations, component names)
     http/
       NetClient.kt          - OkHttp singleton, fetchDocument() for HTML→Jsoup parsing
@@ -149,7 +147,6 @@ me.jbusdriver.modern/
 
 ## Global State
 
-- `JBusManager`: Activity lifecycle tracker only; do not use it as a Context provider. Its internal Activity list is private; use `currentActivity` / `activeActivityCount` for read-only queries.
 - `SiteConfig`: Hilt-managed runtime base URL for the target site.
 - `DefaultCacheStore`: Hilt-managed memory + disk cache using `@ApplicationContext`.
 
@@ -178,7 +175,7 @@ See `docs/CODE_REVIEW.md` for the full code review report. Key findings:
 - The latest quality gates used were `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and `assembleRelease`.
 
 ### Remaining Non-Blocking Technical Debt
-- The former `JBus`, `JBusManager.context`, public `JBusManager.manager`, `NetClient.defaultFastUrl`, and `CacheLoader` global cache entry points have been removed from production code. Prefer Hilt `@ApplicationContext`, `SiteConfig`, `WebViewFactory`, and `CacheStore` for new code.
+- The former `JBus`, `JBusManager`, `NetClient.defaultFastUrl`, and `CacheLoader` global entry points have been removed from production code. Prefer Hilt `@ApplicationContext`, `SiteConfig`, `WebViewFactory`, and `CacheStore` for new code.
 - UI i18n is only partially complete. New visible UI strings, Toast messages, dialog labels, and content descriptions should use resources; count labels should use plurals.
 - Several files remain large, including `MovieList.kt`, `ForumPostContent.kt`, `LinkMovieListViewModel.kt`, `LinkMovieListScreen.kt`, `MovieDetailScreen.kt`, `MovieListViewModel.kt`, `LabSettingsScreen.kt`, `MovieRepository.kt`, `ForumBoardsScreen.kt`, and `ForumThreadDetailViewModel.kt`. Prefer small section/helper extraction when touching those files.
 - ViewModel `loadFirstPage/revalidate/loadMore/refresh` orchestration still repeats across list-style screens. Reducers already cover state transitions; avoid broad abstraction until a stable shared shape is obvious.
