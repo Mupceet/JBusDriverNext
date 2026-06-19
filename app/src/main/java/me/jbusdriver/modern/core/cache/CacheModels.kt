@@ -38,13 +38,13 @@ object ForumCacheTtl {
 }
 
 object MovieCacheTtl {
-    val MOVIE_LIST_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 5 * 60_000L)
-    val MOVIE_LIST_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 30 * 60_000L)
-    val ACTRESS_LIST_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 10 * 60_000L)
-    val ACTRESS_LIST_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 30 * 60_000L)
-    val GENRE_CATEGORIES_MILLIS: Long = cacheRefreshTtl(15_000L, 60 * 60_000L)
-    val MOVIE_BY_URL_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 5 * 60_000L)
-    val MOVIE_BY_URL_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 30 * 60_000L)
+    val MOVIE_LIST_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 60 * 60_000L)
+    val MOVIE_LIST_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 60 * 60_000L)
+    val ACTRESS_LIST_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 12 * 60 * 60_000L)
+    val ACTRESS_LIST_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 12 * 60 * 60_000L)
+    val GENRE_CATEGORIES_MILLIS: Long = cacheRefreshTtl(15_000L, 24 * 60 * 60_000L)
+    val MOVIE_BY_URL_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 60 * 60_000L)
+    val MOVIE_BY_URL_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 60 * 60_000L)
 }
 
 private fun cacheRefreshTtl(testMillis: Long, productionMillis: Long): Long =
