@@ -2,6 +2,7 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.CollectTransactionRunner
+import me.jbusdriver.modern.data.repository.CollectionBackupCodec
 import me.jbusdriver.modern.data.repository.DefaultCollectRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.flow.Flow
@@ -103,11 +104,7 @@ class CollectRepositoryTest {
     fun defaultRepository_importRunsInsideSingleTransaction() = runTest {
         val transactionRunner = RecordingTransactionRunner()
         val dao = TransactionCheckingLinkItemDao(transactionRunner)
-        val repository = DefaultCollectRepository(
-            linkDao = dao,
-            siteConfig = fakeSiteConfig(),
-            transactionRunner = transactionRunner
-        )
+        val repository = defaultRepository(dao, transactionRunner)
         val json = """
             {
               "version": 1,
@@ -136,11 +133,7 @@ class CollectRepositoryTest {
     fun defaultRepository_toggleRunsInsideTransaction() = runTest {
         val transactionRunner = RecordingTransactionRunner()
         val dao = TransactionCheckingLinkItemDao(transactionRunner)
-        val repository = DefaultCollectRepository(
-            linkDao = dao,
-            siteConfig = fakeSiteConfig(),
-            transactionRunner = transactionRunner
-        )
+        val repository = defaultRepository(dao, transactionRunner)
 
         val result = repository.toggleMovieCollect(
             Movie("Test", "http://img.jpg", "ABC-001", "2024-01-01", "http://link1")
@@ -156,11 +149,7 @@ class CollectRepositoryTest {
         val transactionRunner = RollbackTransactionRunner()
         val dao = RollbackCheckingLinkItemDao(transactionRunner, failOnKey = "/link2")
         transactionRunner.dao = dao
-        val repository = DefaultCollectRepository(
-            linkDao = dao,
-            siteConfig = fakeSiteConfig(),
-            transactionRunner = transactionRunner
-        )
+        val repository = defaultRepository(dao, transactionRunner)
         val json = """
             {
               "version": 1,
@@ -363,6 +352,17 @@ class CollectRepositoryTest {
         override suspend fun hasByKey(dbType: Int, key: String): Int =
             items.count { it.dbType == dbType && it.key == key }
     }
+
+    private fun defaultRepository(
+        dao: LinkItemDao,
+        transactionRunner: CollectTransactionRunner,
+        siteConfig: SiteConfig = fakeSiteConfig()
+    ) = DefaultCollectRepository(
+        linkDao = dao,
+        siteConfig = siteConfig,
+        transactionRunner = transactionRunner,
+        backupCodec = CollectionBackupCodec(dao, siteConfig)
+    )
 
     private fun fakeSiteConfig() = object : SiteConfig {
         override var baseUrl: String = "https://example.test"
