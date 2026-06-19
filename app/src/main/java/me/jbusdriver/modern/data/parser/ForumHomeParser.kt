@@ -78,8 +78,13 @@ fun parseForumBoards(doc: Document): List<ForumBoardGroup> {
             val lastPostTitle =
                 lastPostDiv?.select("a.xi2, a[title]")?.firstOrNull()?.text()?.trim() ?: ""
             val lastPostAuthor = lastPostDiv?.select("cite a")?.text()?.trim() ?: ""
-            val lastPostTime = lastPostDiv?.select("cite span[title]")?.text()?.trim()
-                ?: lastPostDiv?.select("cite span")?.text()?.trim() ?: ""
+            // 优先取带 title 的时间 span，覆盖两种新格式：
+            //   <cite><span title="...">文本</span> ...</cite>                      (直接 title)
+            //   <cite><span>\t<span title="...">文本</span></span> ...</cite>       (嵌套，只命中内层，避免文本重复)
+            // 仅当都没有时（旧版叶子 <cite><span>2026-06-12</span> ...</cite>）才回退到 cite 内任意 span。
+            // 用 ifBlank 而非 ?:，因为未命中时 .text() 返回空串而非 null，?: 不会触发回退。
+            val lastPostTime = lastPostDiv?.select("cite span[title]")?.text()?.trim().orEmpty()
+                .ifBlank { lastPostDiv?.select("cite span")?.text()?.trim() ?: "" }
 
             boards.add(
                 ForumBoard(
