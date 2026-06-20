@@ -51,12 +51,12 @@ class CollectionListViewModelTest {
         categoryId = 1
     )
 
-    private fun ActressInfo.toLinkItem(createTime: Long = 1_000L) = LinkItem(
+    private fun ActressInfo.toLinkItem(createTime: Long = 1_000L, categoryId: Int = 2) = LinkItem(
         dbType = ActressDBType,
         key = link,
         jsonStr = toJsonString(),
         createTime = createTime,
-        categoryId = 2
+        categoryId = categoryId
     )
 
     @Before
@@ -144,6 +144,53 @@ class CollectionListViewModelTest {
         assertEquals(1, state.actresses.size)
         assertEquals("Alice", state.actresses.first().name)
         assertFalse(state.isLoading)
+    }
+
+    @Test
+    fun updateFilter_uncensored_keepsOnlyUncensoredActresses() = runTest(testDispatcher) {
+        // Two actresses: censored (categoryId=2) and uncensored (categoryId=4)
+        val actresses = listOf(
+            ActressInfo("CensoredA", "http://avatar.jpg", "http://link1"),
+            ActressInfo("UncensoredB", "http://avatar.jpg", "http://link2")
+        )
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = emptyList<Movie>()
+            override suspend fun getCollectedActresses() = actresses
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                when (dbType) {
+                    MovieDBType -> emptyList()
+                    ActressDBType -> actresses.mapIndexed { i, a ->
+                        a.toLinkItem(categoryId = if (i == 0) 2 else 4)
+                    }
+                    else -> emptyList()
+                }
+
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+
+        viewModel.loadCollection(2) // ActressDBType
+        advanceUntilIdle()
+        Thread.sleep(500)
+        advanceUntilIdle()
+
+        // Default filter is ALL: both actresses present
+        assertEquals(2, viewModel.uiState.value.actresses.size)
+
+        viewModel.updateFilter(CollectionFilterState(censorFilter = CensorFilter.UNCENSORED))
+        advanceUntilIdle()
+
+        val filtered = viewModel.uiState.value.actresses
+        assertEquals(1, filtered.size)
+        assertEquals("UncensoredB", filtered.first().name)
     }
 
     @Test

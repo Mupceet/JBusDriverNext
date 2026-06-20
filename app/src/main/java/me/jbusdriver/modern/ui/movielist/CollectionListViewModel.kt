@@ -110,7 +110,7 @@ class CollectionListViewModel @Inject constructor(
                 }
                 allActresses = actressItems.mapNotNull { item ->
                     ((item.toILink(baseUrl) as? ActressInfo)?.toActressUiModel())
-                        ?.copy(createTime = item.createTime)
+                        ?.copy(createTime = item.createTime, categoryId = item.categoryId)
                 }
 
                 updateAvailableYears()
@@ -224,6 +224,7 @@ class CollectionListViewModel @Inject constructor(
             .sortedWith(filter.sortOption.toMovieComparator())
 
         val filteredActresses = allActresses
+            .filterByCensor(filter.censorFilter)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
             .sortedWith(
                 if (filter.sortOption in SortOption.actressOptions) filter.sortOption.toActressComparator()
@@ -252,6 +253,14 @@ private fun List<MovieUiModel>.filterByCensor(censor: CensorFilter): List<MovieU
         CensorFilter.ALL -> this
         CensorFilter.CENSORED -> filter { it.categoryId != 3 }
         CensorFilter.UNCENSORED -> filter { it.categoryId == 3 }
+    }
+
+@JvmName("filterActressesByCensor")
+private fun List<ActressUiModel>.filterByCensor(censor: CensorFilter): List<ActressUiModel> =
+    when (censor) {
+        CensorFilter.ALL -> this
+        CensorFilter.CENSORED -> filter { it.categoryId != 4 }
+        CensorFilter.UNCENSORED -> filter { it.categoryId == 4 }
     }
 
 private fun List<MovieUiModel>.filterByPublishYear(
