@@ -46,9 +46,11 @@ interface CollectRepository {
     /**
      * 切换演员收藏状态
      *
+     * @param categoryId 分类 ID；null 时使用默认演员分类（有码=2）。
+     *                   无码演员传 [me.jbusdriver.modern.domain.model.UncensoredActressCategory] 的 id(4)。
      * @return 切换后的状态：true=已收藏，false=未收藏
      */
-    suspend fun toggleActressCollect(actress: ActressInfo): Boolean
+    suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int? = null): Boolean
 
     /** 获取所有收藏的电影列表 */
     suspend fun getCollectedMovies(): List<Movie>
@@ -126,8 +128,8 @@ class DefaultCollectRepository @Inject constructor(
         return isCollected(actress.convertDBItem())
     }
 
-    override suspend fun toggleActressCollect(actress: ActressInfo): Boolean {
-        val item = actress.convertDBItem()
+    override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?): Boolean {
+        val item = if (categoryId != null) actress.convertDBItem(categoryId) else actress.convertDBItem()
         return transactionRunner.withTransaction {
             val exists = linkDao.hasByKey(item.dbType, item.key) >= 1
             if (exists) {

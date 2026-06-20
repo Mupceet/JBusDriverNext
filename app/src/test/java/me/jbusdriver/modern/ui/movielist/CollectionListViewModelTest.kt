@@ -82,7 +82,7 @@ class CollectionListViewModelTest {
             override suspend fun isMovieCollected(movie: Movie) = false
             override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
             override suspend fun isActressCollected(actress: ActressInfo) = false
-            override suspend fun toggleActressCollect(actress: ActressInfo) = true
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
             override suspend fun getCollectedMovies() = testMovies
             override suspend fun getCollectedActresses() = testActresses
             override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
@@ -119,7 +119,7 @@ class CollectionListViewModelTest {
             override suspend fun isMovieCollected(movie: Movie) = false
             override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
             override suspend fun isActressCollected(actress: ActressInfo) = false
-            override suspend fun toggleActressCollect(actress: ActressInfo) = true
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
             override suspend fun getCollectedMovies() = testMovies
             override suspend fun getCollectedActresses() = testActresses
             override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
@@ -155,7 +155,7 @@ class CollectionListViewModelTest {
             override suspend fun isMovieCollected(movie: Movie) = false
             override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
             override suspend fun isActressCollected(actress: ActressInfo) = false
-            override suspend fun toggleActressCollect(actress: ActressInfo) = true
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
             override suspend fun getCollectedMovies() = throw RuntimeException("DB error")
             override suspend fun getCollectedActresses() = throw RuntimeException("DB error")
             override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =

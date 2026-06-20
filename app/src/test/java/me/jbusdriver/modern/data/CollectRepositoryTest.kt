@@ -75,6 +75,28 @@ class CollectRepositoryTest {
     }
 
     @Test
+    fun toggleActressCollect_storesProvidedCategoryId() = runTest {
+        val dao = SimpleLinkItemDao()
+        val repository = defaultRepository(dao, PassthroughTransactionRunner())
+        val actress = ActressInfo("Alice", "http://avatar.jpg", "http://link1")
+
+        repository.toggleActressCollect(actress, categoryId = 4)
+
+        assertEquals(4, dao.items.single().categoryId)
+    }
+
+    @Test
+    fun toggleActressCollect_defaultsToActressCategoryWhenCategoryIdNull() = runTest {
+        val dao = SimpleLinkItemDao()
+        val repository = defaultRepository(dao, PassthroughTransactionRunner())
+        val actress = ActressInfo("Alice", "http://avatar.jpg", "http://link1")
+
+        repository.toggleActressCollect(actress, categoryId = null)
+
+        assertEquals(2, dao.items.single().categoryId)
+    }
+
+    @Test
     fun getCollectedMovies_returnsOnlyMovies() = runTest {
         val movie = Movie("Test", "http://img.jpg", "ABC-001", "2024-01-01", "http://link1")
         val actress = ActressInfo("Alice", "http://avatar.jpg", "http://link2")
@@ -256,7 +278,7 @@ class CollectRepositoryTest {
         override suspend fun isActressCollected(actress: ActressInfo) =
             actress.link in collectedActresses
 
-        override suspend fun toggleActressCollect(actress: ActressInfo): Boolean {
+        override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?): Boolean {
             return if (actress.link in collectedActresses) {
                 collectedActresses.remove(actress.link)
                 false
