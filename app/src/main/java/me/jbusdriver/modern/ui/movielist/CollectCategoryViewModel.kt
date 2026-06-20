@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
 import javax.inject.Inject
@@ -46,12 +47,15 @@ class CollectCategoryViewModel @Inject constructor(
     ) {
         viewModelScope.launch(ioDispatcher) {
             _isBusy.value = true
-            runCatching {
+            val result = runCatching {
                 documentGateway.writeText(documentUri, repository.exportCollectionsJson())
             }
-                .onSuccess { onDone() }
-                .onFailure(onError)
             _isBusy.value = false
+            // 回调（UI 层弹 Toast）必须在主线程执行；IO 线程上调 Toast.makeText 会抛
+            // "Can't toast on a thread that has not called Looper.prepare()"
+            withContext(Dispatchers.Main) {
+                result.onSuccess { onDone() }.onFailure(onError)
+            }
         }
     }
 
@@ -62,17 +66,20 @@ class CollectCategoryViewModel @Inject constructor(
     ) {
         viewModelScope.launch(ioDispatcher) {
             _isBusy.value = true
-            runCatching {
+            val result = runCatching {
                 val json = documentGateway.readText(documentUri)
                     ?: throw IllegalStateException("Unable to read selected document")
                 repository.importCollectionsFromJson(json)
             }
-                .onSuccess { result ->
-                    _importResult.emit(CollectionImportResult(result.first, result.second))
-                    onDone()
-                }
-                .onFailure(onError)
             _isBusy.value = false
+            withContext(Dispatchers.Main) {
+                result
+                    .onSuccess { pair ->
+                        _importResult.emit(CollectionImportResult(pair.first, pair.second))
+                        onDone()
+                    }
+                    .onFailure(onError)
+            }
         }
     }
 
