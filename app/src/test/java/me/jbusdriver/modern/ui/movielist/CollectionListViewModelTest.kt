@@ -194,6 +194,57 @@ class CollectionListViewModelTest {
     }
 
     @Test
+    fun loadCollection_collectTime_filtersByCollectMonth() = runTest(testDispatcher) {
+        val mayMillis = mktime(2026, 5, 10)
+        val juneMillis = mktime(2026, 6, 1)
+        val movies = listOf(
+            Movie("May Movie", "http://img.jpg", "ABC-001", "2026-05-10", "http://link1"),
+            Movie("June Movie", "http://img.jpg", "ABC-002", "2026-06-01", "http://link2")
+        )
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = movies
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                if (dbType == MovieDBType) listOf(
+                    movies[0].toLinkItem(createTime = mayMillis),
+                    movies[1].toLinkItem(createTime = juneMillis)
+                ) else emptyList()
+
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle()
+        Thread.sleep(500)
+        advanceUntilIdle()
+
+        viewModel.updateFilter(CollectionFilterState(collectYear = 2026, collectMonth = 6))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        // Only the June-collected item remains
+        assertEquals(1, state.movies.size)
+        assertEquals("June Movie", state.movies.first().title)
+        // availableCollectMonths should include 6 for the selected collectYear
+        assertTrue(state.availableCollectMonths.contains(6))
+    }
+
+    private fun mktime(year: Int, month: Int, day: Int): Long =
+        java.util.Calendar.getInstance().apply {
+            clear()
+            set(year, month - 1, day, 12, 0, 0)
+        }.timeInMillis
+
+    @Test
     fun loadCollection_handlesError() = runTest(testDispatcher) {
         val collectRepo = object : CollectRepository {
             override suspend fun isCollected(linkItem: LinkItem) = false

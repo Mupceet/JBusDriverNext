@@ -43,7 +43,8 @@ data class CollectionListUiState(
     val error: Int? = null,
     val filterState: CollectionFilterState = CollectionFilterState(),
     val availableYears: AvailableYears = AvailableYears(),
-    val availablePublishMonths: Set<Int> = emptySet()
+    val availablePublishMonths: Set<Int> = emptySet(),
+    val availableCollectMonths: Set<Int> = emptySet()
 )
 
 /**
@@ -216,16 +217,28 @@ class CollectionListViewModel @Inject constructor(
                 .toSet()
         } else emptySet()
 
+        // Compute available collect months for the selected collect year, scoped to current db type
+        val availableCollectMonths = if (filter.collectYear != null && filter.collectYear > 0) {
+            val times = if (currentDbType == MovieDBType) {
+                allMovies.map { it.createTime }
+            } else {
+                allActresses.map { it.createTime }
+            }
+            times.filter { it.toYear() == filter.collectYear }.map { it.toMonth() }.toSet()
+        } else emptySet()
+
         val filteredMovies = allMovies
             .filterByCensor(filter.censorFilter)
             .filterByPublishYear(filter.publishYear, years.publishYears)
             .filterByPublishMonth(filter.publishMonth)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
+            .filterByCollectMonth(filter.collectMonth) { it.createTime }
             .sortedWith(filter.sortOption.toMovieComparator())
 
         val filteredActresses = allActresses
             .filterByCensor(filter.censorFilter)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
+            .filterByCollectMonth(filter.collectMonth) { it.createTime }
             .sortedWith(
                 if (filter.sortOption in SortOption.actressOptions) filter.sortOption.toActressComparator()
                 else SortOption.COLLECT_DESC.toActressComparator()
@@ -238,6 +251,7 @@ class CollectionListViewModel @Inject constructor(
                 movieCount = allMovies.size,
                 actressCount = allActresses.size,
                 availablePublishMonths = availableMonths,
+                availableCollectMonths = availableCollectMonths,
                 isLoading = false
             )
         }
@@ -292,6 +306,13 @@ private fun <T> List<T>.filterByCollectYear(
         else itemYear == year
     }
 
+private fun <T> List<T>.filterByCollectMonth(
+    month: Int?,
+    getTime: (T) -> Long
+): List<T> =
+    if (month == null) this
+    else filter { getTime(it).toMonth() == month }
+
 private fun SortOption.toMovieComparator(): Comparator<MovieUiModel> = when (this) {
     SortOption.COLLECT_DESC -> compareByDescending { it.createTime }
     SortOption.COLLECT_ASC -> compareBy { it.createTime }
@@ -308,5 +329,9 @@ private fun SortOption.toActressComparator(): Comparator<ActressUiModel> = when 
 /** 将毫秒时间戳转换为年份 */
 private fun Long.toYear(): Int =
     Calendar.getInstance().apply { timeInMillis = this@toYear }.get(Calendar.YEAR)
+
+/** 将毫秒时间戳转换为月份（1-12） */
+private fun Long.toMonth(): Int =
+    Calendar.getInstance().apply { timeInMillis = this@toMonth }.get(Calendar.MONTH) + 1
 
 // endregion
