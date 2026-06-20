@@ -51,6 +51,7 @@ fun CollectionFilterSheet(
     filterState: CollectionFilterState,
     availableYears: AvailableYears,
     availablePublishMonths: Set<Int>,
+    availableCollectMonths: Set<Int>,
     onFilterChange: (CollectionFilterState) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -164,9 +165,22 @@ fun CollectionFilterSheet(
                     selectedYear = filterState.collectYear,
                     years = availableYears.collectYears,
                     onSelect = { year ->
-                        onFilterChange(filterState.copy(collectYear = year))
+                        onFilterChange(filterState.copy(collectYear = year, collectMonth = null))
                     }
                 )
+
+                if (filterState.collectYear != null && filterState.collectYear > 0) {
+                    Spacer(Modifier.padding(top = 8.dp))
+                    MonthChipRow(
+                        selectedMonth = filterState.collectMonth,
+                        availableMonths = availableCollectMonths,
+                        onSelect = { month ->
+                            if (month == null || month in availableCollectMonths) {
+                                onFilterChange(filterState.copy(collectMonth = month))
+                            }
+                        }
+                    )
+                }
             }
         }
     }
