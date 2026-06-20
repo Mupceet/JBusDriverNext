@@ -100,28 +100,28 @@ fun CollectionFilterSheet(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp)
             ) {
-                // ── Censor filter (movie only) ──
-                if (dbType == MovieDBType) {
-                    FilterSectionLabel(stringResource(R.string.content_type))
-                    Spacer(Modifier.padding(top = 6.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CensorChip(
-                            label = stringResource(R.string.all),
-                            selected = filterState.censorFilter == CensorFilter.ALL,
-                            onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.ALL)) }
-                        )
-                        CensorChip(
-                            label = stringResource(R.string.censored),
-                            selected = filterState.censorFilter == CensorFilter.CENSORED,
-                            onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.CENSORED)) }
-                        )
-                        CensorChip(
-                            label = stringResource(R.string.uncensored),
-                            selected = filterState.censorFilter == CensorFilter.UNCENSORED,
-                            onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.UNCENSORED)) }
-                        )
-                    }
+                // ── Censor filter (movie + actress) ──
+                FilterSectionLabel(stringResource(R.string.content_type))
+                Spacer(Modifier.padding(top = 6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    CensorChip(
+                        label = stringResource(R.string.all),
+                        selected = filterState.censorFilter == CensorFilter.ALL,
+                        onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.ALL)) }
+                    )
+                    CensorChip(
+                        label = stringResource(R.string.censored),
+                        selected = filterState.censorFilter == CensorFilter.CENSORED,
+                        onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.CENSORED)) }
+                    )
+                    CensorChip(
+                        label = stringResource(R.string.uncensored),
+                        selected = filterState.censorFilter == CensorFilter.UNCENSORED,
+                        onClick = { onFilterChange(filterState.copy(censorFilter = CensorFilter.UNCENSORED)) }
+                    )
+                }
 
+                if (dbType == MovieDBType) {
                     Spacer(Modifier.padding(top = 16.dp))
 
                     // ── Publish date (movie only) ──
@@ -153,9 +153,9 @@ fun CollectionFilterSheet(
                             }
                         )
                     }
-
-                    Spacer(Modifier.padding(top = 16.dp))
                 }
+
+                Spacer(Modifier.padding(top = 16.dp))
 
                 // ── Collect time (both) ──
                 FilterSectionLabel(stringResource(R.string.collect_time))
