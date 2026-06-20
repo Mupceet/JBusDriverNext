@@ -1,6 +1,35 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file is the shared source of truth for coding agents working in this repository.
+Claude Code reads `CLAUDE.md`, which imports this file with `@AGENTS.md`.
+
+## Workflow Preferences
+
+- Do not start implementing broad feature work until the design or approach is confirmed. First present a brief plan with affected files, approach, and trade-offs.
+- If a first implementation looks complex, proactively suggest a simpler alternative before coding.
+- After completing a feature, check for and remove dead code or unused parameters from the old approach.
+- When the user explicitly asks for a concrete edit, cleanup, or maintenance task, make a reasonable scoped change and verify it.
+
+## Build & Commit Hygiene
+
+- After staging files, always run `git status` before committing to verify no unrelated files (for example `.mimocode/` or tool config) are included.
+- Never commit directly to `release`; work on `develop` or a feature branch.
+- Run a build check (`./gradlew assembleDebug`) before committing to catch compilation errors.
+
+## Code Quality Rules
+
+- ViewModels must not expose callbacks to the UI; expose state and one-shot events as Flow/StateFlow/SharedFlow instead.
+- Prefer StateFlow with `.cachedIn()` or `.stateIn()` over raw Flow for ViewModel state holders when it avoids recomputation and flickering.
+- When refactoring multiple files, keep changes minimal and targeted; do not redesign UI the user did not ask for.
+- After any Gson, ProGuard, or R8 changes, verify debug and release behavior for representative JSON payloads.
+- When removing or renaming a data field, add backward-compatible `@SerializedName` aliases for old field names where Gson compatibility matters.
+
+## Android / Kotlin Conventions
+
+- This is an Android app using Jetpack Compose, Material 3, Kotlin, Gson, and DataStore.
+- Verify Compose API calls compile before finalizing; do not guess package paths for `inlineContent`, `SubcomposeAsyncImage`, or similar APIs.
+- When implementing caching or stale-while-revalidate behavior, test scroll position retention, duplicate key safety, and tab-switch refresh behavior.
+- ProGuard/R8 keep rules must cover all Gson model classes; add `@Keep` or rules proactively.
 
 ## Build Commands
 
