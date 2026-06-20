@@ -87,15 +87,14 @@ fun ILink.convertDBItem(categoryId: Int = defaultCategoryId()): LinkItem {
  * @return 反序列化后的领域对象
  * @throws IllegalStateException 当 [History.dbType] 不匹配任何已知类型时
  */
-fun History.toILink(): ILink = when (dbType) {
-    MovieDBType -> GSON.fromJson<Movie>(jsonStr)!!
-    ActressDBType -> GSON.fromJson<ActressInfo>(jsonStr)!!
-    HeaderDBType -> GSON.fromJson<Header>(jsonStr)!!
-    GenreDBType -> GSON.fromJson<Genre>(jsonStr)!!
-    SearchLinkDBType -> GSON.fromJson<SearchLink>(jsonStr)!!
-    PageLinkDBType -> GSON.fromJson<PageLink>(jsonStr)!!
-    else -> error("$dbType : $jsonStr has no matched class")
-}
+fun History.toILink(): ILink = toILinkOrNull()
+    ?: error("$dbType : $jsonStr has no matched class")
+
+fun History.toILinkOrNull(): ILink? = kotlin.runCatching {
+    deserializeLink(dbType, jsonStr)
+}.onFailure {
+    KLog.w("error history toILink : $this")
+}.getOrNull()
 
 /**
  * 将 [LinkItem] 实体反序列化为对应的 [ILink] 领域对象。

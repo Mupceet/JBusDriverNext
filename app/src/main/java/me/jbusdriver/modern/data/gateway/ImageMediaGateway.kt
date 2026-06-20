@@ -19,6 +19,22 @@ import me.jbusdriver.R
 import java.io.File
 import javax.inject.Inject
 
+internal fun <T> writePendingMediaEntry(
+    entry: T,
+    write: (T) -> Boolean,
+    publish: (T) -> Unit,
+    cleanup: (T) -> Unit
+) {
+    var published = false
+    try {
+        check(write(entry)) { "Failed to write media entry" }
+        publish(entry)
+        published = true
+    } finally {
+        if (!published) cleanup(entry)
+    }
+}
+
 interface ImageMediaGateway {
     suspend fun saveImageToGallery(imageUrl: String)
     suspend fun shareImage(imageUrl: String)
@@ -49,17 +65,26 @@ class AndroidImageMediaGateway @Inject constructor(
                 contentValues
             ) ?: throw IllegalStateException("Failed to create media store entry")
 
-            val outputStream = context.contentResolver.openOutputStream(uri)
-                ?: throw IllegalStateException("Failed to open media store output stream")
-            outputStream.use { outputStream ->
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, outputStream)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                context.contentResolver.update(uri, contentValues, null, null)
-            }
+            writePendingMediaEntry(
+                entry = uri,
+                write = { targetUri ->
+                    val outputStream = context.contentResolver.openOutputStream(targetUri)
+                        ?: throw IllegalStateException("Failed to open media store output stream")
+                    outputStream.use { stream ->
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, stream)
+                    }
+                },
+                publish = { targetUri ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        contentValues.clear()
+                        contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                        context.contentResolver.update(targetUri, contentValues, null, null)
+                    }
+                },
+                cleanup = { targetUri ->
+                    context.contentResolver.delete(targetUri, null, null)
+                }
+            )
         }
     }
 
@@ -69,8 +94,11 @@ class AndroidImageMediaGateway @Inject constructor(
         val file = withContext(Dispatchers.IO) {
             val shareDir = File(context.cacheDir, "shared_images").apply { mkdirs() }
             val file = File(shareDir, "share_${System.currentTimeMillis()}.jpg")
-            file.outputStream()
-                .use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
+            file.outputStream().use {
+                check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it)) {
+                    "Failed to write shared image"
+                }
+            }
             file
         }
 

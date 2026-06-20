@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -31,7 +32,10 @@ class ImageActionsViewModel @Inject constructor(
         this.dispatcher = dispatcher
     }
 
-    private val _messages = MutableSharedFlow<ImageActionMessage>()
+    private val _messages = MutableSharedFlow<ImageActionMessage>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val messages = _messages.asSharedFlow()
 
     fun saveImage(imageUrl: String) {

@@ -244,6 +244,29 @@ class CacheStoreFlowTest {
         assertTrue("expected CancellationException, got $thrown", thrown is CancellationException)
     }
 
+    @Test
+    fun observeCached_reraisesCancellationExceptionFromDegradedRetry() = runTest {
+        val store = FakeCacheStore()
+        var calls = 0
+        var thrown: Throwable? = null
+
+        try {
+            store.observeCached(
+                key = "k",
+                ttlMillis = 10_000L,
+                isCacheable = { it: Sample -> it.name.isNotEmpty() }
+            ) {
+                calls += 1
+                if (calls == 1) Sample("") else throw CancellationException("cancel retry")
+            }.toList()
+        } catch (e: Throwable) {
+            thrown = e
+        }
+
+        assertEquals(2, calls)
+        assertTrue("expected CancellationException, got $thrown", thrown is CancellationException)
+    }
+
     // ---------- firstCachedOrFresh ----------
 
     @Test

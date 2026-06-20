@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.data.db
 
+import me.jbusdriver.modern.data.db.entity.History
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Genre
@@ -83,5 +84,12 @@ class LinkMappersTest {
         val item = LinkItem(dbType = MovieDBType, key = "/bad", jsonStr = "{")
 
         assertNull(item.toILink("https://example.test"))
+    }
+
+    @Test
+    fun `invalid history item returns null instead of throwing`() {
+        val history = History(dbType = MovieDBType, jsonStr = "{", isAll = 0)
+
+        assertNull(history.toILinkOrNull())
     }
 }

@@ -236,7 +236,13 @@ inline fun <reified T> CacheStore.observeCached(
         // 退化结果（如年龄验证/反爬中间页解析为 0 条）：重试一次；仍退化则不落缓存。
         if (!isCacheable(fresh)) {
             KLog.d("[Cache] fresh result not cacheable, retrying once: key=$key", "CacheSWR")
-            fresh = runCatching { fetch() }.getOrElse { fresh }
+            fresh = try {
+                fetch()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                fresh
+            }
         }
 
         if (isCacheable(fresh)) {

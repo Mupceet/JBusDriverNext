@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.movielist
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -101,6 +102,21 @@ class CollectCategoryViewModelTest {
         val failed = events.filterIsInstance<CollectActionEvent.ActionFailed>().single()
         assertTrue(!failed.isImport)
         assertEquals("disk full", failed.throwable.message)
+    }
+
+    @Test
+    fun exportRethrowsCancellationWithoutActionFailedEvent() = runTest(dispatcher) {
+        val gateway = FakeCollectionDocumentGateway(writeFailure = CancellationException("cancelled"))
+        val repository = FakeCollectRepository(exportJson = "{}")
+        val viewModel = CollectCategoryViewModel(repository, gateway, dispatcher)
+        val events = mutableListOf<CollectActionEvent>()
+        val collectJob = launch { viewModel.events.toList(events) }
+
+        viewModel.exportCollectionsToDocument("content://backup")
+        advanceUntilIdle()
+        collectJob.cancel()
+
+        assertEquals(emptyList<CollectActionEvent>(), events)
     }
 
     private class FakeCollectionDocumentGateway(

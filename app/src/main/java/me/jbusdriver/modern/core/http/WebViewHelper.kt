@@ -10,7 +10,25 @@ import android.webkit.WebViewClient
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
+import java.net.URI
 import kotlin.time.Duration.Companion.milliseconds
+
+internal class PageLoadGuard(url: String) {
+    private val expectedHost = url.hostOrNull()
+    private var navigationStarted = false
+
+    fun onPageStarted() {
+        navigationStarted = true
+    }
+
+    fun shouldAcceptFinish(pageUrl: String?): Boolean {
+        if (!navigationStarted) return false
+        val finishedHost = pageUrl?.hostOrNull()
+        return expectedHost == null || finishedHost == null || expectedHost == finishedHost
+    }
+
+    private fun String.hostOrNull(): String? = runCatching { URI(this).host }.getOrNull()
+}
 
 object WebViewHelper {
 
@@ -29,8 +47,18 @@ object WebViewHelper {
     suspend fun WebView.loadUrlAwait(url: String, timeoutMs: Long = 20_000): String {
         return withTimeout(timeoutMs.milliseconds) {
             suspendCancellableCoroutine { cont ->
+                val guard = PageLoadGuard(url)
                 webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(
+                        view: WebView?,
+                        pageUrl: String?,
+                        favicon: android.graphics.Bitmap?
+                    ) {
+                        guard.onPageStarted()
+                    }
+
                     override fun onPageFinished(view: WebView?, pageUrl: String?) {
+                        if (!guard.shouldAcceptFinish(pageUrl)) return
                         if (cont.isActive) {
                             webViewClient = WebViewClient()
                             cont.resume(pageUrl ?: url) { _, _, _ -> }

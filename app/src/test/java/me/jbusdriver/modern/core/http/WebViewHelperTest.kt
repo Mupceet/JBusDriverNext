@@ -21,4 +21,22 @@ class WebViewHelperTest {
     fun `unescape js string returns non quoted values unchanged`() {
         assertEquals("null", WebViewHelper.unescapeJsString("null"))
     }
+
+    @Test
+    fun `page load guard ignores finish before current navigation starts`() {
+        val guard = PageLoadGuard("https://example.test/forum")
+
+        assertEquals(false, guard.shouldAcceptFinish("https://example.test/forum"))
+        guard.onPageStarted()
+        assertEquals(true, guard.shouldAcceptFinish("https://example.test/forum"))
+    }
+
+    @Test
+    fun `page load guard rejects cross-host finish`() {
+        val guard = PageLoadGuard("https://example.test/forum")
+
+        guard.onPageStarted()
+
+        assertEquals(false, guard.shouldAcceptFinish("https://other.test/forum"))
+    }
 }

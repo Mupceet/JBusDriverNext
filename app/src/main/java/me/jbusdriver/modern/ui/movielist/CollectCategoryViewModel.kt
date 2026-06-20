@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -52,30 +53,34 @@ class CollectCategoryViewModel @Inject constructor(
     fun exportCollectionsToDocument(documentUri: String) {
         viewModelScope.launch(ioDispatcher) {
             _isBusy.value = true
-            runCatching {
+            try {
                 documentGateway.writeText(documentUri, repository.exportCollectionsJson())
-            }.onSuccess {
                 _events.send(CollectActionEvent.ExportSuccess)
-            }.onFailure { e ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
                 _events.send(CollectActionEvent.ActionFailed(e, isImport = false))
+            } finally {
+                _isBusy.value = false
             }
-            _isBusy.value = false
         }
     }
 
     fun importCollectionsFromDocument(documentUri: String) {
         viewModelScope.launch(ioDispatcher) {
             _isBusy.value = true
-            runCatching {
+            try {
                 val json = documentGateway.readText(documentUri)
                     ?: throw IllegalStateException("Unable to read selected document")
-                repository.importCollectionsFromJson(json)
-            }.onSuccess { result ->
+                val result = repository.importCollectionsFromJson(json)
                 _events.send(CollectActionEvent.ImportSuccess(result.first, result.second))
-            }.onFailure { e ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
                 _events.send(CollectActionEvent.ActionFailed(e, isImport = true))
+            } finally {
+                _isBusy.value = false
             }
-            _isBusy.value = false
         }
     }
 }
