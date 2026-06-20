@@ -56,7 +56,8 @@ data class ActressUiModel(
     val name: String,
     val avatar: String,
     val link: String,
-    val createTime: Long = 0L
+    val createTime: Long = 0L,
+    val categoryId: Int = 2
 )
 
 /** 截图画册的 UI 模型 */

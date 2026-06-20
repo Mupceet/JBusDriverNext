@@ -256,6 +256,7 @@ fun CollectCategoryScreen(
             availableYears = activeFilterState.availableYears,
             onFilterChange = { activeVm.updateFilter(it) },
             availablePublishMonths = activeFilterState.availablePublishMonths,
+            availableCollectMonths = activeFilterState.availableCollectMonths,
             onDismiss = { showFilterSheet = false }
         )
     }

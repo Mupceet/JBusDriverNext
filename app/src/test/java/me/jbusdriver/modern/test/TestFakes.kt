@@ -14,7 +14,7 @@ open class StubCollectRepository : CollectRepository {
     override suspend fun isMovieCollected(movie: Movie): Boolean = false
     override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?): Boolean = true
     override suspend fun isActressCollected(actress: ActressInfo): Boolean = false
-    override suspend fun toggleActressCollect(actress: ActressInfo): Boolean = true
+    override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?): Boolean = true
     override suspend fun getCollectedMovies(): List<Movie> = emptyList()
     override suspend fun getCollectedActresses(): List<ActressInfo> = emptyList()
     override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = emptyList()
