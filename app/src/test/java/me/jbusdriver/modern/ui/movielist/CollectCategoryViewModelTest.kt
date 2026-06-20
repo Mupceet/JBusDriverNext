@@ -2,6 +2,8 @@ package me.jbusdriver.modern.ui.movielist
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -13,9 +15,10 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.test.StubCollectRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CollectCategoryViewModelTest {
@@ -32,51 +35,84 @@ class CollectCategoryViewModelTest {
     }
 
     @Test
-    fun exportCollectionsWritesRepositoryJsonToDocument() = runTest(dispatcher) {
+    fun exportCollectionsWritesRepositoryJsonAndEmitsSuccess() = runTest(dispatcher) {
         val gateway = FakeCollectionDocumentGateway()
         val repository = FakeCollectRepository(exportJson = """{"version":1}""")
         val viewModel = CollectCategoryViewModel(repository, gateway, dispatcher)
-        var error: Throwable? = null
+        val events = mutableListOf<CollectActionEvent>()
+        val collectJob = launch { viewModel.events.toList(events) }
 
-        viewModel.exportCollectionsToDocument(
-            documentUri = "content://backup",
-            onDone = {},
-            onError = { error = it }
-        )
+        viewModel.exportCollectionsToDocument("content://backup")
         advanceUntilIdle()
+        collectJob.cancel()
 
-        assertNull(error)
+        assertEquals(listOf(CollectActionEvent.ExportSuccess), events)
         assertEquals("""{"version":1}""", gateway.writes["content://backup"])
     }
 
     @Test
-    fun importCollectionsReadsDocumentAndImportsJson() = runTest(dispatcher) {
-        val gateway = FakeCollectionDocumentGateway(reads = mutableMapOf("content://backup" to """{"movies":[]}"""))
+    fun importCollectionsReadsDocumentAndEmitsImportSuccess() = runTest(dispatcher) {
+        val gateway = FakeCollectionDocumentGateway(
+            reads = mutableMapOf("content://backup" to """{"movies":[]}""")
+        )
         val repository = FakeCollectRepository(importResult = 2 to 1)
         val viewModel = CollectCategoryViewModel(repository, gateway, dispatcher)
-        var done = false
-        var error: Throwable? = null
+        val events = mutableListOf<CollectActionEvent>()
+        val collectJob = launch { viewModel.events.toList(events) }
 
-        viewModel.importCollectionsFromDocument(
-            documentUri = "content://backup",
-            onDone = { done = true },
-            onError = { error = it }
-        )
+        viewModel.importCollectionsFromDocument("content://backup")
         advanceUntilIdle()
+        collectJob.cancel()
 
-        assertNull(error)
+        assertEquals(CollectActionEvent.ImportSuccess(2, 1), events.single())
         assertEquals("""{"movies":[]}""", repository.importedJson)
-        assertEquals(true, done)
+    }
+
+    @Test
+    fun importEmitsActionFailedWhenDocumentUnreadable() = runTest(dispatcher) {
+        // readText 返回 null → VM 抛 IllegalStateException → ActionFailed(isImport=true)
+        val gateway = FakeCollectionDocumentGateway()
+        val repository = FakeCollectRepository()
+        val viewModel = CollectCategoryViewModel(repository, gateway, dispatcher)
+        val events = mutableListOf<CollectActionEvent>()
+        val collectJob = launch { viewModel.events.toList(events) }
+
+        viewModel.importCollectionsFromDocument("content://missing")
+        advanceUntilIdle()
+        collectJob.cancel()
+
+        val failed = events.filterIsInstance<CollectActionEvent.ActionFailed>().single()
+        assertTrue(failed.isImport)
+        assertTrue(failed.throwable is IllegalStateException)
+    }
+
+    @Test
+    fun exportEmitsActionFailedWhenWriteThrows() = runTest(dispatcher) {
+        val gateway = FakeCollectionDocumentGateway(writeFailure = IOException("disk full"))
+        val repository = FakeCollectRepository(exportJson = "{}")
+        val viewModel = CollectCategoryViewModel(repository, gateway, dispatcher)
+        val events = mutableListOf<CollectActionEvent>()
+        val collectJob = launch { viewModel.events.toList(events) }
+
+        viewModel.exportCollectionsToDocument("content://backup")
+        advanceUntilIdle()
+        collectJob.cancel()
+
+        val failed = events.filterIsInstance<CollectActionEvent.ActionFailed>().single()
+        assertTrue(!failed.isImport)
+        assertEquals("disk full", failed.throwable.message)
     }
 
     private class FakeCollectionDocumentGateway(
-        val reads: MutableMap<String, String> = mutableMapOf()
+        val reads: MutableMap<String, String> = mutableMapOf(),
+        private val writeFailure: Throwable? = null
     ) : CollectionDocumentGateway {
         val writes = mutableMapOf<String, String>()
 
         override suspend fun readText(documentUri: String): String? = reads[documentUri]
 
         override suspend fun writeText(documentUri: String, text: String) {
+            writeFailure?.let { throw it }
             writes[documentUri] = text
         }
     }

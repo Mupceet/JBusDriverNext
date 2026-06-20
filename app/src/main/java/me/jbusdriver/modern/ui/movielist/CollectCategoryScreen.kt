@@ -90,40 +90,45 @@ fun CollectCategoryScreen(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        actionVm.exportCollectionsToDocument(
-            documentUri = uri.toString(),
-            onDone = {
-                Toast.makeText(context, exportSuccessMessage, Toast.LENGTH_SHORT).show()
-            },
-            onError = { e ->
-                Toast.makeText(
-                    context,
-                    resources.getString(R.string.export_failed_detail, e.message.orEmpty()),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        )
+        actionVm.exportCollectionsToDocument(uri.toString())
     }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        actionVm.importCollectionsFromDocument(
-            documentUri = uri.toString(),
-            onDone = {
-                movieVm.loadCollection(MovieDBType)
-                actressVm.loadCollection(ActressDBType)
-            },
-            onError = { e ->
-                val message = if (e is IllegalStateException) {
-                    cannotReadFileMessage
-                } else {
-                    resources.getString(R.string.import_failed_detail, e.message.orEmpty())
+        actionVm.importCollectionsFromDocument(uri.toString())
+    }
+
+    // VM 只发事件，UI 在主线程 collect 后处理（Toast / 刷新列表），避免回调时序与线程问题
+    LaunchedEffect(Unit) {
+        actionVm.events.collect { event ->
+            when (event) {
+                CollectActionEvent.ExportSuccess ->
+                    Toast.makeText(context, exportSuccessMessage, Toast.LENGTH_SHORT).show()
+
+                is CollectActionEvent.ImportSuccess -> {
+                    movieVm.loadCollection(MovieDBType)
+                    actressVm.loadCollection(ActressDBType)
                 }
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+
+                is CollectActionEvent.ActionFailed -> {
+                    val message = when {
+                        event.isImport && event.throwable is IllegalStateException -> cannotReadFileMessage
+                        event.isImport -> resources.getString(
+                            R.string.import_failed_detail,
+                            event.throwable.message.orEmpty()
+                        )
+
+                        else -> resources.getString(
+                            R.string.export_failed_detail,
+                            event.throwable.message.orEmpty()
+                        )
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
             }
-        )
+        }
     }
 
     Column(modifier = modifier.fillMaxSize()) {

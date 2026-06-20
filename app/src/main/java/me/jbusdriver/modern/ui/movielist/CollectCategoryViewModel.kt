@@ -5,19 +5,28 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
+import me.jbusdriver.modern.data.repository.CollectRepository
 import javax.inject.Inject
 
-data class CollectionImportResult(val imported: Int, val skipped: Int)
+/**
+ * 收藏导入/导出的动作结果事件。
+ *
+ * ViewModel 只负责发事件（在任意协程上），UI 在主线程 collect 后处理 Toast / 刷新列表，
+ * 避免 ViewModel 关心 UI 线程或回调时序。
+ */
+sealed interface CollectActionEvent {
+    data object ExportSuccess : CollectActionEvent
+    data class ImportSuccess(val imported: Int, val skipped: Int) : CollectActionEvent
+    data class ActionFailed(val throwable: Throwable, val isImport: Boolean) : CollectActionEvent
+}
 
 @HiltViewModel
 class CollectCategoryViewModel @Inject constructor(
@@ -37,50 +46,36 @@ class CollectCategoryViewModel @Inject constructor(
     private val _isBusy = MutableStateFlow(false)
     val isBusy: StateFlow<Boolean> = _isBusy.asStateFlow()
 
-    private val _importResult = MutableSharedFlow<CollectionImportResult>()
-    val importResult: SharedFlow<CollectionImportResult> = _importResult.asSharedFlow()
+    private val _events = Channel<CollectActionEvent>(Channel.BUFFERED)
+    val events: Flow<CollectActionEvent> = _events.receiveAsFlow()
 
-    fun exportCollectionsToDocument(
-        documentUri: String,
-        onDone: () -> Unit,
-        onError: (Throwable) -> Unit
-    ) {
+    fun exportCollectionsToDocument(documentUri: String) {
         viewModelScope.launch(ioDispatcher) {
             _isBusy.value = true
-            val result = runCatching {
+            runCatching {
                 documentGateway.writeText(documentUri, repository.exportCollectionsJson())
+            }.onSuccess {
+                _events.send(CollectActionEvent.ExportSuccess)
+            }.onFailure { e ->
+                _events.send(CollectActionEvent.ActionFailed(e, isImport = false))
             }
             _isBusy.value = false
-            // 回调（UI 层弹 Toast）必须在主线程执行；IO 线程上调 Toast.makeText 会抛
-            // "Can't toast on a thread that has not called Looper.prepare()"
-            withContext(Dispatchers.Main) {
-                result.onSuccess { onDone() }.onFailure(onError)
-            }
         }
     }
 
-    fun importCollectionsFromDocument(
-        documentUri: String,
-        onDone: () -> Unit,
-        onError: (Throwable) -> Unit
-    ) {
+    fun importCollectionsFromDocument(documentUri: String) {
         viewModelScope.launch(ioDispatcher) {
             _isBusy.value = true
-            val result = runCatching {
+            runCatching {
                 val json = documentGateway.readText(documentUri)
                     ?: throw IllegalStateException("Unable to read selected document")
                 repository.importCollectionsFromJson(json)
+            }.onSuccess { result ->
+                _events.send(CollectActionEvent.ImportSuccess(result.first, result.second))
+            }.onFailure { e ->
+                _events.send(CollectActionEvent.ActionFailed(e, isImport = true))
             }
             _isBusy.value = false
-            withContext(Dispatchers.Main) {
-                result
-                    .onSuccess { pair ->
-                        _importResult.emit(CollectionImportResult(pair.first, pair.second))
-                        onDone()
-                    }
-                    .onFailure(onError)
-            }
         }
     }
-
 }
