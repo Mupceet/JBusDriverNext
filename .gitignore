@@ -15,6 +15,11 @@ local.properties
 # Claude Code (user-specific settings)
 .claude/
 
+# AI/tool scratch files
+.kotlin/
+.mimocode/
+.superpowers/
+
 # Local worktrees
 .worktrees/
 
