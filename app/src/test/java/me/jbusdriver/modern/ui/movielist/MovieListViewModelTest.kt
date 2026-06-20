@@ -222,6 +222,57 @@ class MovieListViewModelTest {
     }
 
     @Test
+    fun refresh_emptyContentUsesInitialLoadingState() = runTest(testDispatcher) {
+        val response = CompletableDeferred<MoviePageResult>()
+        val repository = object : MovieRepository {
+            override fun observePage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean,
+                revalidate: Boolean,
+                nowMillis: () -> Long
+            ): Flow<CachedLoadEvent<MoviePageResult>> = flow {
+                emit(CachedLoadEvent.Fresh(CacheEntry(response.await(), 1L, CacheSource.Network, false)))
+            }
+
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+                null
+        }
+        viewModel = MovieListViewModel(repository)
+
+        viewModel.refresh()
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+        assertNull(viewModel.uiState.value.error)
+
+        response.complete(MoviePageResult(PageInfo(), emptyList()))
+        advanceUntilIdle()
+    }
+
+    @Test
     fun loadMore_doesNotLoadWhenNoMorePages() = runTest(testDispatcher) {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 1, listOf(1)), testMovies)

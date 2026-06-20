@@ -330,12 +330,21 @@ class LinkMovieListViewModel @AssistedInject constructor(
      * 如果当前为女优类型，同时刷新女优详情。
      */
     fun refresh() {
-        if (_uiState.value.isRefreshing || linkUrl.isBlank()) return
+        val state = _uiState.value
+        if (state.isRefreshing || state.isLoading || linkUrl.isBlank()) return
+        val useInitialLoading = state.movies.isEmpty()
         pages.startFirstPage()
         val identity = currentListIdentity()
         val generation = beginListRequest(identity)
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = useInitialLoading,
+                    isRefreshing = !useInitialLoading,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             repository.observePageByUrl(
                 identity.linkUrl,
                 1,
@@ -352,6 +361,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                                 it.copy(
                                     movies = event.entry.value.movies.map { m -> m.toUiModel() },
                                     pageInfo = event.entry.value.pageInfo,
+                                    isLoading = false,
                                     isRefreshing = false,
                                     hasMore = event.entry.value.pageInfo.hasNext,
                                     filterInfo = event.entry.value.filterInfo
@@ -362,6 +372,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(
+                                    isLoading = false,
                                     isRefreshing = false,
                                     error = if (it.movies.isEmpty()) R.string.load_failed else it.error,
                                     refreshMessage = if (it.movies.isNotEmpty()) R.string.refresh_failed else null

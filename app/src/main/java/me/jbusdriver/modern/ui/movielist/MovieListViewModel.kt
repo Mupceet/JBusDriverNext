@@ -365,12 +365,21 @@ class MovieListViewModel @Inject constructor(
      * 强制从网络重新获取第一页数据，忽略缓存。
      */
     fun refresh() {
-        if (_uiState.value.isRefreshing) return
+        val state = _uiState.value
+        if (state.isRefreshing || state.isLoading) return
+        val useInitialLoading = state.movies.isEmpty()
         pages.startFirstPage()
         val identity = currentListIdentity()
         val generation = beginListRequest(identity)
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = useInitialLoading,
+                    isRefreshing = !useInitialLoading,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             val source = pageSource
             val flow = source.observeFirstPage(
                 showAll = identity.showAll,
@@ -386,6 +395,7 @@ class MovieListViewModel @Inject constructor(
                             it.copy(
                                 movies = event.entry.value.movies.map { m -> m.toUiModel() },
                                 pageInfo = event.entry.value.pageInfo,
+                                isLoading = false,
                                 isRefreshing = false,
                                 hasMore = event.entry.value.pageInfo.hasNext,
                                 filterInfo = event.entry.value.filterInfo
@@ -396,6 +406,7 @@ class MovieListViewModel @Inject constructor(
                     is CachedLoadEvent.Failure -> {
                         _uiState.update {
                             it.copy(
+                                isLoading = false,
                                 isRefreshing = false,
                                 error = if (it.movies.isEmpty()) R.string.load_failed else it.error,
                                 refreshMessage = if (it.movies.isNotEmpty()) R.string.refresh_failed else null

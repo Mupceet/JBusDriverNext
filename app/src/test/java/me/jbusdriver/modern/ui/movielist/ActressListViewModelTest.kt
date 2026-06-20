@@ -134,6 +134,55 @@ class ActressListViewModelTest {
     }
 
     @Test
+    fun refresh_emptyContentUsesInitialLoadingState() = runTest(testDispatcher) {
+        val response = CompletableDeferred<Pair<List<ActressInfo>, PageInfo>>()
+        val repository = object : MovieRepository {
+            override fun observeActresses(
+                type: DataSourceType,
+                page: Int,
+                forceRefresh: Boolean,
+                revalidate: Boolean,
+                nowMillis: () -> Long
+            ): Flow<CachedLoadEvent<Pair<List<ActressInfo>, PageInfo>>> = flow {
+                emit(CachedLoadEvent.Fresh(CacheEntry(response.await(), 1L, CacheSource.Network, false)))
+            }
+
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+                null
+        }
+        val viewModel = ActressListViewModel(repository)
+
+        viewModel.refresh()
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
+        response.complete(emptyList<ActressInfo>() to PageInfo())
+        advanceUntilIdle()
+    }
+
+    @Test
     fun loadMore_appendsNextPage() = runTest(testDispatcher) {
         val repository = fullFakeRepo { _, page ->
             val actresses = listOf(ActressInfo("Page $page", "http://avatar$page.jpg", "http://link$page"))

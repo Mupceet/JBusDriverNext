@@ -3,6 +3,8 @@ package me.jbusdriver.modern.ui.movielist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -11,6 +13,9 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.cache.CacheEntry
+import me.jbusdriver.modern.core.cache.CacheSource
+import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
@@ -146,6 +151,65 @@ class LinkMovieListViewModelTest {
         assertEquals(2, callCount)
 
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun refresh_emptyContentUsesInitialLoadingState() = runTest(testDispatcher) {
+        val response = CompletableDeferred<MoviePageResult>()
+        var calls = 0
+        val repository = object : MovieRepository {
+            override fun observePageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean,
+                revalidate: Boolean,
+                nowMillis: () -> Long
+            ): Flow<CachedLoadEvent<MoviePageResult>> = flow {
+                calls += 1
+                if (calls == 1) {
+                    emit(CachedLoadEvent.Failure(RuntimeException("first load failed"), hadCachedValue = false))
+                } else {
+                    emit(CachedLoadEvent.Fresh(CacheEntry(response.await(), 1L, CacheSource.Network, false)))
+                }
+            }
+
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+                null
+        }
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        viewModel.setLink("http://example.com/star/abc")
+        advanceUntilIdle()
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
+
+        viewModel.refresh()
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
+        response.complete(MoviePageResult(PageInfo(), emptyList()))
+        advanceUntilIdle()
     }
 
     @Test

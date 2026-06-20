@@ -28,6 +28,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -131,6 +132,54 @@ class GenreListViewModelTest {
 
         assertEquals(2, callCount)
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun refresh_emptyContentUsesInitialLoadingState() = runTest(testDispatcher) {
+        val response = CompletableDeferred<List<GenreGroup>>()
+        val repository = object : MovieRepository {
+            override fun observeGenreCategories(
+                type: DataSourceType,
+                forceRefresh: Boolean,
+                revalidate: Boolean,
+                nowMillis: () -> Long
+            ): Flow<CachedLoadEvent<List<GenreGroup>>> = flow {
+                emit(CachedLoadEvent.Fresh(CacheEntry(response.await(), 1L, CacheSource.Network, false)))
+            }
+
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+                null
+        }
+        val viewModel = GenreListViewModel(repository)
+
+        viewModel.refresh()
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
+        response.complete(emptyList())
+        advanceUntilIdle()
     }
 
     @Test

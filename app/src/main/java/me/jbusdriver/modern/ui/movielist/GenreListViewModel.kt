@@ -173,11 +173,20 @@ class GenreListViewModel @Inject constructor(
      * 强制从网络重新获取分类数据，忽略缓存。如果正在刷新中则跳过。
      */
     fun refresh() {
-        if (_uiState.value.isRefreshing) return
+        val state = _uiState.value
+        if (state.isRefreshing || state.isLoading) return
+        val useInitialLoading = state.genreCategories.isEmpty()
         val type = dataSourceType
         val generation = beginRequest(type)
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = useInitialLoading,
+                    isRefreshing = !useInitialLoading,
+                    error = null,
+                    refreshMessage = null
+                )
+            }
             repository.observeGenreCategories(
                 type,
                 forceRefresh = true,
@@ -192,6 +201,7 @@ class GenreListViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     genreCategories = categories,
+                                    isLoading = false,
                                     isRefreshing = false
                                 )
                             }
@@ -200,6 +210,7 @@ class GenreListViewModel @Inject constructor(
                         is CachedLoadEvent.Failure -> {
                             _uiState.update {
                                 it.copy(
+                                    isLoading = false,
                                     isRefreshing = false,
                                     error = if (it.genreCategories.isEmpty()) R.string.load_failed else it.error,
                                     refreshMessage = if (it.genreCategories.isNotEmpty()) R.string.refresh_failed else null
