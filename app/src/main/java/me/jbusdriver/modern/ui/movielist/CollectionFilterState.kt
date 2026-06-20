@@ -38,6 +38,7 @@ data class CollectionFilterState(
     val publishYear: Int? = null,
     val publishMonth: Int? = null,
     val collectYear: Int? = null,
+    val collectMonth: Int? = null,
     val sortOption: SortOption = SortOption.COLLECT_DESC
 ) {
     /** 是否有非默认的筛选条件（排序不算） */
@@ -46,6 +47,7 @@ data class CollectionFilterState(
                 || publishYear != null
                 || publishMonth != null
                 || collectYear != null
+                || collectMonth != null
 
     /** 激活的筛选条件数量（用于筛选按钮上的 badge） */
     val activeFilterCount: Int
@@ -53,7 +55,8 @@ data class CollectionFilterState(
             censorFilter != CensorFilter.ALL,
             publishYear != null,
             publishMonth != null,
-            collectYear != null
+            collectYear != null,
+            collectMonth != null
         ).count { it }
 }
 
