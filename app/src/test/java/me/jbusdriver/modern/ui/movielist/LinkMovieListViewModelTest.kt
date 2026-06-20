@@ -16,6 +16,8 @@ import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.ActressCategory
+import me.jbusdriver.modern.domain.model.UncensoredActressCategory
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.Movie
@@ -423,4 +425,95 @@ class LinkMovieListViewModelTest {
         assertFalse(viewModel.uiState.value.isRevalidating)
         assertNull(viewModel.uiState.value.pendingFreshResult)
     }
+
+    @Test
+    fun toggleActressCollect_uncensoredLink_passesUncensoredCategoryId() = runTest(testDispatcher) {
+        val recordingRepo = RecordingCollectRepository()
+        val repository = repoWithActressDetail()
+        val viewModel =
+            LinkMovieListViewModel(repository, recordingRepo, testNavKey)
+
+        viewModel.setLink("https://example.test/uncensored/star/alice", type = "actress")
+        advanceUntilIdle()
+        // detail 必须已加载，否则 toggleActressCollect 直接 return
+        assertTrue(viewModel.uiState.value.actressHeader.detail != null)
+
+        viewModel.toggleActressCollect()
+        advanceUntilIdle()
+
+        assertEquals(UncensoredActressCategory.id, recordingRepo.lastActressCategoryId)
+    }
+
+    @Test
+    fun toggleActressCollect_censoredLink_passesDefaultCategoryId() = runTest(testDispatcher) {
+        val recordingRepo = RecordingCollectRepository()
+        val repository = repoWithActressDetail()
+        val viewModel =
+            LinkMovieListViewModel(repository, recordingRepo, testNavKey)
+
+        viewModel.setLink("https://example.test/star/alice", type = "actress")
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.actressHeader.detail != null)
+
+        viewModel.toggleActressCollect()
+        advanceUntilIdle()
+
+        assertEquals(ActressCategory.id, recordingRepo.lastActressCategoryId)
+    }
+
+    /** 返回一个 loadActressDetail 返回非空 ActressDetail 的 MovieRepository，用于让 actressHeader.detail 就绪。 */
+    private fun repoWithActressDetail(): MovieRepository = object : MovieRepository {
+        override suspend fun loadPage(
+            type: DataSourceType,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) = MoviePageResult(PageInfo(), emptyList())
+
+        override suspend fun loadActresses(
+            type: DataSourceType,
+            page: Int,
+            forceRefresh: Boolean
+        ) = emptyList<ActressInfo>() to PageInfo()
+
+        override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+            emptyList<GenreGroup>()
+
+        override suspend fun loadPageByUrl(
+            url: String,
+            page: Int,
+            showAll: Boolean,
+            forceRefresh: Boolean
+        ) = MoviePageResult(PageInfo(1, 1, emptyList()), testMovies)
+
+        override suspend fun loadActressDetail(
+            url: String,
+            forceRefresh: Boolean
+        ): ActressDetail? = ActressDetail(
+            name = "Alice",
+            avatar = "http://img.jpg/avatar",
+            info = emptyList()
+        )
+    }
+}
+
+/** 记录最后一次 toggleActressCollect 调用的 categoryId，用于断言 URL 判定逻辑。 */
+private class RecordingCollectRepository : CollectRepository {
+    var lastActressCategoryId: Int? = null
+
+    override suspend fun isCollected(linkItem: LinkItem) = false
+    override suspend fun addCollect(linkItem: LinkItem) = true
+    override suspend fun removeCollect(linkItem: LinkItem) = true
+    override suspend fun isMovieCollected(movie: Movie) = false
+    override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+    override suspend fun isActressCollected(actress: ActressInfo) = false
+    override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?): Boolean {
+        lastActressCategoryId = categoryId
+        return true
+    }
+    override suspend fun getCollectedMovies() = emptyList<Movie>()
+    override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+    override suspend fun getCollectedLinkItems(dbType: Int) = emptyList<LinkItem>()
+    override suspend fun exportCollectionsJson() = "{}"
+    override suspend fun importCollectionsFromJson(json: String) = 0 to 0
 }

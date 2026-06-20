@@ -21,10 +21,12 @@ import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
+import me.jbusdriver.modern.domain.model.ActressCategory
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.UncensoredActressCategory
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.RouteLinkMovies
@@ -418,16 +420,24 @@ class LinkMovieListViewModel @AssistedInject constructor(
      * 切换当前女优的收藏状态。
      *
      * 如果已收藏则取消收藏，反之则添加收藏。仅在女优详情已加载时生效。
+     * 根据当前 [linkUrl] 是否包含 `/uncensored/` 判定有码/无码，并传入对应的收藏分类 ID：
+     * 无码（含 `/uncensored/`）→ [UncensoredActressCategory]；否则 → [ActressCategory]。
      */
     fun toggleActressCollect() {
         val actressDetail = _uiState.value.actressHeader.detail ?: return
         viewModelScope.launch {
+            val isUncensored = linkUrl.contains("/uncensored/")
+            val categoryId = if (isUncensored) {
+                UncensoredActressCategory.id
+            } else {
+                ActressCategory.id
+            }
             val actress = ActressInfo(
                 name = actressDetail.name,
                 avatar = actressDetail.avatar,
                 link = linkUrl
             )
-            val newState = collectRepository.toggleActressCollect(actress)
+            val newState = collectRepository.toggleActressCollect(actress, categoryId)
             _uiState.update {
                 it.copy(actressHeader = it.actressHeader.withCollected(newState))
             }
