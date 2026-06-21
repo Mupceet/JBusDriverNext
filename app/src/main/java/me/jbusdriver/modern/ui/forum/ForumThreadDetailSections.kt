@@ -350,6 +350,7 @@ internal fun FloorCommentsBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val listState = rememberLazyListState()
+    var lastAutoLoadAnchor by remember(sheet.pid) { mutableStateOf<String?>(null) }
     val nearEnd by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -358,8 +359,21 @@ internal fun FloorCommentsBottomSheet(
         }
     }
 
-    LaunchedEffect(nearEnd, sheet.pageInfo.nextPage, sheet.isLoadingMore) {
-        if (nearEnd && sheet.pageInfo.hasNext && !sheet.isLoadingMore) {
+    LaunchedEffect(
+        nearEnd,
+        sheet.pageInfo.nextPage,
+        sheet.isLoadingMore,
+        listState.firstVisibleItemIndex,
+        listState.firstVisibleItemScrollOffset
+    ) {
+        val anchor = "${listState.firstVisibleItemIndex}:${listState.firstVisibleItemScrollOffset}"
+        if (
+            nearEnd &&
+            sheet.pageInfo.hasNext &&
+            !sheet.isLoadingMore &&
+            lastAutoLoadAnchor != anchor
+        ) {
+            lastAutoLoadAnchor = anchor
             onLoadMore()
         }
     }
@@ -422,7 +436,9 @@ private fun FloorCommentsSheetContent(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
-        itemsIndexed(sheet.comments, key = { index, _ -> "comment_$index" }) { _, comment ->
+        itemsIndexed(sheet.comments, key = { _, comment ->
+            "comment_${comment.author}_${comment.authorAvatar}_${comment.time}_${comment.content.hashCode()}"
+        }) { _, comment ->
             ForumCommentRow(comment = comment)
         }
         item(key = "footer") {
