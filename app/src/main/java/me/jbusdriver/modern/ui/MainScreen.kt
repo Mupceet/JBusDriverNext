@@ -70,11 +70,23 @@ fun MainScreen(
     val isGrid = uiPrefsUiState.isGrid
     val toggleGrid: () -> Unit = uiPrefsViewModel::toggleGrid
 
-    // Auto-switch away from any hidden tab
-    LaunchedEffect(showMovieTab, showActressTab, showForumTab) {
-        if (!showForumTab && selectedCategory == BottomNavCategory.FORUM) selectedCategory = BottomNavCategory.MOVIE
-        if (!showMovieTab && selectedCategory == BottomNavCategory.MOVIE) selectedCategory = BottomNavCategory.ACTRESS
-        if (!showActressTab && selectedCategory == BottomNavCategory.ACTRESS) selectedCategory = BottomNavCategory.MOVIE
+    // If the selected tab is hidden (disabled in settings, or cold start before
+    // settings load), fall back to the first visible tab.
+    LaunchedEffect(showMovieTab, showActressTab, showForumTab, selectedCategory) {
+        val isSelectedVisible = when (selectedCategory) {
+            BottomNavCategory.MOVIE -> showMovieTab
+            BottomNavCategory.ACTRESS -> showActressTab
+            BottomNavCategory.FORUM -> showForumTab
+            BottomNavCategory.COLLECT -> true
+        }
+        if (!isSelectedVisible) {
+            selectedCategory = when {
+                showMovieTab -> BottomNavCategory.MOVIE
+                showActressTab -> BottomNavCategory.ACTRESS
+                showForumTab -> BottomNavCategory.FORUM
+                else -> BottomNavCategory.COLLECT
+            }
+        }
     }
 
     // Preload forum data when enabled
