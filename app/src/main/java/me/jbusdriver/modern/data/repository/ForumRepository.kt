@@ -55,7 +55,7 @@ interface ForumRepository {
         pid: Int,
         page: Int,
         forceRefresh: Boolean = false
-    ): ForumCommentPageResult = error("not used")
+    ): ForumCommentPageResult
 
     fun observeForumBoards(
         forceRefresh: Boolean = false,

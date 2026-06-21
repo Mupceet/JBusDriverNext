@@ -18,6 +18,7 @@ import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
+import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
@@ -90,6 +91,13 @@ class ForumCacheRefreshViewModelTest {
             floorOrder: ForumFloorOrder,
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
+
+        override suspend fun loadFloorComments(
+            tid: Int,
+            pid: Int,
+            page: Int,
+            forceRefresh: Boolean
+        ): ForumCommentPageResult = error("not used")
 
     }
 
@@ -289,6 +297,13 @@ class ForumCacheRefreshViewModelTest {
             floorOrder: ForumFloorOrder,
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
+
+        override suspend fun loadFloorComments(
+            tid: Int,
+            pid: Int,
+            page: Int,
+            forceRefresh: Boolean
+        ): ForumCommentPageResult = error("not used")
 
     }
 
