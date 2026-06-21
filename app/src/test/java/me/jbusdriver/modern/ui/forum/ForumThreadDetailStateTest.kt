@@ -77,6 +77,23 @@ class ForumThreadDetailStateTest {
     }
 
     @Test
+    fun `view count change alone away from top is not treated as new data`() {
+        val current = detail("Title", replies = listOf(reply(1))).copy(viewCount = 1_000)
+        val fresh = detail("Title", replies = listOf(reply(1))).copy(viewCount = 5_000)
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertSame(current, reduction.state.detail)
+        assertNull(reduction.state.pendingFreshDetail)
+        assertFalse(reduction.state.isRevalidating)
+    }
+
+    @Test
     fun `load detail failure without cache shows initial error`() {
         val state = ForumThreadDetailUiState(isLoading = true)
 

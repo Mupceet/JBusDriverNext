@@ -109,10 +109,16 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
     }
 }
 
+/**
+ * 判定帖子详情是否"有新数据"。
+ *
+ * 注意：浏览数（[ForumThreadDetail.viewCount]）刷新频繁且对用户无实质意义，
+ * 故不参与判定——只有标题/回复数/类型/正文/回复楼层的变化才视为有新数据，
+ * 避免仅因浏览数小幅变动就误报"有新数据"。
+ */
 private fun ForumThreadDetailUiState.hasDetailChanged(fresh: ForumThreadDetail): Boolean {
     val oldDetail = detail ?: return true
     val headerChanged = oldDetail.title != fresh.title ||
-            oldDetail.viewCount != fresh.viewCount ||
             oldDetail.replyCount != fresh.replyCount ||
             oldDetail.typeName != fresh.typeName ||
             oldDetail.contentBlocks != fresh.contentBlocks
