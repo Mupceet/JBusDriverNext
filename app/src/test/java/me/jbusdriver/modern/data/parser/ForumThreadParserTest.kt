@@ -99,6 +99,61 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `thread detail first post comments read ajax next page from encoded onclick`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <h1 class="ts"><span id="thread_subject">Thread title</span></h1>
+                  <div id="post_4773811" class="nthread_postbox nthread_firstpostbox">
+                    <table><tbody><tr><td class="t_f" id="postmessage_4773811">First post body</td></tr></tbody></table>
+                    <div id="comment_4773811" class="cm">
+                      <div class="pstl xs1 cl">
+                        <div class="psta vm">
+                          <a href="home.php?mod=space&amp;uid=60700"><img src="/avatars/00.jpg"></a>
+                          <a href="home.php?mod=space&amp;uid=60700" class="xi2 xw1">Alice</a>
+                        </div>
+                        <div class="psti">first page comment&nbsp;<span class="xg1">發表於 2026-6-8 09:00</span></div>
+                      </div>
+                      <div class="pgs mbm mtn cl"><div class="pg">
+                        <a href="javascript:;" class="nxt" onclick="ajaxget(&#39;forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=2&#39;, &#39;comment_4773811&#39;)">下一頁</a>
+                      </div></div>
+                    </div>
+                    <div id="post_rate_div_4773811"></div>
+                  </div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertEquals(4773811, detail.pid)
+        assertEquals(listOf("first page comment"), detail.comments.map { it.content })
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), detail.commentPageInfo)
+    }
+
+    @Test
+    fun `comment page info reads commentmore ajax link without next class`() {
+        val doc = commentMoreDocument(
+            """
+            <div id="comment_4773811" class="cm">
+              <div class="pstl">
+                <div class="psta"><img src="/avatars/f.jpg"></div>
+                <div class="psti"><a href="home.php?mod=space&amp;uid=6" class="xi2 xw1">Frank</a>&nbsp;page one comment&nbsp;<span class="xg1">發表於 2026-6-10 10:00</span></div>
+              </div>
+              <div class="pgs mbm cl"><div class="pg">
+                <a href="javascript:;" onclick="ajaxget(&#39;forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=2&#39;, &#39;comment_4773811&#39;)">下一頁</a>
+              </div></div>
+            </div>
+            """.trimIndent()
+        )
+
+        val result = parseForumFloorComments(doc, "https://www.javbus.com", pid = 4773811)
+
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), result.pageInfo)
+    }
+
+    @Test
     fun `thread reply pagination ignores floor comment pagination links`() {
         val doc = Jsoup.parse(
             """

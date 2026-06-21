@@ -300,16 +300,18 @@ private fun parseForumCommentPageInfo(root: Element?): PageInfo {
     if (root == null) return PageInfo(activePage = 1, nextPage = 1)
     val pager = root.select(".pg").lastOrNull() ?: return PageInfo(activePage = 1, nextPage = 1)
     val activePage = pager.selectFirst("strong")?.text()?.toIntOrNull() ?: 1
-    val nextPage = pager.select("a.nxt")
-        .firstOrNull { link ->
+    val nextPage = pager.select("a")
+        .asSequence()
+        .filter { link ->
             link.attr("href").contains("action=commentmore") ||
                     link.attr("onclick").contains("action=commentmore")
         }
-        ?.let { link ->
+        .mapNotNull { link ->
             link.attr("href").takeIf { it.contains("action=commentmore") }
                 ?: link.attr("onclick")
         }
-        ?.let { PAGE_PARAM.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+        .mapNotNull { PAGE_PARAM.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+        .firstOrNull { it > activePage }
         ?: activePage
     return PageInfo(activePage = activePage, nextPage = nextPage)
 }
