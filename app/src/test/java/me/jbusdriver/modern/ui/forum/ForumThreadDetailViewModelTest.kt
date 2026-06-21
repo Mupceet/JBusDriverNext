@@ -22,6 +22,7 @@ import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
 import me.jbusdriver.modern.data.session.LoadedGifTracker
+import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
@@ -120,6 +121,13 @@ class ForumThreadDetailViewModelTest {
             floorOrder: ForumFloorOrder,
             forceRefresh: Boolean
         ): ForumThreadDetail = detail("Page $page", floorOrder, page)
+
+        override suspend fun loadFloorComments(
+            tid: Int,
+            pid: Int,
+            page: Int,
+            forceRefresh: Boolean
+        ): ForumCommentPageResult = error("not used")
 
         override fun observeForumBoards(
             forceRefresh: Boolean,

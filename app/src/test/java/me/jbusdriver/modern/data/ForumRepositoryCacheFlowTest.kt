@@ -11,6 +11,7 @@ import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.writeCached
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.domain.model.PageInfo
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.Assert.assertEquals
@@ -278,6 +279,38 @@ class ForumRepositoryCacheFlowTest {
     }
 
     @Test
+    fun `loadFloorComments builds commentmore url and returns parsed comments`() = runBlocking {
+        val sessionClient = FakeSessionClient(commentMoreHtml(page = 2, nextPage = 3))
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        val result = repository.loadFloorComments(tid = 172059, pid = 4773811, page = 2)
+
+        assertEquals(4773811, result.pid)
+        assertEquals("Frank", result.comments.single().author)
+        assertEquals(PageInfo(activePage = 2, nextPage = 3), result.pageInfo)
+        assertEquals(1, sessionClient.urls.size)
+        assertTrue(sessionClient.urls.single().contains("mod=misc&action=commentmore"))
+        assertTrue(sessionClient.urls.single().contains("tid=172059"))
+        assertTrue(sessionClient.urls.single().contains("pid=4773811"))
+        assertTrue(sessionClient.urls.single().contains("page=2"))
+    }
+
+    @Test
+    fun `loadFloorComments caches by tid pid and page`() = runBlocking {
+        val cacheStore = FakeCacheStore()
+        val sessionClient = FakeSessionClient(commentMoreHtml(page = 2, nextPage = 2))
+        val repository = repository(cacheStore, sessionClient)
+
+        repository.loadFloorComments(tid = 172059, pid = 4773811, page = 2)
+        repository.loadFloorComments(tid = 172059, pid = 4773811, page = 2)
+
+        assertEquals(1, sessionClient.fetchCount)
+        assertTrue(cacheStore.memory.keys.any { key ->
+            key == "forum:https://example.test:floor-comments:v1:172059:4773811:2"
+        })
+    }
+
+    @Test
     fun `first successful forum fetch persists cookies`() = runBlocking {
         val persister = FakeCookiePersister()
         val sessionClient = FakeSessionClient(successHomeHtml("Board"))
@@ -438,4 +471,28 @@ class ForumRepositoryCacheFlowTest {
           </body>
         </html>
     """.trimIndent()
+
+    private fun commentMoreHtml(page: Int, nextPage: Int): String {
+        val nextLink = if (nextPage > page) {
+            """<a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=$nextPage" class="nxt">涓嬩竴闋?/a>"""
+        } else {
+            ""
+        }
+        return """
+            <html>
+              <body>
+                <div id="comment_4773811" class="cm">
+                  <div class="pstl">
+                    <div class="psta"><img src="/avatars/f.jpg"></div>
+                    <div class="psti"><a href="home.php?mod=space&amp;uid=6" class="xi2 xw1">Frank</a>&nbsp;page $page comment&nbsp;<span class="xg1">鐧艰〃鏂?2026-6-10 10:00</span></div>
+                  </div>
+                  <div class="pgs mbm cl"><div class="pg">
+                    <strong>$page</strong>
+                    $nextLink
+                  </div></div>
+                </div>
+              </body>
+            </html>
+        """.trimIndent()
+    }
 }

@@ -8,6 +8,7 @@ import me.jbusdriver.modern.core.cache.ForumCacheTtl
 import me.jbusdriver.modern.core.cache.firstCachedOrFresh
 import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.parser.parseForumFloorComments
 import me.jbusdriver.modern.data.parser.parseForumHomeData
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
 import me.jbusdriver.modern.data.parser.parseForumThreads
@@ -15,6 +16,7 @@ import me.jbusdriver.modern.data.session.ForumCookiePersister
 import me.jbusdriver.modern.data.session.ForumSessionClient
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
+import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
@@ -47,6 +49,13 @@ interface ForumRepository {
         floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
         forceRefresh: Boolean = false
     ): ForumThreadDetail
+
+    suspend fun loadFloorComments(
+        tid: Int,
+        pid: Int,
+        page: Int,
+        forceRefresh: Boolean = false
+    ): ForumCommentPageResult = error("not used")
 
     fun observeForumBoards(
         forceRefresh: Boolean = false,
@@ -200,6 +209,26 @@ class DefaultForumRepository @Inject constructor(
             revalidate = false
         ).firstCachedOrFresh()
 
+    override suspend fun loadFloorComments(
+        tid: Int,
+        pid: Int,
+        page: Int,
+        forceRefresh: Boolean
+    ): ForumCommentPageResult {
+        val url = "${siteConfig.baseUrl}/forum/forum.php?mod=misc&action=commentmore&tid=$tid&pid=$pid&page=$page"
+        forumLogD("[Forum] loadFloorComments: url=$url")
+        return cacheStore.observeCached(
+            key = forumFloorCommentsCacheKey(tid, pid, page),
+            ttlMillis = ForumCacheTtl.THREAD_DETAIL_NEXT_PAGE_MILLIS,
+            disk = true,
+            forceRefresh = forceRefresh,
+            revalidate = false
+        ) {
+            val doc = fetchForumDocument(url)
+            parseForumFloorComments(doc, siteConfig.baseUrl, pid)
+        }.firstCachedOrFresh()
+    }
+
     private fun forumCachePrefix(): String = "forum:${siteConfig.baseUrl}"
 
     private fun forumBoardsCacheKey(): String = "${forumCachePrefix()}:boards"
@@ -209,6 +238,9 @@ class DefaultForumRepository @Inject constructor(
 
     private fun forumDetailCacheKey(tid: Int, page: Int, floorOrder: ForumFloorOrder): String =
         "${forumCachePrefix()}:detail:v2:$tid:$page:${floorOrder.name.lowercase()}"
+
+    private fun forumFloorCommentsCacheKey(tid: Int, pid: Int, page: Int): String =
+        "${forumCachePrefix()}:floor-comments:v1:$tid:$pid:$page"
 
     private fun threadListTtl(page: Int): Long =
         if (page == 1) ForumCacheTtl.THREAD_LIST_FIRST_PAGE_MILLIS
