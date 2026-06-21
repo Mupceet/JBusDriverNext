@@ -76,6 +76,29 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `commentmore fragment parser reads ajax next page from onclick`() {
+        val doc = commentMoreDocument(
+            """
+            <div id="comment_4773811" class="cm">
+              <div class="pstl">
+                <div class="psta"><img src="/avatars/f.jpg"></div>
+                <div class="psti"><a href="home.php?mod=space&amp;uid=6" class="xi2 xw1">Frank</a>&nbsp;page two comment&nbsp;<span class="xg1">閻ц壈銆冮弬?2026-6-10 10:00</span></div>
+              </div>
+              <div class="pgs mbm cl"><div class="pg">
+                <a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=1" class="prev">娑撳﹣绔撮棆?</a>
+                <strong>2</strong>
+                <a href="javascript:;" class="nxt" onclick="ajaxget('forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=3', 'comment_4773811')">娑撳绔撮棆?</a>
+              </div></div>
+            </div>
+            """.trimIndent()
+        )
+
+        val result = parseForumFloorComments(doc, "https://www.javbus.com", pid = 4773811)
+
+        assertEquals(PageInfo(activePage = 2, nextPage = 3), result.pageInfo)
+    }
+
+    @Test
     fun `thread reply pagination ignores floor comment pagination links`() {
         val doc = Jsoup.parse(
             """
@@ -133,6 +156,34 @@ class ForumThreadParserTest {
 
         assertEquals(2, detail.pageInfo.activePage)
         assertEquals(3, detail.pageInfo.nextPage)
+    }
+
+    @Test
+    fun `thread list pagination accepts forumdisplay next links`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <table>
+                    <tbody id="normalthread_42">
+                      <tr><th>
+                        <div class="post_infolist_tit">
+                          <a class="s" href="forum.php?mod=viewthread&amp;tid=42">Thread title</a>
+                        </div>
+                      </th></tr>
+                    </tbody>
+                  </table>
+                  <div class="pgs mtm mbm cl"><div class="pg">
+                    <strong>1</strong>
+                    <a href="forum.php?mod=forumdisplay&amp;fid=4&amp;page=2" class="nxt">娑撳绔撮棆?</a>
+                  </div></div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=forumdisplay&fid=4"
+        )
+
+        val pageInfo = parseForumThreads(doc, "https://www.javbus.com").pageInfo
+
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), pageInfo)
     }
 
     @Test
