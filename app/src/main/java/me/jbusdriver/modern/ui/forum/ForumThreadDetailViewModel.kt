@@ -20,7 +20,11 @@ import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
+import me.jbusdriver.modern.domain.model.Comment
+import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 
 private const val TAG = "ForumVM"
@@ -47,6 +51,18 @@ private fun logReplyDiff(
     )
 }
 
+data class FloorCommentSheetState(
+    val pid: Int,
+    val floor: Int?,
+    val floorLabel: String,
+    val author: String,
+    val contentBlocks: List<ContentBlock>,
+    val comments: List<Comment>,
+    val pageInfo: PageInfo,
+    val isLoadingMore: Boolean = false,
+    val error: Int? = null
+)
+
 data class ForumThreadDetailUiState(
     val detail: ForumThreadDetail? = null,
     val floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
@@ -58,7 +74,8 @@ data class ForumThreadDetailUiState(
     val refreshMessage: Int? = null,
     val error: Int? = null,
     val isLoadingMore: Boolean = false,
-    val isChangingFloorOrder: Boolean = false
+    val isChangingFloorOrder: Boolean = false,
+    val commentSheet: FloorCommentSheetState? = null
 )
 
 private data class DetailRequestIdentity(
@@ -360,6 +377,100 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 if (!isCurrent(generation, identity)) return@launch
                 currentPage = detail.pageInfo.activePage
                 _uiState.update { it.copy(isLoadingMore = false) }
+            }
+        }
+    }
+
+    fun openFirstPostCommentsSheet() {
+        val detail = _uiState.value.detail ?: return
+        if (detail.pid == 0) return
+        _uiState.update {
+            it.copy(
+                commentSheet = FloorCommentSheetState(
+                    pid = detail.pid,
+                    floor = null,
+                    floorLabel = "楼主",
+                    author = detail.author,
+                    contentBlocks = detail.contentBlocks,
+                    comments = detail.comments,
+                    pageInfo = detail.commentPageInfo
+                )
+            )
+        }
+    }
+
+    fun openReplyCommentsSheet(floor: Int) {
+        val reply = _uiState.value.detail?.replies?.firstOrNull { it.floor == floor } ?: return
+        if (reply.pid == 0) return
+        _uiState.update {
+            it.copy(
+                commentSheet = FloorCommentSheetState(
+                    pid = reply.pid,
+                    floor = reply.floor,
+                    floorLabel = "${reply.floor}楼",
+                    author = reply.author,
+                    contentBlocks = reply.contentBlocks,
+                    comments = reply.comments,
+                    pageInfo = reply.commentPageInfo
+                )
+            )
+        }
+    }
+
+    fun dismissCommentsSheet() {
+        _uiState.update { it.copy(commentSheet = null) }
+    }
+
+    fun loadMoreFloorComments() {
+        val sheet = _uiState.value.commentSheet ?: return
+        if (sheet.isLoadingMore || !sheet.pageInfo.hasNext) return
+        val pid = sheet.pid
+        val nextPage = sheet.pageInfo.nextPage
+        viewModelScope.launch {
+            var shouldLoad = false
+            _uiState.update {
+                val current = it.commentSheet ?: return@update it
+                if (current.pid != pid || current.isLoadingMore || !current.pageInfo.hasNext) {
+                    it
+                } else {
+                    shouldLoad = true
+                    it.copy(commentSheet = current.copy(isLoadingMore = true, error = null))
+                }
+            }
+            if (!shouldLoad) return@launch
+
+            try {
+                val result = repository.loadFloorComments(tid, pid, nextPage)
+                _uiState.update {
+                    val current = it.commentSheet ?: return@update it
+                    if (current.pid != pid) {
+                        it
+                    } else {
+                        it.copy(
+                            commentSheet = current.copy(
+                                comments = current.comments + result.comments,
+                                pageInfo = result.pageInfo,
+                                isLoadingMore = false,
+                                error = null
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _uiState.update {
+                    val current = it.commentSheet ?: return@update it
+                    if (current.pid != pid) {
+                        it
+                    } else {
+                        it.copy(
+                            commentSheet = current.copy(
+                                isLoadingMore = false,
+                                error = R.string.load_failed
+                            )
+                        )
+                    }
+                }
             }
         }
     }

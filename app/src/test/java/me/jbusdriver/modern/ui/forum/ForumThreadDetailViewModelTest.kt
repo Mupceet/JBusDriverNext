@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
@@ -22,8 +23,11 @@ import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
 import me.jbusdriver.modern.data.session.LoadedGifTracker
+import me.jbusdriver.modern.domain.model.Comment
+import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
+import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -96,9 +100,98 @@ class ForumThreadDetailViewModelTest {
         )
     }
 
+    @Test
+    fun `openReplyCommentsSheet uses parsed reply comments and content for floor`() = runTest(testDispatcher) {
+        val viewModel = ForumThreadDetailViewModel(
+            repository = FakeForumDetailRepository(CompletableDeferred()),
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42)
+        )
+        advanceUntilIdle()
+
+        viewModel.openReplyCommentsSheet(2)
+
+        val sheet = viewModel.uiState.value.commentSheet
+        assertEquals(4773820, sheet?.pid)
+        assertEquals(2, sheet?.floor)
+        assertEquals("2楼", sheet?.floorLabel)
+        assertEquals("Reply Author", sheet?.author)
+        assertEquals(listOf(replyBlock), sheet?.contentBlocks)
+        assertEquals(listOf(comment("inline reply comment")), sheet?.comments)
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), sheet?.pageInfo)
+    }
+
+    @Test
+    fun `loadMoreFloorComments appends comments and updates pageInfo`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            floorCommentResult = ForumCommentPageResult(
+                pid = 4773820,
+                comments = listOf(comment("page two reply comment")),
+                pageInfo = PageInfo(activePage = 2, nextPage = 3)
+            )
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42)
+        )
+        advanceUntilIdle()
+        viewModel.openReplyCommentsSheet(2)
+
+        viewModel.loadMoreFloorComments()
+        advanceUntilIdle()
+
+        assertEquals(listOf(FloorCommentRequest(tid = 42, pid = 4773820, page = 2)), repository.floorCommentRequests)
+        val sheet = viewModel.uiState.value.commentSheet
+        assertEquals(
+            listOf(comment("inline reply comment"), comment("page two reply comment")),
+            sheet?.comments
+        )
+        assertEquals(PageInfo(activePage = 2, nextPage = 3), sheet?.pageInfo)
+        assertEquals(false, sheet?.isLoadingMore)
+        assertEquals(null, sheet?.error)
+    }
+
+    @Test
+    fun `loadMoreFloorComments failure keeps comments visible and exposes retryable error`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            floorCommentFailure = IllegalStateException("network failed")
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42)
+        )
+        advanceUntilIdle()
+        viewModel.openReplyCommentsSheet(2)
+
+        viewModel.loadMoreFloorComments()
+        advanceUntilIdle()
+
+        val sheet = viewModel.uiState.value.commentSheet
+        assertEquals(listOf(comment("inline reply comment")), sheet?.comments)
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), sheet?.pageInfo)
+        assertEquals(false, sheet?.isLoadingMore)
+        assertEquals(R.string.load_failed, sheet?.error)
+    }
+
     private class FakeForumDetailRepository(
         private val staleRefresh: CompletableDeferred<ForumThreadDetail>
     ) : ForumRepository {
+        var floorCommentResult: ForumCommentPageResult = ForumCommentPageResult(
+            pid = 4773820,
+            comments = listOf(comment("page two reply comment")),
+            pageInfo = PageInfo(activePage = 2, nextPage = 2)
+        )
+        var floorCommentFailure: Throwable? = null
+        val floorCommentRequests = mutableListOf<FloorCommentRequest>()
+
         override fun observeThreadDetail(
             tid: Int,
             page: Int,
@@ -127,7 +220,11 @@ class ForumThreadDetailViewModelTest {
             pid: Int,
             page: Int,
             forceRefresh: Boolean
-        ): ForumCommentPageResult = error("not used")
+        ): ForumCommentPageResult {
+            floorCommentRequests += FloorCommentRequest(tid, pid, page)
+            floorCommentFailure?.let { throw it }
+            return floorCommentResult
+        }
 
         override fun observeForumBoards(
             forceRefresh: Boolean,
@@ -172,6 +269,15 @@ class ForumThreadDetailViewModelTest {
     }
 }
 
+private data class FloorCommentRequest(
+    val tid: Int,
+    val pid: Int,
+    val page: Int
+)
+
+private val firstPostBlock = ContentBlock.RichText(emptyList())
+private val replyBlock = ContentBlock.RichText(emptyList())
+
 private fun detail(
     title: String,
     floorOrder: ForumFloorOrder,
@@ -184,12 +290,35 @@ private fun detail(
     title = title,
     viewCount = 0,
     replyCount = 0,
-    author = "",
+    author = "Original Poster",
     authorUid = 0,
     authorAvatar = "",
     postTime = "",
-    contentBlocks = emptyList(),
-    comments = emptyList(),
-    replies = emptyList(),
-    pageInfo = PageInfo(activePage = page, nextPage = page, referPages = listOf(page))
+    contentBlocks = listOf(firstPostBlock),
+    comments = listOf(comment("inline first post comment")),
+    replies = listOf(
+        ForumReply(
+            floor = 2,
+            author = "Reply Author",
+            authorUid = 0,
+            authorAvatar = "",
+            authorGroup = "",
+            contentBlocks = listOf(replyBlock),
+            postTime = "",
+            pid = 4773820,
+            comments = listOf(comment("inline reply comment")),
+            commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
+        )
+    ),
+    pageInfo = PageInfo(activePage = page, nextPage = page, referPages = listOf(page)),
+    pid = 4773811,
+    commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
 )
+
+private fun comment(content: String): Comment =
+    Comment(
+        author = "Commenter",
+        authorAvatar = "",
+        content = content,
+        time = "2026-6-10"
+    )
