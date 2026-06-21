@@ -101,7 +101,7 @@ class ForumThreadDetailViewModelTest {
     }
 
     @Test
-    fun `openReplyCommentsSheet uses parsed reply comments and content for floor`() = runTest(testDispatcher) {
+    fun `openReplyCommentsSheet uses parsed reply comments and page info for floor`() = runTest(testDispatcher) {
         val viewModel = ForumThreadDetailViewModel(
             repository = FakeForumDetailRepository(CompletableDeferred()),
             forumSettingsReader = FakeForumSettingsReader(),
@@ -115,9 +115,6 @@ class ForumThreadDetailViewModelTest {
 
         val sheet = viewModel.uiState.value.commentSheet
         assertEquals(4773820, sheet?.pid)
-        assertEquals(2, sheet?.floor)
-        assertEquals("Reply Author", sheet?.author)
-        assertEquals(listOf(replyBlock), sheet?.contentBlocks)
         assertEquals(listOf(comment("inline reply comment")), sheet?.comments)
         assertEquals(PageInfo(activePage = 1, nextPage = 2), sheet?.pageInfo)
     }

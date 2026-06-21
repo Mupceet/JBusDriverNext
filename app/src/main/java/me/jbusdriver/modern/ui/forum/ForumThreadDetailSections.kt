@@ -46,6 +46,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -339,11 +341,6 @@ internal fun ReplyItem(
 @Composable
 internal fun FloorCommentsBottomSheet(
     sheet: FloorCommentSheetState,
-    loadedGifUrls: Set<String>,
-    autoLoadGifs: Boolean,
-    onImageClick: (List<String>, Int) -> Unit,
-    onLoadGif: (String) -> Unit,
-    onLoadAllGifs: () -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit
@@ -385,11 +382,6 @@ internal fun FloorCommentsBottomSheet(
         FloorCommentsSheetContent(
             sheet = sheet,
             listState = listState,
-            loadedGifUrls = loadedGifUrls,
-            autoLoadGifs = autoLoadGifs,
-            onImageClick = onImageClick,
-            onLoadGif = onLoadGif,
-            onLoadAllGifs = onLoadAllGifs,
             onRetry = onRetry
         )
     }
@@ -399,38 +391,18 @@ internal fun FloorCommentsBottomSheet(
 private fun FloorCommentsSheetContent(
     sheet: FloorCommentSheetState,
     listState: LazyListState,
-    loadedGifUrls: Set<String>,
-    autoLoadGifs: Boolean,
-    onImageClick: (List<String>, Int) -> Unit,
-    onLoadGif: (String) -> Unit,
-    onLoadAllGifs: () -> Unit,
     onRetry: () -> Unit
 ) {
+    val windowHeight = LocalWindowInfo.current.containerSize.height
+    val maxSheetHeight = with(LocalDensity.current) { (windowHeight * 0.7f).toDp() }
+
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = maxSheetHeight),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp)
     ) {
-        item(key = "header") {
-            val floorLabel = sheet.floor?.let {
-                stringResource(R.string.floor_number_label, it)
-            } ?: stringResource(R.string.owner_floor_label)
-            Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                Text(
-                    "$floorLabel  ${sheet.author}",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-                ForumPostContent(
-                    blocks = sheet.contentBlocks,
-                    onImageClick = onImageClick,
-                    modifier = Modifier.padding(top = 8.dp),
-                    loadedGifUrls = loadedGifUrls,
-                    autoLoadGifs = autoLoadGifs,
-                    onLoadGif = onLoadGif,
-                    onLoadAllGifs = onLoadAllGifs
-                )
-            }
-        }
         item(key = "comments_title") {
             Text(
                 stringResource(R.string.floor_comments),

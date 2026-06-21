@@ -167,11 +167,6 @@ fun ForumThreadDetailScreen(
                         state.commentSheet?.let { sheet ->
                             FloorCommentsBottomSheet(
                                 sheet = sheet,
-                                loadedGifUrls = loadedGifUrls,
-                                autoLoadGifs = autoLoadGifs,
-                                onImageClick = onImageClick,
-                                onLoadGif = { viewModel.onLoadGif(it) },
-                                onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                 onLoadMore = { viewModel.loadMoreFloorComments() },
                                 onRetry = { viewModel.loadMoreFloorComments() },
                                 onDismiss = { viewModel.dismissCommentsSheet() }

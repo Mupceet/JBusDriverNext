@@ -21,7 +21,6 @@ import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.domain.model.Comment
-import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
@@ -53,9 +52,6 @@ private fun logReplyDiff(
 
 data class FloorCommentSheetState(
     val pid: Int,
-    val floor: Int?,
-    val author: String,
-    val contentBlocks: List<ContentBlock>,
     val comments: List<Comment>,
     val pageInfo: PageInfo,
     val isLoadingMore: Boolean = false,
@@ -389,9 +385,6 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             it.copy(
                 commentSheet = FloorCommentSheetState(
                     pid = detail.pid,
-                    floor = null,
-                    author = detail.author,
-                    contentBlocks = detail.contentBlocks,
                     comments = detail.comments,
                     pageInfo = detail.commentPageInfo
                 )
@@ -407,9 +400,6 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             it.copy(
                 commentSheet = FloorCommentSheetState(
                     pid = reply.pid,
-                    floor = reply.floor,
-                    author = reply.author,
-                    contentBlocks = reply.contentBlocks,
                     comments = reply.comments,
                     pageInfo = reply.commentPageInfo
                 )
