@@ -85,11 +85,11 @@ class AppSettingsStore @Inject constructor(
     ): StateFlow<T> = dataStore.data.map { decode(it[key]) }.stateIn(scope, SharingStarted.Eagerly, default)
 
     // region Appearance
-    override val themeMode get() = mapped(KEY_THEME_MODE, ThemeMode.SYSTEM) { ThemeMode.fromPreferenceValue(it) }
-    override val dynamicColor get() = flowOf(KEY_DYNAMIC_COLOR, true)
-    override val showMovieTab get() = flowOf(KEY_SHOW_MOVIE_TAB, true)
-    override val showActressTab get() = flowOf(KEY_SHOW_ACTRESS_TAB, true)
-    override val showForumTab get() = flowOf(KEY_SHOW_FORUM_TAB, false)
+    override val themeMode: StateFlow<ThemeMode> = mapped(KEY_THEME_MODE, ThemeMode.SYSTEM) { ThemeMode.fromPreferenceValue(it) }
+    override val dynamicColor: StateFlow<Boolean> = flowOf(KEY_DYNAMIC_COLOR, true)
+    override val showMovieTab: StateFlow<Boolean> = flowOf(KEY_SHOW_MOVIE_TAB, true)
+    override val showActressTab: StateFlow<Boolean> = flowOf(KEY_SHOW_ACTRESS_TAB, true)
+    override val showForumTab: StateFlow<Boolean> = flowOf(KEY_SHOW_FORUM_TAB, false)
 
     override suspend fun setThemeMode(mode: ThemeMode) = put(KEY_THEME_MODE, mode.preferenceValue)
     override suspend fun setDynamicColor(enabled: Boolean) = put(KEY_DYNAMIC_COLOR, enabled)
@@ -99,8 +99,8 @@ class AppSettingsStore @Inject constructor(
     // endregion
 
     // region Forum
-    override val autoLoadGifs get() = flowOf(KEY_AUTO_LOAD_GIFS, false)
-    override val forumFloorOrder get() = mapped(KEY_FORUM_FLOOR_ORDER, ForumFloorOrder.REGULAR) { ForumFloorOrder.fromPreferenceValue(it) }
+    override val autoLoadGifs: StateFlow<Boolean> = flowOf(KEY_AUTO_LOAD_GIFS, false)
+    override val forumFloorOrder: StateFlow<ForumFloorOrder> = mapped(KEY_FORUM_FLOOR_ORDER, ForumFloorOrder.REGULAR) { ForumFloorOrder.fromPreferenceValue(it) }
     override suspend fun currentForumFloorOrder(): ForumFloorOrder =
         ForumFloorOrder.fromPreferenceValue(dataStore.data.first()[KEY_FORUM_FLOOR_ORDER])
     override suspend fun setAutoLoadGifs(enabled: Boolean) = put(KEY_AUTO_LOAD_GIFS, enabled)
@@ -108,7 +108,7 @@ class AppSettingsStore @Inject constructor(
     // endregion
 
     // region Network
-    override val selectedBaseUrl get() = flowOf(KEY_SELECTED_BASE_URL, DEFAULT_SITE_URL)
+    override val selectedBaseUrl: StateFlow<String> = flowOf(KEY_SELECTED_BASE_URL, DEFAULT_SITE_URL)
     override val cachedMirrorUrls: StateFlow<List<String>> = dataStore.data
         .map { it[KEY_CACHED_MIRROR_URLS]?.toList() ?: PRESET_MIRROR_URLS }
         .stateIn(scope, SharingStarted.Eagerly, PRESET_MIRROR_URLS)
