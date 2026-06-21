@@ -26,8 +26,9 @@ class ForumThreadParserTest {
         assertEquals("Alice", detail.comments[0].author)
         assertEquals("https://www.javbus.com/avatars/a.jpg", detail.comments[0].authorAvatar)
         assertEquals("first comment", detail.comments[0].content)
-        assertEquals("鐧艰〃鏂?2026-6-9 08:59", detail.comments[0].time)
-        assertEquals("2026-6-9 09:00", detail.comments[1].time)
+        assertTrue(detail.comments[0].time.contains("2026-6-9 08:59"))
+        assertFalse(detail.comments[0].time == "2026-6-9 08:59")
+        assertFalse(detail.comments[1].time.contains("2026-6-9"))
         assertEquals(PageInfo(activePage = 1, nextPage = 2), detail.commentPageInfo)
     }
 
@@ -73,6 +74,28 @@ class ForumThreadParserTest {
         assertEquals("Frank", result.comments.single().author)
         assertEquals("page two comment", result.comments.single().content)
         assertEquals(PageInfo(activePage = 2, nextPage = 2), result.pageInfo)
+    }
+
+    @Test
+    fun `comment parser uses visible relative time with published prefix`() {
+        val doc = commentMoreDocument(
+            """
+            <div id="comment_4773811" class="cm">
+              <div class="pstl">
+                <div class="psta"><a href="home.php?mod=space&amp;uid=220773" class="xw1">xxyyjl</a></div>
+                <div class="psti">
+                  女警类的，很顶啊&nbsp;
+                  <span class="xg1">發表於 <span title="2026-6-21 22:47">昨天&nbsp;22:47</span></span>
+                </div>
+              </div>
+            </div>
+            """.trimIndent()
+        )
+
+        val result = parseForumFloorComments(doc, "https://www.javbus.com", pid = 4773811)
+
+        assertEquals("女警类的，很顶啊", result.comments.single().content)
+        assertEquals("發表於 昨天 22:47", result.comments.single().time)
     }
 
     @Test

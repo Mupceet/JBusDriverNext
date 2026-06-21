@@ -293,10 +293,14 @@ private fun parseForumComments(root: Element?, baseUrl: String): List<Comment> =
             .firstOrNull { it.text().isNotBlank() }
         val author = authorElement?.text()?.trim().orEmpty()
         val avatar = row.selectFirst(".psta img[src]")?.attr("src").orEmpty().wrapForumImage(baseUrl)
-        val timeElement = body.selectFirst(".xg1 span[title]")
+        val timeElement = body.selectFirst(".xg1")
+            ?: body.selectFirst(".xg1 span[title]")
             ?: body.selectFirst(".xg1 span")
-            ?: body.selectFirst(".xg1")
-        val time = timeElement?.attr("title")?.ifBlank { timeElement.text() }?.trim().orEmpty()
+        val time = timeElement
+            ?.text()
+            ?.ifBlank { timeElement.attr("title") }
+            ?.trim()
+            .orEmpty()
         val content = body.clone().also { clone ->
             clone.select("a.xi2, a.xw1, .xg1").remove()
         }.text().trim()
