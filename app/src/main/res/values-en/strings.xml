@@ -88,7 +88,6 @@
     <string name="forum_tab_hot">Hot Topics</string>
 
     <!-- Settings -->
-    <string name="lab_settings">Lab</string>
     <string name="lab_experimental">Experimental features may be unstable</string>
     <string name="forum_settings">Forum</string>
     <string name="forum_settings_desc">Browse forums, read and participate in discussions</string>
@@ -115,9 +114,6 @@
     <string name="clear">Clear</string>
     <string name="reset">Reset</string>
     <string name="save">Save</string>
-
-    <!-- Search extras -->
-    <string name="lab_experimental_settings">Experimental feature settings</string>
 
     <!-- Collection extras -->
     <string name="cannot_read_file">Cannot read file</string>

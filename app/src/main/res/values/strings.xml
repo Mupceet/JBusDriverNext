@@ -86,7 +86,6 @@
     <string name="forum_tab_hot">熱點話題</string>
 
     <!-- Settings -->
-    <string name="lab_settings">實驗室</string>
     <string name="lab_experimental">實驗性功能可能不穩定</string>
     <string name="forum_settings">論壇功能</string>
     <string name="forum_settings_desc">瀏覽論壇版塊、閱讀和參與帖子討論</string>
@@ -113,9 +112,6 @@
     <string name="clear">清除</string>
     <string name="reset">重置</string>
     <string name="save">保存</string>
-
-    <!-- Search extras -->
-    <string name="lab_experimental_settings">實驗性功能設置</string>
 
     <!-- Collection extras -->
     <string name="cannot_read_file">無法讀取檔案</string>
