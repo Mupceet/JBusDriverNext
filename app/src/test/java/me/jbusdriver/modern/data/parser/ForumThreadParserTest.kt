@@ -76,6 +76,35 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `thread reply pagination ignores floor comment pagination links`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <h1 class="ts"><span id="thread_subject">Thread With Floor Comments</span></h1>
+                  <div class="nthread_firstpostbox" id="post_4773811">
+                    <table><tbody><tr><td class="t_f" id="postmessage_4773811">First post body</td></tr></tbody></table>
+                    <div id="comment_4773811" class="cm">
+                      <div class="pgs mbm cl"><div class="pg">
+                        <strong>1</strong>
+                        <a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=3" class="nxt" ajaxtarget="comment_4773811">涓嬩竴闋?</a>
+                      </div></div>
+                    </div>
+                  </div>
+                  <div class="pgs mtm mbm cl"><div class="pg">
+                    <strong>1</strong>
+                    <a href="forum.php?mod=viewthread&amp;tid=172059&amp;page=2" class="nxt">涓嬩竴闋?</a>
+                  </div></div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), detail.pageInfo)
+    }
+
+    @Test
     fun `restricted reply remains visible without normal body cell`() {
         val detail = parseForumThreadDetail(
             fixture(

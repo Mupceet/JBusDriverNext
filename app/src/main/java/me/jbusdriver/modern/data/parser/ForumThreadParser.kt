@@ -115,7 +115,10 @@ private fun parseForumPageInfo(doc: Document): PageInfo {
     // 首楼留言分页会注入一条 href="javascript:;" 的 .nxt（真实 page 在 onclick 的 ajaxget 里），
     // 必须跳过它，取第一个携带真实 page= 目标的回复分页链接。
     val nextPage = doc.select(".pg a.nxt")
-        .firstOrNull { PAGE_PARAM.containsMatchIn(it.attr("href")) }
+        .firstOrNull { link ->
+            val href = link.attr("href")
+            PAGE_PARAM.containsMatchIn(href) && href.contains("mod=viewthread")
+        }
         ?.attr("href")
         ?.let { PAGE_PARAM.find(it)?.groupValues?.get(1)?.toIntOrNull() }
         ?: currentPage
