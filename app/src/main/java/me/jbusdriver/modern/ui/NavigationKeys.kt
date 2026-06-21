@@ -45,4 +45,4 @@ data class RouteForumThreadDetail(
 ) : NavKey
 
 @Serializable
-data object RouteLabSettings : NavKey
+data object RouteSettings : NavKey

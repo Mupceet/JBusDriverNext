@@ -29,7 +29,7 @@ import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
-import me.jbusdriver.modern.ui.settings.LabSettingsViewModel
+import me.jbusdriver.modern.ui.settings.SettingsViewModel
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
 enum class BottomNavCategory { MOVIE, ACTRESS, FORUM, COLLECT }
@@ -55,34 +55,39 @@ fun MainScreen(
     onGenreClick: (GenreUiModel, String?) -> Unit = { _, _ -> },
     onSearchClick: (String) -> Unit = {},
     onForumBoardClick: (me.jbusdriver.modern.domain.model.ForumBoard) -> Unit = {},
-    onForumThreadClick: (Int) -> Unit = {}
+    onForumThreadClick: (Int) -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
-    val labSettingsViewModel = hiltViewModel<LabSettingsViewModel>()
+    val settingsViewModel = hiltViewModel<SettingsViewModel>()
+    val store = settingsViewModel.store
+    val showMovieTab by store.showMovieTab.collectAsStateWithLifecycle()
+    val showActressTab by store.showActressTab.collectAsStateWithLifecycle()
+    val showForumTab by store.showForumTab.collectAsStateWithLifecycle()
     val uiPrefsViewModel = hiltViewModel<UiPrefsViewModel>()
-    val labSettingsUiState by labSettingsViewModel.uiState.collectAsStateWithLifecycle()
     val uiPrefsUiState by uiPrefsViewModel.uiState.collectAsStateWithLifecycle()
-    val forumEnabled = labSettingsUiState.forumEnabled
     val isGrid = uiPrefsUiState.isGrid
     val toggleGrid: () -> Unit = uiPrefsViewModel::toggleGrid
 
-    // Auto-switch away from Forum tab when disabled
-    LaunchedEffect(forumEnabled) {
-        if (!forumEnabled && selectedCategory == BottomNavCategory.FORUM) {
-            selectedCategory = BottomNavCategory.MOVIE
-        }
+    // Auto-switch away from any hidden tab
+    LaunchedEffect(showMovieTab, showActressTab, showForumTab) {
+        if (!showForumTab && selectedCategory == BottomNavCategory.FORUM) selectedCategory = BottomNavCategory.MOVIE
+        if (!showMovieTab && selectedCategory == BottomNavCategory.MOVIE) selectedCategory = BottomNavCategory.ACTRESS
+        if (!showActressTab && selectedCategory == BottomNavCategory.ACTRESS) selectedCategory = BottomNavCategory.MOVIE
     }
 
     // Preload forum data when enabled
-    if (forumEnabled) hiltViewModel<ForumBoardsViewModel>()
+    if (showForumTab) hiltViewModel<ForumBoardsViewModel>()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             NavigationBar(modifier = Modifier.height(64.dp)) {
                 BottomNavItems.forEach { item ->
-                    if (item.category == BottomNavCategory.FORUM && !forumEnabled) return@forEach
+                    if (item.category == BottomNavCategory.MOVIE && !showMovieTab) return@forEach
+                    if (item.category == BottomNavCategory.ACTRESS && !showActressTab) return@forEach
+                    if (item.category == BottomNavCategory.FORUM && !showForumTab) return@forEach
                     NavigationBarItem(
                         selected = selectedCategory == item.category,
                         onClick = { selectedCategory = item.category },
@@ -125,7 +130,7 @@ fun MainScreen(
                     BottomNavCategory.COLLECT -> CollectCategoryScreen(
                         onMovieClick = onMovieClick,
                         onActressClick = onActressClick,
-                        onGoHome = { selectedCategory = BottomNavCategory.MOVIE }
+                        onSettingsClick = onSettingsClick
                     )
 
                     BottomNavCategory.FORUM -> {

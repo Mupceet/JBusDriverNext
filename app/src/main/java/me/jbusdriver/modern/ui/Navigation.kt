@@ -33,7 +33,7 @@ import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
 import me.jbusdriver.modern.ui.search.SearchScreen
-import me.jbusdriver.modern.ui.settings.LabSettingsScreen
+import me.jbusdriver.modern.ui.settings.SettingsScreen
 
 private const val ANIM_DURATION = 350
 private const val ANIM_DURATION_SEARCH = 400
@@ -143,7 +143,8 @@ fun JBusNavigation(
                     },
                     onForumThreadClick = { tid ->
                         backStack.add(RouteForumThreadDetail(tid))
-                    }
+                    },
+                    onSettingsClick = { backStack.add(RouteSettings) }
                 )
             }
             entry<RouteSearch>(
@@ -197,7 +198,7 @@ fun JBusNavigation(
                         )
                     },
                     onBack = { backStack.removeLastOrNull() },
-                    onLabSettingsClick = { backStack.add(RouteLabSettings) }
+                    onSettingsClick = { backStack.add(RouteSettings) }
                 )
             }
             entry<RouteMovieDetail> { key ->
@@ -286,8 +287,8 @@ fun JBusNavigation(
                     onBack = { backStack.removeLastOrNull() }
                 )
             }
-            entry<RouteLabSettings> {
-                LabSettingsScreen(onBack = { backStack.removeLastOrNull() })
+            entry<RouteSettings> {
+                SettingsScreen(onBack = { backStack.removeLastOrNull() })
             }
         }
     )

@@ -31,18 +31,21 @@ import me.jbusdriver.modern.data.session.ForumCookiePersister
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.session.ForumSessionClient
 import me.jbusdriver.modern.data.session.ForumSessionManager
+import me.jbusdriver.modern.data.settings.AppSettingsContract
+import me.jbusdriver.modern.data.settings.AppSettingsStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.settings.ThemeSettingsReader
 import me.jbusdriver.modern.data.session.GifLoadTracker
 import me.jbusdriver.modern.data.gateway.AndroidImageMediaGateway
 import me.jbusdriver.modern.data.gateway.ImageMediaGateway
-import me.jbusdriver.modern.data.settings.LabSettingsStore
-import me.jbusdriver.modern.data.settings.LabSettingsStoreContract
 import me.jbusdriver.modern.data.session.LoadedGifTracker
 import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.data.repository.RoomCollectTransactionRunner
 import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.data.settings.DefaultThemeRepository
+import me.jbusdriver.modern.data.settings.ThemeRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.data.settings.UiPrefsStore
 import me.jbusdriver.modern.data.settings.UiPrefsStoreContract
@@ -68,11 +71,7 @@ abstract class DataModule {
 
     @Binds
     @Singleton
-    abstract fun bindSitePreferenceSource(impl: LabSettingsStore): SitePreferenceSource
-
-    @Binds
-    @Singleton
-    abstract fun bindLabSettingsStoreContract(impl: LabSettingsStore): LabSettingsStoreContract
+    abstract fun bindSitePreferenceSource(impl: AppSettingsStore): SitePreferenceSource
 
     @Binds
     @Singleton
@@ -184,8 +183,20 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindForumSettingsReader(
-        impl: LabSettingsStore
+        impl: AppSettingsStore
     ): ForumSettingsReader
+
+    @Binds
+    @Singleton
+    abstract fun bindThemeSettingsReader(impl: AppSettingsStore): ThemeSettingsReader
+
+    @Binds
+    @Singleton
+    abstract fun bindThemeRepository(impl: DefaultThemeRepository): ThemeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAppSettingsContract(impl: AppSettingsStore): AppSettingsContract
 
     @Binds
     @Singleton

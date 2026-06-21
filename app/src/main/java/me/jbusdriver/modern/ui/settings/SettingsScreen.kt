@@ -1,6 +1,10 @@
 package me.jbusdriver.modern.ui.settings
 
+import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,21 +21,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -39,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,24 +53,55 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.mirror.MirrorUrl
 import me.jbusdriver.modern.data.mirror.ScanPhase
 import me.jbusdriver.modern.data.mirror.ScanState
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LabSettingsScreen(
+fun SettingsScreen(
     onBack: () -> Unit,
-    viewModel: LabSettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val store = viewModel.store
+    val scope = rememberCoroutineScope()
+
+    // Appearance state
+    val themeMode by store.themeMode.collectAsStateWithLifecycle()
+    val dynamicColor by store.dynamicColor.collectAsStateWithLifecycle()
+    val showMovieTab by store.showMovieTab.collectAsStateWithLifecycle()
+    val showActressTab by store.showActressTab.collectAsStateWithLifecycle()
+    val showForumTab by store.showForumTab.collectAsStateWithLifecycle()
+    val autoLoadGifs by store.autoLoadGifs.collectAsStateWithLifecycle()
+    val forumFloorOrder by store.forumFloorOrder.collectAsStateWithLifecycle()
+
+    // Network state
+    val selectedBaseUrl by store.selectedBaseUrl.collectAsStateWithLifecycle()
+    val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+
+    // Mirror URL list for network card
+    val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
+        scanState.discoveredUrls
+    } else if (!scanState.isScanning && cachedMirrorUrls.isNotEmpty()) {
+        cachedMirrorUrls.map { MirrorUrl(it, true) }.sortedWith(
+            compareBy<MirrorUrl> { it.url.contains("www.javbus.com", ignoreCase = true).not() }
+                .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
+                .thenBy { it.url }
+        )
+    } else {
+        emptyList()
+    }
+    val hasCachedUrls = mirrorUrls.isNotEmpty() || cachedMirrorUrls.isNotEmpty()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.lab_settings)) },
+                title = { Text("設置") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -87,44 +121,57 @@ fun LabSettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                stringResource(R.string.lab_experimental),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            // === Appearance Card ===
+            AppearanceCard(
+                themeMode = themeMode,
+                dynamicColor = dynamicColor,
+                showMovieTab = showMovieTab,
+                showActressTab = showActressTab,
+                showForumTab = showForumTab,
+                autoLoadGifs = autoLoadGifs,
+                forumFloorOrder = forumFloorOrder,
+                onThemeModeChange = { scope.launch { store.setThemeMode(it) } },
+                onDynamicColorChange = { scope.launch { store.setDynamicColor(it) } },
+                onShowMovieTabChange = { scope.launch { store.setShowMovieTab(it) } },
+                onShowActressTabChange = { scope.launch { store.setShowActressTab(it) } },
+                onShowForumTabChange = { scope.launch { store.setShowForumTab(it) } },
+                onAutoLoadGifsChange = { scope.launch { store.setAutoLoadGifs(it) } },
+                onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } }
             )
 
-            // Forum card
-            ForumCard(
-                forumEnabled = uiState.forumEnabled,
-                autoLoadGifs = uiState.autoLoadGifs,
-                forumFloorOrder = uiState.forumFloorOrder,
-                onForumEnabledChange = viewModel::setForumEnabled,
-                onAutoLoadGifsChange = viewModel::setAutoLoadGifs,
-                onForumFloorOrderChange = viewModel::setForumFloorOrder
-            )
-
-            // URL selection card
-            UrlSelectionCard(
-                selectedBaseUrl = uiState.selectedBaseUrl,
-                mirrorUrls = uiState.mirrorUrls,
-                scanState = uiState.scanState,
-                hasCachedUrls = uiState.hasCachedUrls,
+            // === Network Card ===
+            NetworkCard(
+                selectedBaseUrl = selectedBaseUrl,
+                mirrorUrls = mirrorUrls,
+                scanState = scanState,
+                hasCachedUrls = hasCachedUrls,
                 onScan = { viewModel.startScan() },
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
                 onSelect = { viewModel.selectUrl(it) }
             )
+
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+//region Appearance Card
+
 @Composable
-private fun ForumCard(
-    forumEnabled: Boolean,
+private fun AppearanceCard(
+    themeMode: ThemeMode,
+    dynamicColor: Boolean,
+    showMovieTab: Boolean,
+    showActressTab: Boolean,
+    showForumTab: Boolean,
     autoLoadGifs: Boolean,
     forumFloorOrder: ForumFloorOrder,
-    onForumEnabledChange: (Boolean) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+    onShowMovieTabChange: (Boolean) -> Unit,
+    onShowActressTabChange: (Boolean) -> Unit,
+    onShowForumTabChange: (Boolean) -> Unit,
     onAutoLoadGifsChange: (Boolean) -> Unit,
     onForumFloorOrderChange: (ForumFloorOrder) -> Unit
 ) {
@@ -134,97 +181,152 @@ private fun ForumCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
-                    painterResource(R.drawable.forum_24px),
+                    painterResource(R.drawable.settings_24px),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(R.string.forum_settings),
+                    "外觀",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.forum_settings_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
             Spacer(Modifier.height(16.dp))
 
+            // Theme mode — full-width clickable, content padded
+            var themeExpanded by remember { mutableStateOf(false) }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { themeExpanded = true }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    stringResource(R.string.forum_enable),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Switch(
-                    checked = forumEnabled,
-                    onCheckedChange = onForumEnabledChange
-                )
+                Text("主題模式", style = MaterialTheme.typography.bodyMedium)
+                Box {
+                    Text(
+                        themeModeLabel(themeMode),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    DropdownMenu(
+                        expanded = themeExpanded,
+                        onDismissRequest = { themeExpanded = false }
+                    ) {
+                        ThemeMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(themeModeLabel(mode)) },
+                                onClick = {
+                                    onThemeModeChange(mode)
+                                    themeExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.auto_load_gif),
-                        style = MaterialTheme.typography.bodyMedium
+            // Dynamic color
+            val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (supportsDynamicColor)
+                            Modifier.clickable { onDynamicColorChange(!dynamicColor) }
+                        else Modifier
                     )
-                    Text(
-                        stringResource(R.string.auto_load_gif_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "動態顏色",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = if (supportsDynamicColor) Modifier else Modifier.alpha(0.38f)
+                        )
+                        if (!supportsDynamicColor) {
+                            Text(
+                                "需要 Android 12+",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.alpha(0.6f)
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = dynamicColor,
+                        onCheckedChange = null,
+                        enabled = supportsDynamicColor
                     )
                 }
-                Switch(
-                    checked = autoLoadGifs,
-                    onCheckedChange = onAutoLoadGifsChange
-                )
             }
 
-            Spacer(Modifier.height(8.dp))
+            // Movie tab
+            SwitchRow("顯示影片", showMovieTab, onShowMovieTabChange)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    stringResource(R.string.floor_order),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(
-                        selected = forumFloorOrder == ForumFloorOrder.REGULAR,
-                        onClick = { onForumFloorOrderChange(ForumFloorOrder.REGULAR) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        icon = {}
+            // Actress tab
+            SwitchRow("顯示演員", showActressTab, onShowActressTabChange)
+
+            // Forum tab
+            SwitchRow("顯示論壇", showForumTab, onShowForumTabChange)
+
+            // Forum sub-panel
+            AnimatedVisibility(visible = showForumTab) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    SwitchRow("自動載入動圖", autoLoadGifs, onAutoLoadGifsChange)
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Floor order — full-width clickable, content padded
+                    var floorExpanded by remember { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { floorExpanded = true }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.floor_order_regular))
-                    }
-                    SegmentedButton(
-                        selected = forumFloorOrder == ForumFloorOrder.REVERSE,
-                        onClick = { onForumFloorOrderChange(ForumFloorOrder.REVERSE) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        icon = {}
-                    ) {
-                        Text(stringResource(R.string.floor_order_reverse))
+                        Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
+                        Box {
+                            Text(
+                                floorOrderLabel(forumFloorOrder),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            DropdownMenu(
+                                expanded = floorExpanded,
+                                onDismissRequest = { floorExpanded = false }
+                            ) {
+                                ForumFloorOrder.entries.forEach { order ->
+                                    DropdownMenuItem(
+                                        text = { Text(floorOrderLabel(order)) },
+                                        onClick = {
+                                            onForumFloorOrderChange(order)
+                                            floorExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -232,9 +334,47 @@ private fun ForumCard(
     }
 }
 
+@Composable
+private fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = checked, onCheckedChange = null)
+        }
+    }
+}
+
+private fun themeModeLabel(mode: ThemeMode) = when (mode) {
+    ThemeMode.SYSTEM -> "遵循系統"
+    ThemeMode.LIGHT -> "亮色主題"
+    ThemeMode.DARK -> "暗色主題"
+}
+
+private fun floorOrderLabel(order: ForumFloorOrder) = when (order) {
+    ForumFloorOrder.REGULAR -> "正序"
+    ForumFloorOrder.REVERSE -> "倒序"
+}
+
+//endregion
+
+//region Network Card
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UrlSelectionCard(
+private fun NetworkCard(
     selectedBaseUrl: String,
     mirrorUrls: List<MirrorUrl>,
     scanState: ScanState,
@@ -366,9 +506,8 @@ private fun UrlSelectionCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            if (scanState.phase == ScanPhase.DONE) stringResource(R.string.rescan) else stringResource(
-                                R.string.scan_url
-                            )
+                            if (scanState.phase == ScanPhase.DONE) stringResource(R.string.rescan)
+                            else stringResource(R.string.scan_url)
                         )
                     }
                 }
@@ -397,13 +536,11 @@ private fun UrlSelectionCard(
                         scanState.scannedCount,
                         scanState.totalCount
                     )
-
                     ScanPhase.VERIFYING -> stringResource(
                         R.string.verifying,
                         scanState.scannedCount,
                         scanState.totalCount
                     )
-
                     else -> ""
                 }
                 Text(
@@ -434,3 +571,5 @@ private fun UrlSelectionCard(
         }
     }
 }
+
+//endregion

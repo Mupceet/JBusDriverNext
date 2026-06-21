@@ -11,6 +11,7 @@ import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.convertDBItem
 import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Movie
 import org.junit.Assert.assertEquals
@@ -174,6 +175,7 @@ class CollectionBackupCodecTest {
     private class RecordingLinkItemDao(
         val items: MutableList<LinkItem> = mutableListOf()
     ) : LinkItemDao {
+
         override suspend fun insert(link: LinkItem): Long {
             if (items.any { it.dbType == link.dbType && it.key == link.key }) return -1
             items += link.copy(id = items.size + 1)

@@ -55,7 +55,7 @@ fun CollectCategoryScreen(
     onMovieClick: (MovieUiModel, String?) -> Unit,
     onActressClick: (ActressUiModel, String?) -> Unit,
     modifier: Modifier = Modifier,
-    onGoHome: () -> Unit = {}
+    onSettingsClick: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState { 2 }
@@ -173,6 +173,13 @@ fun CollectCategoryScreen(
                         onClick = {
                             showMenu = false
                             importLauncher.launch(arrayOf("application/json"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("更多設置") },
+                        onClick = {
+                            showMenu = false
+                            onSettingsClick()
                         }
                     )
                 }

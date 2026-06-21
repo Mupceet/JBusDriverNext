@@ -75,7 +75,7 @@ fun SearchScreen(
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
-    onLabSettingsClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -215,7 +215,7 @@ fun SearchScreen(
             Card(
                 onClick = {
                     focusManager.clearFocus()
-                    onLabSettingsClick()
+                    onSettingsClick()
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(

@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,9 +9,17 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.jbusdriver.modern.data.settings.ThemeMode
 import me.jbusdriver.modern.ui.debug.dumpToLog
+import me.jbusdriver.modern.ui.settings.ThemeViewModel
 
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF6A548D),
@@ -92,10 +101,18 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun JBusTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val theme = hiltViewModel<ThemeViewModel>()
+    val themeMode by theme.themeMode.collectAsStateWithLifecycle()
+    val dynamicColor by theme.dynamicColor.collectAsStateWithLifecycle()
+
+    val darkTheme = when (themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
@@ -108,6 +125,22 @@ fun JBusTheme(
 
     if (me.jbusdriver.BuildConfig.DEBUG) {
         colorScheme.dumpToLog()
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        val bg = colorScheme.background
+        SideEffect {
+            val window = (view.context as Activity).window
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !darkTheme
+            controller.isAppearanceLightNavigationBars = !darkTheme
+            window.setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(
+                    android.graphics.Color.rgb(bg.red, bg.green, bg.blue)
+                )
+            )
+        }
     }
 
     MaterialTheme(
