@@ -237,7 +237,7 @@ class DefaultForumRepository @Inject constructor(
         "${forumCachePrefix()}:threads:$fid:$page:${typeId ?: "all"}"
 
     private fun forumDetailCacheKey(tid: Int, page: Int, floorOrder: ForumFloorOrder): String =
-        "${forumCachePrefix()}:detail:v2:$tid:$page:${floorOrder.name.lowercase()}"
+        "${forumCachePrefix()}:detail:v3:$tid:$page:${floorOrder.name.lowercase()}"
 
     private fun forumFloorCommentsCacheKey(tid: Int, pid: Int, page: Int): String =
         "${forumCachePrefix()}:floor-comments:v1:$tid:$pid:$page"

@@ -95,6 +95,9 @@
 -keep class me.jbusdriver.modern.domain.model.Comment {
     !static !transient <fields>;
 }
+-keep class me.jbusdriver.modern.domain.model.ForumCommentPageResult {
+    !static !transient <fields>;
+}
 -keep class me.jbusdriver.modern.domain.model.ForumReply {
     !static !transient <fields>;
 }

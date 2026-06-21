@@ -74,6 +74,8 @@
     <string name="comment">點評</string>
     <string name="view_more_comments">查看更多點評</string>
     <string name="floor_comments">點評</string>
+    <string name="owner_floor_label">樓主</string>
+    <string name="floor_number_label">%1$d樓</string>
     <string name="retry_load_comments">重新載入點評</string>
     <string name="content_preview">內容預覽</string>
     <string name="copy_all">複製全部</string>

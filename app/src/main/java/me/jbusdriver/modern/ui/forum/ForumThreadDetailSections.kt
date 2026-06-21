@@ -412,9 +412,12 @@ private fun FloorCommentsSheetContent(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp)
     ) {
         item(key = "header") {
+            val floorLabel = sheet.floor?.let {
+                stringResource(R.string.floor_number_label, it)
+            } ?: stringResource(R.string.owner_floor_label)
             Column(modifier = Modifier.padding(bottom = 12.dp)) {
                 Text(
-                    "${sheet.floorLabel}  ${sheet.author}",
+                    "$floorLabel  ${sheet.author}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
                 ForumPostContent(

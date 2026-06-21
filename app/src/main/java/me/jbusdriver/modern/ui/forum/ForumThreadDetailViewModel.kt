@@ -54,7 +54,6 @@ private fun logReplyDiff(
 data class FloorCommentSheetState(
     val pid: Int,
     val floor: Int?,
-    val floorLabel: String,
     val author: String,
     val contentBlocks: List<ContentBlock>,
     val comments: List<Comment>,
@@ -391,7 +390,6 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 commentSheet = FloorCommentSheetState(
                     pid = detail.pid,
                     floor = null,
-                    floorLabel = "楼主",
                     author = detail.author,
                     contentBlocks = detail.contentBlocks,
                     comments = detail.comments,
@@ -410,7 +408,6 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 commentSheet = FloorCommentSheetState(
                     pid = reply.pid,
                     floor = reply.floor,
-                    floorLabel = "${reply.floor}楼",
                     author = reply.author,
                     contentBlocks = reply.contentBlocks,
                     comments = reply.comments,

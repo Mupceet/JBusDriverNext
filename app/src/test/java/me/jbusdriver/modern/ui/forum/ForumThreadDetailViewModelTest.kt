@@ -116,11 +116,17 @@ class ForumThreadDetailViewModelTest {
         val sheet = viewModel.uiState.value.commentSheet
         assertEquals(4773820, sheet?.pid)
         assertEquals(2, sheet?.floor)
-        assertEquals("2楼", sheet?.floorLabel)
         assertEquals("Reply Author", sheet?.author)
         assertEquals(listOf(replyBlock), sheet?.contentBlocks)
         assertEquals(listOf(comment("inline reply comment")), sheet?.comments)
         assertEquals(PageInfo(activePage = 1, nextPage = 2), sheet?.pageInfo)
+    }
+
+    @Test
+    fun `floor comment sheet state does not expose localized floor label`() {
+        assertFalse(
+            FloorCommentSheetState::class.java.declaredFields.any { it.name == "floorLabel" }
+        )
     }
 
     @Test

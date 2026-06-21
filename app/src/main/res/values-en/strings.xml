@@ -76,6 +76,8 @@
     <string name="comment">Reviews</string>
     <string name="view_more_comments">View more reviews</string>
     <string name="floor_comments">Reviews</string>
+    <string name="owner_floor_label">Original poster</string>
+    <string name="floor_number_label">Floor %1$d</string>
     <string name="retry_load_comments">Retry reviews</string>
     <string name="content_preview">Content Preview</string>
     <string name="copy_all">Copy All</string>

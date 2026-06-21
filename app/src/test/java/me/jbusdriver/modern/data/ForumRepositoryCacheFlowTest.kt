@@ -279,6 +279,18 @@ class ForumRepositoryCacheFlowTest {
     }
 
     @Test
+    fun `loadThreadDetail caches with detail v3 key to avoid legacy comment metadata`() = runBlocking {
+        val cacheStore = FakeCacheStore()
+        val sessionClient = FakeSessionClient(threadDetailHtml())
+        val repository = repository(cacheStore, sessionClient)
+
+        repository.loadThreadDetail(tid = 9, page = 1, floorOrder = ForumFloorOrder.REGULAR)
+
+        assertTrue(cacheStore.memory.keys.contains("forum:https://example.test:detail:v3:9:1:regular"))
+        assertFalse(cacheStore.memory.keys.contains("forum:https://example.test:detail:v2:9:1:regular"))
+    }
+
+    @Test
     fun `loadFloorComments builds commentmore url and returns parsed comments`() = runBlocking {
         val sessionClient = FakeSessionClient(commentMoreHtml(page = 2, nextPage = 3))
         val repository = repository(FakeCacheStore(), sessionClient)
