@@ -105,6 +105,37 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `thread reply active page ignores floor comment active page`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <h1 class="ts"><span id="thread_subject">Thread With Floor Comments</span></h1>
+                  <div class="nthread_firstpostbox" id="post_4773811">
+                    <table><tbody><tr><td class="t_f" id="postmessage_4773811">First post body</td></tr></tbody></table>
+                    <div id="comment_4773811" class="cm">
+                      <div class="pgs mbm cl"><div class="pg">
+                        <a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=1">1</a>
+                        <strong>3</strong>
+                      </div></div>
+                    </div>
+                  </div>
+                  <div class="pgs mtm mbm cl"><div class="pg">
+                    <a href="forum.php?mod=viewthread&amp;tid=172059&amp;page=1">1</a>
+                    <strong>2</strong>
+                    <a href="forum.php?mod=viewthread&amp;tid=172059&amp;page=3" class="nxt">涓嬩竴闋?</a>
+                  </div></div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059&page=2"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertEquals(2, detail.pageInfo.activePage)
+        assertEquals(3, detail.pageInfo.nextPage)
+    }
+
+    @Test
     fun `restricted reply remains visible without normal body cell`() {
         val detail = parseForumThreadDetail(
             fixture(

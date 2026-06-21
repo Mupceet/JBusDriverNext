@@ -111,14 +111,15 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
 }
 
 private fun parseForumPageInfo(doc: Document): PageInfo {
-    val currentPage = doc.select(".pg strong").firstOrNull()?.text()?.toIntOrNull() ?: 1
+    val replyPager = doc.select(".pg")
+        .firstOrNull { pager ->
+            pager.select("a[href*=mod=viewthread]").any { PAGE_PARAM.containsMatchIn(it.attr("href")) }
+        }
+    val currentPage = replyPager?.selectFirst("strong")?.text()?.toIntOrNull() ?: 1
     // 首楼留言分页会注入一条 href="javascript:;" 的 .nxt（真实 page 在 onclick 的 ajaxget 里），
     // 必须跳过它，取第一个携带真实 page= 目标的回复分页链接。
-    val nextPage = doc.select(".pg a.nxt")
-        .firstOrNull { link ->
-            val href = link.attr("href")
-            PAGE_PARAM.containsMatchIn(href) && href.contains("mod=viewthread")
-        }
+    val nextPage = replyPager?.select("a.nxt[href*=mod=viewthread]")
+        ?.firstOrNull { PAGE_PARAM.containsMatchIn(it.attr("href")) }
         ?.attr("href")
         ?.let { PAGE_PARAM.find(it)?.groupValues?.get(1)?.toIntOrNull() }
         ?: currentPage
