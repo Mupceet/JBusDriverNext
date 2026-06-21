@@ -1,9 +1,14 @@
 package me.jbusdriver.modern.ui.forum
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,14 +24,20 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +58,8 @@ import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
+import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.domain.model.hasNext
 
 @Composable
 internal fun ThreadHeader(detail: ForumThreadDetail) {
@@ -175,30 +188,68 @@ internal fun CommentsSection(comments: List<Comment>) {
             )
             Spacer(Modifier.height(8.dp))
             comments.forEach { comment ->
-                Row(modifier = Modifier.padding(bottom = 8.dp)) {
-                    AsyncImage(
-                        model = comment.authorAvatar,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            "${comment.author}  ${comment.time}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            comment.content,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                }
+                ForumCommentRow(comment = comment)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForumCommentRow(
+    comment: Comment,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier = modifier.padding(bottom = 8.dp)) {
+        AsyncImage(
+            model = comment.authorAvatar,
+            contentDescription = null,
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(
+                "${comment.author}  ${comment.time}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                comment.content,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun PostCommentsPreview(
+    comments: List<Comment>,
+    pageInfo: PageInfo,
+    onViewMore: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (comments.isEmpty() && !pageInfo.hasNext) return
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        Text(
+            stringResource(R.string.floor_comments),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(6.dp))
+        comments.take(3).forEach { comment ->
+            ForumCommentRow(comment = comment)
+        }
+        if (comments.size > 3 || pageInfo.hasNext) {
+            TextButton(onClick = onViewMore) {
+                Text(stringResource(R.string.view_more_comments))
             }
         }
     }
@@ -212,7 +263,8 @@ internal fun ReplyItem(
     autoLoadGifs: Boolean = false,
     onLoadGif: (String) -> Unit = {},
     onLoadAllGifs: () -> Unit = {},
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    onViewComments: (ForumReply) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -273,6 +325,137 @@ internal fun ReplyItem(
                     onLoadAllGifs = onLoadAllGifs,
                     onLongClick = onLongClick
                 )
+                PostCommentsPreview(
+                    comments = reply.comments,
+                    pageInfo = reply.commentPageInfo,
+                    onViewMore = { onViewComments(reply) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun FloorCommentsBottomSheet(
+    sheet: FloorCommentSheetState,
+    loadedGifUrls: Set<String>,
+    autoLoadGifs: Boolean,
+    onImageClick: (List<String>, Int) -> Unit,
+    onLoadGif: (String) -> Unit,
+    onLoadAllGifs: () -> Unit,
+    onLoadMore: () -> Unit,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val listState = rememberLazyListState()
+    val nearEnd by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= layoutInfo.totalItemsCount - 2
+        }
+    }
+
+    LaunchedEffect(nearEnd, sheet.pageInfo.nextPage, sheet.isLoadingMore) {
+        if (nearEnd && sheet.pageInfo.hasNext && !sheet.isLoadingMore) {
+            onLoadMore()
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        FloorCommentsSheetContent(
+            sheet = sheet,
+            listState = listState,
+            loadedGifUrls = loadedGifUrls,
+            autoLoadGifs = autoLoadGifs,
+            onImageClick = onImageClick,
+            onLoadGif = onLoadGif,
+            onLoadAllGifs = onLoadAllGifs,
+            onRetry = onRetry
+        )
+    }
+}
+
+@Composable
+private fun FloorCommentsSheetContent(
+    sheet: FloorCommentSheetState,
+    listState: LazyListState,
+    loadedGifUrls: Set<String>,
+    autoLoadGifs: Boolean,
+    onImageClick: (List<String>, Int) -> Unit,
+    onLoadGif: (String) -> Unit,
+    onLoadAllGifs: () -> Unit,
+    onRetry: () -> Unit
+) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp)
+    ) {
+        item(key = "header") {
+            Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                Text(
+                    "${sheet.floorLabel}  ${sheet.author}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                ForumPostContent(
+                    blocks = sheet.contentBlocks,
+                    onImageClick = onImageClick,
+                    modifier = Modifier.padding(top = 8.dp),
+                    loadedGifUrls = loadedGifUrls,
+                    autoLoadGifs = autoLoadGifs,
+                    onLoadGif = onLoadGif,
+                    onLoadAllGifs = onLoadAllGifs
+                )
+            }
+        }
+        item(key = "comments_title") {
+            Text(
+                stringResource(R.string.floor_comments),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        itemsIndexed(sheet.comments, key = { index, _ -> "comment_$index" }) { _, comment ->
+            ForumCommentRow(comment = comment)
+        }
+        item(key = "footer") {
+            when {
+                sheet.isLoadingMore -> Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+
+                sheet.error != null -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.retry_load_comments))
+                    }
+                }
+
+                !sheet.pageInfo.hasNext -> Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        stringResource(R.string.no_more),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

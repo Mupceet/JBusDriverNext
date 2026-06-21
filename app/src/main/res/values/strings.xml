@@ -72,6 +72,9 @@
     <string name="floor_order_regular">正序</string>
     <string name="floor_order_reverse">倒序</string>
     <string name="comment">點評</string>
+    <string name="view_more_comments">查看更多点评</string>
+    <string name="floor_comments">点评</string>
+    <string name="retry_load_comments">重新加载点评</string>
     <string name="content_preview">內容預覽</string>
     <string name="copy_all">複製全部</string>
     <string name="share_thread">分享主題</string>

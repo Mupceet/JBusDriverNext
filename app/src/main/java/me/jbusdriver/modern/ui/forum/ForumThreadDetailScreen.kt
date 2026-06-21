@@ -164,6 +164,20 @@ fun ForumThreadDetailScreen(
                             )
                         }
 
+                        state.commentSheet?.let { sheet ->
+                            FloorCommentsBottomSheet(
+                                sheet = sheet,
+                                loadedGifUrls = loadedGifUrls,
+                                autoLoadGifs = autoLoadGifs,
+                                onImageClick = onImageClick,
+                                onLoadGif = { viewModel.onLoadGif(it) },
+                                onLoadAllGifs = { viewModel.onLoadAllGifs() },
+                                onLoadMore = { viewModel.loadMoreFloorComments() },
+                                onRetry = { viewModel.loadMoreFloorComments() },
+                                onDismiss = { viewModel.dismissCommentsSheet() }
+                            )
+                        }
+
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             state = listState,
@@ -192,12 +206,16 @@ fun ForumThreadDetailScreen(
                                         onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                         onLongClick = { dialogBlocks = detail.contentBlocks }
                                     )
-                                }
-                            }
-
-                            if (detail.comments.isNotEmpty()) {
-                                item(key = "comments") {
-                                    CommentsSection(comments = detail.comments)
+                                    PostCommentsPreview(
+                                        comments = detail.comments,
+                                        pageInfo = detail.commentPageInfo,
+                                        onViewMore = viewModel::openFirstPostCommentsSheet,
+                                        modifier = Modifier.padding(
+                                            start = 10.dp,
+                                            end = 10.dp,
+                                            bottom = 10.dp
+                                        )
+                                    )
                                 }
                             }
 
@@ -219,6 +237,9 @@ fun ForumThreadDetailScreen(
                                         onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                         onLongClick = {
                                             dialogBlocks = detail.replies[index].contentBlocks
+                                        },
+                                        onViewComments = { reply ->
+                                            viewModel.openReplyCommentsSheet(reply.floor)
                                         }
                                     )
                                 }

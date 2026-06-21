@@ -74,6 +74,9 @@
     <string name="floor_order_regular">Ascending</string>
     <string name="floor_order_reverse">Descending</string>
     <string name="comment">Reviews</string>
+    <string name="view_more_comments">View more reviews</string>
+    <string name="floor_comments">Reviews</string>
+    <string name="retry_load_comments">Retry reviews</string>
     <string name="content_preview">Content Preview</string>
     <string name="copy_all">Copy All</string>
     <string name="share_thread">Share Thread</string>
