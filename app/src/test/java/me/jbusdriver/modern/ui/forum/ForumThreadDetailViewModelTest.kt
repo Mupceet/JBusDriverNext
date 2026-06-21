@@ -181,6 +181,69 @@ class ForumThreadDetailViewModelTest {
         assertEquals(R.string.load_failed, sheet?.error)
     }
 
+    @Test
+    fun `loadMoreFloorComments ignores stale same pid completion after dismiss and reopen`() = runTest(testDispatcher) {
+        val stalePageTwo = CompletableDeferred<ForumCommentPageResult>()
+        val currentPageTwo = CompletableDeferred<ForumCommentPageResult>()
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            deferredFloorCommentResults += stalePageTwo
+            deferredFloorCommentResults += currentPageTwo
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42)
+        )
+        advanceUntilIdle()
+
+        viewModel.openReplyCommentsSheet(2)
+        viewModel.loadMoreFloorComments()
+        runCurrent()
+        viewModel.dismissCommentsSheet()
+        viewModel.openReplyCommentsSheet(2)
+        viewModel.loadMoreFloorComments()
+        runCurrent()
+
+        assertEquals(
+            listOf(
+                FloorCommentRequest(tid = 42, pid = 4773820, page = 2),
+                FloorCommentRequest(tid = 42, pid = 4773820, page = 2)
+            ),
+            repository.floorCommentRequests
+        )
+
+        stalePageTwo.complete(
+            ForumCommentPageResult(
+                pid = 4773820,
+                comments = listOf(comment("stale page two reply comment")),
+                pageInfo = PageInfo(activePage = 2, nextPage = 2)
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(listOf(comment("inline reply comment")), viewModel.uiState.value.commentSheet?.comments)
+        assertEquals(true, viewModel.uiState.value.commentSheet?.isLoadingMore)
+
+        currentPageTwo.complete(
+            ForumCommentPageResult(
+                pid = 4773820,
+                comments = listOf(comment("current page two reply comment")),
+                pageInfo = PageInfo(activePage = 2, nextPage = 2)
+            )
+        )
+        advanceUntilIdle()
+
+        val sheet = viewModel.uiState.value.commentSheet
+        assertEquals(
+            listOf(comment("inline reply comment"), comment("current page two reply comment")),
+            sheet?.comments
+        )
+        assertEquals(PageInfo(activePage = 2, nextPage = 2), sheet?.pageInfo)
+        assertEquals(false, sheet?.isLoadingMore)
+    }
+
     private class FakeForumDetailRepository(
         private val staleRefresh: CompletableDeferred<ForumThreadDetail>
     ) : ForumRepository {
@@ -190,6 +253,7 @@ class ForumThreadDetailViewModelTest {
             pageInfo = PageInfo(activePage = 2, nextPage = 2)
         )
         var floorCommentFailure: Throwable? = null
+        val deferredFloorCommentResults = mutableListOf<CompletableDeferred<ForumCommentPageResult>>()
         val floorCommentRequests = mutableListOf<FloorCommentRequest>()
 
         override fun observeThreadDetail(
@@ -223,6 +287,9 @@ class ForumThreadDetailViewModelTest {
         ): ForumCommentPageResult {
             floorCommentRequests += FloorCommentRequest(tid, pid, page)
             floorCommentFailure?.let { throw it }
+            if (deferredFloorCommentResults.isNotEmpty()) {
+                return deferredFloorCommentResults.removeAt(0).await()
+            }
             return floorCommentResult
         }
 

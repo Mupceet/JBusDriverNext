@@ -109,6 +109,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private var currentPage = 1
     private var requestGeneration = 0L
     private var activeIdentity: DetailRequestIdentity? = null
+    private var commentSheetGeneration = 0L
 
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
@@ -384,6 +385,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun openFirstPostCommentsSheet() {
         val detail = _uiState.value.detail ?: return
         if (detail.pid == 0) return
+        commentSheetGeneration += 1
         _uiState.update {
             it.copy(
                 commentSheet = FloorCommentSheetState(
@@ -402,6 +404,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun openReplyCommentsSheet(floor: Int) {
         val reply = _uiState.value.detail?.replies?.firstOrNull { it.floor == floor } ?: return
         if (reply.pid == 0) return
+        commentSheetGeneration += 1
         _uiState.update {
             it.copy(
                 commentSheet = FloorCommentSheetState(
@@ -418,6 +421,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     }
 
     fun dismissCommentsSheet() {
+        commentSheetGeneration += 1
         _uiState.update { it.copy(commentSheet = null) }
     }
 
@@ -426,11 +430,18 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         if (sheet.isLoadingMore || !sheet.pageInfo.hasNext) return
         val pid = sheet.pid
         val nextPage = sheet.pageInfo.nextPage
+        val generation = commentSheetGeneration
         viewModelScope.launch {
             var shouldLoad = false
             _uiState.update {
                 val current = it.commentSheet ?: return@update it
-                if (current.pid != pid || current.isLoadingMore || !current.pageInfo.hasNext) {
+                if (
+                    generation != commentSheetGeneration ||
+                    current.pid != pid ||
+                    current.isLoadingMore ||
+                    current.pageInfo.nextPage != nextPage ||
+                    !current.pageInfo.hasNext
+                ) {
                     it
                 } else {
                     shouldLoad = true
@@ -443,7 +454,11 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 val result = repository.loadFloorComments(tid, pid, nextPage)
                 _uiState.update {
                     val current = it.commentSheet ?: return@update it
-                    if (current.pid != pid) {
+                    if (
+                        generation != commentSheetGeneration ||
+                        current.pid != pid ||
+                        current.pageInfo.nextPage != nextPage
+                    ) {
                         it
                     } else {
                         it.copy(
@@ -460,7 +475,11 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 if (e is CancellationException) throw e
                 _uiState.update {
                     val current = it.commentSheet ?: return@update it
-                    if (current.pid != pid) {
+                    if (
+                        generation != commentSheetGeneration ||
+                        current.pid != pid ||
+                        current.pageInfo.nextPage != nextPage
+                    ) {
                         it
                     } else {
                         it.copy(
