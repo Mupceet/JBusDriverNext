@@ -67,7 +67,7 @@
     <string name="no_results">沒有找到相關結果</string>
 
     <!-- Forum -->
-    <string name="forum_reply_count">精彩评论 (%1$d)</string>
+    <string name="forum_reply_count">精彩評論 (%1$d)</string>
     <string name="floor_sort">樓層排序</string>
     <string name="floor_order_regular">正序</string>
     <string name="floor_order_reverse">倒序</string>

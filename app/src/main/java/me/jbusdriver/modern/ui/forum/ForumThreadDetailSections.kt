@@ -436,8 +436,8 @@ private fun FloorCommentsSheetContent(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
-        itemsIndexed(sheet.comments, key = { _, comment ->
-            "comment_${comment.author}_${comment.authorAvatar}_${comment.time}_${comment.content.hashCode()}"
+        itemsIndexed(sheet.comments, key = { index, comment ->
+            "comment_${index}_${comment.author}_${comment.time}_${comment.content.hashCode()}"
         }) { _, comment ->
             ForumCommentRow(comment = comment)
         }
