@@ -5,7 +5,9 @@ import org.jsoup.nodes.Document
 import javax.inject.Inject
 import javax.inject.Singleton
 
-interface ForumSessionClient : BrowserSessionClient
+interface ForumSessionClient : BrowserSessionClient {
+    suspend fun fetchAjaxDocument(url: String, referer: String): Document
+}
 
 @Singleton
 class DefaultForumSessionClient @Inject constructor(
@@ -19,6 +21,11 @@ class DefaultForumSessionClient @Inject constructor(
     override suspend fun fetchDocument(url: String): Document {
         ensureSession()
         return sessionManager.fetchDocument(url)
+    }
+
+    override suspend fun fetchAjaxDocument(url: String, referer: String): Document {
+        ensureSession()
+        return sessionManager.fetchAjaxDocument(url, referer)
     }
 
     override suspend fun destroy() {

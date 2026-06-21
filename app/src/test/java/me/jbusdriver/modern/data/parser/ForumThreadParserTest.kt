@@ -76,6 +76,40 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `commentmore parser unwraps ajax xml cdata response`() {
+        val doc = Jsoup.parse(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <root><![CDATA[
+              <h3 class="psth cm">點評</h3>
+              <div class="pstl">
+                <div class="psta"><img src="https://uc.javbus22.com/uc/data/avatar/000/57/92/11_avatar_small.jpg"></div>
+                <div class="psti">
+                  <a href="home.php?mod=space&amp;uid=579211" class="xi2 xw1">孤狼</a>
+                  &nbsp;ajax cdata comment&nbsp;
+                  <span class="xg1">發表於 2026-6-9 08:59</span>
+                </div>
+              </div>
+              <div class="pgs mbm mtn cl"><div class="pg">
+                <a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=1">1</a>
+                <strong>2</strong>
+                <a href="javascript:;" class="nxt" onclick="ajaxget('forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=3', 'comment_4773811')">下一頁</a>
+              </div></div>
+            ]]></root>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=misc&action=commentmore&tid=172059&pid=4773811&page=2&inajax=1&ajaxtarget=comment_4773811"
+        )
+
+        val result = parseForumFloorComments(doc, "https://www.javbus.com", pid = 4773811)
+
+        assertEquals(4773811, result.pid)
+        assertEquals("孤狼", result.comments.single().author)
+        assertEquals("ajax cdata comment", result.comments.single().content)
+        assertEquals("發表於 2026-6-9 08:59", result.comments.single().time)
+        assertEquals(PageInfo(activePage = 2, nextPage = 3), result.pageInfo)
+    }
+
+    @Test
     fun `commentmore fragment parser reads ajax next page from onclick`() {
         val doc = commentMoreDocument(
             """

@@ -95,6 +95,21 @@ class DefaultForumRepository @Inject constructor(
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
         val doc = sessionClient.fetchDocument(url)
         forumLogD("[Forum] fetched: title=${doc.title()}, length=${doc.html().length}")
+        persistCookiesAfterFetch()
+        return doc
+    }
+
+    private suspend fun fetchForumAjaxDocument(
+        url: String,
+        referer: String
+    ): org.jsoup.nodes.Document {
+        val doc = sessionClient.fetchAjaxDocument(url, referer)
+        forumLogD("[Forum] ajax fetched: title=${doc.title()}, length=${doc.html().length}")
+        persistCookiesAfterFetch()
+        return doc
+    }
+
+    private suspend fun persistCookiesAfterFetch() {
         // Persist cookies after first successful forum page fetch
         // to capture Discuz! session cookies (4fJN_2132_*)
         if (cookiesPersistedForForum.compareAndSet(false, true)) {
@@ -105,7 +120,6 @@ class DefaultForumRepository @Inject constructor(
                 cookiesPersistedForForum.set(false)
             }
         }
-        return doc
     }
 
     override fun observeForumBoards(
@@ -215,7 +229,8 @@ class DefaultForumRepository @Inject constructor(
         page: Int,
         forceRefresh: Boolean
     ): ForumCommentPageResult {
-        val url = "${siteConfig.baseUrl}/forum/forum.php?mod=misc&action=commentmore&tid=$tid&pid=$pid&page=$page"
+        val url = "${siteConfig.baseUrl}/forum/forum.php?mod=misc&action=commentmore&tid=$tid&pid=$pid&page=$page&inajax=1&ajaxtarget=comment_$pid"
+        val referer = "${siteConfig.baseUrl}/forum/forum.php?mod=viewthread&tid=$tid"
         forumLogD("[Forum] loadFloorComments: url=$url")
         return cacheStore.observeCached(
             key = forumFloorCommentsCacheKey(tid, pid, page),
@@ -224,7 +239,7 @@ class DefaultForumRepository @Inject constructor(
             forceRefresh = forceRefresh,
             revalidate = false
         ) {
-            val doc = fetchForumDocument(url)
+            val doc = fetchForumAjaxDocument(url, referer)
             parseForumFloorComments(doc, siteConfig.baseUrl, pid)
         }.firstCachedOrFresh()
     }
@@ -240,7 +255,7 @@ class DefaultForumRepository @Inject constructor(
         "${forumCachePrefix()}:detail:v3:$tid:$page:${floorOrder.name.lowercase()}"
 
     private fun forumFloorCommentsCacheKey(tid: Int, pid: Int, page: Int): String =
-        "${forumCachePrefix()}:floor-comments:v1:$tid:$pid:$page"
+        "${forumCachePrefix()}:floor-comments:v2:$tid:$pid:$page"
 
     private fun threadListTtl(page: Int): Long =
         if (page == 1) ForumCacheTtl.THREAD_LIST_FIRST_PAGE_MILLIS

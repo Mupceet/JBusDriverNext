@@ -18,6 +18,7 @@ import me.jbusdriver.modern.core.http.WebViewFactory
 import me.jbusdriver.modern.core.site.SiteConfig
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -161,6 +162,78 @@ class ForumSessionManager @Inject constructor(
             }
         }
         return Jsoup.parse(html, url)
+    }
+
+    suspend fun fetchAjaxDocument(url: String, referer: String): Document {
+        val html = mutex.withLock {
+            val wv = webView
+                ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
+            withContext(Dispatchers.Main) {
+                withTimeout(20_000.milliseconds) {
+                    KLog.d("[Forum] Ajax fetch start: url=$url, referer=$referer, currentUrl=${wv.url}", TAG)
+                    ensureSameOriginPage(wv, referer)
+                    val raw = wv.evaluateJs(buildFetchHtmlScript(url))
+                        ?: throw IOException("Failed to extract ajax HTML from $url")
+                    val payload = unescapeJsString(raw)
+                    val json = JSONObject(payload)
+                    if (!json.optBoolean("ok")) {
+                        KLog.e("[Forum] Ajax fetch failed in JS: ${json.optString("error")}", TAG)
+                        throw IOException("Forum ajax fetch failed: ${json.optString("error")}")
+                    }
+                    val html = json.optString("text")
+                    KLog.d(
+                        "[Forum] Ajax fetch done: status=${json.optInt("status")}, " +
+                                "contentType=${json.optString("contentType")}, " +
+                                "finalUrl=${json.optString("url")}, " +
+                                "length=${html.length}",
+                        TAG
+                    )
+                    html
+                }
+            }
+        }
+        return Jsoup.parse(html, url)
+    }
+
+    private suspend fun ensureSameOriginPage(webView: WebView, referer: String) {
+        val expectedHost = runCatching { referer.toUri().host }.getOrNull()
+        val currentHost = webView.url?.let { runCatching { it.toUri().host }.getOrNull() }
+        if (expectedHost != null && currentHost == expectedHost) {
+            KLog.d("[Forum] Ajax same-origin page ready: currentUrl=${webView.url}", TAG)
+            return
+        }
+        KLog.d(
+            "[Forum] Ajax same-origin page missing: currentUrl=${webView.url}, loading referer=$referer",
+            TAG
+        )
+        loadPageWithBlockedResources(webView, referer)
+        KLog.d("[Forum] Ajax same-origin page loaded: currentUrl=${webView.url}", TAG)
+    }
+
+    private fun buildFetchHtmlScript(url: String): String {
+        return """
+            (function() {
+              try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', ${JSONObject.quote(url)}, false);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.setRequestHeader('Accept', '*/*');
+                xhr.send(null);
+                return JSON.stringify({
+                  ok: true,
+                  status: xhr.status,
+                  contentType: xhr.getResponseHeader('content-type') || '',
+                  url: xhr.responseURL || ${JSONObject.quote(url)},
+                  text: xhr.responseText || ''
+                });
+              } catch (error) {
+                return JSON.stringify({
+                  ok: false,
+                  error: String(error)
+                });
+              }
+            })()
+        """.trimIndent()
     }
 
     override suspend fun persistCookies() {

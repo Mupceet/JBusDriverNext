@@ -300,11 +300,31 @@ class ForumRepositoryCacheFlowTest {
         assertEquals(4773811, result.pid)
         assertEquals("Frank", result.comments.single().author)
         assertEquals(PageInfo(activePage = 2, nextPage = 3), result.pageInfo)
-        assertEquals(1, sessionClient.urls.size)
-        assertTrue(sessionClient.urls.single().contains("mod=misc&action=commentmore"))
-        assertTrue(sessionClient.urls.single().contains("tid=172059"))
-        assertTrue(sessionClient.urls.single().contains("pid=4773811"))
-        assertTrue(sessionClient.urls.single().contains("page=2"))
+        assertEquals(1, sessionClient.ajaxUrls.size)
+        assertTrue(sessionClient.ajaxUrls.single().contains("mod=misc&action=commentmore"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("tid=172059"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("pid=4773811"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("page=2"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("inajax=1"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("ajaxtarget=comment_4773811"))
+    }
+
+    @Test
+    fun `loadFloorComments uses ajax request with thread referer`() = runBlocking {
+        val sessionClient = FakeSessionClient(commentMoreHtml(page = 2, nextPage = 3))
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.loadFloorComments(tid = 172059, pid = 4773811, page = 2)
+
+        assertEquals(emptyList<String>(), sessionClient.urls)
+        assertEquals(1, sessionClient.ajaxUrls.size)
+        assertTrue(sessionClient.ajaxUrls.single().contains("mod=misc&action=commentmore"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("inajax=1"))
+        assertTrue(sessionClient.ajaxUrls.single().contains("ajaxtarget=comment_4773811"))
+        assertEquals(
+            "https://example.test/forum/forum.php?mod=viewthread&tid=172059",
+            sessionClient.ajaxReferers.single()
+        )
     }
 
     @Test
@@ -318,7 +338,7 @@ class ForumRepositoryCacheFlowTest {
 
         assertEquals(1, sessionClient.fetchCount)
         assertTrue(cacheStore.memory.keys.any { key ->
-            key == "forum:https://example.test:floor-comments:v1:172059:4773811:2"
+            key == "forum:https://example.test:floor-comments:v2:172059:4773811:2"
         })
     }
 
@@ -377,6 +397,8 @@ class ForumRepositoryCacheFlowTest {
     ) : ForumSessionClient {
         var fetchCount = 0
         val urls = mutableListOf<String>()
+        val ajaxUrls = mutableListOf<String>()
+        val ajaxReferers = mutableListOf<String?>()
 
         constructor(response: Any) : this(listOf(response))
 
@@ -385,6 +407,15 @@ class ForumRepositoryCacheFlowTest {
         override suspend fun fetchDocument(url: String): Document {
             fetchCount++
             urls += url
+            val value = responses[minOf(fetchCount - 1, responses.lastIndex)]
+            if (value is Throwable) throw value
+            return Jsoup.parse(value as String, url)
+        }
+
+        override suspend fun fetchAjaxDocument(url: String, referer: String): Document {
+            fetchCount++
+            ajaxUrls += url
+            ajaxReferers += referer
             val value = responses[minOf(fetchCount - 1, responses.lastIndex)]
             if (value is Throwable) throw value
             return Jsoup.parse(value as String, url)

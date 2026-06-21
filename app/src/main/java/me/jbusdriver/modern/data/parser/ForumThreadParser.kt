@@ -231,12 +231,26 @@ fun parseForumFloorComments(
     baseUrl: String,
     pid: Int
 ): ForumCommentPageResult {
-    val root = doc.selectFirst("div#comment_$pid.cm") ?: doc.body()
+    val root = doc.forumCommentRoot(pid)
+    val comments = parseForumComments(root, baseUrl)
+    val pageInfo = parseForumCommentPageInfo(root)
     return ForumCommentPageResult(
         pid = pid,
-        comments = parseForumComments(root, baseUrl),
-        pageInfo = parseForumCommentPageInfo(root)
+        comments = comments,
+        pageInfo = pageInfo
     )
+}
+
+private fun Document.forumCommentRoot(pid: Int): Element {
+    selectFirst("div#comment_$pid.cm")?.let { return it }
+    val cdataHtml = selectFirst("root")
+        ?.wholeText()
+        ?.trim()
+        ?.takeIf { it.contains("pstl") || it.contains("psth") }
+    if (!cdataHtml.isNullOrBlank()) {
+        return org.jsoup.Jsoup.parseBodyFragment(cdataHtml, location()).body()
+    }
+    return body()
 }
 
 private data class ReplyFloor(val number: Int, val isPinned: Boolean)
