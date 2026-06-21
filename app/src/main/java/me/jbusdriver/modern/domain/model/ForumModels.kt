@@ -94,7 +94,9 @@ data class ForumThreadDetail(
     val contentBlocks: List<ContentBlock>,
     val comments: List<Comment>,
     val replies: List<ForumReply>,
-    val pageInfo: PageInfo
+    val pageInfo: PageInfo,
+    val pid: Int = 0,
+    val commentPageInfo: PageInfo = PageInfo()
 )
 
 @Immutable
@@ -106,6 +108,13 @@ data class Comment(
 )
 
 @Immutable
+data class ForumCommentPageResult(
+    val pid: Int,
+    val comments: List<Comment>,
+    val pageInfo: PageInfo
+)
+
+@Immutable
 data class ForumReply(
     val floor: Int,
     val author: String,
@@ -114,7 +123,10 @@ data class ForumReply(
     val authorGroup: String,
     val contentBlocks: List<ContentBlock>,
     val postTime: String,
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    val pid: Int = 0,
+    val comments: List<Comment> = emptyList(),
+    val commentPageInfo: PageInfo = PageInfo()
 )
 
 @Immutable

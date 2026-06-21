@@ -2,13 +2,79 @@ package me.jbusdriver.modern.data.parser
 
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumTextSize
+import me.jbusdriver.modern.domain.model.PageInfo
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ForumThreadParserTest {
+    @Test
+    fun `thread detail parses first post floor comments and comment pagination`() {
+        val detail = parseForumThreadDetail(
+            fixture(
+                "floor-comments.html",
+                "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+            ),
+            "https://www.javbus.com"
+        )
+
+        assertEquals(4773811, detail.pid)
+        assertEquals(4, detail.comments.size)
+        assertEquals("Alice", detail.comments[0].author)
+        assertEquals("https://www.javbus.com/avatars/a.jpg", detail.comments[0].authorAvatar)
+        assertEquals("first comment", detail.comments[0].content)
+        assertEquals("鐧艰〃鏂?2026-6-9 08:59", detail.comments[0].time)
+        assertEquals("2026-6-9 09:00", detail.comments[1].time)
+        assertEquals(PageInfo(activePage = 1, nextPage = 2), detail.commentPageInfo)
+    }
+
+    @Test
+    fun `thread detail parses reply floor comments independently`() {
+        val detail = parseForumThreadDetail(
+            fixture(
+                "floor-comments.html",
+                "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+            ),
+            "https://www.javbus.com"
+        )
+
+        val reply = detail.replies.single()
+        assertEquals(4773820, reply.pid)
+        assertEquals(1, reply.comments.size)
+        assertEquals("Eve", reply.comments.single().author)
+        assertEquals("reply floor comment", reply.comments.single().content)
+        assertEquals(PageInfo(activePage = 1, nextPage = 1), reply.commentPageInfo)
+    }
+
+    @Test
+    fun `commentmore fragment parser returns comments and local page info`() {
+        val doc = commentMoreDocument(
+            """
+            <div id="comment_4773811" class="cm">
+              <div class="pstl">
+                <div class="psta"><img src="/avatars/f.jpg"></div>
+                <div class="psti"><a href="home.php?mod=space&amp;uid=6" class="xi2 xw1">Frank</a>&nbsp;page two comment&nbsp;<span class="xg1">鐧艰〃鏂?2026-6-10 10:00</span></div>
+              </div>
+              <div class="pgs mbm cl"><div class="pg">
+                <a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=1" class="prev">涓婁竴闋?</a>
+                <a href="forum.php?mod=misc&amp;action=commentmore&amp;tid=172059&amp;pid=4773811&amp;page=1">1</a>
+                <strong>2</strong>
+              </div></div>
+            </div>
+            """.trimIndent()
+        )
+
+        val result = parseForumFloorComments(doc, "https://www.javbus.com", pid = 4773811)
+
+        assertEquals(4773811, result.pid)
+        assertEquals("Frank", result.comments.single().author)
+        assertEquals("page two comment", result.comments.single().content)
+        assertEquals(PageInfo(activePage = 2, nextPage = 2), result.pageInfo)
+    }
+
     @Test
     fun `restricted reply remains visible without normal body cell`() {
         val detail = parseForumThreadDetail(
@@ -318,6 +384,12 @@ class ForumThreadParserTest {
         ),
         "https://www.javbus.com"
     ).replies.single { it.floor == floor }
+
+    private fun commentMoreDocument(html: String): Document =
+        Jsoup.parse(
+            html,
+            "https://www.javbus.com/forum/forum.php?mod=misc&action=commentmore&tid=172059&pid=4773811&page=2"
+        )
 
     private fun fixture(name: String, location: String) =
         Jsoup.parse(

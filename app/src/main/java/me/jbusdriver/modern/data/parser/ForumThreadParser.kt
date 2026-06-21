@@ -2,6 +2,7 @@ package me.jbusdriver.modern.data.parser
 
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
+import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
@@ -163,17 +164,11 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
     val contentBlocks =
         typeOptionBlocks + parseForumPostContent(firstPost?.selectFirst("td.t_f"), baseUrl)
 
-    val comments = firstPost?.select("div.cm div.pstl")?.map { pstl ->
-        Comment(
-            author = pstl.select(".psta a.xi2").text().trim(),
-            authorAvatar = pstl.select(".psta img[src]").attr("src"),
-            content = pstl.select(".psti").firstOrNull()?.ownText()?.trim()
-                ?: pstl.select(".psti").text().trim(),
-            time = pstl.select(".pisti .xg1 span[title]").attr("title")
-                .ifBlank { pstl.select(".psti .xg1 span[title]").attr("title") }
-                .ifBlank { pstl.select(".psti .xg1 span").text().trim() }
-        )
-    } ?: emptyList()
+    val firstPostPid = parsePostPid(firstPost)
+    val firstPostCommentBlock = firstPostPid.takeIf { it != 0 }
+        ?.let { firstPost?.selectFirst("div#comment_$it.cm") }
+    val comments = parseForumComments(firstPostCommentBlock, baseUrl)
+    val firstPostCommentPageInfo = parseForumCommentPageInfo(firstPostCommentBlock)
 
     val replies = doc.select(".nthread_postbox").filter { !it.hasClass("nthread_firstpostbox") }
         .mapNotNull { postBox ->
@@ -183,6 +178,11 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
                 ?.let { Regex("uid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: 0
             val replyAvatar = postBox.select(".favatar .avatar img[src]").attr("src")
                 .ifBlank { postBox.select(".pls .avatar img[src]").attr("src") }
+            val replyPid = parsePostPid(postBox)
+            val replyCommentBlock = replyPid.takeIf { it != 0 }
+                ?.let { postBox.selectFirst("div#comment_$it.cm") }
+            val replyComments = parseForumComments(replyCommentBlock, baseUrl)
+            val replyCommentPageInfo = parseForumCommentPageInfo(replyCommentBlock)
 
             ForumReply(
                 floor = floor.number,
@@ -194,7 +194,10 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
                 postTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
                     .ifBlank { postBox.select("em[id^=authorposton]").text().trim() }
                     .cleanForumPostTime(),
-                isPinned = floor.isPinned
+                isPinned = floor.isPinned,
+                pid = replyPid,
+                comments = replyComments,
+                commentPageInfo = replyCommentPageInfo
             )
         }
 
@@ -213,7 +216,22 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         contentBlocks = contentBlocks,
         comments = comments,
         replies = replies,
-        pageInfo = parseForumPageInfo(doc)
+        pageInfo = parseForumPageInfo(doc),
+        pid = firstPostPid,
+        commentPageInfo = firstPostCommentPageInfo
+    )
+}
+
+fun parseForumFloorComments(
+    doc: Document,
+    baseUrl: String,
+    pid: Int
+): ForumCommentPageResult {
+    val root = doc.selectFirst("div#comment_$pid.cm") ?: doc.body()
+    return ForumCommentPageResult(
+        pid = pid,
+        comments = parseForumComments(root, baseUrl),
+        pageInfo = parseForumCommentPageInfo(root)
     )
 }
 
@@ -235,6 +253,57 @@ private fun parseReplyContent(postBox: Element, baseUrl: String): List<ContentBl
     return parseForumPostContent(postBox.selectFirst("td.t_f"), baseUrl)
 }
 
+private fun parsePostPid(postBox: Element?): Int {
+    if (postBox == null) return 0
+    return listOf(
+        postBox.id(),
+        postBox.selectFirst("td[id^=postmessage_]")?.id().orEmpty(),
+        postBox.selectFirst("div[id^=comment_]")?.id().orEmpty(),
+        postBox.selectFirst("div[id^=post_rate_div_]")?.id().orEmpty()
+    ).firstNotNullOfOrNull { id ->
+        POST_ID_PREFIX.find(id)
+            ?.groupValues
+            ?.get(1)
+            ?.toIntOrNull()
+    } ?: 0
+}
+
+private fun parseForumComments(root: Element?, baseUrl: String): List<Comment> =
+    root?.select("div.pstl")?.mapNotNull { row ->
+        val body = row.selectFirst(".psti") ?: return@mapNotNull null
+        val authorElement = row.select(".psta a.xw1, .psti a.xi2, .psta a[href*=uid]")
+            .firstOrNull { it.text().isNotBlank() }
+        val author = authorElement?.text()?.trim().orEmpty()
+        val avatar = row.selectFirst(".psta img[src]")?.attr("src").orEmpty().wrapForumImage(baseUrl)
+        val timeElement = body.selectFirst(".xg1 span[title]")
+            ?: body.selectFirst(".xg1 span")
+            ?: body.selectFirst(".xg1")
+        val time = timeElement?.attr("title")?.ifBlank { timeElement.text() }?.trim().orEmpty()
+        val content = body.clone().also { clone ->
+            clone.select("a.xi2, a.xw1, .xg1").remove()
+        }.text().trim()
+
+        if (author.isEmpty() && content.isEmpty()) return@mapNotNull null
+        Comment(
+            author = author,
+            authorAvatar = avatar,
+            content = content,
+            time = time
+        )
+    } ?: emptyList()
+
+private fun parseForumCommentPageInfo(root: Element?): PageInfo {
+    if (root == null) return PageInfo(activePage = 1, nextPage = 1)
+    val pager = root.select(".pg").lastOrNull() ?: return PageInfo(activePage = 1, nextPage = 1)
+    val activePage = pager.selectFirst("strong")?.text()?.toIntOrNull() ?: 1
+    val nextPage = pager.select("a.nxt[href*=commentmore]")
+        .firstOrNull()
+        ?.attr("href")
+        ?.let { PAGE_PARAM.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+        ?: activePage
+    return PageInfo(activePage = activePage, nextPage = nextPage)
+}
+
 private fun String.cleanForumPostTime(): String =
     trim().replace(POST_TIME_PREFIX, "").trim()
 
@@ -243,3 +312,4 @@ private val POST_TIME_PREFIX = Regex(
 )
 
 private val PAGE_PARAM = Regex("page=(\\d+)")
+private val POST_ID_PREFIX = Regex("(?:post_|postmessage_|comment_|post_rate_div_)(\\d+)")
