@@ -286,48 +286,11 @@ private fun AppearanceCard(
             // Forum tab
             SwitchRow("顯示論壇", showForumTab, onShowForumTabChange)
 
-            // Forum sub-panel
+            // Forum sub-options — lightly indented under the forum toggle when enabled
             AnimatedVisibility(visible = showForumTab) {
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
                     SwitchRow("自動載入動圖", autoLoadGifs, onAutoLoadGifsChange)
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // Floor order — full-width clickable, content padded
-                    var floorExpanded by remember { mutableStateOf(false) }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { floorExpanded = true }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
-                        Box {
-                            Text(
-                                floorOrderLabel(forumFloorOrder),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            DropdownMenu(
-                                expanded = floorExpanded,
-                                onDismissRequest = { floorExpanded = false }
-                            ) {
-                                ForumFloorOrder.entries.forEach { order ->
-                                    DropdownMenuItem(
-                                        text = { Text(floorOrderLabel(order)) },
-                                        onClick = {
-                                            onForumFloorOrderChange(order)
-                                            floorExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    FloorOrderRow(forumFloorOrder, onForumFloorOrderChange)
                 }
             }
         }
@@ -353,6 +316,45 @@ private fun SwitchRow(
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
             Switch(checked = checked, onCheckedChange = null)
+        }
+    }
+}
+
+@Composable
+private fun FloorOrderRow(
+    forumFloorOrder: ForumFloorOrder,
+    onForumFloorOrderChange: (ForumFloorOrder) -> Unit
+) {
+    var floorExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { floorExpanded = true }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
+        Box {
+            Text(
+                floorOrderLabel(forumFloorOrder),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            DropdownMenu(
+                expanded = floorExpanded,
+                onDismissRequest = { floorExpanded = false }
+            ) {
+                ForumFloorOrder.entries.forEach { order ->
+                    DropdownMenuItem(
+                        text = { Text(floorOrderLabel(order)) },
+                        onClick = {
+                            onForumFloorOrderChange(order)
+                            floorExpanded = false
+                        }
+                    )
+                }
+            }
         }
     }
 }
