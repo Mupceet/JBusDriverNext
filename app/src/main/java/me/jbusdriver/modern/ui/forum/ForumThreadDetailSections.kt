@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.forum
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -45,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -64,7 +66,10 @@ import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 
 @Composable
-internal fun ThreadHeader(detail: ForumThreadDetail) {
+internal fun ThreadHeader(
+    detail: ForumThreadDetail,
+    onTitleLongClick: () -> Unit = {}
+) {
     Column {
         ForumThreadTitle(
             title = detail.title,
@@ -72,7 +77,11 @@ internal fun ThreadHeader(detail: ForumThreadDetail) {
             typeColor = detail.typeColor,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             badgeStyle = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .pointerInput(onTitleLongClick) {
+                    detectTapGestures(onLongPress = { onTitleLongClick() })
+                }
         )
         Row(
             modifier = Modifier
@@ -212,18 +221,25 @@ private fun ForumCommentRow(
             contentScale = ContentScale.Crop
         )
         Spacer(Modifier.width(8.dp))
-        Column {
-            Text(
-                "${comment.author}  ${comment.time}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                comment.content,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+        SelectionContainer {
+            ForumCommentText(comment = comment)
         }
+    }
+}
+
+@Composable
+private fun ForumCommentText(comment: Comment) {
+    Column {
+        Text(
+            "${comment.author}  ${comment.time}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            comment.content,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }
 
@@ -453,7 +469,7 @@ private fun FloorCommentsSheetContent(
 }
 
 @Composable
-internal fun FloorContentDialog(
+internal fun SelectableContentDialog(
     blocks: List<ContentBlock>,
     onDismiss: () -> Unit,
     onCopyAll: () -> Unit
@@ -507,3 +523,4 @@ internal fun FloorContentDialog(
         }
     }
 }
+

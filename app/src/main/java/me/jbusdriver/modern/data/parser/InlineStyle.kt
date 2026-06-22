@@ -15,7 +15,8 @@ internal data class InlineStyle(
     val strikethrough: Boolean = false,
     val color: String? = null,
     val size: ForumTextSize = ForumTextSize.BODY,
-    val isLink: Boolean = false
+    val isLink: Boolean = false,
+    val linkUrl: String = ""
 )
 
 /** Elements carrying these classes are editorial noise (status, mod actions, signatures). */
@@ -55,6 +56,7 @@ internal fun InlineStyle.toPart(
     color = color,
     size = size,
     isLink = isLink,
+    linkUrl = linkUrl,
     inlineImageUrl = inlineImageUrl,
     inlineImageAlt = inlineImageAlt
 )

@@ -56,6 +56,8 @@ class ForumPostParserTest {
         assertTrue("plain fragment present", combined.contains("plain"))
         assertTrue("link fragment present", combined.contains("link"))
         assertTrue("a part should carry bold styling", parts.any { it.bold })
-        assertTrue("a part should be marked as a link", parts.any { it.isLink })
+        val linkPart = parts.single { it.text == "link" }
+        assertTrue("a part should be marked as a link", linkPart.isLink)
+        assertEquals("link href should be retained", "https://example.com", linkPart.linkUrl)
     }
 }

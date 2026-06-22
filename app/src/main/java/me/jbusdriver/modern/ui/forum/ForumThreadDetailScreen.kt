@@ -150,16 +150,20 @@ fun ForumThreadDetailScreen(
             ) {
                 when {
                     detail != null -> {
-                        var dialogBlocks by remember { mutableStateOf<List<ContentBlock>?>(null) }
+                        var dialogContent by remember { mutableStateOf<ForumDialogContent?>(null) }
 
-                        dialogBlocks?.let { blocks ->
-                            FloorContentDialog(
-                                blocks = blocks,
-                                onDismiss = { dialogBlocks = null },
+                        dialogContent?.let { content ->
+                            SelectableContentDialog(
+                                blocks = content.blocks,
+                                onDismiss = { dialogContent = null },
                                 onCopyAll = {
-                                    context.copy(buildForumPlainText(blocks))
-                                    Toast.makeText(context, "已複製", Toast.LENGTH_SHORT).show()
-                                    dialogBlocks = null
+                                    context.copy(content.copyText)
+                                    Toast.makeText(
+                                        context,
+                                        R.string.copied,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    dialogContent = null
                                 }
                             )
                         }
@@ -180,7 +184,17 @@ fun ForumThreadDetailScreen(
                             contentPadding = PaddingValues(12.dp)
                         ) {
                             item(key = "header") {
-                                ThreadHeader(detail)
+                                ThreadHeader(
+                                    detail = detail,
+                                    onTitleLongClick = {
+                                        context.copy(detail.title)
+                                        Toast.makeText(
+                                            context,
+                                            R.string.copied,
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
                             }
 
                             item(key = "content") {
@@ -199,7 +213,10 @@ fun ForumThreadDetailScreen(
                                         autoLoadGifs = autoLoadGifs,
                                         onLoadGif = { viewModel.onLoadGif(it) },
                                         onLoadAllGifs = { viewModel.onLoadAllGifs() },
-                                        onLongClick = { dialogBlocks = detail.contentBlocks }
+                                        onLongClick = {
+                                            dialogContent =
+                                                ForumDialogContent.Blocks(detail.contentBlocks)
+                                        }
                                     )
                                     PostCommentsPreview(
                                         comments = detail.comments,
@@ -231,7 +248,10 @@ fun ForumThreadDetailScreen(
                                         onLoadGif = { viewModel.onLoadGif(it) },
                                         onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                         onLongClick = {
-                                            dialogBlocks = detail.replies[index].contentBlocks
+                                            dialogContent =
+                                                ForumDialogContent.Blocks(
+                                                    detail.replies[index].contentBlocks
+                                                )
                                         },
                                         onViewComments = { reply ->
                                             viewModel.openReplyCommentsSheet(reply.floor)
@@ -296,5 +316,15 @@ fun ForumThreadDetailScreen(
                 )
             }
         }
+    }
+}
+
+private sealed interface ForumDialogContent {
+    val blocks: List<ContentBlock>
+    val copyText: String
+
+    data class Blocks(val originalBlocks: List<ContentBlock>) : ForumDialogContent {
+        override val blocks: List<ContentBlock> = expandForumLinksForPreview(originalBlocks)
+        override val copyText: String = buildForumPlainText(originalBlocks)
     }
 }

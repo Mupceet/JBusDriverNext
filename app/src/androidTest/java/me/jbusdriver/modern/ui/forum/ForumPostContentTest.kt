@@ -1,7 +1,7 @@
 package me.jbusdriver.modern.ui.forum
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -47,13 +47,23 @@ class ForumPostContentTest {
     }
 
     @Test
-    fun linkStyledTextHasNoClickAction() {
+    fun linkStyledTextHasClickAction() {
         composeRule.setContent {
             MaterialTheme {
                 ForumPostContent(
                     blocks = listOf(
                         ContentBlock.RichText(
-                            listOf(RichParagraph(listOf(TextPart("link text", isLink = true))))
+                            listOf(
+                                RichParagraph(
+                                    listOf(
+                                        TextPart(
+                                            text = "link text",
+                                            isLink = true,
+                                            linkUrl = "https://example.test"
+                                        )
+                                    )
+                                )
+                            )
                         )
                     ),
                     onImageClick = { _, _ -> }
@@ -61,6 +71,6 @@ class ForumPostContentTest {
             }
         }
 
-        composeRule.onNodeWithText("link text").assertHasNoClickAction()
+        composeRule.onNodeWithText("link text").assertHasClickAction()
     }
 }

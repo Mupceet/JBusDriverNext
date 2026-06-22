@@ -10,7 +10,7 @@ import org.jsoup.nodes.TextNode
  * Parses a flat run of inline DOM nodes (e.g. the contents of a single `<li>`)
  * into [RichParagraph]s, honouring inline styling and `<br>` line breaks.
  */
-internal class InlineParagraphParser {
+internal class InlineParagraphParser(private val baseUrl: String = "") {
     private val paragraphs = mutableListOf<RichParagraph>()
     private val parts = mutableListOf<TextPart>()
     private var pendingSpace = false
@@ -31,7 +31,10 @@ internal class InlineParagraphParser {
                     "em", "i" -> style.copy(italic = true)
                     "u" -> style.copy(underline = true)
                     "s", "strike", "del" -> style.copy(strikethrough = true)
-                    "a" -> style.copy(isLink = true)
+                    "a" -> style.copy(
+                        isLink = true,
+                        linkUrl = node.attr("href").wrapForumLink(baseUrl)
+                    )
                     "font", "span" -> style.copy(
                         color = node.inlineColor() ?: style.color,
                         size = node.inlineSize(style.size)

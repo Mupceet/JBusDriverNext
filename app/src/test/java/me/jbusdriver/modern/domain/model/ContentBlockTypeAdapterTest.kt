@@ -61,7 +61,8 @@ class ContentBlockTypeAdapterTest {
                             strikethrough = true,
                             color = "#ff5500",
                             size = ForumTextSize.HEADING,
-                            isLink = true
+                            isLink = true,
+                            linkUrl = "https://example.test/link"
                         )
                     )
                 )
@@ -152,7 +153,11 @@ class ContentBlockTypeAdapterTest {
                     RichParagraph(
                         listOf(
                             TextPart("Hello "),
-                            TextPart("world")
+                            TextPart(
+                                text = "world",
+                                isLink = true,
+                                linkUrl = "https://example.test"
+                            )
                         )
                     )
                 )

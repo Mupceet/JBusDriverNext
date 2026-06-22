@@ -43,7 +43,13 @@ private class PostContentParser(private val baseUrl: String) {
             "em", "i" -> processChildren(element, style.copy(italic = true))
             "u" -> processChildren(element, style.copy(underline = true))
             "s", "strike", "del" -> processChildren(element, style.copy(strikethrough = true))
-            "a" -> processChildren(element, style.copy(isLink = true))
+            "a" -> processChildren(
+                element,
+                style.copy(
+                    isLink = true,
+                    linkUrl = element.attr("href").wrapForumLink(baseUrl)
+                )
+            )
             "font", "span" -> processChildren(
                 element,
                 style.copy(
@@ -175,7 +181,7 @@ private class PostContentParser(private val baseUrl: String) {
                 val inlineNodes = item.childNodes().filterNot { child ->
                     child is Element && child.tagName().lowercase() in LIST_TAGS
                 }
-                val itemParagraphs = InlineParagraphParser().parse(inlineNodes)
+                val itemParagraphs = InlineParagraphParser(baseUrl).parse(inlineNodes)
                 val children = item.children()
                     .filter { it.tagName().lowercase() in LIST_TAGS }
                     .mapNotNull { parseList(it, depth + 1) }

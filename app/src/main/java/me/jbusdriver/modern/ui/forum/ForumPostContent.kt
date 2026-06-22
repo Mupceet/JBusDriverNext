@@ -38,6 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -57,6 +59,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumTextSize
 import me.jbusdriver.modern.domain.model.RichList
+import me.jbusdriver.modern.domain.model.RichListItem
 import me.jbusdriver.modern.domain.model.RichParagraph
 import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.ui.components.GifPlaceholder
@@ -168,7 +171,13 @@ private fun RichParagraph.toAnnotatedString(
             appendInlineContent(part.inlineContentId(index), part.inlineImageAlt.ifBlank { " " })
         } else {
             withStyle(part.toSpanStyle(onSurface, surface, primary)) {
-                append(part.text)
+                if (part.isLink && part.linkUrl.isNotBlank()) {
+                    withLink(LinkAnnotation.Url(part.linkUrl)) {
+                        append(part.text)
+                    }
+                } else {
+                    append(part.text)
+                }
             }
         }
     }
@@ -457,6 +466,20 @@ internal fun buildForumPlainText(blocks: List<ContentBlock>): String =
         .filter(String::isNotBlank)
         .joinToString("\n")
 
+internal fun expandForumLinksForPreview(blocks: List<ContentBlock>): List<ContentBlock> =
+    blocks.map { block ->
+        when (block) {
+            is ContentBlock.RichText -> block.copy(
+                paragraphs = block.paragraphs.map(RichParagraph::expandLinksForPreview)
+            )
+
+            is ContentBlock.ListBlock -> block.copy(list = block.list.expandLinksForPreview())
+            is ContentBlock.Image,
+            is ContentBlock.Quote,
+            is ContentBlock.RestrictedNotice -> block
+        }
+    }
+
 internal fun forumFloorLabel(floor: Int, isPinned: Boolean, pinnedLabel: String): String =
     if (isPinned) "$pinnedLabel · $floor#" else "$floor#"
 
@@ -474,7 +497,30 @@ private fun ContentBlock.toPlainLines(): List<String> = when (this) {
     is ContentBlock.RestrictedNotice -> listOf(message)
 }
 
-private fun RichParagraph.plainText(): String = parts.joinToString("") { it.text }.trim()
+private fun RichParagraph.plainText(): String =
+    parts.joinToString("") { it.plainTextWithExpandedLink() }.trim()
+
+private fun TextPart.plainTextWithExpandedLink(): String =
+    if (isLink && linkUrl.isNotBlank()) "$text $linkUrl " else text
+
+private fun RichParagraph.expandLinksForPreview(): RichParagraph =
+    RichParagraph(parts.flatMap(TextPart::expandLinkForPreview))
+
+private fun TextPart.expandLinkForPreview(): List<TextPart> =
+    if (isLink && linkUrl.isNotBlank()) {
+        listOf(this, TextPart(" $linkUrl "))
+    } else {
+        listOf(this)
+    }
+
+private fun RichList.expandLinksForPreview(): RichList =
+    copy(items = items.map(RichListItem::expandLinksForPreview))
+
+private fun RichListItem.expandLinksForPreview(): RichListItem =
+    copy(
+        paragraphs = paragraphs.map(RichParagraph::expandLinksForPreview),
+        children = children.map(RichList::expandLinksForPreview)
+    )
 
 private fun RichList.toPlainLines(depth: Int): List<String> = items.flatMapIndexed { index, item ->
     val indent = "  ".repeat(depth)

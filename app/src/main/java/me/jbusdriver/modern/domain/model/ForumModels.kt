@@ -142,6 +142,7 @@ data class TextPart(
     val color: String? = null,
     val size: ForumTextSize = ForumTextSize.BODY,
     val isLink: Boolean = false,
+    val linkUrl: String = "",
     val inlineImageUrl: String = "",
     val inlineImageAlt: String = ""
 )
