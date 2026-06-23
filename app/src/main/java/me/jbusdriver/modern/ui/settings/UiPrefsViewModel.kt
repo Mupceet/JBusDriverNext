@@ -8,23 +8,28 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import me.jbusdriver.modern.data.settings.UiPrefsStoreContract
+import me.jbusdriver.modern.data.settings.MovieListStyle
+import me.jbusdriver.modern.data.settings.MovieListStyleSettings
 import javax.inject.Inject
 
 data class UiPrefsUiState(
-    val isGrid: Boolean = false
-)
+    val style: MovieListStyle = MovieListStyle.LIST
+) {
+    val isGrid: Boolean get() = style.isGrid
+}
 
 @HiltViewModel
 class UiPrefsViewModel @Inject constructor(
-    private val store: UiPrefsStoreContract
+    private val store: MovieListStyleSettings
 ) : ViewModel() {
-    val uiState: StateFlow<UiPrefsUiState> = store.isGrid
-        .map { UiPrefsUiState(isGrid = it) }
+    val uiState: StateFlow<UiPrefsUiState> = store.movieListStyle
+        .map { UiPrefsUiState(style = it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, UiPrefsUiState())
 
     fun setGrid(isGrid: Boolean) {
-        viewModelScope.launch { store.setGrid(isGrid) }
+        viewModelScope.launch {
+            store.setMovieListStyle(if (isGrid) MovieListStyle.GRID else MovieListStyle.LIST)
+        }
     }
 
     fun toggleGrid() {

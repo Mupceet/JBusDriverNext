@@ -59,6 +59,7 @@ import me.jbusdriver.modern.data.mirror.MirrorUrl
 import me.jbusdriver.modern.data.mirror.ScanPhase
 import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,6 +79,7 @@ fun SettingsScreen(
     val showForumTab by store.showForumTab.collectAsStateWithLifecycle()
     val autoLoadGifs by store.autoLoadGifs.collectAsStateWithLifecycle()
     val forumFloorOrder by store.forumFloorOrder.collectAsStateWithLifecycle()
+    val movieListStyle by store.movieListStyle.collectAsStateWithLifecycle()
 
     // Network state
     val selectedBaseUrl by store.selectedBaseUrl.collectAsStateWithLifecycle()
@@ -130,13 +132,15 @@ fun SettingsScreen(
                 showForumTab = showForumTab,
                 autoLoadGifs = autoLoadGifs,
                 forumFloorOrder = forumFloorOrder,
+                movieListStyle = movieListStyle,
                 onThemeModeChange = { scope.launch { store.setThemeMode(it) } },
                 onDynamicColorChange = { scope.launch { store.setDynamicColor(it) } },
                 onShowMovieTabChange = { scope.launch { store.setShowMovieTab(it) } },
                 onShowActressTabChange = { scope.launch { store.setShowActressTab(it) } },
                 onShowForumTabChange = { scope.launch { store.setShowForumTab(it) } },
                 onAutoLoadGifsChange = { scope.launch { store.setAutoLoadGifs(it) } },
-                onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } }
+                onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } },
+                onMovieListStyleChange = { scope.launch { store.setMovieListStyle(it) } }
             )
 
             // === Network Card ===
@@ -167,13 +171,15 @@ private fun AppearanceCard(
     showForumTab: Boolean,
     autoLoadGifs: Boolean,
     forumFloorOrder: ForumFloorOrder,
+    movieListStyle: MovieListStyle,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onShowMovieTabChange: (Boolean) -> Unit,
     onShowActressTabChange: (Boolean) -> Unit,
     onShowForumTabChange: (Boolean) -> Unit,
     onAutoLoadGifsChange: (Boolean) -> Unit,
-    onForumFloorOrderChange: (ForumFloorOrder) -> Unit
+    onForumFloorOrderChange: (ForumFloorOrder) -> Unit,
+    onMovieListStyleChange: (MovieListStyle) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -237,45 +243,11 @@ private fun AppearanceCard(
                 }
             }
 
+            // Movie list layout
+            MovieListStyleRow(movieListStyle, onMovieListStyleChange)
+
             // Dynamic color
-            val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (supportsDynamicColor)
-                            Modifier.clickable { onDynamicColorChange(!dynamicColor) }
-                        else Modifier
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "動態顏色",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = if (supportsDynamicColor) Modifier else Modifier.alpha(0.38f)
-                        )
-                        if (!supportsDynamicColor) {
-                            Text(
-                                "需要 Android 12+",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.alpha(0.6f)
-                            )
-                        }
-                    }
-                    Switch(
-                        checked = dynamicColor,
-                        onCheckedChange = null,
-                        enabled = supportsDynamicColor
-                    )
-                }
-            }
+            DynamicColorRow(dynamicColor, onDynamicColorChange)
 
             // Movie tab
             SwitchRow("顯示影片", showMovieTab, onShowMovieTabChange)
@@ -321,6 +293,51 @@ private fun SwitchRow(
 }
 
 @Composable
+private fun DynamicColorRow(
+    dynamicColor: Boolean,
+    onDynamicColorChange: (Boolean) -> Unit
+) {
+    val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (supportsDynamicColor)
+                    Modifier.clickable { onDynamicColorChange(!dynamicColor) }
+                else Modifier
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "動態顏色",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = if (supportsDynamicColor) Modifier else Modifier.alpha(0.38f)
+                )
+                if (!supportsDynamicColor) {
+                    Text(
+                        "需要 Android 12+",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.alpha(0.6f)
+                    )
+                }
+            }
+            Switch(
+                checked = dynamicColor,
+                onCheckedChange = null,
+                enabled = supportsDynamicColor
+            )
+        }
+    }
+}
+
+@Composable
 private fun FloorOrderRow(
     forumFloorOrder: ForumFloorOrder,
     onForumFloorOrderChange: (ForumFloorOrder) -> Unit
@@ -359,6 +376,45 @@ private fun FloorOrderRow(
     }
 }
 
+@Composable
+private fun MovieListStyleRow(
+    movieListStyle: MovieListStyle,
+    onMovieListStyleChange: (MovieListStyle) -> Unit
+) {
+    var styleExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { styleExpanded = true }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("影片列表樣式", style = MaterialTheme.typography.bodyMedium)
+        Box {
+            Text(
+                movieListStyleLabel(movieListStyle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            DropdownMenu(
+                expanded = styleExpanded,
+                onDismissRequest = { styleExpanded = false }
+            ) {
+                MovieListStyle.entries.forEach { style ->
+                    DropdownMenuItem(
+                        text = { Text(movieListStyleLabel(style)) },
+                        onClick = {
+                            onMovieListStyleChange(style)
+                            styleExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun themeModeLabel(mode: ThemeMode) = when (mode) {
     ThemeMode.SYSTEM -> "遵循系統"
     ThemeMode.LIGHT -> "亮色主題"
@@ -368,6 +424,12 @@ private fun themeModeLabel(mode: ThemeMode) = when (mode) {
 private fun floorOrderLabel(order: ForumFloorOrder) = when (order) {
     ForumFloorOrder.REGULAR -> "正序"
     ForumFloorOrder.REVERSE -> "倒序"
+}
+
+@Composable
+private fun movieListStyleLabel(style: MovieListStyle) = when (style) {
+    MovieListStyle.GRID -> stringResource(R.string.grid)
+    MovieListStyle.LIST -> stringResource(R.string.list_view)
 }
 
 //endregion

@@ -36,8 +36,14 @@ interface ForumSettingsReader {
     suspend fun currentForumFloorOrder(): ForumFloorOrder
 }
 
+/** Narrow read/write interface for movie list layout consumers (UiPrefsViewModel). */
+interface MovieListStyleSettings {
+    val movieListStyle: StateFlow<MovieListStyle>
+    suspend fun setMovieListStyle(style: MovieListStyle)
+}
+
 /** Full settings read/write contract for SettingsViewModel. */
-interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, SitePreferenceSource {
+interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListStyleSettings, SitePreferenceSource {
     // Appearance
     val showMovieTab: StateFlow<Boolean>
     val showActressTab: StateFlow<Boolean>
@@ -90,12 +96,14 @@ class AppSettingsStore @Inject constructor(
     override val showMovieTab: StateFlow<Boolean> = flowOf(KEY_SHOW_MOVIE_TAB, true)
     override val showActressTab: StateFlow<Boolean> = flowOf(KEY_SHOW_ACTRESS_TAB, true)
     override val showForumTab: StateFlow<Boolean> = flowOf(KEY_SHOW_FORUM_TAB, false)
+    override val movieListStyle: StateFlow<MovieListStyle> = mapped(KEY_MOVIE_LIST_STYLE, MovieListStyle.LIST) { MovieListStyle.fromPreferenceValue(it) }
 
     override suspend fun setThemeMode(mode: ThemeMode) = put(KEY_THEME_MODE, mode.preferenceValue)
     override suspend fun setDynamicColor(enabled: Boolean) = put(KEY_DYNAMIC_COLOR, enabled)
     override suspend fun setShowMovieTab(visible: Boolean) = put(KEY_SHOW_MOVIE_TAB, visible)
     override suspend fun setShowActressTab(visible: Boolean) = put(KEY_SHOW_ACTRESS_TAB, visible)
     override suspend fun setShowForumTab(enabled: Boolean) = put(KEY_SHOW_FORUM_TAB, enabled)
+    override suspend fun setMovieListStyle(style: MovieListStyle) = put(KEY_MOVIE_LIST_STYLE, style.preferenceValue)
     // endregion
 
     // region Forum
@@ -133,6 +141,7 @@ class AppSettingsStore @Inject constructor(
         private val KEY_SHOW_FORUM_TAB = booleanPreferencesKey("show_forum_tab")
         private val KEY_AUTO_LOAD_GIFS = booleanPreferencesKey("auto_load_gifs")
         private val KEY_FORUM_FLOOR_ORDER = stringPreferencesKey("forum_floor_order")
+        private val KEY_MOVIE_LIST_STYLE = stringPreferencesKey("movie_list_style")
         private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")
         private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
 

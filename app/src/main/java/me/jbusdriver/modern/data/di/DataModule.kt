@@ -34,6 +34,7 @@ import me.jbusdriver.modern.data.session.ForumSessionManager
 import me.jbusdriver.modern.data.settings.AppSettingsContract
 import me.jbusdriver.modern.data.settings.AppSettingsStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.settings.MovieListStyleSettings
 import me.jbusdriver.modern.data.settings.ThemeSettingsReader
 import me.jbusdriver.modern.data.session.GifLoadTracker
 import me.jbusdriver.modern.data.gateway.AndroidImageMediaGateway
@@ -48,7 +49,6 @@ import me.jbusdriver.modern.data.settings.DefaultThemeRepository
 import me.jbusdriver.modern.data.settings.ThemeRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.data.settings.UiPrefsStore
-import me.jbusdriver.modern.data.settings.UiPrefsStoreContract
 import javax.inject.Singleton
 
 /**
@@ -130,12 +130,6 @@ abstract class DataModule {
         impl: AndroidImageMediaGateway
     ): ImageMediaGateway
 
-    @Binds
-    @Singleton
-    abstract fun bindUiPrefsStoreContract(
-        impl: UiPrefsStore
-    ): UiPrefsStoreContract
-
     /** 绑定 [CollectRepository] 到 [DefaultCollectRepository]。 */
     @Binds
     @Singleton
@@ -189,6 +183,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindThemeSettingsReader(impl: AppSettingsStore): ThemeSettingsReader
+
+    @Binds
+    @Singleton
+    abstract fun bindMovieListStyleSettings(impl: AppSettingsStore): MovieListStyleSettings
 
     @Binds
     @Singleton

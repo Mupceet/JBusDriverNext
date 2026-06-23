@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.data.settings
 
 import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -24,26 +23,12 @@ interface CollectionUiPrefs {
     suspend fun setSortOption(dbType: Int, optionName: String)
 }
 
-interface UiPrefsStoreContract {
-    val isGrid: StateFlow<Boolean>
-    suspend fun setGrid(isGrid: Boolean)
-}
-
 @Singleton
 class UiPrefsStore @Inject constructor(
     @param:ApplicationContext private val context: Context
-) : CollectionUiPrefs, UiPrefsStoreContract {
+) : CollectionUiPrefs {
     private val dataStore = context.uiPrefsDataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    /** Cached grid/list preference — StateFlow avoids re-reading from disk on each subscription. */
-    override val isGrid: StateFlow<Boolean> = dataStore.data
-        .map { it[IS_GRID] ?: false }
-        .stateIn(scope, SharingStarted.Eagerly, false)
-
-    override suspend fun setGrid(isGrid: Boolean) {
-        dataStore.edit { it[IS_GRID] = isGrid }
-    }
 
     /** Persisted sort option for movie collection */
     override val movieSortOption: StateFlow<String> = dataStore.data
@@ -61,7 +46,6 @@ class UiPrefsStore @Inject constructor(
     }
 
     companion object {
-        private val IS_GRID = booleanPreferencesKey("is_grid")
         private val MOVIE_SORT = stringPreferencesKey("movie_sort_option")
         private val ACTRESS_SORT = stringPreferencesKey("actress_sort_option")
     }
