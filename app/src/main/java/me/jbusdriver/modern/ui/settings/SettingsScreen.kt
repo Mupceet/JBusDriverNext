@@ -203,7 +203,7 @@ private fun AppearanceCard(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "外觀",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -220,11 +220,11 @@ private fun AppearanceCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("主題模式", style = MaterialTheme.typography.bodyMedium)
+                Text("主題模式", style = MaterialTheme.typography.bodyLarge)
                 Box {
                     Text(
                         themeModeLabel(themeMode),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
                     DropdownMenu(
@@ -287,7 +287,7 @@ private fun SwitchRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(label, style = MaterialTheme.typography.bodyMedium)
+            Text(label, style = MaterialTheme.typography.bodyLarge)
             Switch(
                 checked = checked,
                 onCheckedChange = null,
@@ -321,7 +321,7 @@ private fun DynamicColorRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "動態顏色",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     modifier = if (supportsDynamicColor) Modifier else Modifier.alpha(0.38f)
                 )
                 if (!supportsDynamicColor) {
@@ -357,11 +357,11 @@ private fun FloorOrderRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyMedium)
+        Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyLarge)
         Box {
             Text(
                 floorOrderLabel(forumFloorOrder),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
             )
             DropdownMenu(
@@ -396,11 +396,11 @@ private fun MovieListStyleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("影片列表樣式", style = MaterialTheme.typography.bodyMedium)
+        Text("影片列表樣式", style = MaterialTheme.typography.bodyLarge)
         Box {
             Text(
                 movieListStyleLabel(movieListStyle),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
             )
             DropdownMenu(
@@ -474,7 +474,7 @@ private fun NetworkCard(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     stringResource(R.string.select_url),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -500,7 +500,7 @@ private fun NetworkCard(
                     modifier = Modifier
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth(),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 )
@@ -519,7 +519,7 @@ private fun NetworkCard(
                                     ) {
                                         Text(
                                             mirror.url,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            style = MaterialTheme.typography.bodyLarge,
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .then(if (!mirror.isReachable) Modifier.alpha(0.4f) else Modifier),
