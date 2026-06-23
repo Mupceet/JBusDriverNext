@@ -62,6 +62,7 @@ import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
+import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,7 +225,7 @@ private fun AppearanceCard(
                 Box {
                     Text(
                         themeModeLabel(themeMode),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                     DropdownMenu(
@@ -232,8 +233,9 @@ private fun AppearanceCard(
                         onDismissRequest = { themeExpanded = false }
                     ) {
                         ThemeMode.entries.forEach { mode ->
-                            DropdownMenuItem(
-                                text = { Text(themeModeLabel(mode)) },
+                            SelectableDropdownItem(
+                                label = themeModeLabel(mode),
+                                selected = mode == themeMode,
                                 onClick = {
                                     onThemeModeChange(mode)
                                     themeExpanded = false
@@ -361,7 +363,7 @@ private fun FloorOrderRow(
         Box {
             Text(
                 floorOrderLabel(forumFloorOrder),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             DropdownMenu(
@@ -369,8 +371,9 @@ private fun FloorOrderRow(
                 onDismissRequest = { floorExpanded = false }
             ) {
                 ForumFloorOrder.entries.forEach { order ->
-                    DropdownMenuItem(
-                        text = { Text(floorOrderLabel(order)) },
+                    SelectableDropdownItem(
+                        label = floorOrderLabel(order),
+                        selected = order == forumFloorOrder,
                         onClick = {
                             onForumFloorOrderChange(order)
                             floorExpanded = false
@@ -400,7 +403,7 @@ private fun MovieListStyleRow(
         Box {
             Text(
                 movieListStyleLabel(movieListStyle),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             DropdownMenu(
@@ -408,8 +411,9 @@ private fun MovieListStyleRow(
                 onDismissRequest = { styleExpanded = false }
             ) {
                 MovieListStyle.entries.forEach { style ->
-                    DropdownMenuItem(
-                        text = { Text(movieListStyleLabel(style)) },
+                    SelectableDropdownItem(
+                        label = movieListStyleLabel(style),
+                        selected = style == movieListStyle,
                         onClick = {
                             onMovieListStyleChange(style)
                             styleExpanded = false

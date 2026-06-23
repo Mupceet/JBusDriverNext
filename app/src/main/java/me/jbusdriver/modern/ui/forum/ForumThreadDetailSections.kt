@@ -27,7 +27,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,6 +59,7 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
@@ -145,16 +145,16 @@ internal fun RepliesHeader(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                FloorOrderMenuItem(
-                    text = stringResource(R.string.floor_order_regular),
+                SelectableDropdownItem(
+                    label = stringResource(R.string.floor_order_regular),
                     selected = floorOrder == ForumFloorOrder.REGULAR,
                     onClick = {
                         expanded = false
                         onFloorOrderSelected(ForumFloorOrder.REGULAR)
                     }
                 )
-                FloorOrderMenuItem(
-                    text = stringResource(R.string.floor_order_reverse),
+                SelectableDropdownItem(
+                    label = stringResource(R.string.floor_order_reverse),
                     selected = floorOrder == ForumFloorOrder.REVERSE,
                     onClick = {
                         expanded = false
@@ -164,28 +164,6 @@ internal fun RepliesHeader(
             }
         }
     }
-}
-
-@Composable
-private fun FloorOrderMenuItem(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    DropdownMenuItem(
-        text = { Text(text) },
-        leadingIcon = {
-            if (selected) {
-                Icon(
-                    painterResource(R.drawable.check_24px),
-                    contentDescription = null
-                )
-            } else {
-                Spacer(Modifier.size(24.dp))
-            }
-        },
-        onClick = onClick
-    )
 }
 
 @Composable
