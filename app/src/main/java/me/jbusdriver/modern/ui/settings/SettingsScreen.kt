@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -287,7 +288,11 @@ private fun SwitchRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = checked, onCheckedChange = null)
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                modifier = Modifier.scale(SwitchScale)
+            )
         }
     }
 }
@@ -331,7 +336,8 @@ private fun DynamicColorRow(
             Switch(
                 checked = dynamicColor,
                 onCheckedChange = null,
-                enabled = supportsDynamicColor
+                enabled = supportsDynamicColor,
+                modifier = Modifier.scale(SwitchScale)
             )
         }
     }
@@ -425,6 +431,9 @@ private fun floorOrderLabel(order: ForumFloorOrder) = when (order) {
     ForumFloorOrder.REGULAR -> "正序"
     ForumFloorOrder.REVERSE -> "倒序"
 }
+
+/** Settings switches render slightly smaller than the default Material3 size. */
+private const val SwitchScale = 0.85f
 
 @Composable
 private fun movieListStyleLabel(style: MovieListStyle) = when (style) {
