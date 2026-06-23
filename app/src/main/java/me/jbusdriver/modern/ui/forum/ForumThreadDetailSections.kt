@@ -46,9 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -70,6 +72,7 @@ internal fun ThreadHeader(
     detail: ForumThreadDetail,
     onTitleLongClick: () -> Unit = {}
 ) {
+    val haptics = LocalHapticFeedback.current
     Column {
         ForumThreadTitle(
             title = detail.title,
@@ -80,7 +83,10 @@ internal fun ThreadHeader(
             modifier = Modifier
                 .padding(top = 4.dp)
                 .pointerInput(onTitleLongClick) {
-                    detectTapGestures(onLongPress = { onTitleLongClick() })
+                    detectTapGestures(onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onTitleLongClick()
+                    })
                 }
         )
         Row(

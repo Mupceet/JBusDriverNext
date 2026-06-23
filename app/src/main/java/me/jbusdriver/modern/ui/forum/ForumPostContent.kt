@@ -32,9 +32,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
@@ -87,12 +89,16 @@ internal fun ForumPostContent(
                 .map { it.url }
         }
     }
+    val haptics = LocalHapticFeedback.current
 
     Column(
         modifier = modifier.then(
             if (onLongClick != null) {
                 Modifier.pointerInput(onLongClick) {
-                    detectTapGestures(onLongPress = { onLongClick() })
+                    detectTapGestures(onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongClick()
+                    })
                 }
             } else {
                 Modifier
