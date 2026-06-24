@@ -151,13 +151,40 @@ class LinkMovieListViewModel @AssistedInject constructor(
         linkUrl = url
         listType = type
         pages.reset()
-        _uiState.value = LinkMovieListUiState()
+        _uiState.value = LinkMovieListUiState(showAll = _uiState.value.showAll)
         if (type == "actress") {
             _uiState.update { it.copy(actressHeader = it.actressHeader.startLoading()) }
         }
         loadFirstPage()
         if (type == "actress" && linkUrl.isNotBlank()) {
             loadActressDetail()
+        }
+    }
+
+    fun setDefaultShowAll(showAll: Boolean) {
+        val state = _uiState.value
+        if (state.showAll == showAll) return
+        val shouldReload = linkUrl.isNotBlank() && (
+            state.movies.isNotEmpty() ||
+                state.isLoading ||
+                state.isRefreshing ||
+                state.isRevalidating
+            )
+        if (shouldReload) firstPageJob?.cancel()
+        _uiState.update {
+            it.copy(
+                showAll = showAll,
+                isFilterSwitching = shouldReload,
+                isLoading = false,
+                isRefreshing = false,
+                isRevalidating = false,
+                pendingFreshResult = null,
+                refreshMessage = null
+            )
+        }
+        if (shouldReload) {
+            pages.reset()
+            loadFirstPage()
         }
     }
 

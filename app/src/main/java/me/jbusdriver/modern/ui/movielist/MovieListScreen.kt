@@ -49,6 +49,7 @@ fun MovieListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
+    val defaultShowAll = uiPrefsState.defaultShowAll
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
@@ -68,7 +69,8 @@ fun MovieListScreen(
         viewModel.setAtTopForFreshUpdates(isAtTop)
     }
 
-    LaunchedEffect(dataSourceType, active) {
+    LaunchedEffect(dataSourceType, active, defaultShowAll) {
+        viewModel.setDefaultShowAll(defaultShowAll)
         if (active && dataSourceType != null) {
             viewModel.setDataSourceType(dataSourceType)
         }

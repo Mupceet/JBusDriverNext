@@ -105,6 +105,7 @@ fun LinkMovieListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
+    val defaultShowAll = uiPrefsState.defaultShowAll
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
@@ -123,7 +124,8 @@ fun LinkMovieListScreen(
         viewModel.setAtTopForFreshUpdates(isAtTop)
     }
 
-    LaunchedEffect(linkUrl) {
+    LaunchedEffect(linkUrl, defaultShowAll) {
+        viewModel.setDefaultShowAll(defaultShowAll)
         viewModel.setLink(linkUrl, type, avatarUrl)
     }
 

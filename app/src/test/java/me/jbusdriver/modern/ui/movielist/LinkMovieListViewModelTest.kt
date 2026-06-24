@@ -273,6 +273,64 @@ class LinkMovieListViewModelTest {
     }
 
     @Test
+    fun setDefaultShowAll_loadsLinkWithDefaultMode() = runTest(testDispatcher) {
+        val showAllCalls = mutableListOf<Boolean>()
+        val repository = object : MovieRepository {
+            override fun observePageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean,
+                revalidate: Boolean,
+                nowMillis: () -> Long
+            ): Flow<CachedLoadEvent<MoviePageResult>> = flow {
+                showAllCalls += showAll
+                emit(
+                    CachedLoadEvent.Fresh(
+                        CacheEntry(
+                            MoviePageResult(PageInfo(1, 2), testMovies),
+                            1L,
+                            CacheSource.Network,
+                            false
+                        )
+                    )
+                )
+            }
+
+            override suspend fun loadPage(
+                type: DataSourceType,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActresses(type: DataSourceType, page: Int, forceRefresh: Boolean) =
+                emptyList<ActressInfo>() to PageInfo()
+
+            override suspend fun loadGenreCategories(type: DataSourceType, forceRefresh: Boolean) =
+                emptyList<GenreGroup>()
+
+            override suspend fun loadPageByUrl(
+                url: String,
+                page: Int,
+                showAll: Boolean,
+                forceRefresh: Boolean
+            ) = MoviePageResult(PageInfo(), emptyList())
+
+            override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
+                null
+        }
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+
+        viewModel.setDefaultShowAll(true)
+        viewModel.setLink("http://example.com/star/abc")
+        advanceUntilIdle()
+
+        assertEquals(listOf(true), showAllCalls)
+        assertTrue(viewModel.uiState.value.showAll)
+    }
+
+    @Test
     fun staleRefreshResultDoesNotOverwriteShowAllSwitch() = runTest(testDispatcher) {
         val oldRefresh = CompletableDeferred<MoviePageResult>()
         val repository = object : MovieRepository {

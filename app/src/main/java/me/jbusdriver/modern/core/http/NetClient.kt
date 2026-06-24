@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.core.http
 
-import android.text.TextUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -18,6 +17,21 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+
+internal fun mergeControlledCookie(
+    existingCookies: String,
+    name: String,
+    value: String
+): String {
+    val retainedCookies = existingCookies.split(";")
+        .map(String::trim)
+        .filter { cookie ->
+            cookie.isNotEmpty() &&
+                    !cookie.substringBefore("=", missingDelimiterValue = cookie)
+                        .equals(name, ignoreCase = true)
+        }
+    return (retainedCookies + "$name=$value").joinToString("; ")
+}
 
 /**
  * 全局 HTTP 客户端配置中心，管理 OkHttpClient 实例和网页获取。
@@ -52,28 +66,14 @@ object NetClient {
             var request = chain.request()
             // Preserve any cookies already set by CookieJar
             val existingCookies = request.header("Cookie") ?: ""
-            val extraCookies = buildString {
-                append(
-                    if (!TextUtils.isEmpty(request.header("existmag"))) {
-                        "existmag=all"
-                    } else {
-                        "existmag=mag"
-                    }
-                )
-                if (BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()) {
-                    append("; ")
-                    append("bus_auth=")
-                    append(BuildConfig.JAVBUS_AUTH_COOKIE)
-                } else {
-                    append("; ")
-                    append("bus_auth=4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO")
-                }
-            }
-            val mergedCookies = if (existingCookies.isNotBlank()) {
-                "$existingCookies; $extraCookies"
+            val existMagValue = if (request.header("existmag").isNullOrEmpty()) "mag" else "all"
+            val authCookie = if (BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()) {
+                BuildConfig.JAVBUS_AUTH_COOKIE
             } else {
-                extraCookies
+                "4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO"
             }
+            val mergedCookies = mergeControlledCookie(existingCookies, "existmag", existMagValue)
+                .let { mergeControlledCookie(it, "bus_auth", authCookie) }
             request = request.newBuilder()
                 .header("User-Agent", USER_AGENT)
                 .header("Cookie", mergedCookies)

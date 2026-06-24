@@ -60,6 +60,7 @@ import me.jbusdriver.modern.data.mirror.MirrorUrl
 import me.jbusdriver.modern.data.mirror.ScanPhase
 import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
@@ -82,6 +83,7 @@ fun SettingsScreen(
     val autoLoadGifs by store.autoLoadGifs.collectAsStateWithLifecycle()
     val forumFloorOrder by store.forumFloorOrder.collectAsStateWithLifecycle()
     val movieListStyle by store.movieListStyle.collectAsStateWithLifecycle()
+    val movieLoadMode by store.movieLoadMode.collectAsStateWithLifecycle()
 
     // Network state
     val selectedBaseUrl by store.selectedBaseUrl.collectAsStateWithLifecycle()
@@ -135,6 +137,7 @@ fun SettingsScreen(
                 autoLoadGifs = autoLoadGifs,
                 forumFloorOrder = forumFloorOrder,
                 movieListStyle = movieListStyle,
+                movieLoadMode = movieLoadMode,
                 onThemeModeChange = { scope.launch { store.setThemeMode(it) } },
                 onDynamicColorChange = { scope.launch { store.setDynamicColor(it) } },
                 onShowMovieTabChange = { scope.launch { store.setShowMovieTab(it) } },
@@ -142,7 +145,8 @@ fun SettingsScreen(
                 onShowForumTabChange = { scope.launch { store.setShowForumTab(it) } },
                 onAutoLoadGifsChange = { scope.launch { store.setAutoLoadGifs(it) } },
                 onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } },
-                onMovieListStyleChange = { scope.launch { store.setMovieListStyle(it) } }
+                onMovieListStyleChange = { scope.launch { store.setMovieListStyle(it) } },
+                onMovieLoadModeChange = { scope.launch { store.setMovieLoadMode(it) } }
             )
 
             // === Network Card ===
@@ -174,6 +178,7 @@ private fun AppearanceCard(
     autoLoadGifs: Boolean,
     forumFloorOrder: ForumFloorOrder,
     movieListStyle: MovieListStyle,
+    movieLoadMode: MovieLoadMode,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onShowMovieTabChange: (Boolean) -> Unit,
@@ -181,7 +186,8 @@ private fun AppearanceCard(
     onShowForumTabChange: (Boolean) -> Unit,
     onAutoLoadGifsChange: (Boolean) -> Unit,
     onForumFloorOrderChange: (ForumFloorOrder) -> Unit,
-    onMovieListStyleChange: (MovieListStyle) -> Unit
+    onMovieListStyleChange: (MovieListStyle) -> Unit,
+    onMovieLoadModeChange: (MovieLoadMode) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -248,6 +254,9 @@ private fun AppearanceCard(
 
             // Movie list layout
             MovieListStyleRow(movieListStyle, onMovieListStyleChange)
+
+            // Movie default loading mode
+            MovieLoadModeRow(movieLoadMode, onMovieLoadModeChange)
 
             // Dynamic color
             DynamicColorRow(dynamicColor, onDynamicColorChange)
@@ -425,6 +434,46 @@ private fun MovieListStyleRow(
     }
 }
 
+@Composable
+private fun MovieLoadModeRow(
+    movieLoadMode: MovieLoadMode,
+    onMovieLoadModeChange: (MovieLoadMode) -> Unit
+) {
+    var modeExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { modeExpanded = true }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.movie_load_mode), style = MaterialTheme.typography.bodyLarge)
+        Box {
+            Text(
+                movieLoadModeLabel(movieLoadMode),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            DropdownMenu(
+                expanded = modeExpanded,
+                onDismissRequest = { modeExpanded = false }
+            ) {
+                MovieLoadMode.entries.forEach { mode ->
+                    SelectableDropdownItem(
+                        label = movieLoadModeLabel(mode),
+                        selected = mode == movieLoadMode,
+                        onClick = {
+                            onMovieLoadModeChange(mode)
+                            modeExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun themeModeLabel(mode: ThemeMode) = when (mode) {
     ThemeMode.SYSTEM -> "遵循系統"
     ThemeMode.LIGHT -> "亮色主題"
@@ -443,6 +492,12 @@ private const val SwitchScale = 0.85f
 private fun movieListStyleLabel(style: MovieListStyle) = when (style) {
     MovieListStyle.GRID -> stringResource(R.string.grid)
     MovieListStyle.LIST -> stringResource(R.string.list_view)
+}
+
+@Composable
+private fun movieLoadModeLabel(mode: MovieLoadMode) = when (mode) {
+    MovieLoadMode.WITH_MAGNET -> stringResource(R.string.movie_load_mode_with_magnet)
+    MovieLoadMode.ALL -> stringResource(R.string.movie_load_mode_all)
 }
 
 //endregion

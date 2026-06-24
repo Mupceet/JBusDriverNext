@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.MovieListStyleSettings
 import org.junit.After
@@ -49,9 +50,14 @@ class UiPrefsViewModelTest {
 
     private class FakeMovieListStyleSettings : MovieListStyleSettings {
         override val movieListStyle = MutableStateFlow(MovieListStyle.LIST)
+        override val movieLoadMode = MutableStateFlow(MovieLoadMode.WITH_MAGNET)
 
         override suspend fun setMovieListStyle(style: MovieListStyle) {
             movieListStyle.value = style
+        }
+
+        override suspend fun setMovieLoadMode(mode: MovieLoadMode) {
+            movieLoadMode.value = mode
         }
     }
 }

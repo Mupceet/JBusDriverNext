@@ -155,6 +155,10 @@
     <string name="magnet_count">已有磁力 (%1$d)</string>
     <string name="all_movies_count">全部影片 (%1$d)</string>
 
+    <string name="movie_load_mode">影片載入模式</string>
+    <string name="movie_load_mode_with_magnet">載入有磁力</string>
+    <string name="movie_load_mode_all">載入全部</string>
+
     <!-- GIF -->
     <string name="click_to_load">點擊載入</string>
     <string name="load_this_gif">載入此動圖</string>

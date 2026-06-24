@@ -205,6 +205,31 @@ class MovieListViewModel @Inject constructor(
         loadFirstPage()
     }
 
+    fun setDefaultShowAll(showAll: Boolean) {
+        val state = _uiState.value
+        if (state.showAll == showAll) return
+        val shouldReload = state.movies.isNotEmpty() ||
+            state.isLoading ||
+            state.isRefreshing ||
+            state.isRevalidating
+        if (shouldReload) firstPageJob?.cancel()
+        _uiState.update {
+            it.copy(
+                showAll = showAll,
+                isFilterSwitching = shouldReload,
+                isLoading = false,
+                isRefreshing = false,
+                isRevalidating = false,
+                pendingFreshResult = null,
+                refreshMessage = null
+            )
+        }
+        if (shouldReload) {
+            pages.reset()
+            loadFirstPage()
+        }
+    }
+
     /**
      * 设置 genre URL 并重新加载列表。
      *
@@ -219,7 +244,7 @@ class MovieListViewModel @Inject constructor(
         if (pageSource.key == newSource.key && _uiState.value.movies.isNotEmpty()) return
         pageSource = newSource
         pages.reset()
-        _uiState.value = MovieListUiState()
+        _uiState.value = MovieListUiState(showAll = _uiState.value.showAll)
         loadFirstPage()
     }
 
