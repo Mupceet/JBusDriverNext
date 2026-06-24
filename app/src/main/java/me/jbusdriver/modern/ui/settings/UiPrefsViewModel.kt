@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
-import me.jbusdriver.modern.data.settings.MovieListStyleSettings
+import me.jbusdriver.modern.data.settings.MovieListSettings
 import javax.inject.Inject
 
 data class UiPrefsUiState(
@@ -23,7 +23,7 @@ data class UiPrefsUiState(
 
 @HiltViewModel
 class UiPrefsViewModel @Inject constructor(
-    private val store: MovieListStyleSettings
+    private val store: MovieListSettings
 ) : ViewModel() {
     val uiState: StateFlow<UiPrefsUiState> = combine(
         store.movieListStyle,

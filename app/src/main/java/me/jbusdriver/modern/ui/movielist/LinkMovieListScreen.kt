@@ -125,8 +125,11 @@ fun LinkMovieListScreen(
     }
 
     LaunchedEffect(linkUrl, defaultShowAll) {
+        // 先以默认筛选加载链接：链接变化时由 setLink 承担唯一一次加载，随后的
+        // setDefaultShowAll 因 showAll 已一致而直接返回；仅默认值变化（同一链接）时，
+        // setLink 提前返回，由 setDefaultShowAll 原地重载。
+        viewModel.setLink(linkUrl, type, avatarUrl, defaultShowAll)
         viewModel.setDefaultShowAll(defaultShowAll)
-        viewModel.setLink(linkUrl, type, avatarUrl)
     }
 
     // 从后台恢复时触发 revalidate

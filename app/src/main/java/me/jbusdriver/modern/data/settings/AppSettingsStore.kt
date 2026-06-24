@@ -36,8 +36,8 @@ interface ForumSettingsReader {
     suspend fun currentForumFloorOrder(): ForumFloorOrder
 }
 
-/** Narrow read/write interface for movie list layout consumers (UiPrefsViewModel). */
-interface MovieListStyleSettings {
+/** Narrow read/write interface for movie list display consumers (UiPrefsViewModel). */
+interface MovieListSettings {
     val movieListStyle: StateFlow<MovieListStyle>
     val movieLoadMode: StateFlow<MovieLoadMode>
     suspend fun setMovieListStyle(style: MovieListStyle)
@@ -45,7 +45,7 @@ interface MovieListStyleSettings {
 }
 
 /** Full settings read/write contract for SettingsViewModel. */
-interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListStyleSettings, SitePreferenceSource {
+interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListSettings, SitePreferenceSource {
     // Appearance
     val showMovieTab: StateFlow<Boolean>
     val showActressTab: StateFlow<Boolean>

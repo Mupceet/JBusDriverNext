@@ -34,7 +34,7 @@ import me.jbusdriver.modern.data.session.ForumSessionManager
 import me.jbusdriver.modern.data.settings.AppSettingsContract
 import me.jbusdriver.modern.data.settings.AppSettingsStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
-import me.jbusdriver.modern.data.settings.MovieListStyleSettings
+import me.jbusdriver.modern.data.settings.MovieListSettings
 import me.jbusdriver.modern.data.settings.ThemeSettingsReader
 import me.jbusdriver.modern.data.session.GifLoadTracker
 import me.jbusdriver.modern.data.gateway.AndroidImageMediaGateway
@@ -186,7 +186,7 @@ abstract class DataModule {
 
     @Binds
     @Singleton
-    abstract fun bindMovieListStyleSettings(impl: AppSettingsStore): MovieListStyleSettings
+    abstract fun bindMovieListSettings(impl: AppSettingsStore): MovieListSettings
 
     @Binds
     @Singleton

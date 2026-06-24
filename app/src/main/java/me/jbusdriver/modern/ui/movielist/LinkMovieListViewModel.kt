@@ -145,13 +145,14 @@ class LinkMovieListViewModel @AssistedInject constructor(
      * @param url 关联页面的完整 URL
      * @param type 列表类型，"actress" 表示女优关联影片，空字符串表示其他类型
      * @param avatarUrl 头像 URL（保留参数，当前未使用）
+     * @param defaultShowAll 是否显示全部影片（含无磁力链接的影片），作为该链接的初始筛选值
      */
-    fun setLink(url: String, type: String = "", avatarUrl: String = "") {
+    fun setLink(url: String, type: String = "", avatarUrl: String = "", defaultShowAll: Boolean = false) {
         if (linkUrl == url && _uiState.value.movies.isNotEmpty()) return
         linkUrl = url
         listType = type
         pages.reset()
-        _uiState.value = LinkMovieListUiState(showAll = _uiState.value.showAll)
+        _uiState.value = LinkMovieListUiState(showAll = defaultShowAll)
         if (type == "actress") {
             _uiState.update { it.copy(actressHeader = it.actressHeader.startLoading()) }
         }

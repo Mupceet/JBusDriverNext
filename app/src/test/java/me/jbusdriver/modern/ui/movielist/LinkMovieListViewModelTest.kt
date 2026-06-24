@@ -273,7 +273,7 @@ class LinkMovieListViewModelTest {
     }
 
     @Test
-    fun setDefaultShowAll_loadsLinkWithDefaultMode() = runTest(testDispatcher) {
+    fun setDefaultShowAll_reloadsCurrentLinkWithDefaultMode() = runTest(testDispatcher) {
         val showAllCalls = mutableListOf<Boolean>()
         val repository = object : MovieRepository {
             override fun observePageByUrl(
@@ -322,8 +322,13 @@ class LinkMovieListViewModelTest {
         }
         val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
 
-        viewModel.setDefaultShowAll(true)
+        // 先以默认筛选（showAll=false）加载链接，再变更默认值，验证 setDefaultShowAll
+        // 会以新的默认值原地重载当前链接（同一链接、仅默认值变化的情况）。
         viewModel.setLink("http://example.com/star/abc")
+        advanceUntilIdle()
+        showAllCalls.clear()
+
+        viewModel.setDefaultShowAll(true)
         advanceUntilIdle()
 
         assertEquals(listOf(true), showAllCalls)

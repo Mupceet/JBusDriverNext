@@ -10,7 +10,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
-import me.jbusdriver.modern.data.settings.MovieListStyleSettings
+import me.jbusdriver.modern.data.settings.MovieListSettings
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -33,7 +33,7 @@ class UiPrefsViewModelTest {
 
     @Test
     fun uiStateReflectsGridPreferenceAndIntents() = runTest(dispatcher) {
-        val store = FakeMovieListStyleSettings()
+        val store = FakeMovieListSettings()
         val viewModel = UiPrefsViewModel(store)
         advanceUntilIdle()
 
@@ -48,7 +48,7 @@ class UiPrefsViewModelTest {
         assertFalse(viewModel.uiState.value.isGrid)
     }
 
-    private class FakeMovieListStyleSettings : MovieListStyleSettings {
+    private class FakeMovieListSettings : MovieListSettings {
         override val movieListStyle = MutableStateFlow(MovieListStyle.LIST)
         override val movieLoadMode = MutableStateFlow(MovieLoadMode.WITH_MAGNET)
 
