@@ -95,7 +95,7 @@ fun MainScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar(modifier = Modifier.height(64.dp)) {
+            NavigationBar() {
                 BottomNavItems.forEach { item ->
                     if (item.category == BottomNavCategory.MOVIE && !showMovieTab) return@forEach
                     if (item.category == BottomNavCategory.ACTRESS && !showActressTab) return@forEach
