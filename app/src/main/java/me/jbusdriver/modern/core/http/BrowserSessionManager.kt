@@ -1,11 +1,11 @@
-package me.jbusdriver.modern.data.session
+package me.jbusdriver.modern.core.http
 
 import android.graphics.Bitmap
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -14,7 +14,6 @@ import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
 import me.jbusdriver.modern.core.http.WebViewHelper.unescapeJsString
-import me.jbusdriver.modern.core.http.WebViewFactory
 import me.jbusdriver.modern.core.site.SiteConfig
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -25,9 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
-private const val TAG = "ForumSession"
+private const val TAG = "BrowserSession"
 
 private val BLOCKED_EXTENSIONS = setOf(
     "css", "js",
@@ -62,34 +60,48 @@ private fun isImageResource(url: String): Boolean {
 }
 
 /**
- * WebView-based forum page fetcher.
- *
- * The site uses a quiz-based age verification that can only be passed
- * by a real browser engine. This class keeps a hidden WebView alive
- * and uses it to fetch all forum pages, extracting HTML for Jsoup parsing.
- *
- * Lifecycle: WebView is created on first use and kept alive until
- * destroy is called (typically when the user leaves the forum tab).
+ * Persists the browser session's cookies (e.g. after a forum page fetch captures Discuz!
+ * session cookies). Implemented by [BrowserSessionManager].
  */
-interface ForumCookiePersister {
+interface BrowserCookiePersister {
     suspend fun persistCookies()
 }
 
+/**
+ * WebView-backed implementation of [BrowserSessionClient].
+ *
+ * The site gates HTML pages behind a `/doc/driver-verify` interstitial that only a real
+ * browser engine can pass. This class keeps a hidden WebView alive that has passed the
+ * gate, and uses it to fetch any page or ajax fragment the OkHttp client cannot reach on
+ * its own — used by both the movie/list/detail pipeline and the forum pipeline.
+ *
+ * Lifecycle: the WebView is created on first use (cold start) and kept alive until
+ * [destroy] is called. All navigations are serialized on [mutex] because the single shared
+ * WebView can only load one URL at a time.
+ */
 @Singleton
-class ForumSessionManager @Inject constructor(
+class BrowserSessionManager @Inject constructor(
     private val siteConfig: SiteConfig,
     private val cookieStore: SessionCookieStore,
     private val webViewFactory: WebViewFactory
-) : ForumCookiePersister {
+) : BrowserSessionClient, BrowserCookiePersister {
 
     @Volatile
     private var webView: WebView? = null
     private val initialized = AtomicBoolean(false)
     private val mutex = Mutex()
 
-    fun isInitialized(): Boolean = initialized.get()
+    // Optimization: the main-site page loaded during cold-start warm-up is the same page
+    // the home screen will request next. Cache its HTML so that first fetch reuses it
+    // instead of navigating the WebView a second time.
+    @Volatile
+    private var primedMainUrl: String? = null
+    @Volatile
+    private var primedMainHtml: String? = null
 
-    suspend fun ensureSession() {
+    override suspend fun warmUp() = ensureSession()
+
+    private suspend fun ensureSession() {
         if (initialized.get()) return
         mutex.withLock {
             if (initialized.get()) return
@@ -99,7 +111,7 @@ class ForumSessionManager @Inject constructor(
                 cookieStore.restoreCookies(url)
                 ensureWebViewCreated()
                 initialized.set(true)
-                KLog.d("[Forum] Session restored from persisted cookies", TAG)
+                KLog.d("[Browser] Session restored from persisted cookies", TAG)
                 return
             }
 
@@ -123,16 +135,14 @@ class ForumSessionManager @Inject constructor(
                 webView = wv
                 try {
                     val mainUrl = siteConfig.referer()
-                    KLog.d("[Forum] Loading main site: $mainUrl", TAG)
+                    KLog.d("[Browser] Loading main site: $mainUrl", TAG)
                     loadPageWithBlockedResources(wv, mainUrl)
-
-                    delay(1000.milliseconds)
-
+                    capturePrimedHtml(wv, mainUrl)
                     cookieStore.saveCookies(mainUrl)
                     initialized.set(true)
-                    KLog.d("[Forum] WebView session initialized", TAG)
+                    KLog.d("[Browser] WebView session initialized", TAG)
                 } catch (e: Exception) {
-                    KLog.e("[Forum] initWebView failed: ${e.message}", TAG)
+                    KLog.e("[Browser] initWebView failed: ${e.message}", TAG)
                     wv.destroy()
                     webView = null
                     throw e
@@ -141,22 +151,38 @@ class ForumSessionManager @Inject constructor(
         }
     }
 
-    suspend fun fetchDocument(url: String): Document {
+    override suspend fun fetchDocument(url: String): Document {
+        ensureSession()
+        // Reuse the HTML captured during warm-up if it matches this URL (avoids a duplicate
+        // navigation of the home page right after cold start).
+        consumePrimed(url)?.let {
+            KLog.i("WebView url=$url primed=reused", "FetchTiming")
+            return it
+        }
         // Serialize all navigations on the single shared WebView. Without this, two
         // concurrent fetches (e.g. a duplicate load + a cache retry) each install their
         // own WebViewClient and clobber each other's callbacks, so one fetch resumes on
         // the other's page or never resumes at all.
+        val tStart = System.nanoTime()
         val html = mutex.withLock {
+            val lockWaitMs = (System.nanoTime() - tStart) / 1_000_000
             val wv = webView
-                ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
+                ?: throw IllegalStateException("Browser WebView not initialized")
             withContext(Dispatchers.Main) {
                 withTimeout(20_000.milliseconds) {
+                    val tLoad = System.nanoTime()
                     loadPageWithBlockedResources(wv, url)
-                    KLog.d("[Forum] Page loaded: $url", TAG)
+                    val loadMs = (System.nanoTime() - tLoad) / 1_000_000
+                    KLog.d("[Browser] Page loaded: $url", TAG)
+                    val tExtract = System.nanoTime()
                     val raw = wv.evaluateJs("document.documentElement.outerHTML")
                         ?: throw IOException("Failed to extract HTML from $url")
                     val html = unescapeJsString(raw)
-                    KLog.d("[Forum] HTML extracted: ${html.length} chars", TAG)
+                    val extractMs = (System.nanoTime() - tExtract) / 1_000_000
+                    KLog.i(
+                        "WebView url=$url lockWait=${lockWaitMs}ms load=${loadMs}ms extract=${extractMs}ms len=${html.length}",
+                        "FetchTiming"
+                    )
                     html
                 }
             }
@@ -164,25 +190,26 @@ class ForumSessionManager @Inject constructor(
         return Jsoup.parse(html, url)
     }
 
-    suspend fun fetchAjaxDocument(url: String, referer: String): Document {
+    override suspend fun fetchAjaxDocument(url: String, referer: String): Document {
+        ensureSession()
         val html = mutex.withLock {
             val wv = webView
-                ?: throw IllegalStateException("Forum WebView not initialized. Call ensureSession first.")
+                ?: throw IllegalStateException("Browser WebView not initialized")
             withContext(Dispatchers.Main) {
                 withTimeout(20_000.milliseconds) {
-                    KLog.d("[Forum] Ajax fetch start: url=$url, referer=$referer, currentUrl=${wv.url}", TAG)
+                    KLog.d("[Browser] Ajax fetch start: url=$url, referer=$referer, currentUrl=${wv.url}", TAG)
                     ensureSameOriginPage(wv, referer)
                     val raw = wv.evaluateJs(buildFetchHtmlScript(url))
                         ?: throw IOException("Failed to extract ajax HTML from $url")
                     val payload = unescapeJsString(raw)
                     val json = JSONObject(payload)
                     if (!json.optBoolean("ok")) {
-                        KLog.e("[Forum] Ajax fetch failed in JS: ${json.optString("error")}", TAG)
-                        throw IOException("Forum ajax fetch failed: ${json.optString("error")}")
+                        KLog.e("[Browser] Ajax fetch failed in JS: ${json.optString("error")}", TAG)
+                        throw IOException("Ajax fetch failed: ${json.optString("error")}")
                     }
                     val html = json.optString("text")
                     KLog.d(
-                        "[Forum] Ajax fetch done: status=${json.optInt("status")}, " +
+                        "[Browser] Ajax fetch done: status=${json.optInt("status")}, " +
                                 "contentType=${json.optString("contentType")}, " +
                                 "finalUrl=${json.optString("url")}, " +
                                 "length=${html.length}",
@@ -199,15 +226,15 @@ class ForumSessionManager @Inject constructor(
         val expectedHost = runCatching { referer.toUri().host }.getOrNull()
         val currentHost = webView.url?.let { runCatching { it.toUri().host }.getOrNull() }
         if (expectedHost != null && currentHost == expectedHost) {
-            KLog.d("[Forum] Ajax same-origin page ready: currentUrl=${webView.url}", TAG)
+            KLog.d("[Browser] Ajax same-origin page ready: currentUrl=${webView.url}", TAG)
             return
         }
         KLog.d(
-            "[Forum] Ajax same-origin page missing: currentUrl=${webView.url}, loading referer=$referer",
+            "[Browser] Ajax same-origin page missing: currentUrl=${webView.url}, loading referer=$referer",
             TAG
         )
         loadPageWithBlockedResources(webView, referer)
-        KLog.d("[Forum] Ajax same-origin page loaded: currentUrl=${webView.url}", TAG)
+        KLog.d("[Browser] Ajax same-origin page loaded: currentUrl=${webView.url}", TAG)
     }
 
     private fun buildFetchHtmlScript(url: String): String {
@@ -236,27 +263,50 @@ class ForumSessionManager @Inject constructor(
         """.trimIndent()
     }
 
+    private suspend fun capturePrimedHtml(wv: WebView, url: String) {
+        runCatching {
+            val raw = wv.evaluateJs("document.documentElement.outerHTML") ?: return
+            val html = unescapeJsString(raw)
+            if (html.isNotBlank()) {
+                primedMainHtml = html
+                primedMainUrl = url
+                KLog.d("[Browser] Primed home HTML: ${html.length} chars for $url", TAG)
+            }
+        }.onFailure { KLog.w("[Browser] Primed capture failed: ${it.message}", TAG) }
+    }
+
+    private fun consumePrimed(url: String): Document? {
+        val primedUrl = primedMainUrl ?: return null
+        if (!url.trimEnd('/').equals(primedUrl.trimEnd('/'), ignoreCase = true)) return null
+        val html = primedMainHtml ?: return null
+        primedMainHtml = null
+        primedMainUrl = null
+        return Jsoup.parse(html, url)
+    }
+
     override suspend fun persistCookies() {
         cookieStore.saveCookies(siteConfig.referer())
     }
 
-    suspend fun destroy() {
+    override suspend fun destroy() {
         mutex.withLock {
             withContext(Dispatchers.Main.immediate) {
                 val wv = webView
                 if (wv != null) {
-                    KLog.d("[Forum] Destroying WebView", TAG)
+                    KLog.d("[Browser] Destroying WebView", TAG)
                     wv.stopLoading()
                     wv.destroy()
                     webView = null
                 }
                 initialized.set(false)
+                primedMainHtml = null
+                primedMainUrl = null
             }
         }
     }
 
     /**
-     * Load a URL with resource blocking (CSS/JS/images) for faster forum page loading.
+     * Load a URL with resource blocking (CSS/JS/images) for faster page loading.
      */
     private suspend fun loadPageWithBlockedResources(webView: WebView, url: String): String {
         val expectedHost = runCatching { url.toUri().host }.getOrNull()

@@ -2,8 +2,8 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.data.repository.DefaultForumRepository
 import me.jbusdriver.modern.data.repository.ForumRepository
-import me.jbusdriver.modern.data.session.ForumCookiePersister
-import me.jbusdriver.modern.data.session.ForumSessionClient
+import me.jbusdriver.modern.core.http.BrowserCookiePersister
+import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -394,7 +394,7 @@ class ForumRepositoryCacheFlowTest {
 
     private class FakeSessionClient(
         private val responses: List<Any>
-    ) : ForumSessionClient {
+    ) : BrowserSessionClient {
         var fetchCount = 0
         val urls = mutableListOf<String>()
         val ajaxUrls = mutableListOf<String>()
@@ -426,7 +426,7 @@ class ForumRepositoryCacheFlowTest {
 
     private class FakeCookiePersister(
         private val error: Throwable? = null
-    ) : ForumCookiePersister {
+    ) : BrowserCookiePersister {
         var persistCount = 0
         override suspend fun persistCookies() {
             persistCount++

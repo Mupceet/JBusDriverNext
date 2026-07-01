@@ -2,6 +2,7 @@ package me.jbusdriver.modern.core.http
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.KLog
 import okhttp3.OkHttpClient
 import org.jsoup.Jsoup
@@ -35,30 +36,78 @@ class DefaultHtmlClient @Inject constructor(
         get() = NetClient.glideOkHttpClient
 
     override suspend fun fetchHtml(url: String, showAll: Boolean, referer: String?): String {
-        val response = fetchWithVerifyFallback(url, showAll, referer)
-        return response.body
+        // fetchHtml serves ajax endpoints (e.g. the magnet list) which are NOT behind the
+        // driver-verify gate, so OkHttp fetches them directly even without bus_auth. (A
+        // WebView navigation of an ajax URL returns a truncated body, so keep these on OkHttp.)
+        return fetchViaOkHttpWithFallback(url, showAll, referer).body
     }
 
     override suspend fun fetchDocument(url: String, showAll: Boolean): Document {
-        val response = fetchWithVerifyFallback(url, showAll, referer = null)
+        val response = fetchPage(url, showAll)
         return withContext(Dispatchers.Default) { Jsoup.parse(response.body, response.finalUrl) }
     }
 
-    private suspend fun fetchWithVerifyFallback(
+    /**
+     * Page fetch strategy.
+     *
+     * Default (no built-in bus_auth): the site's /doc/driver-verify gate only opens for a real
+     * browser engine, so OkHttp (a non-browser) cannot fetch pages directly — route through the
+     * shared WebView session instead, exactly like the forum. Images still load via OkHttp/Coil
+     * because they don't require bus_auth.
+     *
+     * Optional fast-path: when a user-supplied bus_auth is configured (JAVBUS_AUTH_COOKIE),
+     * fetch via OkHttp, falling back to the WebView session only if the token is rejected.
+     */
+    private suspend fun fetchPage(url: String, showAll: Boolean): NetClient.HtmlResponse {
+        if (BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()) {
+            return fetchViaOkHttpWithFallback(url, showAll, referer = null)
+        }
+        val tStart = System.nanoTime()
+        if (showAll) {
+            // existmag is normally injected by the OkHttp interceptor; mirror it for the
+            // WebView path so "show all" still takes effect.
+            android.webkit.CookieManager.getInstance().setCookie(url, "existmag=all; path=/")
+        }
+        val doc = browserSessionClient.fetchDocument(url)
+        KLog.i(
+            "page[WebView] url=$url took=${(System.nanoTime() - tStart) / 1_000_000}ms len=${doc.html().length}",
+            "FetchTiming"
+        )
+        return NetClient.HtmlResponse(doc.location(), doc.html())
+    }
+
+    private suspend fun fetchViaOkHttpWithFallback(
         url: String,
         showAll: Boolean,
         referer: String?
     ): NetClient.HtmlResponse {
+        val tStart = System.nanoTime()
         val first = NetClient.fetchHtmlResponse(url, showAll, referer)
-        if (!first.isDriverVerify()) return first
+        if (!first.isDriverVerify()) {
+            KLog.i(
+                "ajax[OkHttp-direct] url=$url took=${(System.nanoTime() - tStart) / 1_000_000}ms len=${first.body.length}",
+                "FetchTiming"
+            )
+            return first
+        }
 
         KLog.w("HtmlClient hit driver verification for $url; warming browser session")
         browserSessionClient.warmUp()
         val retry = NetClient.fetchHtmlResponse(url, showAll, referer)
-        if (!retry.isDriverVerify()) return retry
+        if (!retry.isDriverVerify()) {
+            KLog.i(
+                "ajax[OkHttp-retry] url=$url took=${(System.nanoTime() - tStart) / 1_000_000}ms len=${retry.body.length}",
+                "FetchTiming"
+            )
+            return retry
+        }
 
         KLog.w("HtmlClient retry still hit verification for $url; falling back to browser fetch")
         val doc = browserSessionClient.fetchDocument(url)
+        KLog.i(
+            "ajax[WebView-fallback] url=$url took=${(System.nanoTime() - tStart) / 1_000_000}ms len=${doc.html().length}",
+            "FetchTiming"
+        )
         return NetClient.HtmlResponse(doc.location(), doc.html())
     }
 

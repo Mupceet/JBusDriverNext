@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data.session
+package me.jbusdriver.modern.core.http
 
 import android.content.Context
 import android.webkit.CookieManager

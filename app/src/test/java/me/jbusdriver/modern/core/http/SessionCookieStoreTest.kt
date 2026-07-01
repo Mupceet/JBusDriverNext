@@ -1,4 +1,4 @@
-package me.jbusdriver.modern.data.session
+package me.jbusdriver.modern.core.http
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

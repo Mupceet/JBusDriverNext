@@ -21,16 +21,14 @@ import me.jbusdriver.modern.data.gateway.AndroidCollectionDocumentGateway
 import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
 import me.jbusdriver.modern.data.repository.DefaultCollectRepository
 import me.jbusdriver.modern.data.repository.DefaultForumRepository
-import me.jbusdriver.modern.data.session.DefaultForumSessionClient
 import me.jbusdriver.modern.data.repository.DefaultMagnetRepository
 import me.jbusdriver.modern.data.repository.DefaultMovieDetailRepository
 import me.jbusdriver.modern.data.repository.DefaultMovieRepository
 import me.jbusdriver.modern.data.settings.DefaultSearchHistoryStore
 import me.jbusdriver.modern.data.repository.DefaultSearchRepository
-import me.jbusdriver.modern.data.session.ForumCookiePersister
+import me.jbusdriver.modern.core.http.BrowserCookiePersister
+import me.jbusdriver.modern.core.http.BrowserSessionManager
 import me.jbusdriver.modern.data.repository.ForumRepository
-import me.jbusdriver.modern.data.session.ForumSessionClient
-import me.jbusdriver.modern.data.session.ForumSessionManager
 import me.jbusdriver.modern.data.settings.AppSettingsContract
 import me.jbusdriver.modern.data.settings.AppSettingsStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
@@ -152,21 +150,15 @@ abstract class DataModule {
 
     @Binds
     @Singleton
-    abstract fun bindForumCookiePersister(
-        impl: ForumSessionManager
-    ): ForumCookiePersister
-
-    @Binds
-    @Singleton
-    abstract fun bindForumSessionClient(
-        impl: DefaultForumSessionClient
-    ): ForumSessionClient
-
-    @Binds
-    @Singleton
     abstract fun bindBrowserSessionClient(
-        impl: DefaultForumSessionClient
+        impl: BrowserSessionManager
     ): BrowserSessionClient
+
+    @Binds
+    @Singleton
+    abstract fun bindBrowserCookiePersister(
+        impl: BrowserSessionManager
+    ): BrowserCookiePersister
 
     @Binds
     @Singleton

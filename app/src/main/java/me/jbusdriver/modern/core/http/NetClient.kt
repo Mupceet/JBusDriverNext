@@ -54,11 +54,11 @@ object NetClient {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36"
 
     /**
-     * 磁力链接专用拦截器
+     * 磁力链接 / 列表 Cookie 拦截器
      *
      * 注入 Cookie：existmag=all/mag 控制是否显示全部磁力链接，
-     * bus_auth 为站点认证 token，
-     * Discuz! 论坛 session cookies 用于论坛访问。
+     * bus_auth（可选）为站点认证 token，仅在用户通过 JAVBUS_AUTH_COOKIE 配置时注入，
+     * 作为 OkHttp 快速通道；默认为空，HTML 页面改由 WebView 会话获取。
      * 与 CookieJar 中的 cookies 合并，而非覆盖。
      */
     private val EXIST_MAGNET_INTERCEPTOR by lazy {
@@ -67,20 +67,21 @@ object NetClient {
             // Preserve any cookies already set by CookieJar
             val existingCookies = request.header("Cookie") ?: ""
             val existMagValue = if (request.header("existmag").isNullOrEmpty()) "mag" else "all"
-            val authCookie = if (BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()) {
-                BuildConfig.JAVBUS_AUTH_COOKIE
-            } else {
-                "4b85UbbfIo1f9unsrObLRtu0aYAe8VOgu7OjJJBPE95b9jKg0Jqj7xGmCEzb9VJOGoJO"
+            var mergedCookies = mergeControlledCookie(existingCookies, "existmag", existMagValue)
+            // bus_auth only when a user-supplied token is configured (optional OkHttp fast-path).
+            // By default it is empty: the site's driver-verify gate is passed by the WebView
+            // session instead, so HTML pages are fetched via BrowserSessionClient, not here.
+            val authCookie = BuildConfig.JAVBUS_AUTH_COOKIE
+            if (authCookie.isNotBlank()) {
+                mergedCookies = mergeControlledCookie(mergedCookies, "bus_auth", authCookie)
             }
-            val mergedCookies = mergeControlledCookie(existingCookies, "existmag", existMagValue)
-                .let { mergeControlledCookie(it, "bus_auth", authCookie) }
             request = request.newBuilder()
                 .header("User-Agent", USER_AGENT)
                 .header("Cookie", mergedCookies)
                 .build()
             KLog.d(
                 "NetClient",
-                "Prepared cookies for ${request.url}; auth=${BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()}"
+                "Prepared cookies for ${request.url}; auth=${authCookie.isNotBlank()}"
             )
             chain.proceed(request)
         }

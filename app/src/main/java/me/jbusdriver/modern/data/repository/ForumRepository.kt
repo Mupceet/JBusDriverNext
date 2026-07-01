@@ -12,8 +12,8 @@ import me.jbusdriver.modern.data.parser.parseForumFloorComments
 import me.jbusdriver.modern.data.parser.parseForumHomeData
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
 import me.jbusdriver.modern.data.parser.parseForumThreads
-import me.jbusdriver.modern.data.session.ForumCookiePersister
-import me.jbusdriver.modern.data.session.ForumSessionClient
+import me.jbusdriver.modern.core.http.BrowserCookiePersister
+import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
@@ -84,8 +84,8 @@ interface ForumRepository {
 
 @Singleton
 class DefaultForumRepository @Inject constructor(
-    private val sessionClient: ForumSessionClient,
-    private val cookiePersister: ForumCookiePersister,
+    private val sessionClient: BrowserSessionClient,
+    private val cookiePersister: BrowserCookiePersister,
     private val cacheStore: CacheStore,
     private val siteConfig: SiteConfig
 ) : ForumRepository {
