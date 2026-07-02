@@ -70,6 +70,21 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
+import kotlin.math.abs
+
+/** 封面占位的默认宽高比（横向）。绝大多数封面都聚集在这个比例附近。 */
+private const val CoverDefaultAspectRatio = 1.5f
+
+/**
+ * 真实宽高比相对占位默认值的相对偏差超过此阈值时（例如横向占位遇到纵向封面）才采用真实比例，
+ * 否则保持占位比例，避免图片加载完成后界面跳动。
+ */
+private const val CoverRatioAdoptionTolerance = 0.25f
+
+private fun shouldAdoptCoverRatio(real: Float): Boolean {
+    val default = CoverDefaultAspectRatio
+    return abs(real - default) / default > CoverRatioAdoptionTolerance
+}
 
 /**
  * 影片详情页面的顶层可组合函数。
@@ -234,9 +249,8 @@ private fun DetailContent(
     val copiedTitleMessage = stringResource(R.string.copied_title)
     var selectedHeader by remember { mutableStateOf<HeaderUiModel?>(null) }
     var coverAspectRatio by remember {
-        mutableFloatStateOf(1.49f)
+        mutableFloatStateOf(CoverDefaultAspectRatio)
     }
-    detail.headers.firstOrNull()?.value ?: ""
     val allImages = remember(detail.cover, detail.imageSamples) {
         listOf(detail.cover) + detail.imageSamples.map { it.image }
     }
@@ -265,7 +279,11 @@ private fun DetailContent(
                         val width = drawable.intrinsicWidth
                         val height = drawable.intrinsicHeight
                         if (width > 0 && height > 0) {
-                            coverAspectRatio = width.toFloat() / height.toFloat()
+                            val real = width.toFloat() / height.toFloat()
+                            // 仅在真实比例与占位比例差异过大（如纵向封面）时才切换，避免加载后跳动
+                            if (shouldAdoptCoverRatio(real)) {
+                                coverAspectRatio = real
+                            }
                         }
                     }
                 }
