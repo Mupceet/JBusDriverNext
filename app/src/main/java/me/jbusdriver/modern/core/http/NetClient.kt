@@ -66,8 +66,10 @@ object NetClient {
             var request = chain.request()
             // Preserve any cookies already set by CookieJar
             val existingCookies = request.header("Cookie") ?: ""
-            val existMagValue = if (request.header("existmag").isNullOrEmpty()) "mag" else "all"
-            var mergedCookies = mergeControlledCookie(existingCookies, "existmag", existMagValue)
+            // The existmag header (set by fetchHtmlResponse via existMagCookieValue) carries the
+            // desired cookie value; requests that don't set it default to magnet-only.
+            val existMagValue = request.header(EXIST_MAG_COOKIE) ?: existMagCookieValue(false)
+            var mergedCookies = mergeControlledCookie(existingCookies, EXIST_MAG_COOKIE, existMagValue)
             // bus_auth only when a user-supplied token is configured (optional OkHttp fast-path).
             // By default it is empty: the site's driver-verify gate is passed by the WebView
             // session instead, so HTML pages are fetched via BrowserSessionClient, not here.
@@ -124,7 +126,7 @@ object NetClient {
         suspendCancellableCoroutine { cont ->
             val request = Request.Builder()
                 .url(url)
-                .header("existmag", if (showAll) "all" else "")
+                .header(EXIST_MAG_COOKIE, existMagCookieValue(showAll))
                 .apply { referer?.let { header("Referer", it) } }
                 .build()
             val call = okHttpClient.newCall(request)

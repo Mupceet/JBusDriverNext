@@ -63,11 +63,12 @@ class DefaultHtmlClient @Inject constructor(
             return fetchViaOkHttpWithFallback(url, showAll, referer = null)
         }
         val tStart = System.nanoTime()
-        if (showAll) {
-            // existmag is normally injected by the OkHttp interceptor; mirror it for the
-            // WebView path so "show all" still takes effect.
-            android.webkit.CookieManager.getInstance().setCookie(url, "existmag=all; path=/")
-        }
+        // Mirror the OkHttp interceptor via the shared existMagCookieValue(): write existmag on
+        // EVERY fetch (mag/all) so toggling 全部/仅磁力 takes effect immediately. The WebView
+        // session retains cookies for the process lifetime, so a stale "all" would otherwise
+        // persist after switching back to 仅磁力 until the app restarts.
+        android.webkit.CookieManager.getInstance()
+            .setCookie(url, "$EXIST_MAG_COOKIE=${existMagCookieValue(showAll)}; path=/")
         val doc = browserSessionClient.fetchDocument(url)
         KLog.i(
             "page[WebView] url=$url took=${(System.nanoTime() - tStart) / 1_000_000}ms len=${doc.html().length}",
