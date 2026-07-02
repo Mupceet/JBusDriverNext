@@ -33,7 +33,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
 
@@ -56,7 +55,7 @@ fun MovieItem(
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            AsyncImage(
+            AppAsyncImage(
                 model = movie.imageUrl,
                 contentDescription = movie.title,
                 modifier = Modifier
@@ -144,7 +143,7 @@ fun MovieGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column {
-            AsyncImage(
+            AppAsyncImage(
                 model = movie.imageUrl,
                 contentDescription = movie.title,
                 modifier = Modifier
@@ -232,7 +231,7 @@ fun CompactMovieItem(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
+            AppAsyncImage(
                 model = movie.imageUrl,
                 contentDescription = movie.title,
                 modifier = Modifier

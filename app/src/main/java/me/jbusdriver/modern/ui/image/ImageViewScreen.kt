@@ -5,7 +5,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import me.jbusdriver.modern.ui.theme.LocalIsDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,8 +50,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.saket.telephoto.zoomable.ZoomSpec
@@ -69,7 +69,7 @@ fun ImageViewScreen(
     val view = LocalView.current
     val context = LocalContext.current
     val resources = LocalResources.current
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = LocalIsDarkTheme.current
     val scope = rememberCoroutineScope()
 
     DisposableEffect(isDarkTheme) {
@@ -106,7 +106,7 @@ fun ImageViewScreen(
         ) { page ->
             var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
             Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
+                AppAsyncImage(
                     model = images[page],
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
@@ -218,7 +218,7 @@ private fun ThumbnailStrip(
     ) {
         itemsIndexed(images) { index, imageUrl ->
             val isSelected = index == currentPage
-            AsyncImage(
+            AppAsyncImage(
                 model = imageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

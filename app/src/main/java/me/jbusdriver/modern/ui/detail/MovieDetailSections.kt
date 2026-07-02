@@ -27,7 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
@@ -81,7 +81,7 @@ internal fun ImageSampleSection(
         ) {
             items(samples.size) { index ->
                 val sample = samples[index]
-                AsyncImage(
+                AppAsyncImage(
                     model = sample.thumb,
                     contentDescription = sample.title,
                     modifier = Modifier
@@ -172,7 +172,7 @@ internal fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movi
                         .width(100.dp)
                         .clickable { onMovieClick(movie) }
                 ) {
-                    AsyncImage(
+                    AppAsyncImage(
                         model = movie.imageUrl,
                         contentDescription = movie.title,
                         modifier = Modifier

@@ -9,8 +9,10 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -99,6 +101,14 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF100D12),
 )
 
+/**
+ * 应用当前是否处于夜间主题，由 [JBusTheme] 综合用户的 [ThemeMode] 与系统配置后提供。
+ *
+ * 供需要感知"应用实际主题"的组件使用。不要用 `isSystemInDarkTheme()`——它只反映系统设置，
+ * 在用户于应用内显式选择日间/夜间时会与应用主题不一致。
+ */
+val LocalIsDarkTheme = staticCompositionLocalOf<Boolean> { false }
+
 @Composable
 fun JBusTheme(
     content: @Composable () -> Unit
@@ -143,9 +153,11 @@ fun JBusTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

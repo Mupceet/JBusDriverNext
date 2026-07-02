@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -202,7 +202,7 @@ private fun BannerCarousel(
                     .fillMaxSize()
                     .clickable { onClick(banner.tid) }
             ) {
-                AsyncImage(
+                AppAsyncImage(
                     model = banner.imageUrl,
                     contentDescription = banner.title,
                     modifier = Modifier

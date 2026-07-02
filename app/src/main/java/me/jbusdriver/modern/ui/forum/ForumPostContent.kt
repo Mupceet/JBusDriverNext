@@ -54,10 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import me.jbusdriver.R
+import me.jbusdriver.modern.ui.components.AppAsyncImage
+import me.jbusdriver.modern.ui.components.dimColorFilter
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumTextSize
 import me.jbusdriver.modern.domain.model.RichList
@@ -199,7 +200,7 @@ private fun RichParagraph.toInlineContent(): Map<String, InlineTextContent> =
                 placeholderVerticalAlign = PlaceholderVerticalAlign.Center
             )
         ) {
-            AsyncImage(
+            AppAsyncImage(
                 model = url,
                 contentDescription = part.inlineImageAlt.takeIf(String::isNotBlank),
                 modifier = Modifier.fillMaxSize(),
@@ -361,6 +362,7 @@ private fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onClick),
             contentScale = ContentScale.FillWidth,
+            colorFilter = dimColorFilter(),
             loading = {
                 Box(
                     modifier = Modifier
@@ -374,7 +376,7 @@ private fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
         )
     } else {
         var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-        AsyncImage(
+        AppAsyncImage(
             model = block.url,
             contentDescription = null,
             modifier = Modifier

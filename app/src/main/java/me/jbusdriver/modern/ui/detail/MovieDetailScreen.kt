@@ -58,8 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import me.jbusdriver.R
+import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
@@ -248,7 +249,7 @@ private fun DetailContent(
     ) {
         // Cover image
         item(key = "cover") {
-            AsyncImage(
+            AppAsyncImage(
                 model = detail.cover,
                 contentDescription = detail.title,
                 contentScale = ContentScale.Crop,
@@ -258,12 +259,14 @@ private fun DetailContent(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onImageClick(allImages, 0) }
                     .onSizeChanged { size -> coverHeight.intValue = size.height },
-                onSuccess = { result ->
-                    val drawable = result.result.drawable
-                    val width = drawable.intrinsicWidth
-                    val height = drawable.intrinsicHeight
-                    if (width > 0 && height > 0) {
-                        coverAspectRatio = width.toFloat() / height.toFloat()
+                onState = { state ->
+                    if (state is AsyncImagePainter.State.Success) {
+                        val drawable = state.result.drawable
+                        val width = drawable.intrinsicWidth
+                        val height = drawable.intrinsicHeight
+                        if (width > 0 && height > 0) {
+                            coverAspectRatio = width.toFloat() / height.toFloat()
+                        }
                     }
                 }
             )

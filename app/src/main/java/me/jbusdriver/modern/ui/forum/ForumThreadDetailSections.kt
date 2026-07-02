@@ -56,7 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import coil.compose.AsyncImage
+import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
@@ -195,7 +195,7 @@ private fun ForumCommentRow(
     modifier: Modifier = Modifier
 ) {
     Row(modifier = modifier.padding(bottom = 8.dp)) {
-        AsyncImage(
+        AppAsyncImage(
             model = comment.authorAvatar,
             contentDescription = null,
             modifier = Modifier
@@ -279,7 +279,7 @@ internal fun ReplyItem(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AsyncImage(
+            AppAsyncImage(
                 model = reply.authorAvatar,
                 contentDescription = null,
                 modifier = Modifier

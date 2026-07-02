@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumThread
@@ -250,7 +250,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AsyncImage(
+            AppAsyncImage(
                 model = thread.authorAvatar,
                 contentDescription = null,
                 modifier = Modifier
@@ -315,7 +315,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         thread.images.take(3).forEach { imgUrl ->
-                            AsyncImage(
+                            AppAsyncImage(
                                 model = imgUrl,
                                 contentDescription = null,
                                 modifier = Modifier
