@@ -9,7 +9,7 @@ import me.jbusdriver.modern.KLog
 private const val JBUS_DB_NAME = "jbusdriver.db"
 private const val COLLECT_DB_NAME = "collect.db"
 
-private val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
+internal val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("DROP INDEX IF EXISTS `index_t_link_key`")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_t_link_dbType_key` ON `t_link` (`dbType`, `key`)")

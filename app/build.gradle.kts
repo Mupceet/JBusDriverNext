@@ -220,3 +220,23 @@ dependencies {
     implementation(libs.coroutines.android)
     testImplementation(libs.coroutines.test)
 }
+
+// Room 2.8.x's migration bundle serializers (FieldBundle, EntityBundle, ...) are
+// compiled against kotlinx-serialization 1.8.x, but AndroidX consistent resolution
+// pins the serialization BOM to 1.7.3 from the main classpath (via
+// lifecycle-viewmodel-compose). At androidTest runtime that mismatch surfaces as an
+// AbstractMethodError on GeneratedSerializer.typeParametersSerializers() the moment
+// MigrationTestHelper deserializes an exported schema JSON. Force the 1.8.x line on
+// the androidTest classpaths only — production runtime is untouched.
+configurations.configureEach {
+    if (name.endsWith("AndroidTestRuntimeClasspath") || name.endsWith("AndroidTestCompileClasspath")) {
+        listOf(
+            "org.jetbrains.kotlinx:kotlinx-serialization-core",
+            "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm",
+            "org.jetbrains.kotlinx:kotlinx-serialization-json",
+            "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm"
+        ).forEach {
+            resolutionStrategy.force("$it:1.8.1")
+        }
+    }
+}
