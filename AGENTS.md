@@ -192,7 +192,7 @@ me.jbusdriver.modern/
 ./gradlew test --tests "me.jbusdriver.modern.ui.movielist.MovieListViewModelTest"
 ```
 
-Test files are in `app/src/test/` (unit) and `app/src/androidTest/` (instrumented). Tests use JUnit4 + kotlinx-coroutines-test. ViewModel tests inject fake repositories via Hilt test modules.
+Test files are in `app/src/test/` (unit) and `app/src/androidTest/` (instrumented). Tests use JUnit4 + kotlinx-coroutines-test. ViewModel tests inject fake repositories via Hilt test modules. Connected (instrumented) tests require a running emulator or device.
 
 ## Code Review Notes
 

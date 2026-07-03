@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
  * - 迁移后：同 key 跨 dbType 允许；同 (dbType, key) 仍被拒绝。
  *
  * Schema 文件由 Room Gradle 插件的 `schemaDirectory` 导出在 `app/schemas`，
- * MigrationTestHelper（3 参构造）会通过插件注入的 schema 定位自动发现。
+ * MigrationTestHelper 会通过插件注入的 schema 定位自动发现。
  */
 @RunWith(AndroidJUnit4::class)
 class CollectDatabaseMigrationTest {
