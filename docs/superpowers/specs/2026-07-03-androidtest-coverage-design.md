@@ -112,7 +112,7 @@ Flow 用「先采集当前值、触发变更后重新采集」的方式断言响
 - 用 `MigrationTestHelper` 加载 v1 schema（assets 指向 `app/schemas`）。
 - 在 v1 库上插入若干 `t_link` 行（模拟旧的单列 `key` 索引状态），运行 1→2 迁移：
   - 断言唯一索引 `index_t_link_dbType_key` 存在；
-  - 断言该唯一约束被强制（插入重复 `(dbType, key)` 应失败）。
+  - 断言该唯一约束被强制：通过 `SupportSQLiteDatabase.execSQL` 直接插入一条重复 `(dbType, key)`（绕过 DAO 的 `IGNORE` 策略），预期抛 `SQLiteConstraintException`。
 - 另测一条「从 v1 直接 open 到 v2」的完整路径，确保迁移后 DB 可正常读写。
 
 > 实现细节：Room 2.8 的 `MigrationTestHelper` 构造签名以实际 API 为准；
@@ -147,7 +147,7 @@ Flow 用「先采集当前值、触发变更后重新采集」的方式断言响
 
 - **Room 2.8 `MigrationTestHelper` API 差异**：构造签名 / schema 定位方式可能需微调。缓解：实现时以 Room 2.8.4 实际 API 为准，必要时用 `testInstrumentationRunnerArguments`。
 - **组件缺少稳定标识**：部分组件若无可断言文本，需补 `testTag`（少量、就地注释）。属预期内小改动。
-- **`enableAndroidTestCoverage` 对运行时长的影响**：插桩插桩会略微减慢测试。v1 用例数有限，可接受。
+- **`enableAndroidTestCoverage` 对运行时长的影响**：开启覆盖率插桩会略微减慢测试。v1 用例数有限，可接受。
 - **模拟器依赖**：connected 测试需设备，CI 需配模拟器。后续若需在无设备 CI 上跑，再评估 Robolectric。
 
 ## 9. 验收清单
