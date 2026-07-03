@@ -116,6 +116,7 @@ android {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
             manifestPlaceholders["allowBackup"] = "true"
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
@@ -204,6 +205,8 @@ dependencies {
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+    androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation(libs.room.testing)
 
     // Lifecycle + ViewModel + Navigation 3
     implementation(libs.activity.compose)
