@@ -1,7 +1,6 @@
 package me.jbusdriver.modern.ui.detail
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.platform.app.InstrumentationRegistry
@@ -9,13 +8,6 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.test.aMagnet
 import org.junit.Rule
 import org.junit.Test
-
-// Custom assertExists extension to avoid ModalBottomSheet animation flake
-private fun SemanticsNodeInteraction.assertExists(): SemanticsNodeInteraction {
-    // Check if node exists without requiring it to be displayed
-    // This avoids timing issues with bottom sheet show animations
-    return this
-}
 
 class MagnetBottomSheetTest {
     @get:Rule
