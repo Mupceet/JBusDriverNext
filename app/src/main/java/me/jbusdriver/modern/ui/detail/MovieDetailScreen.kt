@@ -230,7 +230,7 @@ fun MovieDetailScreen(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DetailContent(
+internal fun DetailContent(
     detail: MovieDetailUiModel,
     padding: PaddingValues,
     onMovieClick: (MovieUiModel) -> Unit,
