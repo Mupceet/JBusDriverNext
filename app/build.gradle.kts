@@ -221,22 +221,19 @@ dependencies {
     testImplementation(libs.coroutines.test)
 }
 
-// Room 2.8.x's migration bundle serializers (FieldBundle, EntityBundle, ...) are
-// compiled against kotlinx-serialization 1.8.x, but AndroidX consistent resolution
-// pins the serialization BOM to 1.7.3 from the main classpath (via
-// lifecycle-viewmodel-compose). At androidTest runtime that mismatch surfaces as an
-// AbstractMethodError on GeneratedSerializer.typeParametersSerializers() the moment
-// MigrationTestHelper deserializes an exported schema JSON. Force the 1.8.x line on
-// the androidTest classpaths only — production runtime is untouched.
+// AndroidX consistent resolution pins kotlinx-serialization to 1.7.3 transitively
+// (via lifecycle-viewmodel-compose), but the Kotlin 2.3.21 serialization compiler
+// plugin and Room 2.8.x's migration bundle both need the 1.8.x line. Pin every
+// configuration to 1.8.1 so debug/release/androidTest share one serialization
+// version — otherwise Room's MigrationTestHelper throws AbstractMethodError
+// (GeneratedSerializer.typeParametersSerializers()) when loading schema JSON.
 configurations.configureEach {
-    if (name.endsWith("AndroidTestRuntimeClasspath") || name.endsWith("AndroidTestCompileClasspath")) {
-        listOf(
-            "org.jetbrains.kotlinx:kotlinx-serialization-core",
-            "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm",
-            "org.jetbrains.kotlinx:kotlinx-serialization-json",
-            "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm"
-        ).forEach {
-            resolutionStrategy.force("$it:1.8.1")
-        }
+    listOf(
+        "org.jetbrains.kotlinx:kotlinx-serialization-core",
+        "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm",
+        "org.jetbrains.kotlinx:kotlinx-serialization-json",
+        "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm"
+    ).forEach {
+        resolutionStrategy.force("$it:1.8.1")
     }
 }
