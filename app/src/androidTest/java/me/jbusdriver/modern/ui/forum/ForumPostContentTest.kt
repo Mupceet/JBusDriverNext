@@ -4,6 +4,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import me.jbusdriver.modern.domain.model.ContentBlock
@@ -71,6 +73,11 @@ class ForumPostContentTest {
             }
         }
 
-        composeRule.onNodeWithText("link text").assertHasClickAction()
+        // Compose 1.7+ renders each withLink(...) range as a text-less child semantics node
+        // (tagged [LinkTestMarker]) carrying the OnClick; the link text stays on the parent
+        // Text node, which has no click action itself. Assert the link text rendered and
+        // that a clickable node (the link — the only one in this composition) is present.
+        composeRule.onNode(hasText("link text", substring = true), useUnmergedTree = true).assertExists()
+        composeRule.onNode(hasClickAction(), useUnmergedTree = true).assertHasClickAction()
     }
 }
