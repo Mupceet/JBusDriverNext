@@ -172,7 +172,7 @@ dependencies {
     // Image Loading
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
-    implementation(libs.telephoto.zoomable.image)
+    implementation(libs.telephoto.zoomable.image.coil)
 
     // Animation
     implementation(libs.lottie.compose)

@@ -32,11 +32,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,13 +46,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import coil.compose.AsyncImagePainter
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
+import me.saket.telephoto.zoomable.rememberZoomableImageState
 import me.saket.telephoto.zoomable.rememberZoomableState
-import me.saket.telephoto.zoomable.zoomable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,19 +100,20 @@ fun ImageViewScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
+            val zoomableImageState = rememberZoomableImageState(
+                rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))
+            )
             Box(modifier = Modifier.fillMaxSize()) {
-                AppAsyncImage(
+                ZoomableAsyncImage(
                     model = images[page],
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black)
-                        .zoomable(rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))),
-                    onState = { imageState = it }
+                        .background(Color.Black),
+                    state = zoomableImageState,
                 )
-                if (imageState is AsyncImagePainter.State.Loading) {
+                if (!zoomableImageState.isImageDisplayed) {
                     CircularProgressIndicator(
                         color = Color.White,
                         modifier = Modifier.align(Alignment.Center)
