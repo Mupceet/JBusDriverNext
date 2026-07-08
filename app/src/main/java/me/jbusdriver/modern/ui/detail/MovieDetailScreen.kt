@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -70,6 +72,9 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
+import me.jbusdriver.modern.data.localvideo.launchLocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.ui.localvideo.LocalVideoPickerSheet
 import kotlin.math.abs
 
 /** 封面占位的默认宽高比（横向）。绝大多数封面都聚集在这个比例附近。 */
@@ -198,7 +203,8 @@ fun MovieDetailScreen(
                             showMagnetSheet = true
                         },
                         isLoadingMagnets = uiState.isLoadingMagnets,
-                        hasMagnets = uiState.magnets.isNotEmpty()
+                        hasMagnets = uiState.magnets.isNotEmpty(),
+                        localVideos = uiState.localVideos
                     )
                 }
             }
@@ -240,7 +246,8 @@ internal fun DetailContent(
     onImageClick: (List<String>, Int) -> Unit,
     onMagnetClick: () -> Unit,
     isLoadingMagnets: Boolean = false,
-    hasMagnets: Boolean = false
+    hasMagnets: Boolean = false,
+    localVideos: List<LocalVideo> = emptyList(),
 ) {
     val listState = rememberLazyListState()
     val coverHeight = remember { mutableIntStateOf(0) }
@@ -263,31 +270,63 @@ internal fun DetailContent(
     ) {
         // Cover image
         item(key = "cover") {
-            AppAsyncImage(
-                model = detail.cover,
-                contentDescription = detail.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(coverAspectRatio)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onImageClick(allImages, 0) }
-                    .onSizeChanged { size -> coverHeight.intValue = size.height },
-                onState = { state ->
-                    if (state is AsyncImagePainter.State.Success) {
-                        val drawable = state.result.drawable
-                        val width = drawable.intrinsicWidth
-                        val height = drawable.intrinsicHeight
-                        if (width > 0 && height > 0) {
-                            val real = width.toFloat() / height.toFloat()
-                            // 仅在真实比例与占位比例差异过大（如纵向封面）时才切换，避免加载后跳动
-                            if (shouldAdoptCoverRatio(real)) {
-                                coverAspectRatio = real
+            var showVideoPicker by remember { mutableStateOf(false) }
+            Box {
+                AppAsyncImage(
+                    model = detail.cover,
+                    contentDescription = detail.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(coverAspectRatio)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onImageClick(allImages, 0) }
+                        .onSizeChanged { size -> coverHeight.intValue = size.height },
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Success) {
+                            val drawable = state.result.drawable
+                            val width = drawable.intrinsicWidth
+                            val height = drawable.intrinsicHeight
+                            if (width > 0 && height > 0) {
+                                val real = width.toFloat() / height.toFloat()
+                                // 仅在真实比例与占位比例差异过大（如纵向封面）时才切换，避免加载后跳动
+                                if (shouldAdoptCoverRatio(real)) {
+                                    coverAspectRatio = real
+                                }
                             }
                         }
                     }
+                )
+                if (localVideos.isNotEmpty()) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.45f),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .clickable {
+                                if (localVideos.size == 1) launchLocalVideo(context, localVideos.first())
+                                else showVideoPicker = true
+                            }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.play_arrow_24px),
+                            contentDescription = stringResource(R.string.play_local_video),
+                            tint = Color.White,
+                            modifier = Modifier.size(56.dp).padding(16.dp),
+                        )
+                    }
                 }
-            )
+            }
+            if (showVideoPicker) {
+                LocalVideoPickerSheet(
+                    videos = localVideos,
+                    onPicked = {
+                        showVideoPicker = false
+                        launchLocalVideo(context, it)
+                    },
+                    onDismiss = { showVideoPicker = false },
+                )
+            }
         }
 
         // Title
