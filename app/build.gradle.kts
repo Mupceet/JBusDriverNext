@@ -180,6 +180,9 @@ dependencies {
     // DataStore
     implementation(libs.datastore.preferences)
 
+    // SAF DocumentFile access
+    implementation(libs.documentfile)
+
     // Debug
     debugImplementation(libs.leakcanary)
 
