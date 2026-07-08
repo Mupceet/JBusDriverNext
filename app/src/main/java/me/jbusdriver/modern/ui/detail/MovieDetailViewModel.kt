@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,8 +11,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
+import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 import me.jbusdriver.modern.ui.MagnetUiModel
@@ -29,14 +32,16 @@ data class MovieDetailUiState(
     val magnetsError: Int? = null,
     val isCollected: Boolean = false,
     val gid: String? = null,
-    val uc: String? = null
+    val uc: String? = null,
+    val localVideos: List<LocalVideo> = emptyList(),
 )
 
 @HiltViewModel
 class MovieDetailViewModel @Inject constructor(
     private val repository: MovieDetailRepository,
     private val collectRepository: CollectRepository,
-    private val magnetRepository: MagnetRepository
+    private val magnetRepository: MagnetRepository,
+    private val localVideoRepository: LocalVideoRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -44,6 +49,7 @@ class MovieDetailViewModel @Inject constructor(
 
     private var currentUrl: String = ""
     private var censorType: String? = null
+    private var localVideoJob: Job? = null
 
     fun loadDetail(url: String, censorType: String? = null) {
         if (currentUrl == url && _uiState.value.movieDetail != null) return
@@ -66,6 +72,8 @@ class MovieDetailViewModel @Inject constructor(
                 val movie = detail.toUiModel().toCollectionMovie(url)
                 val collected = collectRepository.isMovieCollected(movie)
                 _uiState.update { it.copy(isCollected = collected) }
+                val code = detail.headers.firstOrNull()?.value.orEmpty()
+                loadLocalVideos(code)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = R.string.load_failed) }
             }
@@ -103,6 +111,19 @@ class MovieDetailViewModel @Inject constructor(
                         magnetsError = R.string.load_failed
                     )
                 }
+            }
+        }
+    }
+
+    private fun loadLocalVideos(code: String) {
+        localVideoJob?.cancel()
+        if (code.isBlank()) {
+            _uiState.update { it.copy(localVideos = emptyList()) }
+            return
+        }
+        localVideoJob = viewModelScope.launch {
+            localVideoRepository.observeForCode(code).collect { videos ->
+                _uiState.update { it.copy(localVideos = videos) }
             }
         }
     }
