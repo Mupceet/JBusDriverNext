@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 import me.jbusdriver.modern.data.db.entity.LocalVideoEntity
 
@@ -21,4 +22,10 @@ interface LocalVideoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<LocalVideoEntity>)
+
+    @Transaction
+    suspend fun replaceAll(items: List<LocalVideoEntity>) {
+        deleteAll()
+        if (items.isNotEmpty()) insertAll(items)
+    }
 }

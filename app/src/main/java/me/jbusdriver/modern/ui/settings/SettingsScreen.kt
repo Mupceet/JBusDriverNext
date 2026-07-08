@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -738,6 +739,12 @@ private fun LocalVideoCard(
     onClearFolder: () -> Unit,
     onRescan: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val linkedCountText = context.resources.getQuantityString(
+        R.plurals.local_video_linked_count,
+        summary.linkedCount,
+        summary.linkedCount,
+    )
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -798,7 +805,7 @@ private fun LocalVideoCard(
                 )
             }
             Text(
-                stringResource(R.string.local_video_linked_count, summary.linkedCount),
+                linkedCountText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

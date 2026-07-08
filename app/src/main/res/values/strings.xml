@@ -181,7 +181,9 @@
     <string name="local_video_rescan">重新掃描</string>
     <string name="local_video_scanning">正在掃描…</string>
     <string name="local_video_last_scan">上次掃描：%1$s</string>
-    <string name="local_video_linked_count">已關聯 %1$d 個視頻</string>
+    <plurals name="local_video_linked_count">
+        <item quantity="other">已關聯 %1$d 個視頻</item>
+    </plurals>
     <string name="play_local_video">播放本地視頻</string>
     <string name="no_video_player">未找到可播放視頻的應用</string>
 </resources>

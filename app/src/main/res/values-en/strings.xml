@@ -183,7 +183,10 @@
     <string name="local_video_rescan">Rescan</string>
     <string name="local_video_scanning">Scanning…</string>
     <string name="local_video_last_scan">Last scan: %1$s</string>
-    <string name="local_video_linked_count">%1$d videos linked</string>
+    <plurals name="local_video_linked_count">
+        <item quantity="one">%1$d video linked</item>
+        <item quantity="other">%1$d videos linked</item>
+    </plurals>
     <string name="play_local_video">Play local video</string>
     <string name="no_video_player">No app found to play video</string>
 </resources>

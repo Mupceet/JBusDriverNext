@@ -66,8 +66,7 @@ class DefaultLocalVideoRepository @Inject constructor(
         val files = fileSource.listVideoFiles()
         val now = System.currentTimeMillis()
         val entities = scanVideoFiles(files, now)
-        dao.deleteAll()
-        if (entities.isNotEmpty()) dao.insertAll(entities)
+        dao.replaceAll(entities)
         folderStore.setLastScannedAt(now)
         entities.size
     }
