@@ -1,6 +1,8 @@
 package me.jbusdriver.modern.ui.settings
 
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +65,11 @@ import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +95,13 @@ fun SettingsScreen(
     val selectedBaseUrl by store.selectedBaseUrl.collectAsStateWithLifecycle()
     val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+
+    val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
+    val isScanningVideos by viewModel.isScanningVideos.collectAsStateWithLifecycle()
+
+    val pickFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri -> uri?.let { viewModel.setLocalVideoFolder(it) } }
 
     // Mirror URL list for network card
     val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
@@ -159,6 +172,15 @@ fun SettingsScreen(
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
                 onSelect = { viewModel.selectUrl(it) }
+            )
+
+            // === Local Video Card ===
+            LocalVideoCard(
+                summary = localVideoSummary,
+                isScanning = isScanningVideos,
+                onPickFolder = { pickFolderLauncher.launch(null) },
+                onClearFolder = { viewModel.clearLocalVideoFolder() },
+                onRescan = { viewModel.rescanLocalVideos() },
             )
 
             Spacer(Modifier.height(8.dp))
@@ -703,5 +725,104 @@ private fun NetworkCard(
         }
     }
 }
+
+//endregion
+
+//region Local Video Card
+
+@Composable
+private fun LocalVideoCard(
+    summary: LocalVideoSummary,
+    isScanning: Boolean,
+    onPickFolder: () -> Unit,
+    onClearFolder: () -> Unit,
+    onRescan: () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(R.drawable.public_24px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.local_video),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+
+            // 当前文件夹（点击选择/更换）
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onPickFolder)
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.local_video_folder),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        summary.folderDisplayName
+                            ?: stringResource(R.string.local_video_folder_not_set),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (summary.folderDisplayName != null) {
+                    OutlinedButton(onClick = onClearFolder) {
+                        Text(stringResource(R.string.local_video_clear_folder))
+                    }
+                }
+            }
+
+            // 上次扫描时间 + 关联数
+            summary.lastScannedAt?.let { ts ->
+                Text(
+                    stringResource(R.string.local_video_last_scan, formatTime(ts)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                stringResource(R.string.local_video_linked_count, summary.linkedCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // 重新扫描
+            Button(
+                onClick = onRescan,
+                enabled = !isScanning && summary.folderDisplayName != null,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (isScanning) {
+                    Text(stringResource(R.string.local_video_scanning))
+                } else {
+                    Text(stringResource(R.string.local_video_rescan))
+                }
+            }
+        }
+    }
+}
+
+private fun formatTime(epochMs: Long): String =
+    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault())
+        .format(Date(epochMs))
 
 //endregion

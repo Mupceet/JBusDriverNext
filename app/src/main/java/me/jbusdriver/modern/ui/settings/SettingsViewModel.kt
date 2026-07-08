@@ -1,29 +1,61 @@
 package me.jbusdriver.modern.ui.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.mirror.ScanState
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.settings.AppSettingsContract
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     val store: AppSettingsContract,
-    private val siteConfig: SiteConfig
+    private val siteConfig: SiteConfig,
+    private val localVideoRepository: LocalVideoRepository,
 ) : ViewModel() {
 
     private val _scanState = MutableStateFlow(ScanState())
     val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
+
+    val localVideoSummary: StateFlow<LocalVideoSummary> =
+        localVideoRepository.observeSummary()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalVideoSummary())
+
+    private val _isScanningVideos = MutableStateFlow(false)
+    val isScanningVideos: StateFlow<Boolean> = _isScanningVideos.asStateFlow()
+
+    fun setLocalVideoFolder(uri: Uri) {
+        viewModelScope.launch { localVideoRepository.setFolder(uri) }
+    }
+
+    fun clearLocalVideoFolder() {
+        viewModelScope.launch { localVideoRepository.clearFolder() }
+    }
+
+    fun rescanLocalVideos() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isScanningVideos.value = true
+            try {
+                localVideoRepository.rescan()
+            } finally {
+                _isScanningVideos.value = false
+            }
+        }
+    }
 
     // region Network scan (delegates to store -> MirrorScanner)
     fun startScan() = launchScan {
