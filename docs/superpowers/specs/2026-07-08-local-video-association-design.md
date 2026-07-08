@@ -106,7 +106,7 @@
 - **`LocalVideoScanner.kt`** — 持久 tree URI → `DocumentFile.fromTreeUri` → 递归 `listFiles()`（不设深度限制，视频预期不多）；对每个视频文件（按 mime/扩展名过滤为 video）用 `VideoCodeMatcher` 提取 code，命中则生成 `LocalVideoEntity`。把"文件枚举源"抽象为接口以便单测注入假源。扫描结果在 Room 事务内 `deleteAll() + insertAll()` 原子重建索引。
 - **`LocalVideoRepository.kt`** — 接口 + 默认实现：
   - `fun observeForCode(code: String): Flow<List<LocalVideo>>`
-  - `suspend fun rescan(): ScanResult`（无文件夹则返回未配置；否则扫描+重建索引+更新 lastScannedAt）
+  - `suspend fun rescan(): ScanResult`（无文件夹则返回未配置；否则扫描+重建索引+更新 lastScannedAt）。**内部串行化**（单 Job + Mutex）：并发调用（如 `setFolder` 与前台观察者同时触发）合并/排队，避免索引重建竞争。
   - `fun hasFolder(): Flow<Boolean>`
   - `suspend fun setFolder(uri: Uri)` / `suspend fun clearFolder()`
   - `fun observeSummary(): Flow<LocalVideoSummary>`（count + lastScannedAt，供设置页）
