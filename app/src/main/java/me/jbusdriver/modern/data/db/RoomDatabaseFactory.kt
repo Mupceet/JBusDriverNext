@@ -8,6 +8,7 @@ import me.jbusdriver.modern.KLog
 
 private const val JBUS_DB_NAME = "jbusdriver.db"
 private const val COLLECT_DB_NAME = "collect.db"
+private const val LOCAL_VIDEO_DB_NAME = "local_video.db"
 
 internal val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -33,3 +34,10 @@ fun buildCollectDatabase(context: Context): CollectDatabase =
         CollectDatabase::class.java,
         COLLECT_DB_NAME
     ).addMigrations(COLLECT_MIGRATION_1_2).build()
+
+fun buildLocalVideoDatabase(context: Context): LocalVideoDatabase =
+    Room.databaseBuilder(
+        context,
+        LocalVideoDatabase::class.java,
+        LOCAL_VIDEO_DB_NAME
+    ).build()
