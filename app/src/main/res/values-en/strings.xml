@@ -174,4 +174,16 @@
     <string name="scan_failed">Scan failed</string>
     <string name="verify_failed">Connectivity check failed</string>
     <string name="pinned">Pinned</string>
+
+    <!-- Local video association -->
+    <string name="local_video">Local video</string>
+    <string name="local_video_folder">Video folder</string>
+    <string name="local_video_folder_not_set">Not selected</string>
+    <string name="local_video_clear_folder">Clear folder</string>
+    <string name="local_video_rescan">Rescan</string>
+    <string name="local_video_scanning">Scanning…</string>
+    <string name="local_video_last_scan">Last scan: %1$s</string>
+    <string name="local_video_linked_count">%1$d videos linked</string>
+    <string name="play_local_video">Play local video</string>
+    <string name="no_video_player">No app found to play video</string>
 </resources>
