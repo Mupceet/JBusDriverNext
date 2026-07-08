@@ -5,6 +5,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation3.runtime.NavKey
 import dagger.hilt.android.AndroidEntryPoint
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.BrowserSessionClient
+import me.jbusdriver.modern.data.localvideo.LocalVideoForegroundScanner
 import me.jbusdriver.modern.ui.theme.JBusTheme
 import javax.inject.Inject
 
@@ -22,6 +24,9 @@ class ModernMainActivity : ComponentActivity() {
     @Inject
     lateinit var browserSessionClient: BrowserSessionClient
 
+    @Inject
+    lateinit var localVideoForegroundScanner: LocalVideoForegroundScanner
+
     private val _deepLink = MutableStateFlow<NavKey?>(null)
     private val deepLink: StateFlow<NavKey?> = _deepLink
 
@@ -30,6 +35,7 @@ class ModernMainActivity : ComponentActivity() {
         enableEdgeToEdge()
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
         handleIntent(intent)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(localVideoForegroundScanner)
         setContent {
             JBusTheme {
                 JBusNavigation(
