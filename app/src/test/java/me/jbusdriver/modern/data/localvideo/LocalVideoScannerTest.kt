@@ -34,4 +34,53 @@ class LocalVideoScannerTest {
         )
         assertEquals("ABC-003", entities.single().code)
     }
+
+    @Test
+    fun scan_folderNameHasPriorityOverFileName() {
+        val entities = scanVideoFiles(
+            listOf(ScannedFile("ABC-123.mp4", "u", "video/mp4", 1L, parentFolderNames = listOf("DEF-456"))),
+            0L,
+        )
+        assertEquals("DEF-456", entities.single().code)
+    }
+
+    @Test
+    fun scan_nearestCodeFolderWins() {
+        val entities = scanVideoFiles(
+            listOf(ScannedFile("x.mp4", "u", null, 1L, parentFolderNames = listOf("DEF-456", "ABC-123"))),
+            0L,
+        )
+        assertEquals("DEF-456", entities.single().code)
+    }
+
+    @Test
+    fun scan_fileNameUsedWhenNoCodeFolder() {
+        val entities = scanVideoFiles(
+            listOf(ScannedFile("ABC-123.mp4", "u", null, 1L, parentFolderNames = listOf("Extras"))),
+            0L,
+        )
+        assertEquals("ABC-123", entities.single().code)
+    }
+
+    @Test
+    fun scan_bothFileAndFolderCandidatesAggregateUnderSameCode() {
+        val entities = scanVideoFiles(
+            listOf(
+                ScannedFile("ABC-123.mp4", "u1", null, 1L, parentFolderNames = emptyList()),
+                ScannedFile("movie.mp4", "u2", null, 2L, parentFolderNames = listOf("ABC-123")),
+            ),
+            0L,
+        )
+        assertEquals(2, entities.size)
+        assertTrue(entities.all { it.code == "ABC-123" })
+    }
+
+    @Test
+    fun scan_dropsFileWithNoCodeAnywhere() {
+        val entities = scanVideoFiles(
+            listOf(ScannedFile("clip.mp4", "u", null, 1L, parentFolderNames = listOf("Extras"))),
+            0L,
+        )
+        assertTrue(entities.isEmpty())
+    }
 }

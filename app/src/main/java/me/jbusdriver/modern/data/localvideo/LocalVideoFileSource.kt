@@ -14,6 +14,11 @@ data class ScannedFile(
     val uri: String,
     val mime: String?,
     val size: Long,
+    /**
+     * 祖先子文件夹名，按"最近父文件夹优先"排序，不含用户选择的根目录名。
+     * 仅包含根目录下方的子文件夹，index 0 始终是直接父文件夹。
+     */
+    val parentFolderNames: List<String> = emptyList(),
 )
 
 /** 视频文件枚举源。生产实现走 DocumentFile；测试用假实现。 */
@@ -36,17 +41,27 @@ class DocumentFileVideoFileSource @Inject constructor(
         val root = DocumentFile.fromTreeUri(context, Uri.parse(treeUriStr)) ?: return@withContext emptyList()
         if (!root.canRead()) return@withContext emptyList()
         val out = mutableListOf<ScannedFile>()
-        collectVideos(root, out)
+        collectVideos(root, out, emptyList())
         out
     }
 
-    private fun collectVideos(dir: DocumentFile, out: MutableList<ScannedFile>) {
+    private fun collectVideos(dir: DocumentFile, out: MutableList<ScannedFile>, ancestorNames: List<String>) {
         dir.listFiles().forEach { f ->
             when {
-                f.isDirectory -> collectVideos(f, out)
+                f.isDirectory -> {
+                    val name = f.name
+                    val childAncestors = if (name != null) listOf(name) + ancestorNames else ancestorNames
+                    collectVideos(f, out, childAncestors)
+                }
                 f.isFile && isVideo(f) -> {
                     val name = f.name ?: return@forEach
-                    out += ScannedFile(name, f.uri.toString(), f.type, f.length())
+                    out += ScannedFile(
+                        name = name,
+                        uri = f.uri.toString(),
+                        mime = f.type,
+                        size = f.length(),
+                        parentFolderNames = ancestorNames,
+                    )
                 }
             }
         }
