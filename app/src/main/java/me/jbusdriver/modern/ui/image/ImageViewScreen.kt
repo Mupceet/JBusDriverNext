@@ -49,6 +49,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.ui.components.dimColorFilter
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
@@ -108,6 +109,7 @@ fun ImageViewScreen(
                     model = images[page],
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
+                    colorFilter = dimColorFilter(),
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.Black),
