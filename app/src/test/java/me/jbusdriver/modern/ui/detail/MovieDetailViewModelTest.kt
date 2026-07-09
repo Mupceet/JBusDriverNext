@@ -70,6 +70,7 @@ class MovieDetailViewModelTest {
     private val stubLocalVideoRepo = object : LocalVideoRepository {
         override fun observeForCode(code: String) =
             flowOf(listOf(LocalVideo("ABC-001", "ABC-001.mp4", "content://x/ABC-001", "video/mp4", 1L)))
+        override fun observeDownloadedCodes() = flowOf(emptySet<String>())
         override fun observeSummary() = flowOf(LocalVideoSummary())
         override fun hasFolder() = flowOf(true)
         override suspend fun setFolder(uri: Uri) {}

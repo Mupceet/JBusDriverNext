@@ -18,6 +18,7 @@ import javax.inject.Singleton
 
 interface LocalVideoRepository {
     fun observeForCode(code: String): Flow<List<LocalVideo>>
+    fun observeDownloadedCodes(): Flow<Set<String>>
     fun observeSummary(): Flow<LocalVideoSummary>
     fun hasFolder(): Flow<Boolean>
     suspend fun setFolder(uri: Uri)
@@ -38,6 +39,9 @@ class DefaultLocalVideoRepository @Inject constructor(
     override fun observeForCode(code: String): Flow<List<LocalVideo>> =
         dao.observeForCode(code.trim().uppercase())
             .map { list -> list.map { it.toDomain() } }
+
+    override fun observeDownloadedCodes(): Flow<Set<String>> =
+        dao.observeAllCodes().map { codes -> codes.map { it.uppercase() }.toSet() }
 
     override fun observeSummary(): Flow<LocalVideoSummary> =
         combine(

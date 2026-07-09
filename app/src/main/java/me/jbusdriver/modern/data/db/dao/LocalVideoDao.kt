@@ -17,6 +17,9 @@ interface LocalVideoDao {
     @Query("SELECT COUNT(*) FROM t_local_video")
     fun observeCount(): Flow<Int>
 
+    @Query("SELECT DISTINCT code FROM t_local_video")
+    fun observeAllCodes(): Flow<List<String>>
+
     @Query("DELETE FROM t_local_video")
     suspend fun deleteAll()
 
