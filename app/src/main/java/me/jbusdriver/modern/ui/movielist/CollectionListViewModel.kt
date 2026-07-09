@@ -4,15 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.settings.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -59,11 +62,17 @@ data class CollectionListUiState(
 class CollectionListViewModel @Inject constructor(
     private val collectRepository: CollectRepository,
     private val uiPrefsStore: CollectionUiPrefs,
-    private val siteConfig: SiteConfig
+    private val siteConfig: SiteConfig,
+    private val localVideoRepository: LocalVideoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionListUiState())
     val uiState: StateFlow<CollectionListUiState> = _uiState.asStateFlow()
+
+    /** 已下载（关联本地视频）的番号集合，用于卡片角标展示 */
+    val downloadedCodes: StateFlow<Set<String>> =
+        localVideoRepository.observeDownloadedCodes()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()

@@ -103,6 +103,7 @@ fun LinkMovieListScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
     val defaultShowAll = uiPrefsState.defaultShowAll
@@ -286,6 +287,7 @@ fun LinkMovieListScreen(
                             onLoadMore = { viewModel.loadMore() },
                             onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                             isGrid = isGrid,
+                            isDownloaded = { it.code.uppercase() in downloadedCodes },
                             modifier = Modifier.fillMaxSize(),
                             header = header,
                             gridState = gridState,

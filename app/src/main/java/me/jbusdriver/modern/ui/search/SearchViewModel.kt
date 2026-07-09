@@ -6,12 +6,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.domain.model.hasNext
@@ -67,7 +70,8 @@ data class SearchUiState(
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: SearchRepository,
-    private val historyStore: SearchHistoryStore
+    private val historyStore: SearchHistoryStore,
+    private val localVideoRepository: LocalVideoRepository
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -75,6 +79,11 @@ class SearchViewModel @Inject constructor(
 
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+
+    /** 已下载（关联本地视频）的番号集合，用于卡片角标展示 */
+    val downloadedCodes: StateFlow<Set<String>> =
+        localVideoRepository.observeDownloadedCodes()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** 当前搜索请求的 Job，用于取消旧请求 */
     private var searchJob: Job? = null

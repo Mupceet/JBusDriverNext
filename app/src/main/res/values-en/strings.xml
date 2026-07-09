@@ -189,4 +189,5 @@
     </plurals>
     <string name="play_local_video">Play local video</string>
     <string name="no_video_player">No app found to play video</string>
+    <string name="local_video_downloaded">Downloaded</string>
 </resources>

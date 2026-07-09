@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -14,11 +15,14 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.toJsonString
 import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.test.FakeCollectionUiPrefs
 import org.junit.After
@@ -42,6 +46,16 @@ class CollectionListViewModelTest {
     private val testActresses = listOf(
         ActressInfo("Alice", "http://avatar.jpg", "http://link1")
     )
+
+    private val stubLocalVideoRepo = object : LocalVideoRepository {
+        override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+        override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+        override fun observeSummary() = flowOf(LocalVideoSummary())
+        override fun hasFolder() = flowOf(false)
+        override suspend fun setFolder(uri: android.net.Uri) {}
+        override suspend fun clearFolder() {}
+        override suspend fun rescan() = 0
+    }
 
     private fun Movie.toLinkItem(createTime: Long = 1_000L) = LinkItem(
         dbType = MovieDBType,
@@ -95,7 +109,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
 
         assertTrue(testMovies.first().toLinkItem().toILink(FakeSiteConfig().baseUrl) is Movie)
         viewModel.loadCollection(1) // MovieDBType
@@ -132,7 +146,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
 
         assertTrue(testActresses.first().toLinkItem().toILink(FakeSiteConfig().baseUrl) is ActressInfo)
         viewModel.loadCollection(2) // ActressDBType
@@ -175,7 +189,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
 
         viewModel.loadCollection(2) // ActressDBType
         advanceUntilIdle()
@@ -220,7 +234,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
 
         viewModel.loadCollection(MovieDBType)
         advanceUntilIdle()
@@ -262,7 +276,7 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig())
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
 
         viewModel.loadCollection(1)
         advanceUntilIdle()

@@ -47,6 +47,7 @@ fun MovieListScreen(
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
     val defaultShowAll = uiPrefsState.defaultShowAll
@@ -145,6 +146,7 @@ fun MovieListScreen(
                         compact = compact,
                         isCollected = isCollected,
                         onToggleCollect = onToggleCollect,
+                        isDownloaded = { it.code.uppercase() in downloadedCodes },
                         header = filterBar,
                         gridState = gridState,
                         listState = listState

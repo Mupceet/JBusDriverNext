@@ -33,6 +33,7 @@ fun CollectionListScreen(
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
 
@@ -74,6 +75,7 @@ fun CollectionListScreen(
                     onMovieClick = onMovieClick,
                     isCollected = { true },
                     onToggleCollect = { viewModel.removeMovie(it) },
+                    isDownloaded = { it.code.uppercase() in downloadedCodes },
                     isGrid = isGrid,
                     modifier = modifier
                 )

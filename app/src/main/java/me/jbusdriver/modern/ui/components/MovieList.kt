@@ -70,6 +70,7 @@ fun MovieList(
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
+    isDownloaded: ((MovieUiModel) -> Boolean)? = null,
     header: (@Composable () -> Unit)? = null,
     gridState: LazyGridState = rememberLazyGridState(),
     listState: LazyListState = rememberLazyListState()
@@ -103,7 +104,11 @@ fun MovieList(
                 itemsIndexed(
                     movies,
                     key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                    MovieGridItem(movie = movie, onClick = { onMovieClick(movie, null) })
+                    MovieGridItem(
+                        movie = movie,
+                        onClick = { onMovieClick(movie, null) },
+                        isDownloaded = isDownloaded?.invoke(movie) == true
+                    )
                 }
                 if (isLoadingMore) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -178,7 +183,11 @@ fun MovieList(
                             } else null
                         )
                     } else {
-                        MovieItem(movie = movie, onClick = { onMovieClick(movie, null) })
+                        MovieItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
                     }
                 }
                 if (isLoadingMore) {
