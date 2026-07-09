@@ -154,6 +154,24 @@ fun CollectionFilterSheet(
                             }
                         )
                     }
+
+                    Spacer(Modifier.padding(top = 16.dp))
+
+                    // ── Local video (movie only) ──
+                    FilterSectionLabel(stringResource(R.string.local_video))
+                    Spacer(Modifier.padding(top = 6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(
+                            selected = !filterState.onlyDownloaded,
+                            onClick = { onFilterChange(filterState.copy(onlyDownloaded = false)) },
+                            label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
+                        )
+                        FilterChip(
+                            selected = filterState.onlyDownloaded,
+                            onClick = { onFilterChange(filterState.copy(onlyDownloaded = true)) },
+                            label = { Text(stringResource(R.string.local_video_downloaded), fontSize = 12.sp) }
+                        )
+                    }
                 }
 
                 Spacer(Modifier.padding(top = 16.dp))

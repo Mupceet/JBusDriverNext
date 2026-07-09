@@ -74,6 +74,18 @@ class CollectionListViewModel @Inject constructor(
         localVideoRepository.observeDownloadedCodes()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    /** 当前已下载番号集合（来自 localVideoRepository，随索引变化更新） */
+    private var currentDownloadedCodes: Set<String> = emptySet()
+
+    init {
+        viewModelScope.launch {
+            downloadedCodes.collect { codes ->
+                currentDownloadedCodes = codes
+                applyFilterAndSort()
+            }
+        }
+    }
+
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()
 
@@ -238,6 +250,7 @@ class CollectionListViewModel @Inject constructor(
 
         val filteredMovies = allMovies
             .filterByCensor(filter.censorFilter)
+            .filterByDownloaded(filter.onlyDownloaded, currentDownloadedCodes)
             .filterByPublishYear(filter.publishYear, years.publishYears)
             .filterByPublishMonth(filter.publishMonth)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
@@ -285,6 +298,12 @@ private fun List<ActressUiModel>.filterByCensor(censor: CensorFilter): List<Actr
         CensorFilter.CENSORED -> filter { it.categoryId != 4 }
         CensorFilter.UNCENSORED -> filter { it.categoryId == 4 }
     }
+
+private fun List<MovieUiModel>.filterByDownloaded(
+    only: Boolean,
+    codes: Set<String>
+): List<MovieUiModel> =
+    if (!only) this else filter { it.code.uppercase() in codes }
 
 private fun List<MovieUiModel>.filterByPublishYear(
     year: Int?,

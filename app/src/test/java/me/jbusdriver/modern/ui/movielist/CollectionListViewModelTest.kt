@@ -252,6 +252,56 @@ class CollectionListViewModelTest {
         assertTrue(state.availableCollectMonths.contains(6))
     }
 
+    @Test
+    fun updateFilter_onlyDownloaded_keepsOnlyMoviesWithLocalVideo() = runTest(testDispatcher) {
+        val movies = listOf(
+            Movie("Has Video", "http://img.jpg", "ABC-001", "2026-05-10", "http://link1"),
+            Movie("No Video", "http://img.jpg", "ABC-002", "2026-06-01", "http://link2")
+        )
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = movies
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                if (dbType == MovieDBType) movies.map { it.toLinkItem() } else emptyList()
+
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        val downloadedRepo = object : LocalVideoRepository {
+            override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+            override fun observeDownloadedCodes() = flowOf(setOf("ABC-001"))
+            override fun observeSummary() = flowOf(LocalVideoSummary())
+            override fun hasFolder() = flowOf(false)
+            override suspend fun setFolder(uri: android.net.Uri) {}
+            override suspend fun clearFolder() {}
+            override suspend fun rescan() = 0
+        }
+        viewModel =
+            CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), downloadedRepo)
+
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle()
+        Thread.sleep(500)
+        advanceUntilIdle()
+
+        // Default: both movies present
+        assertEquals(2, viewModel.uiState.value.movies.size)
+
+        viewModel.updateFilter(CollectionFilterState(onlyDownloaded = true))
+        advanceUntilIdle()
+
+        val filtered = viewModel.uiState.value.movies
+        assertEquals(1, filtered.size)
+        assertEquals("ABC-001", filtered.first().code)
+    }
+
     private fun mktime(year: Int, month: Int, day: Int): Long =
         java.util.Calendar.getInstance().apply {
             clear()
