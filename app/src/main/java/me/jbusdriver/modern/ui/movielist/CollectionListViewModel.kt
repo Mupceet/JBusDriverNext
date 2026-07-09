@@ -77,15 +77,6 @@ class CollectionListViewModel @Inject constructor(
     /** 当前已下载番号集合（来自 localVideoRepository，随索引变化更新） */
     private var currentDownloadedCodes: Set<String> = emptySet()
 
-    init {
-        viewModelScope.launch {
-            downloadedCodes.collect { codes ->
-                currentDownloadedCodes = codes
-                applyFilterAndSort()
-            }
-        }
-    }
-
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()
 
@@ -95,6 +86,18 @@ class CollectionListViewModel @Inject constructor(
 
     /** 是否已从持久化加载排序设定 */
     private var sortRestored = false
+
+    // 此 init 块必须在 allMovies/allActresses/currentDbType 等属性初始化之后：
+    // viewModelScope 默认走 Dispatchers.Main.immediate，构造期间会同步触发 downloadedCodes
+    // 的首次 emit → applyFilterAndSort()，若上述属性尚未初始化（null）则 sortedWith 抛 NPE。
+    init {
+        viewModelScope.launch {
+            downloadedCodes.collect { codes ->
+                currentDownloadedCodes = codes
+                applyFilterAndSort()
+            }
+        }
+    }
 
     /**
      * 加载指定类型的收藏列表。
