@@ -132,7 +132,6 @@
     <string name="content_type">Content type</string>
     <string name="release_date">Release date</string>
     <string name="collect_time">Collect time</string>
-    <string name="earlier">Earlier</string>
     <string name="month_format">Month %1$d</string>
 
     <!-- Image viewer -->

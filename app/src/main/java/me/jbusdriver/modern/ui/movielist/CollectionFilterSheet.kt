@@ -223,13 +223,6 @@ private fun YearChipRow(
                 label = { Text(year.toString(), fontSize = 12.sp) }
             )
         }
-        if (years.isNotEmpty()) {
-            FilterChip(
-                selected = selectedYear == -1,
-                onClick = { onSelect(-1) },
-                label = { Text(stringResource(R.string.earlier), fontSize = 12.sp) }
-            )
-        }
     }
 }
 
