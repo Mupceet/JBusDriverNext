@@ -17,6 +17,15 @@ internal val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+internal val LOCAL_VIDEO_MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN title TEXT")
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN imageUrl TEXT")
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN date TEXT")
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN censorType TEXT")
+    }
+}
+
 fun buildJBusDatabase(context: Context): JBusDatabase =
     Room.databaseBuilder(
         context,
@@ -40,4 +49,4 @@ fun buildLocalVideoDatabase(context: Context): LocalVideoDatabase =
         context,
         LocalVideoDatabase::class.java,
         LOCAL_VIDEO_DB_NAME
-    ).build()
+    ).addMigrations(LOCAL_VIDEO_MIGRATION_1_2).build()

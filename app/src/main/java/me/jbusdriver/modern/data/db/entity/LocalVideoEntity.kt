@@ -17,4 +17,12 @@ data class LocalVideoEntity(
     val mime: String?,
     val size: Long,
     @ColumnInfo(name = "scannedAt") val scannedAt: Long,
+    /** 快照：用户在详情页打开过该番号后回填的标题（未看过为 null → 极简卡片）。 */
+    val title: String? = null,
+    /** 快照：封面 URL。 */
+    val imageUrl: String? = null,
+    /** 快照：发行日期。 */
+    val date: String? = null,
+    /** 快照：该番号上次成功打开所在的域（"UNCENSORED" 或 null），回跳详情时复用。 */
+    val censorType: String? = null,
 )
