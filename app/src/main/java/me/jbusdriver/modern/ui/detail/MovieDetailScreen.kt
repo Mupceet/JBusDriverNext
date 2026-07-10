@@ -74,7 +74,8 @@ import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.data.localvideo.launchLocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideo
-import me.jbusdriver.modern.ui.localvideo.LocalVideoPickerSheet
+import me.jbusdriver.modern.ui.localvideo.LocalVideoSheet
+import me.jbusdriver.modern.ui.localvideo.LocalVideoSheetMode
 import kotlin.math.abs
 
 /** 封面占位的默认宽高比（横向）。绝大多数封面都聚集在这个比例附近。 */
@@ -318,8 +319,9 @@ internal fun DetailContent(
                 }
             }
             if (showVideoPicker) {
-                LocalVideoPickerSheet(
+                LocalVideoSheet(
                     videos = localVideos,
+                    mode = LocalVideoSheetMode.Pick,
                     onPicked = {
                         showVideoPicker = false
                         launchLocalVideo(context, it)

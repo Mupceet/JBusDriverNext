@@ -187,4 +187,25 @@
     <string name="play_local_video">播放本地視頻</string>
     <string name="no_video_player">未找到可播放視頻的應用</string>
     <string name="local_video_downloaded">已下載</string>
+    <string name="local_video_delete_menu">刪除本地視頻</string>
+    <string name="local_video_delete_selected">刪除選中</string>
+    <string name="local_video_select_all">全選</string>
+    <string name="local_video_invert">反選</string>
+    <string name="local_video_delete_all_failed">刪除失敗，請檢查文件夾權限</string>
+    <string name="local_video_delete_selected_count">刪除 %1$d 項（共 %2$s）</string>
+    <plurals name="local_video_deleted_count">
+        <item quantity="other">已刪除 %1$d 個</item>
+    </plurals>
+    <string name="local_video_delete_partial">已刪除 %1$d 個，%2$d 個失敗</string>
+    <string name="local_video_uncollect_title">已取消收藏</string>
+    <string name="local_video_uncollect_message">是否同時刪除本地視頻？</string>
+    <string name="local_video_uncollect_keep">保留本地視頻</string>
+    <plurals name="local_video_uncollect_delete_all">
+        <item quantity="other">刪除全部（%1$d）</item>
+    </plurals>
+    <string name="local_video_uncollect_select_some">選擇部分…</string>
+    <string name="local_video_delete_confirm_title">刪除本地視頻？</string>
+    <plurals name="local_video_delete_confirm_message">
+        <item quantity="other">將刪除 %1$d 個文件。此操作不可撤銷。</item>
+    </plurals>
 </resources>

@@ -190,4 +190,28 @@
     <string name="play_local_video">Play local video</string>
     <string name="no_video_player">No app found to play video</string>
     <string name="local_video_downloaded">Downloaded</string>
+    <string name="local_video_delete_menu">Delete local video</string>
+    <string name="local_video_delete_selected">Delete selected</string>
+    <string name="local_video_select_all">Select all</string>
+    <string name="local_video_invert">Invert</string>
+    <string name="local_video_delete_all_failed">Delete failed. Check folder permissions.</string>
+    <string name="local_video_delete_selected_count">Delete %1$d items (%2$s)</string>
+    <plurals name="local_video_deleted_count">
+        <item quantity="one">Deleted %1$d</item>
+        <item quantity="other">Deleted %1$d</item>
+    </plurals>
+    <string name="local_video_delete_partial">Deleted %1$d, %2$d failed</string>
+    <string name="local_video_uncollect_title">Uncollected</string>
+    <string name="local_video_uncollect_message">Also delete the local video?</string>
+    <string name="local_video_uncollect_keep">Keep files</string>
+    <plurals name="local_video_uncollect_delete_all">
+        <item quantity="one">Delete all (%1$d)</item>
+        <item quantity="other">Delete all (%1$d)</item>
+    </plurals>
+    <string name="local_video_uncollect_select_some">Select some…</string>
+    <string name="local_video_delete_confirm_title">Delete local videos?</string>
+    <plurals name="local_video_delete_confirm_message">
+        <item quantity="one">Will delete %1$d file. This cannot be undone.</item>
+        <item quantity="other">Will delete %1$d files. This cannot be undone.</item>
+    </plurals>
 </resources>
