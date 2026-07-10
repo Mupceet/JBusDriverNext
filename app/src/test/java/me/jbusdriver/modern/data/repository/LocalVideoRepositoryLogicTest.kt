@@ -3,6 +3,7 @@ package me.jbusdriver.modern.data.repository
 import me.jbusdriver.modern.data.db.entity.LocalVideoEntity
 import me.jbusdriver.modern.data.localvideo.DeleteFileResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -39,5 +40,30 @@ class LocalVideoRepositoryLogicTest {
         val plan = planDeletion(emptyList(), emptyList())
         assertTrue(plan.removedIds.isEmpty())
         assertEquals(0, plan.failed)
+    }
+
+    @Test
+    fun preserveSnapshots_carriesForwardSnapshotForSameCode() {
+        val existing = listOf(
+            e(1, "ABC", title = "T", image = "img").copy(date = "2024-01-01"),
+        )
+        val scanned = listOf(
+            LocalVideoEntity(id = 0, code = "ABC", name = "a.mp4", uri = "u1", mime = null, size = 1, scannedAt = 10),
+            LocalVideoEntity(id = 0, code = "DEF", name = "d.mp4", uri = "u2", mime = null, size = 1, scannedAt = 10),
+        )
+        val result = preserveSnapshots(scanned, existing)
+        assertEquals(2, result.size)
+        val abc = result.first { it.code == "ABC" }
+        assertEquals("T", abc.title)
+        assertEquals("img", abc.imageUrl)
+        assertEquals("2024-01-01", abc.date)
+        val def = result.first { it.code == "DEF" }
+        assertNull(def.title)
+    }
+
+    @Test
+    fun preserveSnapshots_dropsSnapshotWhenCodeGone() {
+        val existing = listOf(e(1, "ABC", title = "T"))
+        assertTrue(preserveSnapshots(emptyList(), existing).isEmpty())
     }
 }

@@ -29,6 +29,9 @@ interface LocalVideoDao {
     @Query("SELECT * FROM t_local_video")
     fun observeAll(): Flow<List<LocalVideoEntity>>
 
+    @Query("SELECT * FROM t_local_video")
+    suspend fun getAll(): List<LocalVideoEntity>
+
     @Query("SELECT * FROM t_local_video WHERE id IN (:ids)")
     suspend fun findByIds(ids: List<Int>): List<LocalVideoEntity>
 

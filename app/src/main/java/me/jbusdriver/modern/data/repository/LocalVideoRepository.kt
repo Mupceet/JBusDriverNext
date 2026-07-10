@@ -83,10 +83,11 @@ class DefaultLocalVideoRepository @Inject constructor(
         if (folderStore.currentFolderUri() == null) return@withLock 0
         val files = fileSource.listVideoFiles()
         val now = System.currentTimeMillis()
-        val entities = scanVideoFiles(files, now)
-        dao.replaceAll(entities)
+        val scanned = scanVideoFiles(files, now)
+        val withSnapshots = preserveSnapshots(scanned, dao.getAll())
+        dao.replaceAll(withSnapshots)
         folderStore.setLastScannedAt(now)
-        entities.size
+        withSnapshots.size
     }
 
     override fun observeAllGroupedByCode(): Flow<List<LocalVideoGroup>> =
@@ -110,7 +111,7 @@ class DefaultLocalVideoRepository @Inject constructor(
     ) {
         val normalized = code.trim().uppercase()
         if (normalized.isBlank()) return
-        dao.updateSnapshot(normalized, title, imageUrl, date, censorType)
+        rescanMutex.withLock { dao.updateSnapshot(normalized, title, imageUrl, date, censorType) }
     }
 
     private fun LocalVideoEntity.toDomain() = LocalVideo(
@@ -163,3 +164,18 @@ internal fun groupLocalVideoEntities(entities: List<LocalVideoEntity>): List<Loc
             )
         }
         .sortedBy { it.code }
+
+/** 重扫后按 code 继承上次已回填的元数据快照，避免重扫清空"看过即补全"的数据。纯函数。 */
+internal fun preserveSnapshots(
+    scanned: List<LocalVideoEntity>,
+    existing: List<LocalVideoEntity>,
+): List<LocalVideoEntity> {
+    val snapshotByCode = existing.groupBy { it.code }
+        .mapValues { (_, list) -> list.firstOrNull { it.title != null } ?: list.first() }
+    return scanned.map { e ->
+        val snap = snapshotByCode[e.code]
+        if (snap != null && snap.title != null) {
+            e.copy(title = snap.title, imageUrl = snap.imageUrl, date = snap.date, censorType = snap.censorType)
+        } else e
+    }
+}
