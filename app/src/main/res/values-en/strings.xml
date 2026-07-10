@@ -105,6 +105,7 @@
     <string name="rescan">Rescan</string>
     <string name="check_connectivity">Check connectivity</string>
     <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
     <string name="unreachable">Unreachable</string>
     <string name="scanning">Scanning %1$d/%2$d…</string>
     <string name="verifying">Verifying %1$d/%2$d…</string>

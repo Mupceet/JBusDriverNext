@@ -103,6 +103,7 @@
     <string name="rescan">重新掃描</string>
     <string name="check_connectivity">檢測連通</string>
     <string name="cancel">取消</string>
+    <string name="confirm">確定</string>
     <string name="unreachable">不可達</string>
     <string name="scanning">正在掃描 %1$d/%2$d…</string>
     <string name="verifying">正在驗證 %1$d/%2$d…</string>

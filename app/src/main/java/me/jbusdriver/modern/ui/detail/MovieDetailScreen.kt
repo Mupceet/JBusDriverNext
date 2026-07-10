@@ -26,6 +26,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -122,7 +124,25 @@ fun MovieDetailScreen(
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showMagnetSheet by remember { mutableStateOf(false) }
+    var showDeleteSheet by remember { mutableStateOf(false) }
+    var showUncollectDialog by remember { mutableStateOf(false) }
+    /** -1 = 多选表来自"取消收藏-选择部分"；>=1 = 待确认删除的文件数；0 = 无 */
+    var pendingDeleteCount by remember { mutableStateOf(0) }
+    var pendingDeleteIds by remember { mutableStateOf<List<Int>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { msg ->
+            val text = if (msg.args.isEmpty()) {
+                context.getString(msg.resId)
+            } else {
+                val q = (msg.args.firstOrNull() as? Number)?.toInt() ?: 1
+                context.resources.getQuantityString(msg.resId, q, *msg.args.toTypedArray())
+            }
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     LaunchedEffect(movieUrl, censorType) {
         viewModel.loadDetail(movieUrl, censorType)
@@ -162,8 +182,41 @@ fun MovieDetailScreen(
                         ShareButton(text = shareText)
                         CollectButton(
                             isCollected = uiState.isCollected,
-                            onToggle = { viewModel.toggleCollect() }
+                            onToggle = {
+                                if (uiState.isCollected && uiState.localVideos.isNotEmpty()) {
+                                    showUncollectDialog = true
+                                } else {
+                                    viewModel.toggleCollect()
+                                }
+                            }
                         )
+                        if (uiState.localVideos.isNotEmpty()) {
+                            var menuExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(
+                                        painterResource(R.drawable.more_vert_24px),
+                                        contentDescription = stringResource(R.string.local_video_delete_menu)
+                                    )
+                                }
+                                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.local_video_delete_menu)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            val videos = uiState.localVideos
+                                            if (videos.size == 1) {
+                                                pendingDeleteIds = listOf(videos.first().id)
+                                                pendingDeleteCount = 1
+                                            } else {
+                                                pendingDeleteCount = 0
+                                                showDeleteSheet = true
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -216,6 +269,85 @@ fun MovieDetailScreen(
         MagnetBottomSheet(
             uiState = uiState,
             onDismiss = { showMagnetSheet = false }
+        )
+    }
+
+    // 刪除確認（單文件，或多選表回填後）
+    if (pendingDeleteIds.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteIds = emptyList(); pendingDeleteCount = 0 },
+            title = { Text(stringResource(R.string.local_video_delete_confirm_title)) },
+            text = {
+                Text(context.resources.getQuantityString(
+                    R.plurals.local_video_delete_confirm_message, pendingDeleteIds.size, pendingDeleteIds.size))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteLocalVideos(pendingDeleteIds)
+                    pendingDeleteIds = emptyList(); pendingDeleteCount = 0
+                }) { Text(stringResource(R.string.confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteIds = emptyList(); pendingDeleteCount = 0 }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // 取消收藏三選一：保留 / 刪除全部(N) / 選擇部分…（僅 N>1 時出現"選擇部分"）
+    if (showUncollectDialog) {
+        val videoCount = uiState.localVideos.size
+        AlertDialog(
+            onDismissRequest = { showUncollectDialog = false }, // 取消 = 保持收藏
+            title = { Text(stringResource(R.string.local_video_uncollect_title)) },
+            text = { Text(stringResource(R.string.local_video_uncollect_message)) },
+            confirmButton = {
+                Row {
+                    if (videoCount > 1) {
+                        TextButton(onClick = {
+                            showUncollectDialog = false
+                            pendingDeleteCount = -1
+                            showDeleteSheet = true
+                        }) { Text(stringResource(R.string.local_video_uncollect_select_some)) }
+                    }
+                    TextButton(onClick = {
+                        showUncollectDialog = false
+                        viewModel.uncollectDeleteAll()
+                    }) {
+                        Text(context.resources.getQuantityString(
+                            R.plurals.local_video_uncollect_delete_all, videoCount, videoCount))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showUncollectDialog = false
+                    viewModel.uncollectKeepVideos()
+                }) { Text(stringResource(R.string.local_video_uncollect_keep)) }
+            }
+        )
+    }
+
+    // 多選刪除表（來自溢出菜單的多文件，或來自"取消收藏-選擇部分"）
+    if (showDeleteSheet) {
+        val fromUncollectPartial = pendingDeleteCount == -1
+        LocalVideoSheet(
+            videos = uiState.localVideos,
+            mode = LocalVideoSheetMode.DeleteMulti,
+            onSelected = { picked ->
+                showDeleteSheet = false
+                val ids = picked.map { it.id }
+                if (fromUncollectPartial) {
+                    viewModel.uncollectDeleteSelected(ids)
+                    pendingDeleteCount = 0
+                } else if (ids.isNotEmpty()) {
+                    pendingDeleteIds = ids
+                    pendingDeleteCount = ids.size
+                    // 觸發上面的刪除確認對話框
+                }
+            },
+            onDismiss = { showDeleteSheet = false; pendingDeleteCount = 0 },
         )
     }
 }
