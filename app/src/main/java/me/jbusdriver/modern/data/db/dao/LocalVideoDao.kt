@@ -26,6 +26,27 @@ interface LocalVideoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<LocalVideoEntity>)
 
+    @Query("SELECT * FROM t_local_video")
+    fun observeAll(): Flow<List<LocalVideoEntity>>
+
+    @Query("SELECT * FROM t_local_video WHERE id IN (:ids)")
+    suspend fun findByIds(ids: List<Int>): List<LocalVideoEntity>
+
+    @Query("DELETE FROM t_local_video WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Int>)
+
+    @Query(
+        "UPDATE t_local_video SET title = :title, imageUrl = :imageUrl, " +
+            "date = :date, censorType = :censorType WHERE code = :code"
+    )
+    suspend fun updateSnapshot(
+        code: String,
+        title: String,
+        imageUrl: String,
+        date: String,
+        censorType: String?
+    )
+
     @Transaction
     suspend fun replaceAll(items: List<LocalVideoEntity>) {
         deleteAll()
