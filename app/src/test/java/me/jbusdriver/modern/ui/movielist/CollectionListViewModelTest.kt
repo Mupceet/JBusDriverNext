@@ -360,6 +360,58 @@ class CollectionListViewModelTest {
         assertEquals(1, viewModel.uiState.value.movieCount)
     }
 
+    @Test
+    fun deleteSelectedUncollected_deletesAllFilesOfSelectedCodes() = runTest(testDispatcher) {
+        val videos = listOf(
+            LocalVideo(code = "DEF-002", name = "a.mp4", uri = "u1", mime = null, size = 1L, id = 11),
+            LocalVideo(code = "DEF-002", name = "b.mp4", uri = "u2", mime = null, size = 2L, id = 12),
+            LocalVideo(code = "GHI-003", name = "c.mp4", uri = "u3", mime = null, size = 3L, id = 13),
+        )
+        var deletedIds: List<Int>? = null
+        val localRepo = object : LocalVideoRepository {
+            override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+            override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+            override fun observeSummary() = flowOf(LocalVideoSummary())
+            override fun hasFolder() = flowOf(true)
+            override suspend fun setFolder(uri: android.net.Uri) {}
+            override suspend fun clearFolder() {}
+            override suspend fun rescan() = 0
+            override fun observeAllGroupedByCode() = flowOf(
+                listOf(
+                    LocalVideoGroup("DEF-002", null, null, null, null, listOf(videos[0], videos[1])),
+                    LocalVideoGroup("GHI-003", null, null, null, null, listOf(videos[2])),
+                )
+            )
+            override suspend fun deleteVideos(ids: List<Int>): DeleteResult { deletedIds = ids; return DeleteResult(ids.size, 0) }
+            override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+        }
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = emptyList<Movie>()
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int) = emptyList<LinkItem>()
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo)
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle(); Thread.sleep(500); advanceUntilIdle()
+        viewModel.updateFilter(CollectionFilterState(showUncollectedLocal = true))
+        advanceUntilIdle()
+
+        viewModel.toggleUncollectedSelected("DEF-002")
+        viewModel.deleteSelectedUncollected()
+        advanceUntilIdle()
+
+        assertEquals(setOf(11, 12), deletedIds?.toSet())
+    }
+
     private fun mktime(year: Int, month: Int, day: Int): Long =
         java.util.Calendar.getInstance().apply {
             clear()
