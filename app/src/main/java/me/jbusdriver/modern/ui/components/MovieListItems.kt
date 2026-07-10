@@ -29,8 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -41,6 +45,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
+
+/**
+ * 绘制虚线圆角描边，叠加在内容之上（不替换内容）。
+ * 用于"虚拟收藏"卡片（未收藏但有本地视频的项）的视觉区分。
+ */
+private fun Modifier.dashedVirtualBorder(color: Color): Modifier = this.drawWithContent {
+    drawContent()
+    drawRoundRect(
+        color = color,
+        style = Stroke(width = 3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)),
+        cornerRadius = CornerRadius(12f, 12f)
+    )
+}
 
 /**
  * “已下載”三角形角标：左上角绿色三角形 + 白色下载图标（旋转 -45°）。
@@ -81,13 +98,15 @@ fun MovieItem(
     movie: MovieUiModel,
     onClick: (MovieUiModel) -> Unit,
     modifier: Modifier = Modifier,
-    isDownloaded: Boolean = false
+    isDownloaded: Boolean = false,
+    isVirtual: Boolean = false
 ) {
     Card(
         onClick = { onClick(movie) },
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .let { if (isVirtual) it.dashedVirtualBorder(MaterialTheme.colorScheme.outline) else it },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -181,14 +200,16 @@ fun MovieGridItem(
     movie: MovieUiModel,
     onClick: (MovieUiModel) -> Unit,
     modifier: Modifier = Modifier,
-    isDownloaded: Boolean = false
+    isDownloaded: Boolean = false,
+    isVirtual: Boolean = false
 ) {
     Card(
         onClick = { onClick(movie) },
         shape = RoundedCornerShape(8.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .let { if (isVirtual) it.dashedVirtualBorder(MaterialTheme.colorScheme.outline) else it },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column {
