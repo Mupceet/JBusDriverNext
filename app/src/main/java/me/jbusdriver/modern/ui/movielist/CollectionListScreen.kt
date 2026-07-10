@@ -90,7 +90,7 @@ fun CollectionListScreen(
                                 ),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.padding(horizontal = 0.dp, vertical = 8.dp),
                             )
                         }
                     },
