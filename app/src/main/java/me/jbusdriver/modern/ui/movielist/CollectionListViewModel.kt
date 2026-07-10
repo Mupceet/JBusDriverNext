@@ -3,12 +3,9 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -30,7 +27,6 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.modern.ui.UserMessage
 import me.jbusdriver.modern.ui.toActressUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import java.util.Calendar
@@ -53,12 +49,8 @@ data class CollectionListUiState(
     val availableYears: AvailableYears = AvailableYears(),
     val availablePublishMonths: Set<Int> = emptySet(),
     val availableCollectMonths: Set<Int> = emptySet(),
-    /** 未收藏的本地视频（仅 showUncollectedLocal 开启 + 影片 tab 时填充，每个 isVirtual=true）。 */
+    /** 未收藏的本地视频（仅 showUncollectedLocal 开启 + 影片 tab 时填充）。 */
     val uncollectedVideos: List<MovieUiModel> = emptyList(),
-    /** 未收藏本地视频分区是否处于多选清理模式。 */
-    val uncollectedInSelectionMode: Boolean = false,
-    /** 未收藏本地视频分区当前选中的番号集合。 */
-    val uncollectedSelection: Set<String> = emptySet(),
 )
 
 /**
@@ -79,9 +71,6 @@ class CollectionListViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CollectionListUiState())
     val uiState: StateFlow<CollectionListUiState> = _uiState.asStateFlow()
-
-    private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 8)
-    val messages: SharedFlow<UserMessage> = _messages.asSharedFlow()
 
     /** 已下载（关联本地视频）的番号集合，用于卡片角标展示 */
     val downloadedCodes: StateFlow<Set<String>> =
@@ -205,52 +194,6 @@ class CollectionListViewModel @Inject constructor(
         }
     }
 
-    /** 进入未收藏本地视频分区的多选清理模式。 */
-    fun enterUncollectedSelection() {
-        _uiState.update { it.copy(uncollectedInSelectionMode = true) }
-    }
-
-    /** 退出多选清理模式并清空已选番号。 */
-    fun exitUncollectedSelection() {
-        _uiState.update { it.copy(uncollectedInSelectionMode = false, uncollectedSelection = emptySet()) }
-    }
-
-    /** 切换某个未收藏番号的选中状态。 */
-    fun toggleUncollectedSelected(code: String) {
-        _uiState.update { s ->
-            val sel = if (code in s.uncollectedSelection) s.uncollectedSelection - code else s.uncollectedSelection + code
-            s.copy(uncollectedSelection = sel)
-        }
-    }
-
-    /** 选中全部未收藏本地视频番号。 */
-    fun selectAllUncollected() {
-        _uiState.update { it.copy(uncollectedSelection = it.uncollectedVideos.map { v -> v.code }.toSet()) }
-    }
-
-    /**
-     * 删除当前选中的未收藏番号的全部本地视频文件，完成后退出选择模式并通过 [messages] 发送结果。
-     */
-    fun deleteSelectedUncollected() {
-        val selectedUpper = _uiState.value.uncollectedSelection.map { it.uppercase() }.toSet()
-        if (selectedUpper.isEmpty()) return
-        val ids = allLocalVideoGroups
-            .filter { it.code.uppercase() in selectedUpper }
-            .flatMap { it.files.map { f -> f.id } }
-        viewModelScope.launch {
-            val result = localVideoRepository.deleteVideos(ids)
-            _uiState.update { it.copy(uncollectedInSelectionMode = false, uncollectedSelection = emptySet()) }
-            when {
-                result.deleted > 0 && result.failed > 0 ->
-                    _messages.emit(UserMessage(R.plurals.local_video_delete_partial, listOf(result.deleted, result.failed)))
-                result.deleted > 0 ->
-                    _messages.emit(UserMessage(R.plurals.local_video_deleted_count, listOf(result.deleted)))
-                result.failed > 0 ->
-                    _messages.emit(UserMessage(R.string.local_video_delete_all_failed))
-            }
-        }
-    }
-
     /**
      * 从收藏中移除指定演员。
      */
@@ -347,12 +290,11 @@ class CollectionListViewModel @Inject constructor(
                 .filter { it.code.uppercase() !in collectedCodes }
                 .map { g ->
                     MovieUiModel(
-                        title = g.title ?: g.code,
+                        title = g.title ?: g.files.firstOrNull()?.name ?: g.code,
                         imageUrl = g.imageUrl.orEmpty(),
                         code = g.code,
                         date = g.date.orEmpty(),
                         link = g.code,
-                        isVirtual = true,
                     )
                 }
         } else emptyList()

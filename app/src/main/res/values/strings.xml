@@ -189,7 +189,9 @@
     <string name="no_video_player">未找到可播放視頻的應用</string>
     <string name="local_video_downloaded">已下載</string>
     <string name="local_video_show_uncollected">顯示未收藏的本地視頻</string>
-    <string name="local_video_cleanup">清理</string>
+    <plurals name="local_video_uncollected_section_count">
+        <item quantity="other">未收藏的本地視頻（%1$d）</item>
+    </plurals>
     <string name="local_video_delete_menu">刪除本地視頻</string>
     <string name="local_video_delete_selected">刪除選中</string>
     <string name="local_video_select_all">全選</string>

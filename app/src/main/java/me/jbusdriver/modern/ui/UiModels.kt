@@ -25,8 +25,7 @@ data class MovieUiModel(
     val link: String,
     val tags: List<String> = emptyList(),
     val createTime: Long = 0L,
-    val categoryId: Int = 1,
-    val isVirtual: Boolean = false
+    val categoryId: Int = 1
 )
 
 /** 电影详情页的 UI 模型 */

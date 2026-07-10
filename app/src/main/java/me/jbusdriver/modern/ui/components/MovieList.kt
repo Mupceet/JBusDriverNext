@@ -72,7 +72,8 @@ fun MovieList(
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
     isDownloaded: ((MovieUiModel) -> Boolean)? = null,
     header: (@Composable () -> Unit)? = null,
-    footer: (@Composable () -> Unit)? = null,
+    footerHeader: (@Composable () -> Unit)? = null,
+    footerMovies: List<MovieUiModel> = emptyList(),
     gridState: LazyGridState = rememberLazyGridState(),
     listState: LazyListState = rememberLazyListState()
 ) {
@@ -138,8 +139,20 @@ fun MovieList(
                         }
                     }
                 }
-                if (footer != null) {
-                    item(span = { GridItemSpan(maxLineSpan) }) { footer() }
+                if (footerHeader != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { footerHeader() }
+                }
+                if (footerMovies.isNotEmpty()) {
+                    itemsIndexed(
+                        footerMovies,
+                        key = { index, movie -> "uncollected_${index}_${movie.link}" }
+                    ) { _, movie ->
+                        MovieGridItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
+                    }
                 }
             }
 
@@ -221,8 +234,20 @@ fun MovieList(
                         }
                     }
                 }
-                if (footer != null) {
-                    item { footer() }
+                if (footerHeader != null) {
+                    item { footerHeader() }
+                }
+                if (footerMovies.isNotEmpty()) {
+                    itemsIndexed(
+                        footerMovies,
+                        key = { index, movie -> "uncollected_${index}_${movie.link}" }
+                    ) { _, movie ->
+                        MovieItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
+                    }
                 }
             }
 
