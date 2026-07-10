@@ -16,7 +16,9 @@ import me.jbusdriver.modern.data.settings.SearchHistoryStore
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
@@ -47,6 +49,9 @@ class SearchViewModelTest {
         override suspend fun setFolder(uri: android.net.Uri) {}
         override suspend fun clearFolder() {}
         override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
     }
 
     private fun fakeHistoryStore() = object : SearchHistoryStore {

@@ -17,8 +17,10 @@ import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.Header
 import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
@@ -76,6 +78,9 @@ class MovieDetailViewModelTest {
         override suspend fun setFolder(uri: Uri) {}
         override suspend fun clearFolder() {}
         override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
     }
 
     @Before

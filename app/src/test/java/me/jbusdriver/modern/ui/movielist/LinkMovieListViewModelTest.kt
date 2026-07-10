@@ -26,8 +26,10 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.ActressCategory
 import me.jbusdriver.modern.domain.model.UncensoredActressCategory
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
@@ -61,6 +63,9 @@ class LinkMovieListViewModelTest {
         override suspend fun setFolder(uri: android.net.Uri) {}
         override suspend fun clearFolder() {}
         override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
     }
 
     private val stubCollectRepo = object : CollectRepository {
