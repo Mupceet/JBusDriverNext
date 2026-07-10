@@ -196,7 +196,9 @@
     <plurals name="local_video_deleted_count">
         <item quantity="other">已刪除 %1$d 個</item>
     </plurals>
-    <string name="local_video_delete_partial">已刪除 %1$d 個，%2$d 個失敗</string>
+    <plurals name="local_video_delete_partial">
+        <item quantity="other">已刪除 %1$d 個，%2$d 個失敗</item>
+    </plurals>
     <string name="local_video_uncollect_title">已取消收藏</string>
     <string name="local_video_uncollect_message">是否同時刪除本地視頻？</string>
     <string name="local_video_uncollect_keep">保留本地視頻</string>

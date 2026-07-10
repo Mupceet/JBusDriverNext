@@ -200,7 +200,10 @@
         <item quantity="one">Deleted %1$d</item>
         <item quantity="other">Deleted %1$d</item>
     </plurals>
-    <string name="local_video_delete_partial">Deleted %1$d, %2$d failed</string>
+    <plurals name="local_video_delete_partial">
+        <item quantity="one">Deleted %1$d, %2$d failed</item>
+        <item quantity="other">Deleted %1$d, %2$d failed</item>
+    </plurals>
     <string name="local_video_uncollect_title">Uncollected</string>
     <string name="local_video_uncollect_message">Also delete the local video?</string>
     <string name="local_video_uncollect_keep">Keep files</string>

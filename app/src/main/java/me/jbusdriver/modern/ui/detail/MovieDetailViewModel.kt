@@ -200,7 +200,7 @@ class MovieDetailViewModel @Inject constructor(
     private suspend fun emitDeleteResult(result: DeleteResult) {
         when {
             result.deleted > 0 && result.failed > 0 ->
-                _messages.emit(UserMessage(R.string.local_video_delete_partial, listOf(result.deleted, result.failed)))
+                _messages.emit(UserMessage(R.plurals.local_video_delete_partial, listOf(result.deleted, result.failed)))
             result.deleted > 0 ->
                 _messages.emit(UserMessage(R.plurals.local_video_deleted_count, listOf(result.deleted)))
             result.failed > 0 ->
