@@ -40,6 +40,7 @@ data class CollectionFilterState(
     val collectYear: Int? = null,
     val collectMonth: Int? = null,
     val onlyDownloaded: Boolean = false,
+    val showUncollectedLocal: Boolean = false,
     val sortOption: SortOption = SortOption.COLLECT_DESC
 ) {
     /** 是否有非默认的筛选条件（排序不算） */
@@ -50,6 +51,7 @@ data class CollectionFilterState(
                 || collectYear != null
                 || collectMonth != null
                 || onlyDownloaded
+                || showUncollectedLocal
 
     /** 激活的筛选条件数量（用于筛选按钮上的 badge） */
     val activeFilterCount: Int
@@ -59,7 +61,8 @@ data class CollectionFilterState(
             publishMonth != null,
             collectYear != null,
             collectMonth != null,
-            onlyDownloaded
+            onlyDownloaded,
+            showUncollectedLocal
         ).count { it }
 }
 

@@ -171,6 +171,11 @@ fun CollectionFilterSheet(
                             onClick = { onFilterChange(filterState.copy(onlyDownloaded = true)) },
                             label = { Text(stringResource(R.string.local_video_downloaded), fontSize = 12.sp) }
                         )
+                        FilterChip(
+                            selected = filterState.showUncollectedLocal,
+                            onClick = { onFilterChange(filterState.copy(showUncollectedLocal = !filterState.showUncollectedLocal)) },
+                            label = { Text(stringResource(R.string.local_video_show_uncollected), fontSize = 12.sp) }
+                        )
                     }
                 }
 
