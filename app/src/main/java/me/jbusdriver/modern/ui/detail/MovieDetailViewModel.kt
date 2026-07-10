@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.db.MovieDBType
-import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
@@ -23,7 +21,6 @@ import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
-import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.UserMessage
@@ -167,43 +164,11 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    /** 取消收藏并保留本地视频。 */
-    fun uncollectKeepVideos() = doUncollect(deleteIds = null)
-
-    /** 取消收藏并删除该番号全部本地视频。 */
-    fun uncollectDeleteAll() {
-        val ids = _uiState.value.localVideos.map { it.id }
-        doUncollect(deleteIds = ids)
-    }
-
-    /** 取消收藏并删除选中的本地视频。 */
-    fun uncollectDeleteSelected(ids: List<Int>) = doUncollect(deleteIds = ids)
-
     /** 不改动收藏状态，仅删除指定本地视频（详情页溢出菜单入口）。 */
     fun deleteLocalVideos(ids: List<Int>) {
         if (ids.isEmpty()) return
         viewModelScope.launch {
             emitDeleteResult(localVideoRepository.deleteVideos(ids))
-        }
-    }
-
-    private fun doUncollect(deleteIds: List<Int>?) {
-        val detail = _uiState.value.movieDetail ?: return
-        viewModelScope.launch {
-            val movie = detail.toCollectionMovie(currentUrl)
-            // 三选一对话框仅在"已收藏"时出现 → 用户意图即取消收藏。用幂等 removeCollect，
-            // 不依赖 toggle 返回值，避免竞态下漏删或误重置收藏态。
-            val linkItem = LinkItem(
-                dbType = MovieDBType,
-                key = movie.link.urlPath,
-                jsonStr = "",
-                createTime = System.currentTimeMillis()
-            )
-            collectRepository.removeCollect(linkItem)
-            _uiState.update { it.copy(isCollected = false) }
-            if (deleteIds != null) {
-                emitDeleteResult(localVideoRepository.deleteVideos(deleteIds))
-            }
         }
     }
 
