@@ -214,4 +214,56 @@ class MovieDetailViewModelTest {
 
         assertTrue(viewModel.uiState.value.localVideos.isEmpty())
     }
+
+    @Test
+    fun loadDetail_snapshotsMetadataForCode() = runTest(testDispatcher) {
+        var snapped: Triple<String, String, String>? = null
+        val localRepo = object : LocalVideoRepository by stubLocalVideoRepo {
+            override suspend fun snapshotMetadata(
+                code: String, title: String, imageUrl: String, date: String, censorType: String?
+            ) { snapped = Triple(code, title, imageUrl) }
+        }
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, localRepo)
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+
+        assertEquals("ABC-001", snapped?.first)
+        assertEquals("Test Movie", snapped?.second)
+        assertEquals("http://cover.jpg", snapped?.third)
+    }
+
+    @Test
+    fun uncollectDeleteAll_uncollectsAndDeletesAllLocalVideoIds() = runTest(testDispatcher) {
+        val videos = listOf(
+            LocalVideo(code = "ABC-001", name = "a.mp4", uri = "content://x/1", mime = null, size = 1L, id = 7),
+            LocalVideo(code = "ABC-001", name = "b.mp4", uri = "content://x/2", mime = null, size = 2L, id = 9),
+        )
+        var deletedIds: List<Int>? = null
+        val localRepo = object : LocalVideoRepository by stubLocalVideoRepo {
+            override fun observeForCode(code: String) = flowOf(videos)
+            override suspend fun deleteVideos(ids: List<Int>): DeleteResult {
+                deletedIds = ids
+                return DeleteResult(ids.size, 0)
+            }
+        }
+        val collectRepo = object : CollectRepository by stubCollectRepo {
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = false // 模拟取消收藏
+        }
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, collectRepo, stubMagnetRepo, localRepo)
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+
+        viewModel.uncollectDeleteAll()
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isCollected)
+        assertEquals(listOf(7, 9), deletedIds)
+    }
 }
