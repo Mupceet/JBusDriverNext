@@ -103,6 +103,7 @@ data class LocalVideoEntity(
 
 **DAO 新增**：
 - `@Query("SELECT * FROM t_local_video") fun observeAll(): Flow<List<LocalVideoEntity>>`
+- `@Query("SELECT * FROM t_local_video WHERE id IN (:ids)") suspend fun findByIds(ids: List<Int>): List<LocalVideoEntity>`
 - `@Query("DELETE FROM t_local_video WHERE id IN (:ids)") suspend fun deleteByIds(ids: List<Int>)`
 - 快照回填：`@Query("UPDATE t_local_video SET title=:t, imageUrl=:img, date=:d, censorType=:c WHERE code=:code") suspend fun updateSnapshot(code, t, img, d, c)`
 
@@ -244,7 +245,6 @@ suspend fun deleteVideos(ids: List<Int>): DeleteResult = mutex.withLock {
 ## 变更文件清单（Affected Files）
 
 **新增**
-- `ui/components/LocalVideoSheet.kt`（由 `LocalVideoPickerSheet.kt` 泛化而来；旧文件迁移或重命名）
 - `domain/model/LocalVideoGroup.kt`（或并入 `LocalVideo.kt`）
 
 **改动**
@@ -259,5 +259,5 @@ suspend fun deleteVideos(ids: List<Int>): DeleteResult = mutex.withLock {
 - `ui/movielist/CollectionListScreen.kt`：未收藏分区 + 虚线卡片 + 多选操作条。
 - `ui/movielist/CollectionFilterSheet.kt` + `CollectionFilterState.kt`：`showUncollectedLocal` 开关。
 - `ui/components/MovieListItems.kt`：`MovieItem`/`MovieGridItem` 虚线变体（`isVirtual` 参数）。
-- `ui/localvideo/LocalVideoPickerSheet.kt`：泛化为 `LocalVideoSheet(mode)`（或新建并迁移调用点）。
+- `ui/localvideo/LocalVideoPickerSheet.kt`：就地泛化为 `LocalVideoSheet(mode)`（重命名类型，保持原包 `ui/localvideo/`，更新详情页调用点）。
 - `res/values/strings.xml` + `res/values-en/strings.xml`：上表字符串 + plurals。
