@@ -50,6 +50,8 @@ class SearchViewModelTest {
         override suspend fun clearFolder() {}
         override suspend fun rescan() = 0
         override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override fun observeShowUncollectedLocal() = flowOf(false)
+        override suspend fun setShowUncollectedLocal(value: Boolean) {}
         override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
         override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
     }

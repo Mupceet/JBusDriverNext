@@ -81,7 +81,7 @@ fun CollectionListScreen(
                     isDownloaded = { it.code.uppercase() in downloadedCodes },
                     isGrid = isGrid,
                     footerHeader = {
-                        if (uiState.filterState.showUncollectedLocal && uiState.uncollectedVideos.isNotEmpty()) {
+                        if (uiState.showUncollectedLocal && uiState.uncollectedVideos.isNotEmpty()) {
                             Text(
                                 pluralStringResource(
                                     R.plurals.local_video_uncollected_section_count,
@@ -94,7 +94,7 @@ fun CollectionListScreen(
                             )
                         }
                     },
-                    footerMovies = if (uiState.filterState.showUncollectedLocal) uiState.uncollectedVideos else emptyList(),
+                    footerMovies = if (uiState.showUncollectedLocal) uiState.uncollectedVideos else emptyList(),
                     modifier = modifier
                 )
             }

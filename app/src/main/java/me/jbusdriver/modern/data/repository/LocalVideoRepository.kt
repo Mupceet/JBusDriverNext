@@ -29,6 +29,8 @@ interface LocalVideoRepository {
     suspend fun clearFolder()
     suspend fun rescan(): Int
     fun observeAllGroupedByCode(): Flow<List<LocalVideoGroup>>
+    fun observeShowUncollectedLocal(): Flow<Boolean>
+    suspend fun setShowUncollectedLocal(value: Boolean)
     suspend fun deleteVideos(ids: List<Int>): DeleteResult
     suspend fun snapshotMetadata(
         code: String,
@@ -92,6 +94,12 @@ class DefaultLocalVideoRepository @Inject constructor(
 
     override fun observeAllGroupedByCode(): Flow<List<LocalVideoGroup>> =
         dao.observeAll().map { groupLocalVideoEntities(it) }
+
+    override fun observeShowUncollectedLocal(): Flow<Boolean> = folderStore.showUncollectedLocal
+
+    override suspend fun setShowUncollectedLocal(value: Boolean) {
+        folderStore.setShowUncollectedLocal(value)
+    }
 
     override suspend fun deleteVideos(ids: List<Int>): DeleteResult = rescanMutex.withLock {
         if (ids.isEmpty()) return@withLock DeleteResult(0, 0)

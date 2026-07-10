@@ -49,6 +49,8 @@ data class CollectionListUiState(
     val availableYears: AvailableYears = AvailableYears(),
     val availablePublishMonths: Set<Int> = emptySet(),
     val availableCollectMonths: Set<Int> = emptySet(),
+    /** 是否在收藏页显示未收藏的本地视频（来自持久化设置）。 */
+    val showUncollectedLocal: Boolean = false,
     /** 未收藏的本地视频（仅 showUncollectedLocal 开启 + 影片 tab 时填充）。 */
     val uncollectedVideos: List<MovieUiModel> = emptyList(),
 )
@@ -80,6 +82,9 @@ class CollectionListViewModel @Inject constructor(
     /** 当前已下载番号集合（来自 localVideoRepository，随索引变化更新） */
     private var currentDownloadedCodes: Set<String> = emptySet()
 
+    /** 当前"显示未收藏本地视频"设置（来自 localVideoRepository 持久化设置）。 */
+    private var currentShowUncollected: Boolean = false
+
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()
 
@@ -106,6 +111,12 @@ class CollectionListViewModel @Inject constructor(
         viewModelScope.launch {
             localVideoRepository.observeAllGroupedByCode().collect { groups ->
                 allLocalVideoGroups = groups
+                applyFilterAndSort()
+            }
+        }
+        viewModelScope.launch {
+            localVideoRepository.observeShowUncollectedLocal().collect { show ->
+                currentShowUncollected = show
                 applyFilterAndSort()
             }
         }
@@ -283,7 +294,7 @@ class CollectionListViewModel @Inject constructor(
 
         // 未收藏分区：仅 showUncollectedLocal 开启 + 影片 tab 时计算。
         // 番号即 URL 路径，link=code 走现有 onMovieClick 导航；movieCount 仅含已收藏，不受此影响。
-        val showUncollected = filter.showUncollectedLocal && currentDbType == MovieDBType
+        val showUncollected = currentShowUncollected && currentDbType == MovieDBType
         val collectedCodes = allMovies.map { it.code.uppercase() }.toSet()
         val uncollectedVideos = if (showUncollected) {
             allLocalVideoGroups
@@ -307,6 +318,7 @@ class CollectionListViewModel @Inject constructor(
                 actressCount = allActresses.size,
                 availablePublishMonths = availableMonths,
                 availableCollectMonths = availableCollectMonths,
+                showUncollectedLocal = currentShowUncollected,
                 uncollectedVideos = uncollectedVideos,
                 isLoading = false
             )

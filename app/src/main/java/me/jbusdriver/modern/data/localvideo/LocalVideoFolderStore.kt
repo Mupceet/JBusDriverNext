@@ -3,6 +3,7 @@ package me.jbusdriver.modern.data.localvideo
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -32,6 +33,9 @@ class LocalVideoFolderStore @Inject constructor(
     val folderDisplayName: Flow<String?> = dataStore.data.map { it[KEY_FOLDER_NAME] }
     val lastScannedAt: Flow<Long?> = dataStore.data.map { it[KEY_LAST_SCAN] }
 
+    /** 是否在收藏页显示未收藏的本地视频（持久化设置）。 */
+    val showUncollectedLocal: Flow<Boolean> = dataStore.data.map { it[KEY_SHOW_UNCOLLECTED] ?: false }
+
     suspend fun currentFolderUri(): String? =
         dataStore.data.first()[KEY_FOLDER_URI]
 
@@ -52,6 +56,10 @@ class LocalVideoFolderStore @Inject constructor(
 
     suspend fun setLastScannedAt(epochMs: Long) {
         dataStore.edit { it[KEY_LAST_SCAN] = epochMs }
+    }
+
+    suspend fun setShowUncollectedLocal(value: Boolean) {
+        dataStore.edit { it[KEY_SHOW_UNCOLLECTED] = value }
     }
 
     /** 清除文件夹：释放权限并删除全部 key。 */
@@ -75,5 +83,6 @@ class LocalVideoFolderStore @Inject constructor(
         val KEY_FOLDER_URI = stringPreferencesKey("folder_uri")
         val KEY_FOLDER_NAME = stringPreferencesKey("folder_name")
         val KEY_LAST_SCAN = longPreferencesKey("last_scan")
+        val KEY_SHOW_UNCOLLECTED = booleanPreferencesKey("show_uncollected_local")
     }
 }

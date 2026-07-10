@@ -58,6 +58,8 @@ class CollectionListViewModelTest {
         override suspend fun clearFolder() {}
         override suspend fun rescan() = 0
         override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override fun observeShowUncollectedLocal() = flowOf(false)
+        override suspend fun setShowUncollectedLocal(value: Boolean) {}
         override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
         override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
     }
@@ -288,6 +290,8 @@ class CollectionListViewModelTest {
             override suspend fun clearFolder() {}
             override suspend fun rescan() = 0
             override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+            override fun observeShowUncollectedLocal() = flowOf(false)
+            override suspend fun setShowUncollectedLocal(value: Boolean) {}
             override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
             override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
         }
@@ -341,6 +345,8 @@ class CollectionListViewModelTest {
                     LocalVideoGroup("DEF-002", "DEF Title", "http://def", null, null, emptyList()), // 未收藏 → 出现
                 )
             )
+            override fun observeShowUncollectedLocal() = flowOf(true)
+            override suspend fun setShowUncollectedLocal(value: Boolean) {}
             override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
             override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
         }
@@ -348,8 +354,6 @@ class CollectionListViewModelTest {
 
         viewModel.loadCollection(MovieDBType)
         advanceUntilIdle(); Thread.sleep(500); advanceUntilIdle()
-        viewModel.updateFilter(CollectionFilterState(showUncollectedLocal = true))
-        advanceUntilIdle()
 
         val uncollected = viewModel.uiState.value.uncollectedVideos
         assertEquals(1, uncollected.size)

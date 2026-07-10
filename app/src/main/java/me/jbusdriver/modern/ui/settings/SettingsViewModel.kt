@@ -35,6 +35,10 @@ class SettingsViewModel @Inject constructor(
         localVideoRepository.observeSummary()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalVideoSummary())
 
+    val showUncollectedLocal: StateFlow<Boolean> =
+        localVideoRepository.observeShowUncollectedLocal()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val _isScanningVideos = MutableStateFlow(false)
     val isScanningVideos: StateFlow<Boolean> = _isScanningVideos.asStateFlow()
 
@@ -44,6 +48,10 @@ class SettingsViewModel @Inject constructor(
 
     fun clearLocalVideoFolder() {
         viewModelScope.launch { localVideoRepository.clearFolder() }
+    }
+
+    fun setShowUncollectedLocal(value: Boolean) {
+        viewModelScope.launch { localVideoRepository.setShowUncollectedLocal(value) }
     }
 
     fun rescanLocalVideos() {

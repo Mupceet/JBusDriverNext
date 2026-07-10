@@ -176,9 +176,12 @@ fun SettingsScreen(
             )
 
             // === Local Video Card ===
+            val showUncollectedLocal by viewModel.showUncollectedLocal.collectAsStateWithLifecycle()
             LocalVideoCard(
                 summary = localVideoSummary,
                 isScanning = isScanningVideos,
+                showUncollectedLocal = showUncollectedLocal,
+                onToggleShowUncollectedLocal = { viewModel.setShowUncollectedLocal(it) },
                 onPickFolder = { pickFolderLauncher.launch(null) },
                 onClearFolder = { viewModel.clearLocalVideoFolder() },
                 onRescan = { viewModel.rescanLocalVideos() },
@@ -735,6 +738,8 @@ private fun NetworkCard(
 private fun LocalVideoCard(
     summary: LocalVideoSummary,
     isScanning: Boolean,
+    showUncollectedLocal: Boolean,
+    onToggleShowUncollectedLocal: (Boolean) -> Unit,
     onPickFolder: () -> Unit,
     onClearFolder: () -> Unit,
     onRescan: () -> Unit,
@@ -809,6 +814,23 @@ private fun LocalVideoCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.local_video_show_uncollected),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+                Switch(
+                    checked = showUncollectedLocal,
+                    onCheckedChange = onToggleShowUncollectedLocal,
+                )
+            }
 
             Spacer(Modifier.height(12.dp))
 
