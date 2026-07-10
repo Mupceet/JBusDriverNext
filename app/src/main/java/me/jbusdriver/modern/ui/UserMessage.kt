@@ -7,10 +7,17 @@ import android.content.Context
 data class UserMessage(val resId: Int, val args: List<Any> = emptyList()) {
 
     @SuppressLint("LocalContextGetResourceValueCall")
-    fun format(context: Context): String =
-        if (args.isEmpty()) context.getString(resId)
-        else {
-            val q = (args.firstOrNull() as? Number)?.toInt() ?: 1
-            context.resources.getQuantityString(resId, q, *args.toTypedArray())
+    fun format(context: Context): String {
+        val isPlural = try {
+            context.resources.getResourceTypeName(resId) == "plurals"
+        } catch (_: android.content.res.Resources.NotFoundException) {
+            false
         }
+        return if (isPlural) {
+            val quantity = (args.firstOrNull() as? Number)?.toInt() ?: 1
+            context.resources.getQuantityString(resId, quantity, *args.toTypedArray())
+        } else {
+            context.getString(resId, *args.toTypedArray())
+        }
+    }
 }

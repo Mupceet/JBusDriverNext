@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
@@ -21,6 +23,7 @@ import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
+import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.UserMessage
@@ -188,10 +191,17 @@ class MovieDetailViewModel @Inject constructor(
         val detail = _uiState.value.movieDetail ?: return
         viewModelScope.launch {
             val movie = detail.toCollectionMovie(currentUrl)
-            val categoryId = if (censorType == "UNCENSORED") UncensoredMovieCategory.id ?: 3 else null
-            val newState = collectRepository.toggleMovieCollect(movie, categoryId)
-            _uiState.update { it.copy(isCollected = newState) }
-            if (deleteIds != null && !newState) {
+            // 三选一对话框仅在"已收藏"时出现 → 用户意图即取消收藏。用幂等 removeCollect，
+            // 不依赖 toggle 返回值，避免竞态下漏删或误重置收藏态。
+            val linkItem = LinkItem(
+                dbType = MovieDBType,
+                key = movie.link.urlPath,
+                jsonStr = "",
+                createTime = System.currentTimeMillis()
+            )
+            collectRepository.removeCollect(linkItem)
+            _uiState.update { it.copy(isCollected = false) }
+            if (deleteIds != null) {
                 emitDeleteResult(localVideoRepository.deleteVideos(deleteIds))
             }
         }

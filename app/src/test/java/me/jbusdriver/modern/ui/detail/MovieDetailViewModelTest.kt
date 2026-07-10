@@ -251,7 +251,7 @@ class MovieDetailViewModelTest {
             }
         }
         val collectRepo = object : CollectRepository by stubCollectRepo {
-            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = false // 模拟取消收藏
+            override suspend fun removeCollect(linkItem: LinkItem) = true // doUncollect 现走幂等 removeCollect
         }
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
