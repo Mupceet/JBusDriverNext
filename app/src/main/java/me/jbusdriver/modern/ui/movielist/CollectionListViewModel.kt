@@ -22,6 +22,7 @@ import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.ActressUiModel
@@ -47,7 +48,9 @@ data class CollectionListUiState(
     val filterState: CollectionFilterState = CollectionFilterState(),
     val availableYears: AvailableYears = AvailableYears(),
     val availablePublishMonths: Set<Int> = emptySet(),
-    val availableCollectMonths: Set<Int> = emptySet()
+    val availableCollectMonths: Set<Int> = emptySet(),
+    /** 未收藏的本地视频（仅 showUncollectedLocal 开启 + 影片 tab 时填充，每个 isVirtual=true）。 */
+    val uncollectedVideos: List<MovieUiModel> = emptyList()
 )
 
 /**
@@ -84,6 +87,9 @@ class CollectionListViewModel @Inject constructor(
     private var allActresses: List<ActressUiModel> = emptyList()
     private var currentDbType: Int = MovieDBType
 
+    /** 按番号分组的全部本地视频（来自 localVideoRepository，用于未收藏分区计算）。 */
+    private var allLocalVideoGroups: List<LocalVideoGroup> = emptyList()
+
     /** 是否已从持久化加载排序设定 */
     private var sortRestored = false
 
@@ -94,6 +100,12 @@ class CollectionListViewModel @Inject constructor(
         viewModelScope.launch {
             downloadedCodes.collect { codes ->
                 currentDownloadedCodes = codes
+                applyFilterAndSort()
+            }
+        }
+        viewModelScope.launch {
+            localVideoRepository.observeAllGroupedByCode().collect { groups ->
+                allLocalVideoGroups = groups
                 applyFilterAndSort()
             }
         }
@@ -269,6 +281,25 @@ class CollectionListViewModel @Inject constructor(
                 else SortOption.COLLECT_DESC.toActressComparator()
             )
 
+        // 未收藏分区：仅 showUncollectedLocal 开启 + 影片 tab 时计算。
+        // 番号即 URL 路径，link=code 走现有 onMovieClick 导航；movieCount 仅含已收藏，不受此影响。
+        val showUncollected = filter.showUncollectedLocal && currentDbType == MovieDBType
+        val collectedCodes = allMovies.map { it.code.uppercase() }.toSet()
+        val uncollectedVideos = if (showUncollected) {
+            allLocalVideoGroups
+                .filter { it.code.uppercase() !in collectedCodes }
+                .map { g ->
+                    MovieUiModel(
+                        title = g.title ?: g.code,
+                        imageUrl = g.imageUrl.orEmpty(),
+                        code = g.code,
+                        date = g.date.orEmpty(),
+                        link = g.code,
+                        isVirtual = true,
+                    )
+                }
+        } else emptyList()
+
         _uiState.update {
             it.copy(
                 movies = filteredMovies,
@@ -277,6 +308,7 @@ class CollectionListViewModel @Inject constructor(
                 actressCount = allActresses.size,
                 availablePublishMonths = availableMonths,
                 availableCollectMonths = availableCollectMonths,
+                uncollectedVideos = uncollectedVideos,
                 isLoading = false
             )
         }

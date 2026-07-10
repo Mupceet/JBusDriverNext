@@ -72,6 +72,7 @@ fun MovieList(
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
     isDownloaded: ((MovieUiModel) -> Boolean)? = null,
     header: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
     gridState: LazyGridState = rememberLazyGridState(),
     listState: LazyListState = rememberLazyListState()
 ) {
@@ -136,6 +137,9 @@ fun MovieList(
                             )
                         }
                     }
+                }
+                if (footer != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { footer() }
                 }
             }
 
@@ -216,6 +220,9 @@ fun MovieList(
                             )
                         }
                     }
+                }
+                if (footer != null) {
+                    item { footer() }
                 }
             }
 

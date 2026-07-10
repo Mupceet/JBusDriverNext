@@ -310,6 +310,56 @@ class CollectionListViewModelTest {
         assertEquals("ABC-001", filtered.first().code)
     }
 
+    @Test
+    fun showUncollectedLocal_listsCodesNotInCollection() = runTest(testDispatcher) {
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = listOf(Movie("Collected", "i", "ABC-001", "2024-01-01", "link1"))
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> =
+                if (dbType == MovieDBType) listOf(Movie("Collected", "i", "ABC-001", "2024-01-01", "link1").toLinkItem()) else emptyList()
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        val localRepo = object : LocalVideoRepository {
+            override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+            override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+            override fun observeSummary() = flowOf(LocalVideoSummary())
+            override fun hasFolder() = flowOf(true)
+            override suspend fun setFolder(uri: android.net.Uri) {}
+            override suspend fun clearFolder() {}
+            override suspend fun rescan() = 0
+            override fun observeAllGroupedByCode() = flowOf(
+                listOf(
+                    LocalVideoGroup("ABC-001", null, null, null, null, emptyList()), // 已收藏 → 不出现
+                    LocalVideoGroup("DEF-002", "DEF Title", "http://def", null, null, emptyList()), // 未收藏 → 出现
+                )
+            )
+            override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+            override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo)
+
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle(); Thread.sleep(500); advanceUntilIdle()
+        viewModel.updateFilter(CollectionFilterState(showUncollectedLocal = true))
+        advanceUntilIdle()
+
+        val uncollected = viewModel.uiState.value.uncollectedVideos
+        assertEquals(1, uncollected.size)
+        assertEquals("DEF-002", uncollected.first().code)
+        assertTrue(uncollected.first().isVirtual)
+        assertEquals("DEF Title", uncollected.first().title)
+        // movieCount 仅含已收藏，未被污染
+        assertEquals(1, viewModel.uiState.value.movieCount)
+    }
+
     private fun mktime(year: Int, month: Int, day: Int): Long =
         java.util.Calendar.getInstance().apply {
             clear()

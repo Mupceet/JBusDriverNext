@@ -1,7 +1,10 @@
 package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -11,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
@@ -20,6 +24,7 @@ import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.MovieItem
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
@@ -77,6 +82,14 @@ fun CollectionListScreen(
                     onToggleCollect = { viewModel.removeMovie(it) },
                     isDownloaded = { it.code.uppercase() in downloadedCodes },
                     isGrid = isGrid,
+                    footer = {
+                        if (uiState.filterState.showUncollectedLocal && uiState.uncollectedVideos.isNotEmpty()) {
+                            UncollectedLocalVideoSection(
+                                videos = uiState.uncollectedVideos,
+                                onMovieClick = onMovieClick,
+                            )
+                        }
+                    },
                     modifier = modifier
                 )
             }
@@ -98,6 +111,35 @@ fun CollectionListScreen(
                     modifier = modifier
                 )
             }
+        }
+    }
+}
+
+/**
+ * 收藏页底部的「未收藏本地视频」分区。
+ *
+ * 每个 [MovieUiModel] 为虚拟卡片（[MovieUiModel.isVirtual] = true），以虚线边框区分；
+ * 点击后 [onMovieClick] 以番号作为 movie URL 路径进入详情页。
+ */
+@Composable
+private fun UncollectedLocalVideoSection(
+    videos: List<MovieUiModel>,
+    onMovieClick: (MovieUiModel, String?) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        Text(
+            stringResource(R.string.local_video_show_uncollected),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        videos.forEach { v ->
+            MovieItem(
+                movie = v,
+                onClick = { onMovieClick(v, null) },
+                isVirtual = true,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
         }
     }
 }
