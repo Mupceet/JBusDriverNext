@@ -37,7 +37,9 @@ import me.jbusdriver.modern.data.settings.ThemeSettingsReader
 import me.jbusdriver.modern.data.session.GifLoadTracker
 import me.jbusdriver.modern.data.gateway.AndroidImageMediaGateway
 import me.jbusdriver.modern.data.gateway.ImageMediaGateway
+import me.jbusdriver.modern.data.localvideo.DocumentFileVideoFileDeleter
 import me.jbusdriver.modern.data.localvideo.DocumentFileVideoFileSource
+import me.jbusdriver.modern.data.localvideo.LocalVideoFileDeleter
 import me.jbusdriver.modern.data.localvideo.LocalVideoFileSource
 import me.jbusdriver.modern.data.session.LoadedGifTracker
 import me.jbusdriver.modern.data.repository.DefaultLocalVideoRepository
@@ -205,4 +207,8 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindLocalVideoFileSource(impl: DocumentFileVideoFileSource): LocalVideoFileSource
+
+    @Binds
+    @Singleton
+    abstract fun bindLocalVideoFileDeleter(impl: DocumentFileVideoFileDeleter): LocalVideoFileDeleter
 }
