@@ -134,12 +134,7 @@ fun MovieDetailScreen(
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { msg ->
-            val text = if (msg.args.isEmpty()) {
-                context.getString(msg.resId)
-            } else {
-                val q = (msg.args.firstOrNull() as? Number)?.toInt() ?: 1
-                context.resources.getQuantityString(msg.resId, q, *msg.args.toTypedArray())
-            }
+            val text = msg.format(context)
             Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
         }
     }
