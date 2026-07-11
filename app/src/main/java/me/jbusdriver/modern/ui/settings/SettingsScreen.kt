@@ -811,6 +811,11 @@ private fun LocalVideoCard(
                 )
             } else {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        linkedCountText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     summary.lastScannedAt?.let { ts ->
                         Text(
                             stringResource(R.string.local_video_last_scan, formatTime(ts)),
@@ -818,11 +823,6 @@ private fun LocalVideoCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Text(
-                        linkedCountText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
 
