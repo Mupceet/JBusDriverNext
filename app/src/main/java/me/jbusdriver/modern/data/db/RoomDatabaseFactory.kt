@@ -8,11 +8,21 @@ import me.jbusdriver.modern.KLog
 
 private const val JBUS_DB_NAME = "jbusdriver.db"
 private const val COLLECT_DB_NAME = "collect.db"
+private const val LOCAL_VIDEO_DB_NAME = "local_video.db"
 
 internal val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("DROP INDEX IF EXISTS `index_t_link_key`")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_t_link_dbType_key` ON `t_link` (`dbType`, `key`)")
+    }
+}
+
+internal val LOCAL_VIDEO_MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN title TEXT")
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN imageUrl TEXT")
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN date TEXT")
+        db.execSQL("ALTER TABLE t_local_video ADD COLUMN censorType TEXT")
     }
 }
 
@@ -33,3 +43,10 @@ fun buildCollectDatabase(context: Context): CollectDatabase =
         CollectDatabase::class.java,
         COLLECT_DB_NAME
     ).addMigrations(COLLECT_MIGRATION_1_2).build()
+
+fun buildLocalVideoDatabase(context: Context): LocalVideoDatabase =
+    Room.databaseBuilder(
+        context,
+        LocalVideoDatabase::class.java,
+        LOCAL_VIDEO_DB_NAME
+    ).addMigrations(LOCAL_VIDEO_MIGRATION_1_2).build()

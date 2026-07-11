@@ -103,6 +103,7 @@
     <string name="rescan">重新掃描</string>
     <string name="check_connectivity">檢測連通</string>
     <string name="cancel">取消</string>
+    <string name="confirm">確定</string>
     <string name="unreachable">不可達</string>
     <string name="scanning">正在掃描 %1$d/%2$d…</string>
     <string name="verifying">正在驗證 %1$d/%2$d…</string>
@@ -171,4 +172,38 @@
     <string name="scan_failed">掃描失敗</string>
     <string name="verify_failed">檢測失敗</string>
     <string name="pinned">置頂</string>
+
+    <!-- Local video association -->
+    <string name="local_video">本地視頻</string>
+    <string name="local_video_folder">視頻文件夾</string>
+    <string name="local_video_folder_not_set">未選擇</string>
+    <string name="local_video_clear_folder">清除文件夾</string>
+    <string name="local_video_naming_hint">將影片依番號命名（如 ABC-123.mp4），或放進以番號命名的資料夾（如 ABC-123/），即自動關聯。</string>
+    <string name="local_video_last_scan">上次掃描：%1$s</string>
+    <plurals name="local_video_linked_count">
+        <item quantity="other">已關聯 %1$d 個視頻</item>
+    </plurals>
+    <string name="play_local_video">播放本地視頻</string>
+    <string name="no_video_player">未找到可播放視頻的應用</string>
+    <string name="local_video_downloaded">已下載</string>
+    <string name="local_video_show_uncollected">顯示未收藏的本地視頻</string>
+    <plurals name="local_video_uncollected_section_count">
+        <item quantity="other">未收藏的本地視頻（%1$d）</item>
+    </plurals>
+    <string name="local_video_delete_menu">刪除本地視頻</string>
+    <string name="local_video_delete_selected">刪除選中</string>
+    <string name="local_video_select_all">全選</string>
+    <string name="local_video_invert">反選</string>
+    <string name="local_video_delete_all_failed">刪除失敗，請檢查文件夾權限</string>
+    <string name="local_video_delete_selected_count">刪除 %1$d 項（共 %2$s）</string>
+    <plurals name="local_video_deleted_count">
+        <item quantity="other">已刪除 %1$d 個</item>
+    </plurals>
+    <plurals name="local_video_delete_partial">
+        <item quantity="other">已刪除 %1$d 個，%2$d 個失敗</item>
+    </plurals>
+    <string name="local_video_delete_confirm_title">刪除本地視頻？</string>
+    <plurals name="local_video_delete_confirm_message">
+        <item quantity="other">將刪除 %1$d 個文件，此操作不可撤銷。</item>
+    </plurals>
 </resources>

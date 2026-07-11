@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.search
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -12,8 +13,13 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DeleteResult
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -34,6 +40,21 @@ class SearchViewModelTest {
     private val testMovies = listOf(
         Movie("Result 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1")
     )
+
+    private val stubLocalVideoRepo = object : LocalVideoRepository {
+        override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+        override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+        override fun observeSummary() = flowOf(LocalVideoSummary())
+        override fun hasFolder() = flowOf(false)
+        override suspend fun setFolder(uri: android.net.Uri) {}
+        override suspend fun clearFolder() {}
+        override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override fun observeShowUncollectedLocal() = flowOf(false)
+        override suspend fun setShowUncollectedLocal(value: Boolean) {}
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+    }
 
     private fun fakeHistoryStore() = object : SearchHistoryStore {
         private val history = mutableListOf<String>()
@@ -80,7 +101,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("test")
         advanceUntilIdle()
@@ -109,7 +130,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("test")
         advanceUntilIdle()
@@ -132,7 +153,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 error("Should not be called")
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("")
         advanceUntilIdle()
@@ -157,7 +178,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo(1, 1) to listOf(ActressInfo("Alice", "http://avatar.jpg", "http://alice"))
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("alice", SearchType.ACTRESS)
         advanceUntilIdle()
@@ -183,7 +204,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 PageInfo() to emptyList<ActressInfo>()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("abc")
         advanceUntilIdle()
@@ -213,7 +234,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 PageInfo() to emptyList<ActressInfo>()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("abc")
         advanceUntilIdle()
@@ -249,7 +270,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore())
+        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
 
         viewModel.search("old")
         advanceUntilIdle()

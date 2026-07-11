@@ -8,11 +8,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import me.jbusdriver.modern.data.db.CollectDatabase
 import me.jbusdriver.modern.data.db.JBusDatabase
+import me.jbusdriver.modern.data.db.LocalVideoDatabase
 import me.jbusdriver.modern.data.db.buildCollectDatabase
 import me.jbusdriver.modern.data.db.buildJBusDatabase
+import me.jbusdriver.modern.data.db.buildLocalVideoDatabase
 import me.jbusdriver.modern.data.db.dao.CategoryDao
 import me.jbusdriver.modern.data.db.dao.HistoryDao
 import me.jbusdriver.modern.data.db.dao.LinkItemDao
+import me.jbusdriver.modern.data.db.dao.LocalVideoDao
 import javax.inject.Singleton
 
 @Module
@@ -36,4 +39,12 @@ object DatabaseModule {
 
     @Provides
     fun provideLinkItemDao(db: CollectDatabase): LinkItemDao = db.linkItemDao()
+
+    @Provides
+    @Singleton
+    fun provideLocalVideoDatabase(@ApplicationContext context: Context): LocalVideoDatabase =
+        buildLocalVideoDatabase(context)
+
+    @Provides
+    fun provideLocalVideoDao(db: LocalVideoDatabase): LocalVideoDao = db.localVideoDao()
 }

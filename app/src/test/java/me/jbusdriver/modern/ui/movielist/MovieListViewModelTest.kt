@@ -7,6 +7,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -18,11 +19,16 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressDetail
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.GenreGroup
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
@@ -46,6 +52,21 @@ class MovieListViewModelTest {
         Movie("Test Movie 1", "http://img1.jpg", "ABC-001", "2024-01-01", "http://link1"),
         Movie("Test Movie 2", "http://img2.jpg", "DEF-002", "2024-01-02", "http://link2")
     )
+
+    private val stubLocalVideoRepo = object : LocalVideoRepository {
+        override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+        override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+        override fun observeSummary() = flowOf(LocalVideoSummary())
+        override fun hasFolder() = flowOf(false)
+        override suspend fun setFolder(uri: android.net.Uri) {}
+        override suspend fun clearFolder() {}
+        override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override fun observeShowUncollectedLocal() = flowOf(false)
+        override suspend fun setShowUncollectedLocal(value: Boolean) {}
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+    }
 
     private fun fullFakeRepo(
         onLoadPage: (DataSourceType, Int) -> MoviePageResult
@@ -137,7 +158,7 @@ class MovieListViewModelTest {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         // ViewModel launches on Dispatchers.IO; give real IO threads time to complete
@@ -164,7 +185,7 @@ class MovieListViewModelTest {
                 else -> MoviePageResult(PageInfo(2, 3, listOf(1, 2, 3)), page2Movies)
             }
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -186,7 +207,7 @@ class MovieListViewModelTest {
     @Test
     fun loadFirstPage_handlesError() = runTest(testDispatcher) {
         val repository = fullFakeRepo { _, _ -> throw RuntimeException("Network error") }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -204,7 +225,7 @@ class MovieListViewModelTest {
             callCount++
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -259,7 +280,7 @@ class MovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.refresh()
         runCurrent()
@@ -277,7 +298,7 @@ class MovieListViewModelTest {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 1, listOf(1)), testMovies)
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -334,7 +355,7 @@ class MovieListViewModelTest {
                 forceRefresh: Boolean
             ): ActressDetail? = null
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.setDataSourceType(DataSourceType.CENSORED)
         advanceUntilIdle()
@@ -404,7 +425,7 @@ class MovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.setDefaultShowAll(true)
         viewModel.loadFirstPage()
@@ -441,7 +462,7 @@ class MovieListViewModelTest {
             ),
             revalidateArgs
         )
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
         viewModel.loadFirstPage()
         advanceUntilIdle()
         viewModel.setAtTopForFreshUpdates(false)
@@ -481,7 +502,7 @@ class MovieListViewModelTest {
             ),
             mutableListOf()
         )
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
         viewModel.loadFirstPage()
         advanceUntilIdle()
 
@@ -546,7 +567,7 @@ class MovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -634,7 +655,7 @@ class MovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()
@@ -714,7 +735,7 @@ class MovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        viewModel = MovieListViewModel(repository)
+        viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
 
         viewModel.loadFirstPage()
         advanceUntilIdle()

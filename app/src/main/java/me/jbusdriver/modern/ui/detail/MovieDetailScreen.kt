@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -70,6 +74,10 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
+import me.jbusdriver.modern.data.localvideo.launchLocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.ui.localvideo.LocalVideoSheet
+import me.jbusdriver.modern.ui.localvideo.LocalVideoSheetMode
 import kotlin.math.abs
 
 /** 封面占位的默认宽高比（横向）。绝大多数封面都聚集在这个比例附近。 */
@@ -116,7 +124,17 @@ fun MovieDetailScreen(
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showMagnetSheet by remember { mutableStateOf(false) }
+    var showDeleteSheet by remember { mutableStateOf(false) }
+    var pendingDeleteIds by remember { mutableStateOf<List<Int>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { msg ->
+            val text = msg.format(context)
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     LaunchedEffect(movieUrl, censorType) {
         viewModel.loadDetail(movieUrl, censorType)
@@ -158,6 +176,31 @@ fun MovieDetailScreen(
                             isCollected = uiState.isCollected,
                             onToggle = { viewModel.toggleCollect() }
                         )
+                        if (uiState.localVideos.isNotEmpty()) {
+                            var menuExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(
+                                        painterResource(R.drawable.more_vert_24px),
+                                        contentDescription = stringResource(R.string.local_video_delete_menu)
+                                    )
+                                }
+                                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.local_video_delete_menu)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            val videos = uiState.localVideos
+                                            if (videos.size == 1) {
+                                                pendingDeleteIds = listOf(videos.first().id)
+                                            } else {
+                                                showDeleteSheet = true
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -198,7 +241,8 @@ fun MovieDetailScreen(
                             showMagnetSheet = true
                         },
                         isLoadingMagnets = uiState.isLoadingMagnets,
-                        hasMagnets = uiState.magnets.isNotEmpty()
+                        hasMagnets = uiState.magnets.isNotEmpty(),
+                        localVideos = uiState.localVideos
                     )
                 }
             }
@@ -209,6 +253,45 @@ fun MovieDetailScreen(
         MagnetBottomSheet(
             uiState = uiState,
             onDismiss = { showMagnetSheet = false }
+        )
+    }
+
+    // 刪除確認（單文件，或多選表回填後）
+    if (pendingDeleteIds.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteIds = emptyList() },
+            title = { Text(stringResource(R.string.local_video_delete_confirm_title)) },
+            text = {
+                Text(context.resources.getQuantityString(
+                    R.plurals.local_video_delete_confirm_message, pendingDeleteIds.size, pendingDeleteIds.size))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteLocalVideos(pendingDeleteIds)
+                    pendingDeleteIds = emptyList()
+                }) { Text(stringResource(R.string.confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteIds = emptyList() }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // 多選刪除表（來自溢出菜單的多文件）
+    if (showDeleteSheet) {
+        LocalVideoSheet(
+            videos = uiState.localVideos,
+            mode = LocalVideoSheetMode.DeleteMulti,
+            onSelected = { picked ->
+                showDeleteSheet = false
+                val ids = picked.map { it.id }
+                if (ids.isNotEmpty()) {
+                    pendingDeleteIds = ids
+                }
+            },
+            onDismiss = { showDeleteSheet = false },
         )
     }
 }
@@ -240,7 +323,8 @@ internal fun DetailContent(
     onImageClick: (List<String>, Int) -> Unit,
     onMagnetClick: () -> Unit,
     isLoadingMagnets: Boolean = false,
-    hasMagnets: Boolean = false
+    hasMagnets: Boolean = false,
+    localVideos: List<LocalVideo> = emptyList(),
 ) {
     val listState = rememberLazyListState()
     val coverHeight = remember { mutableIntStateOf(0) }
@@ -263,31 +347,64 @@ internal fun DetailContent(
     ) {
         // Cover image
         item(key = "cover") {
-            AppAsyncImage(
-                model = detail.cover,
-                contentDescription = detail.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(coverAspectRatio)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onImageClick(allImages, 0) }
-                    .onSizeChanged { size -> coverHeight.intValue = size.height },
-                onState = { state ->
-                    if (state is AsyncImagePainter.State.Success) {
-                        val drawable = state.result.drawable
-                        val width = drawable.intrinsicWidth
-                        val height = drawable.intrinsicHeight
-                        if (width > 0 && height > 0) {
-                            val real = width.toFloat() / height.toFloat()
-                            // 仅在真实比例与占位比例差异过大（如纵向封面）时才切换，避免加载后跳动
-                            if (shouldAdoptCoverRatio(real)) {
-                                coverAspectRatio = real
+            var showVideoPicker by remember { mutableStateOf(false) }
+            Box {
+                AppAsyncImage(
+                    model = detail.cover,
+                    contentDescription = detail.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(coverAspectRatio)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onImageClick(allImages, 0) }
+                        .onSizeChanged { size -> coverHeight.intValue = size.height },
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Success) {
+                            val drawable = state.result.drawable
+                            val width = drawable.intrinsicWidth
+                            val height = drawable.intrinsicHeight
+                            if (width > 0 && height > 0) {
+                                val real = width.toFloat() / height.toFloat()
+                                // 仅在真实比例与占位比例差异过大（如纵向封面）时才切换，避免加载后跳动
+                                if (shouldAdoptCoverRatio(real)) {
+                                    coverAspectRatio = real
+                                }
                             }
                         }
                     }
+                )
+                if (localVideos.isNotEmpty()) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.45f),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .clickable {
+                                if (localVideos.size == 1) launchLocalVideo(context, localVideos.first())
+                                else showVideoPicker = true
+                            }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.play_arrow_24px),
+                            contentDescription = stringResource(R.string.play_local_video),
+                            tint = Color.White,
+                            modifier = Modifier.size(56.dp).padding(16.dp),
+                        )
+                    }
                 }
-            )
+            }
+            if (showVideoPicker) {
+                LocalVideoSheet(
+                    videos = localVideos,
+                    mode = LocalVideoSheetMode.Pick,
+                    onPicked = {
+                        showVideoPicker = false
+                        launchLocalVideo(context, it)
+                    },
+                    onDismiss = { showVideoPicker = false },
+                )
+            }
         }
 
         // Title

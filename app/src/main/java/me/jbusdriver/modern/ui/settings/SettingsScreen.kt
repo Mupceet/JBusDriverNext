@@ -1,6 +1,8 @@
 package me.jbusdriver.modern.ui.settings
 
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,7 +66,11 @@ import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +96,12 @@ fun SettingsScreen(
     val selectedBaseUrl by store.selectedBaseUrl.collectAsStateWithLifecycle()
     val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+
+    val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
+
+    val pickFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri -> uri?.let { viewModel.setLocalVideoFolder(it) } }
 
     // Mirror URL list for network card
     val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
@@ -159,6 +172,16 @@ fun SettingsScreen(
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
                 onSelect = { viewModel.selectUrl(it) }
+            )
+
+            // === Local Video Card ===
+            val showUncollectedLocal by viewModel.showUncollectedLocal.collectAsStateWithLifecycle()
+            LocalVideoCard(
+                summary = localVideoSummary,
+                showUncollectedLocal = showUncollectedLocal,
+                onToggleShowUncollectedLocal = { viewModel.setShowUncollectedLocal(it) },
+                onPickFolder = { pickFolderLauncher.launch(null) },
+                onClearFolder = { viewModel.clearLocalVideoFolder() },
             )
 
             Spacer(Modifier.height(8.dp))
@@ -703,5 +726,118 @@ private fun NetworkCard(
         }
     }
 }
+
+//endregion
+
+//region Local Video Card
+
+@Composable
+private fun LocalVideoCard(
+    summary: LocalVideoSummary,
+    showUncollectedLocal: Boolean,
+    onToggleShowUncollectedLocal: (Boolean) -> Unit,
+    onPickFolder: () -> Unit,
+    onClearFolder: () -> Unit,
+) {
+    val context = LocalContext.current
+    val linkedCountText = context.resources.getQuantityString(
+        R.plurals.local_video_linked_count,
+        summary.linkedCount,
+        summary.linkedCount,
+    )
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painterResource(R.drawable.folder_24px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.local_video),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // 当前文件夹（点击选择/更换）— 整行可点，水波纹横向填满
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onPickFolder)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.local_video_folder),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        summary.folderDisplayName
+                            ?: stringResource(R.string.local_video_folder_not_set),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (summary.folderDisplayName != null) {
+                    OutlinedButton(onClick = onClearFolder) {
+                        Text(stringResource(R.string.local_video_clear_folder))
+                    }
+                }
+            }
+
+            // 未选文件夹时显示命名/放置提示；已选文件夹时显示扫描时间 + 关联数
+            if (summary.folderDisplayName == null) {
+                Text(
+                    stringResource(R.string.local_video_naming_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            } else {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        linkedCountText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    summary.lastScannedAt?.let { ts ->
+                        Text(
+                            stringResource(R.string.local_video_last_scan, formatTime(ts)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            // 显示未收藏的本地视频（整行点击切换，Switch 缩放）
+            SwitchRow(
+                stringResource(R.string.local_video_show_uncollected),
+                showUncollectedLocal,
+                onToggleShowUncollectedLocal,
+            )
+        }
+    }
+}
+
+private fun formatTime(epochMs: Long): String =
+    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault())
+        .format(Date(epochMs))
 
 //endregion

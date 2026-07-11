@@ -74,6 +74,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
     val censorType = when (uiState.searchType) {
         SearchType.UNCENSORED -> "UNCENSORED"
         else -> null
@@ -332,6 +333,7 @@ fun SearchScreen(
                 onLoadMore = { viewModel.loadMore() },
                 onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                 isGrid = isGrid,
+                isDownloaded = { it.code.uppercase() in downloadedCodes },
                 modifier = dismissKeyboardModifier
             )
         }

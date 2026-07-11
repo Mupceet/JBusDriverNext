@@ -7,8 +7,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -16,6 +18,7 @@ import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PageTracker
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
@@ -156,7 +159,8 @@ data class MovieListUiState(
  */
 @HiltViewModel
 class MovieListViewModel @Inject constructor(
-    private val repository: MovieRepository
+    private val repository: MovieRepository,
+    private val localVideoRepository: LocalVideoRepository
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -164,6 +168,11 @@ class MovieListViewModel @Inject constructor(
 
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
+
+    /** 已下载（关联本地视频）的番号集合，用于卡片角标展示 */
+    val downloadedCodes: StateFlow<Set<String>> =
+        localVideoRepository.observeDownloadedCodes()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** 当前已加载到的页码 */
     private val pages = PageTracker()

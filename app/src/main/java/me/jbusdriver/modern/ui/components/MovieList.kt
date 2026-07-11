@@ -70,7 +70,10 @@ fun MovieList(
     compact: Boolean = false,
     isCollected: ((MovieUiModel) -> Boolean)? = null,
     onToggleCollect: ((MovieUiModel) -> Unit)? = null,
+    isDownloaded: ((MovieUiModel) -> Boolean)? = null,
     header: (@Composable () -> Unit)? = null,
+    footerHeader: (@Composable () -> Unit)? = null,
+    footerMovies: List<MovieUiModel> = emptyList(),
     gridState: LazyGridState = rememberLazyGridState(),
     listState: LazyListState = rememberLazyListState()
 ) {
@@ -103,7 +106,11 @@ fun MovieList(
                 itemsIndexed(
                     movies,
                     key = { index, movie -> "${index}_${movie.link}" }) { _, movie ->
-                    MovieGridItem(movie = movie, onClick = { onMovieClick(movie, null) })
+                    MovieGridItem(
+                        movie = movie,
+                        onClick = { onMovieClick(movie, null) },
+                        isDownloaded = isDownloaded?.invoke(movie) == true
+                    )
                 }
                 if (isLoadingMore) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -130,6 +137,21 @@ fun MovieList(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+                if (footerHeader != null) {
+                    item(span = { GridItemSpan(maxLineSpan) }) { footerHeader() }
+                }
+                if (footerMovies.isNotEmpty()) {
+                    itemsIndexed(
+                        footerMovies,
+                        key = { index, movie -> "uncollected_${index}_${movie.link}" }
+                    ) { _, movie ->
+                        MovieGridItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
                     }
                 }
             }
@@ -178,7 +200,11 @@ fun MovieList(
                             } else null
                         )
                     } else {
-                        MovieItem(movie = movie, onClick = { onMovieClick(movie, null) })
+                        MovieItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
                     }
                 }
                 if (isLoadingMore) {
@@ -206,6 +232,21 @@ fun MovieList(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+                if (footerHeader != null) {
+                    item { footerHeader() }
+                }
+                if (footerMovies.isNotEmpty()) {
+                    itemsIndexed(
+                        footerMovies,
+                        key = { index, movie -> "uncollected_${index}_${movie.link}" }
+                    ) { _, movie ->
+                        MovieItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
                     }
                 }
             }

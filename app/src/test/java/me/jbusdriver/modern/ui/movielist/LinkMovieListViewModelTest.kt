@@ -5,6 +5,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -17,6 +18,7 @@ import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressDetail
@@ -24,7 +26,11 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.ActressCategory
 import me.jbusdriver.modern.domain.model.UncensoredActressCategory
 import me.jbusdriver.modern.domain.model.DataSourceType
+import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.GenreGroup
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
@@ -48,6 +54,21 @@ class LinkMovieListViewModelTest {
     )
 
     private val testNavKey = RouteLinkMovies("")
+
+    private val stubLocalVideoRepo = object : LocalVideoRepository {
+        override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+        override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+        override fun observeSummary() = flowOf(LocalVideoSummary())
+        override fun hasFolder() = flowOf(false)
+        override suspend fun setFolder(uri: android.net.Uri) {}
+        override suspend fun clearFolder() {}
+        override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override fun observeShowUncollectedLocal() = flowOf(false)
+        override suspend fun setShowUncollectedLocal(value: Boolean) {}
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+    }
 
     private val stubCollectRepo = object : CollectRepository {
         override suspend fun isCollected(linkItem: LinkItem) = false
@@ -109,7 +130,7 @@ class LinkMovieListViewModelTest {
         val repository = fullFakeRepo { _, _ ->
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
@@ -124,7 +145,7 @@ class LinkMovieListViewModelTest {
     @Test
     fun setLink_handlesError() = runTest(testDispatcher) {
         val repository = fullFakeRepo { _, _ -> throw RuntimeException("Network error") }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
@@ -140,7 +161,7 @@ class LinkMovieListViewModelTest {
             callCount++
             MoviePageResult(PageInfo(1, 2, listOf(1, 2)), testMovies)
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/actress/abc")
         advanceUntilIdle()
@@ -197,7 +218,7 @@ class LinkMovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
         viewModel.setLink("http://example.com/star/abc")
         advanceUntilIdle()
         assertEquals(R.string.load_failed, viewModel.uiState.value.error)
@@ -253,7 +274,7 @@ class LinkMovieListViewModelTest {
                 forceRefresh: Boolean
             ): ActressDetail? = null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/star/abc")
         advanceUntilIdle()
@@ -320,7 +341,7 @@ class LinkMovieListViewModelTest {
             override suspend fun loadActressDetail(url: String, forceRefresh: Boolean): ActressDetail? =
                 null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         // 先以默认筛选（showAll=false）加载链接，再变更默认值，验证 setDefaultShowAll
         // 会以新的默认值原地重载当前链接（同一链接、仅默认值变化的情况）。
@@ -381,7 +402,7 @@ class LinkMovieListViewModelTest {
                 forceRefresh: Boolean
             ): ActressDetail? = null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/star/abc")
         advanceUntilIdle()
@@ -453,7 +474,7 @@ class LinkMovieListViewModelTest {
                 forceRefresh: Boolean
             ): ActressDetail? = null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/star/abc")
         advanceUntilIdle()
@@ -526,7 +547,7 @@ class LinkMovieListViewModelTest {
                 forceRefresh: Boolean
             ): ActressDetail? = null
         }
-        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, testNavKey)
+        val viewModel = LinkMovieListViewModel(repository, stubCollectRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("http://example.com/star/abc")
         advanceUntilIdle()
@@ -558,7 +579,7 @@ class LinkMovieListViewModelTest {
         val recordingRepo = RecordingCollectRepository()
         val repository = repoWithActressDetail()
         val viewModel =
-            LinkMovieListViewModel(repository, recordingRepo, testNavKey)
+            LinkMovieListViewModel(repository, recordingRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("https://example.test/uncensored/star/alice", type = "actress")
         advanceUntilIdle()
@@ -576,7 +597,7 @@ class LinkMovieListViewModelTest {
         val recordingRepo = RecordingCollectRepository()
         val repository = repoWithActressDetail()
         val viewModel =
-            LinkMovieListViewModel(repository, recordingRepo, testNavKey)
+            LinkMovieListViewModel(repository, recordingRepo, stubLocalVideoRepo, testNavKey)
 
         viewModel.setLink("https://example.test/star/alice", type = "actress")
         advanceUntilIdle()

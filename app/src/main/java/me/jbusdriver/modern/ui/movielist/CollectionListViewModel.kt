@@ -4,21 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.settings.CollectionUiPrefs
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.urlPath
 import me.jbusdriver.modern.ui.ActressUiModel
@@ -44,7 +48,11 @@ data class CollectionListUiState(
     val filterState: CollectionFilterState = CollectionFilterState(),
     val availableYears: AvailableYears = AvailableYears(),
     val availablePublishMonths: Set<Int> = emptySet(),
-    val availableCollectMonths: Set<Int> = emptySet()
+    val availableCollectMonths: Set<Int> = emptySet(),
+    /** 是否在收藏页显示未收藏的本地视频（来自持久化设置）。 */
+    val showUncollectedLocal: Boolean = false,
+    /** 未收藏的本地视频（仅 showUncollectedLocal 开启 + 影片 tab 时填充）。 */
+    val uncollectedVideos: List<MovieUiModel> = emptyList(),
 )
 
 /**
@@ -59,11 +67,23 @@ data class CollectionListUiState(
 class CollectionListViewModel @Inject constructor(
     private val collectRepository: CollectRepository,
     private val uiPrefsStore: CollectionUiPrefs,
-    private val siteConfig: SiteConfig
+    private val siteConfig: SiteConfig,
+    private val localVideoRepository: LocalVideoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionListUiState())
     val uiState: StateFlow<CollectionListUiState> = _uiState.asStateFlow()
+
+    /** 已下载（关联本地视频）的番号集合，用于卡片角标展示 */
+    val downloadedCodes: StateFlow<Set<String>> =
+        localVideoRepository.observeDownloadedCodes()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** 当前已下载番号集合（来自 localVideoRepository，随索引变化更新） */
+    private var currentDownloadedCodes: Set<String> = emptySet()
+
+    /** 当前"显示未收藏本地视频"设置（来自 localVideoRepository 持久化设置）。 */
+    private var currentShowUncollected: Boolean = false
 
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()
@@ -72,8 +92,35 @@ class CollectionListViewModel @Inject constructor(
     private var allActresses: List<ActressUiModel> = emptyList()
     private var currentDbType: Int = MovieDBType
 
+    /** 按番号分组的全部本地视频（来自 localVideoRepository，用于未收藏分区计算）。 */
+    private var allLocalVideoGroups: List<LocalVideoGroup> = emptyList()
+
     /** 是否已从持久化加载排序设定 */
     private var sortRestored = false
+
+    // 此 init 块必须在 allMovies/allActresses/currentDbType 等属性初始化之后：
+    // viewModelScope 默认走 Dispatchers.Main.immediate，构造期间会同步触发 downloadedCodes
+    // 的首次 emit → applyFilterAndSort()，若上述属性尚未初始化（null）则 sortedWith 抛 NPE。
+    init {
+        viewModelScope.launch {
+            downloadedCodes.collect { codes ->
+                currentDownloadedCodes = codes
+                applyFilterAndSort()
+            }
+        }
+        viewModelScope.launch {
+            localVideoRepository.observeAllGroupedByCode().collect { groups ->
+                allLocalVideoGroups = groups
+                applyFilterAndSort()
+            }
+        }
+        viewModelScope.launch {
+            localVideoRepository.observeShowUncollectedLocal().collect { show ->
+                currentShowUncollected = show
+                applyFilterAndSort()
+            }
+        }
+    }
 
     /**
      * 加载指定类型的收藏列表。
@@ -229,6 +276,7 @@ class CollectionListViewModel @Inject constructor(
 
         val filteredMovies = allMovies
             .filterByCensor(filter.censorFilter)
+            .filterByDownloaded(filter.onlyDownloaded, currentDownloadedCodes)
             .filterByPublishYear(filter.publishYear, years.publishYears)
             .filterByPublishMonth(filter.publishMonth)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
@@ -244,6 +292,24 @@ class CollectionListViewModel @Inject constructor(
                 else SortOption.COLLECT_DESC.toActressComparator()
             )
 
+        // 未收藏分区：仅 showUncollectedLocal 开启 + 影片 tab 时计算。
+        // 番号即 URL 路径，link=code 走现有 onMovieClick 导航；movieCount 仅含已收藏，不受此影响。
+        val showUncollected = currentShowUncollected && currentDbType == MovieDBType
+        val collectedCodes = allMovies.map { it.code.uppercase() }.toSet()
+        val uncollectedVideos = if (showUncollected) {
+            allLocalVideoGroups
+                .filter { it.code.uppercase() !in collectedCodes }
+                .map { g ->
+                    MovieUiModel(
+                        title = g.title ?: g.files.firstOrNull()?.name ?: g.code,
+                        imageUrl = g.imageUrl.orEmpty(),
+                        code = g.code,
+                        date = g.date.orEmpty(),
+                        link = g.code,
+                    )
+                }
+        } else emptyList()
+
         _uiState.update {
             it.copy(
                 movies = filteredMovies,
@@ -252,6 +318,8 @@ class CollectionListViewModel @Inject constructor(
                 actressCount = allActresses.size,
                 availablePublishMonths = availableMonths,
                 availableCollectMonths = availableCollectMonths,
+                showUncollectedLocal = currentShowUncollected,
+                uncollectedVideos = uncollectedVideos,
                 isLoading = false
             )
         }
@@ -276,6 +344,12 @@ private fun List<ActressUiModel>.filterByCensor(censor: CensorFilter): List<Actr
         CensorFilter.CENSORED -> filter { it.categoryId != 4 }
         CensorFilter.UNCENSORED -> filter { it.categoryId == 4 }
     }
+
+private fun List<MovieUiModel>.filterByDownloaded(
+    only: Boolean,
+    codes: Set<String>
+): List<MovieUiModel> =
+    if (!only) this else filter { it.code.uppercase() in codes }
 
 private fun List<MovieUiModel>.filterByPublishYear(
     year: Int?,

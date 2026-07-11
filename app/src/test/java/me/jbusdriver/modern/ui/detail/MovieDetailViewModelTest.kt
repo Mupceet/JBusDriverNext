@@ -1,7 +1,9 @@
 package me.jbusdriver.modern.ui.detail
 
+import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -10,11 +12,16 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.repository.CollectRepository
+import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.db.entity.LinkItem
 import me.jbusdriver.modern.domain.model.ActressInfo
+import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.Header
+import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LocalVideoGroup
+import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
@@ -23,6 +30,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -61,6 +69,22 @@ class MovieDetailViewModelTest {
         override suspend fun fetchMagnets(gid: String, uc: String): List<Magnet> = emptyList()
     }
 
+    private val stubLocalVideoRepo = object : LocalVideoRepository {
+        override fun observeForCode(code: String) =
+            flowOf(listOf(LocalVideo("ABC-001", "ABC-001.mp4", "content://x/ABC-001", "video/mp4", 1L)))
+        override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+        override fun observeSummary() = flowOf(LocalVideoSummary())
+        override fun hasFolder() = flowOf(true)
+        override suspend fun setFolder(uri: Uri) {}
+        override suspend fun clearFolder() {}
+        override suspend fun rescan() = 0
+        override fun observeAllGroupedByCode() = flowOf(emptyList<LocalVideoGroup>())
+        override fun observeShowUncollectedLocal() = flowOf(false)
+        override suspend fun setShowUncollectedLocal(value: Boolean) {}
+        override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+        override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+    }
+
     @Before
     fun setup() {
         testDispatcher = StandardTestDispatcher()
@@ -77,7 +101,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -94,7 +118,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 throw RuntimeException("Network error")
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -110,7 +134,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 testDetail.also { callCount++ }
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -141,7 +165,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, collectRepo, stubMagnetRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, collectRepo, stubMagnetRepo, stubLocalVideoRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -155,12 +179,62 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detailWithGid
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
 
         assertEquals("12345", viewModel.uiState.value.gid)
         assertEquals("67890", viewModel.uiState.value.uc)
+    }
+
+    @Test
+    fun loadDetail_loadsLocalVideos() = runTest(testDispatcher) {
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo)
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+
+        val videos = viewModel.uiState.value.localVideos
+        assertEquals(1, videos.size)
+        assertEquals("ABC-001", videos.first().code)
+    }
+
+    @Test
+    fun loadDetail_noCode_leavesLocalVideosEmpty() = runTest(testDispatcher) {
+        val detailNoCode = testDetail.copy(headers = emptyList())
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detailNoCode
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo)
+
+        viewModel.loadDetail("http://example.com/none")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.localVideos.isEmpty())
+    }
+
+    @Test
+    fun loadDetail_snapshotsMetadataForCode() = runTest(testDispatcher) {
+        var snapped: Triple<String, String, String>? = null
+        val localRepo = object : LocalVideoRepository by stubLocalVideoRepo {
+            override suspend fun snapshotMetadata(
+                code: String, title: String, imageUrl: String, date: String, censorType: String?
+            ) { snapped = Triple(code, title, imageUrl) }
+        }
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, localRepo)
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+
+        assertEquals("ABC-001", snapped?.first)
+        assertEquals("Test Movie", snapped?.second)
+        assertEquals("http://cover.jpg", snapped?.third)
     }
 }

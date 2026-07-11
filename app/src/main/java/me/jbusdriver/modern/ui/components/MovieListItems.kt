@@ -3,14 +3,17 @@ package me.jbusdriver.modern.ui.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,23 +28,60 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
+
+/**
+ * “已下載”三角形角标：左上角绿色三角形 + 白色下载图标（旋转 -45°）。
+ * 仅在影片番号关联到本地视频时显示于列表/网格卡片封面上。
+ */
+@Composable
+private fun DownloadedBadge(modifier: Modifier = Modifier, side: Dp = 40.dp) {
+    val badgeColor = MaterialTheme.colorScheme.primary
+    val iconColor = MaterialTheme.colorScheme.onPrimary
+    Box(
+        modifier = modifier
+            .size(side)
+            .drawBehind {
+                val path = Path().apply {
+                    moveTo(0f, 0f)
+                    lineTo(size.width, 0f)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                drawPath(path = path, color = badgeColor)
+            }
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.download_24px),
+            contentDescription = stringResource(R.string.local_video_downloaded),
+            tint = iconColor,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = side * 0.1f, y = side * 0.1f)
+                .size(side * 0.4f)
+        )
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MovieItem(
     movie: MovieUiModel,
     onClick: (MovieUiModel) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDownloaded: Boolean = false
 ) {
     Card(
         onClick = { onClick(movie) },
@@ -55,17 +95,25 @@ fun MovieItem(
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            AppAsyncImage(
-                model = movie.imageUrl,
-                contentDescription = movie.title,
+            Box(
                 modifier = Modifier
                     .height(90.dp)
                     .aspectRatio(3f / 4f)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
-                contentScale = ContentScale.Crop
-            )
+            ) {
+                AppAsyncImage(
+                    model = movie.imageUrl,
+                    contentDescription = movie.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
+                    contentScale = ContentScale.Crop
+                )
+                if (isDownloaded) {
+                    DownloadedBadge(Modifier.align(Alignment.TopStart))
+                }
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -132,7 +180,8 @@ fun MovieItem(
 fun MovieGridItem(
     movie: MovieUiModel,
     onClick: (MovieUiModel) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDownloaded: Boolean = false
 ) {
     Card(
         onClick = { onClick(movie) },
@@ -143,16 +192,24 @@ fun MovieGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column {
-            AppAsyncImage(
-                model = movie.imageUrl,
-                contentDescription = movie.title,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(3f / 4f)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
-                contentScale = ContentScale.Crop
-            )
+            ) {
+                AppAsyncImage(
+                    model = movie.imageUrl,
+                    contentDescription = movie.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
+                    contentScale = ContentScale.Crop
+                )
+                if (isDownloaded) {
+                    DownloadedBadge(Modifier.align(Alignment.TopStart))
+                }
+            }
 
             Column(
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),

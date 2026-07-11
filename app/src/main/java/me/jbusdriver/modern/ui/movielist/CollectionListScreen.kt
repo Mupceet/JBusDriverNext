@@ -2,6 +2,7 @@ package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -10,7 +11,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
@@ -33,6 +36,7 @@ fun CollectionListScreen(
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
 
@@ -74,7 +78,23 @@ fun CollectionListScreen(
                     onMovieClick = onMovieClick,
                     isCollected = { true },
                     onToggleCollect = { viewModel.removeMovie(it) },
+                    isDownloaded = { it.code.uppercase() in downloadedCodes },
                     isGrid = isGrid,
+                    footerHeader = {
+                        if (uiState.showUncollectedLocal && uiState.uncollectedVideos.isNotEmpty()) {
+                            Text(
+                                pluralStringResource(
+                                    R.plurals.local_video_uncollected_section_count,
+                                    uiState.uncollectedVideos.size,
+                                    uiState.uncollectedVideos.size,
+                                ),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 0.dp, vertical = 8.dp),
+                            )
+                        }
+                    },
+                    footerMovies = if (uiState.showUncollectedLocal) uiState.uncollectedVideos else emptyList(),
                     modifier = modifier
                 )
             }
