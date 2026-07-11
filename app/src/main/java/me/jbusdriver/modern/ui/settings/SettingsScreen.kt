@@ -756,8 +756,12 @@ private fun LocalVideoCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(
                     painterResource(R.drawable.public_24px),
                     contentDescription = null,
@@ -771,14 +775,15 @@ private fun LocalVideoCard(
                     fontWeight = FontWeight.SemiBold,
                 )
             }
-            Spacer(Modifier.height(12.dp))
 
-            // 当前文件夹（点击选择/更换）
+            Spacer(Modifier.height(16.dp))
+
+            // 当前文件夹（点击选择/更换）— 整行可点，水波纹横向填满
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onPickFolder)
-                    .padding(vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -802,43 +807,35 @@ private fun LocalVideoCard(
             }
 
             // 上次扫描时间 + 关联数
-            summary.lastScannedAt?.let { ts ->
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                summary.lastScannedAt?.let { ts ->
+                    Text(
+                        stringResource(R.string.local_video_last_scan, formatTime(ts)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
-                    stringResource(R.string.local_video_last_scan, formatTime(ts)),
+                    linkedCountText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                linkedCountText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+            // 显示未收藏的本地视频（整行点击切换，Switch 缩放）
+            SwitchRow(
+                stringResource(R.string.local_video_show_uncollected),
+                showUncollectedLocal,
+                onToggleShowUncollectedLocal,
             )
-
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.local_video_show_uncollected),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-                Switch(
-                    checked = showUncollectedLocal,
-                    onCheckedChange = onToggleShowUncollectedLocal,
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
 
             // 重新扫描
             Button(
                 onClick = onRescan,
                 enabled = !isScanning && summary.folderDisplayName != null,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             ) {
                 if (isScanning) {
                     Text(stringResource(R.string.local_video_scanning))
