@@ -179,8 +179,7 @@
     <string name="local_video_folder">視頻文件夾</string>
     <string name="local_video_folder_not_set">未選擇</string>
     <string name="local_video_clear_folder">清除文件夾</string>
-    <string name="local_video_rescan">重新掃描</string>
-    <string name="local_video_scanning">正在掃描…</string>
+    <string name="local_video_naming_hint">將影片依番號命名（如 ABC-123.mp4），或放進以番號命名的資料夾（如 ABC-123/），即自動關聯。</string>
     <string name="local_video_last_scan">上次掃描：%1$s</string>
     <plurals name="local_video_linked_count">
         <item quantity="other">已關聯 %1$d 個視頻</item>

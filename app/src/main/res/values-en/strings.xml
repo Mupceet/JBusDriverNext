@@ -181,8 +181,7 @@
     <string name="local_video_folder">Video folder</string>
     <string name="local_video_folder_not_set">Not selected</string>
     <string name="local_video_clear_folder">Clear folder</string>
-    <string name="local_video_rescan">Rescan</string>
-    <string name="local_video_scanning">Scanning…</string>
+    <string name="local_video_naming_hint">Name videos by code (e.g. ABC-123.mp4), or put them in a code-named folder (e.g. ABC-123/) to link automatically.</string>
     <string name="local_video_last_scan">Last scan: %1$s</string>
     <plurals name="local_video_linked_count">
         <item quantity="one">%1$d video linked</item>

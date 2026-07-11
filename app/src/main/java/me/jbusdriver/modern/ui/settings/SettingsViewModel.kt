@@ -39,9 +39,6 @@ class SettingsViewModel @Inject constructor(
         localVideoRepository.observeShowUncollectedLocal()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    private val _isScanningVideos = MutableStateFlow(false)
-    val isScanningVideos: StateFlow<Boolean> = _isScanningVideos.asStateFlow()
-
     fun setLocalVideoFolder(uri: Uri) {
         viewModelScope.launch { localVideoRepository.setFolder(uri) }
     }
@@ -52,17 +49,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowUncollectedLocal(value: Boolean) {
         viewModelScope.launch { localVideoRepository.setShowUncollectedLocal(value) }
-    }
-
-    fun rescanLocalVideos() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isScanningVideos.value = true
-            try {
-                localVideoRepository.rescan()
-            } finally {
-                _isScanningVideos.value = false
-            }
-        }
     }
 
     // region Network scan (delegates to store -> MirrorScanner)

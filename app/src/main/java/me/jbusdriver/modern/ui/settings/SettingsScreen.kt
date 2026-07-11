@@ -98,7 +98,6 @@ fun SettingsScreen(
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
     val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
-    val isScanningVideos by viewModel.isScanningVideos.collectAsStateWithLifecycle()
 
     val pickFolderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -179,12 +178,10 @@ fun SettingsScreen(
             val showUncollectedLocal by viewModel.showUncollectedLocal.collectAsStateWithLifecycle()
             LocalVideoCard(
                 summary = localVideoSummary,
-                isScanning = isScanningVideos,
                 showUncollectedLocal = showUncollectedLocal,
                 onToggleShowUncollectedLocal = { viewModel.setShowUncollectedLocal(it) },
                 onPickFolder = { pickFolderLauncher.launch(null) },
                 onClearFolder = { viewModel.clearLocalVideoFolder() },
-                onRescan = { viewModel.rescanLocalVideos() },
             )
 
             Spacer(Modifier.height(8.dp))
@@ -737,12 +734,10 @@ private fun NetworkCard(
 @Composable
 private fun LocalVideoCard(
     summary: LocalVideoSummary,
-    isScanning: Boolean,
     showUncollectedLocal: Boolean,
     onToggleShowUncollectedLocal: (Boolean) -> Unit,
     onPickFolder: () -> Unit,
     onClearFolder: () -> Unit,
-    onRescan: () -> Unit,
 ) {
     val context = LocalContext.current
     val linkedCountText = context.resources.getQuantityString(
@@ -763,7 +758,7 @@ private fun LocalVideoCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    painterResource(R.drawable.public_24px),
+                    painterResource(R.drawable.folder_24px),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp),
@@ -806,6 +801,14 @@ private fun LocalVideoCard(
                 }
             }
 
+            // 命名/放置规则提示
+            Text(
+                stringResource(R.string.local_video_naming_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+
             // 上次扫描时间 + 关联数
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 summary.lastScannedAt?.let { ts ->
@@ -828,21 +831,6 @@ private fun LocalVideoCard(
                 showUncollectedLocal,
                 onToggleShowUncollectedLocal,
             )
-
-            // 重新扫描
-            Button(
-                onClick = onRescan,
-                enabled = !isScanning && summary.folderDisplayName != null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            ) {
-                if (isScanning) {
-                    Text(stringResource(R.string.local_video_scanning))
-                } else {
-                    Text(stringResource(R.string.local_video_rescan))
-                }
-            }
         }
     }
 }
