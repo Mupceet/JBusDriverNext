@@ -801,28 +801,29 @@ private fun LocalVideoCard(
                 }
             }
 
-            // 命名/放置规则提示
-            Text(
-                stringResource(R.string.local_video_naming_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-
-            // 上次扫描时间 + 关联数
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                summary.lastScannedAt?.let { ts ->
+            // 未选文件夹时显示命名/放置提示；已选文件夹时显示扫描时间 + 关联数
+            if (summary.folderDisplayName == null) {
+                Text(
+                    stringResource(R.string.local_video_naming_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            } else {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    summary.lastScannedAt?.let { ts ->
+                        Text(
+                            stringResource(R.string.local_video_last_scan, formatTime(ts)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
-                        stringResource(R.string.local_video_last_scan, formatTime(ts)),
+                        linkedCountText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    linkedCountText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
 
             // 显示未收藏的本地视频（整行点击切换，Switch 缩放）
