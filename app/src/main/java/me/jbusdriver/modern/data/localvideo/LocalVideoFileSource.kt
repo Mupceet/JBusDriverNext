@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 /** 扫描到的单个文件（与 Android 解耦，便于单测）。 */
 data class ScannedFile(
@@ -38,7 +39,7 @@ class DocumentFileVideoFileSource @Inject constructor(
 
     override suspend fun listVideoFiles(): List<ScannedFile> = withContext(Dispatchers.IO) {
         val treeUriStr = folderStore.currentFolderUri() ?: return@withContext emptyList()
-        val root = DocumentFile.fromTreeUri(context, Uri.parse(treeUriStr)) ?: return@withContext emptyList()
+        val root = DocumentFile.fromTreeUri(context, treeUriStr.toUri()) ?: return@withContext emptyList()
         if (!root.canRead()) return@withContext emptyList()
         val out = mutableListOf<ScannedFile>()
         collectVideos(root, out, emptyList())

@@ -7,13 +7,14 @@ import android.net.Uri
 import android.widget.Toast
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.LocalVideo
+import androidx.core.net.toUri
 
 /**
  * 用系统播放器打开本地视频。借 SAF tree 的持久化读权限向播放器授予读权限。
  */
 fun launchLocalVideo(context: Context, video: LocalVideo) {
     val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(Uri.parse(video.uri), video.mime ?: "video/*")
+        setDataAndType(video.uri.toUri(), video.mime ?: "video/*")
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     try {

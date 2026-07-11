@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.net.toUri
 
 private val Context.localVideoDataStore by preferencesDataStore("local_video")
 
@@ -67,7 +68,7 @@ class LocalVideoFolderStore @Inject constructor(
         currentFolderUri()?.let { uriStr ->
             runCatching {
                 context.contentResolver.releasePersistableUriPermission(
-                    Uri.parse(uriStr),
+                    uriStr.toUri(),
                     Intent.FLAG_GRANT_READ_URI_PERMISSION,
                 )
             }

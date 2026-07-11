@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 /** 单个本地视频文件的删除结果。 */
 enum class DeleteFileResult { SUCCESS, NOT_FOUND, FAILED }
@@ -25,7 +26,7 @@ class DocumentFileVideoFileDeleter @Inject constructor(
     override suspend fun delete(uri: String): DeleteFileResult = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         try {
-            val deleted = DocumentsContract.deleteDocument(resolver, Uri.parse(uri))
+            val deleted = DocumentsContract.deleteDocument(resolver, uri.toUri())
             when {
                 deleted -> DeleteFileResult.SUCCESS
                 fileExists(uri) -> DeleteFileResult.FAILED
@@ -41,7 +42,7 @@ class DocumentFileVideoFileDeleter @Inject constructor(
     }
 
     private fun fileExists(uri: String): Boolean = try {
-        context.contentResolver.openInputStream(Uri.parse(uri))?.close()
+        context.contentResolver.openInputStream(uri.toUri())?.close()
         true
     } catch (_: Exception) {
         false
