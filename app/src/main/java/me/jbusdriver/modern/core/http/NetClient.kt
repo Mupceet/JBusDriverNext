@@ -82,8 +82,8 @@ object NetClient {
                 .header("Cookie", mergedCookies)
                 .build()
             KLog.d(
-                "NetClient",
-                "Prepared cookies for ${request.url}; auth=${authCookie.isNotBlank()}"
+                "Prepared cookies for ${request.url}; auth=${authCookie.isNotBlank()}",
+                "NetClient"
             )
             chain.proceed(request)
         }
