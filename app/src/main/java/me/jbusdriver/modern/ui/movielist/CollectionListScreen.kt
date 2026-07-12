@@ -28,6 +28,7 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
 @Composable
@@ -103,15 +104,18 @@ fun CollectionListScreen(
                     },
                     footerMovies = uncollected,
                     movieLongPressMenu = { movie, close ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.mark_as_censored)) },
+                        val isUncensored = movie.categoryId == UncensoredMovieCategory.id
+                        SelectableDropdownItem(
+                            label = stringResource(R.string.mark_as_censored),
+                            selected = !isUncensored,
                             onClick = {
                                 viewModel.setMovieCategory(movie, MovieCategory.id ?: 1)
                                 close()
                             }
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.mark_as_uncensored)) },
+                        SelectableDropdownItem(
+                            label = stringResource(R.string.mark_as_uncensored),
+                            selected = isUncensored,
                             onClick = {
                                 viewModel.setMovieCategory(movie, UncensoredMovieCategory.id ?: 3)
                                 close()
