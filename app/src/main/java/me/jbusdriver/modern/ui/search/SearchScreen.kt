@@ -44,6 +44,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -75,6 +76,7 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
+    val localResults by viewModel.localResults.collectAsStateWithLifecycle()
     val censorType = when (uiState.searchType) {
         SearchType.UNCENSORED -> "UNCENSORED"
         else -> null
@@ -85,6 +87,13 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
+    val isMovieChip = uiState.searchType == SearchType.CENSORED ||
+        uiState.searchType == SearchType.UNCENSORED
+    val localVisible = isMovieChip &&
+        searchInput.trim().isNotBlank() &&
+        localResults.isNotEmpty()
+    val localHeader: (@Composable () -> Unit)? =
+        if (localVisible) { { LocalCollectHeader(localResults.size) } } else null
     var isDeletingHistory by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -101,6 +110,10 @@ fun SearchScreen(
         if (uiState.query != searchInput) {
             searchInput = uiState.query
         }
+    }
+
+    LaunchedEffect(searchInput) {
+        viewModel.onSearchInputChanged(searchInput)
     }
 
     LaunchedEffect(defaultSearchType) {
@@ -205,8 +218,56 @@ fun SearchScreen(
         val isActress = uiState.searchType == SearchType.ACTRESS
         val hasResults =
             if (isActress) uiState.actressResults.isNotEmpty() else uiState.results.isNotEmpty()
+        val onlineIsMovieList = !uiState.isLoading && uiState.error == null &&
+            !isActress && hasResults
 
         when {
+            // 主场景：联网影片结果就绪 → 单条滚动，本地命中通过 headerMovies 置顶
+            onlineIsMovieList -> MovieList(
+                movies = uiState.results,
+                header = localHeader,
+                headerMovies = if (localVisible) localResults else emptyList(),
+                hasMore = uiState.hasMore,
+                isLoadingMore = uiState.isLoadingMore,
+                onLoadMore = { viewModel.loadMore() },
+                onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
+                isGrid = isGrid,
+                isDownloaded = { it.code.uppercase() in downloadedCodes },
+                modifier = dismissKeyboardModifier
+            )
+
+            // 影片 chip 但还没有联网影片结果（输入中/加载/无结果/错误）：
+            // 本地独立 MovieList 占主体（自带滚动，任意命中数不溢出），下方小块状态
+            localVisible -> Column(modifier = Modifier.fillMaxSize()) {
+                MovieList(
+                    movies = localResults,
+                    header = { LocalCollectHeader(localResults.size) },
+                    hasMore = false,
+                    onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
+                    isGrid = isGrid,
+                    isDownloaded = { it.code.uppercase() in downloadedCodes },
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(dismissKeyboardModifier)
+                )
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        uiState.isLoading -> CircularProgressIndicator()
+                        uiState.error != null -> Text(
+                            stringResource(uiState.error ?: R.string.search_failed),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        else -> Text(
+                            stringResource(R.string.search_press_enter_hint),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             uiState.isLoading -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -326,8 +387,11 @@ fun SearchScreen(
                 modifier = dismissKeyboardModifier
             )
 
+            // 兜底：联网影片结果（刷新中/带错误但仍有结果时），同样支持 headerMovies
             else -> MovieList(
                 movies = uiState.results,
+                header = localHeader,
+                headerMovies = if (localVisible) localResults else emptyList(),
                 hasMore = uiState.hasMore,
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
@@ -337,5 +401,28 @@ fun SearchScreen(
                 modifier = dismissKeyboardModifier
             )
         }
+    }
+}
+
+@Composable
+private fun LocalCollectHeader(count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            stringResource(R.string.local_collect),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            pluralStringResource(R.plurals.local_collect_count, count, count),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

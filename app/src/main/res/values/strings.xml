@@ -67,6 +67,11 @@
     <string name="done">完成</string>
     <string name="search_failed">搜尋失敗，請重試</string>
     <string name="no_results">沒有找到相關結果</string>
+    <string name="search_press_enter_hint">按回車聯網搜尋</string>
+    <string name="local_collect">本地收藏</string>
+    <plurals name="local_collect_count">
+        <item quantity="other">%1$d 部</item>
+    </plurals>
 
     <!-- Forum -->
     <string name="forum_reply_count">精彩評論 (%1$d)</string>

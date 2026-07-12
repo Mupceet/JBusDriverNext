@@ -67,6 +67,12 @@
     <string name="done">Done</string>
     <string name="search_failed">Search failed, please retry</string>
     <string name="no_results">No results found</string>
+    <string name="search_press_enter_hint">Press enter to search online</string>
+    <string name="local_collect">Local collection</string>
+    <plurals name="local_collect_count">
+        <item quantity="one">%1$d movie</item>
+        <item quantity="other">%1$d movies</item>
+    </plurals>
 
     <!-- Forum -->
     <string name="forum_reply_count">Top comments (%1$d)</string>
