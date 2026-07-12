@@ -51,6 +51,7 @@ fun MovieList(
     isDownloaded: ((MovieUiModel) -> Boolean)? = null,
     header: (@Composable () -> Unit)? = null,
     footerHeader: (@Composable () -> Unit)? = null,
+    headerMovies: List<MovieUiModel> = emptyList(),
     footerMovies: List<MovieUiModel> = emptyList(),
     /**
      * 已收藏影片的长按菜单 slot（仅作用于主列表 [movies]，不作用于 [footerMovies]）。
@@ -85,6 +86,18 @@ fun MovieList(
             ) {
                 if (header != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) { header() }
+                }
+                if (headerMovies.isNotEmpty()) {
+                    itemsIndexed(
+                        headerMovies,
+                        key = { index, movie -> "header_${index}_${movie.link}" }
+                    ) { _, movie ->
+                        MovieGridItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
+                    }
                 }
                 itemsIndexed(
                     movies,
@@ -170,6 +183,18 @@ fun MovieList(
             ) {
                 if (header != null) {
                     item { header() }
+                }
+                if (headerMovies.isNotEmpty()) {
+                    itemsIndexed(
+                        headerMovies,
+                        key = { index, movie -> "header_${index}_${movie.link}" }
+                    ) { _, movie ->
+                        MovieItem(
+                            movie = movie,
+                            onClick = { onMovieClick(movie, null) },
+                            isDownloaded = isDownloaded?.invoke(movie) == true
+                        )
+                    }
                 }
                 itemsIndexed(
                     movies,
