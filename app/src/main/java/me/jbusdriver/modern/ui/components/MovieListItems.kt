@@ -43,15 +43,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
 
@@ -117,7 +117,6 @@ fun MovieItem(
     var showMenu by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }
     val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current
 
     Box(
         modifier = modifier
@@ -142,15 +141,20 @@ fun MovieItem(
             MovieItemContent(movie, isDownloaded)
         }
 
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            offset = DpOffset(
-                with(density) { pressOffset.x.toDp() },
-                with(density) { pressOffset.y.toDp() }
-            ),
+        // 将菜单锚点放到长按位置：一个 0 尺寸的 Box 作为 DropdownMenu 的父级，
+        // 这样无论向上还是向下展开，菜单都从手指位置出发（DropdownMenu 的 offset 在翻转方向上参考点不同，
+        // 无法用单一偏移兼顾上下两个方向）。
+        Box(
+            modifier = Modifier.offset {
+                IntOffset(pressOffset.x.roundToInt(), pressOffset.y.roundToInt())
+            }
         ) {
-            longPressMenu(movie) { showMenu = false }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+            ) {
+                longPressMenu(movie) { showMenu = false }
+            }
         }
     }
 }
@@ -269,7 +273,6 @@ fun MovieGridItem(
     var showMenu by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }
     val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current
 
     Box(
         modifier = modifier
@@ -295,15 +298,20 @@ fun MovieGridItem(
             MovieGridItemContent(movie, isDownloaded)
         }
 
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            offset = DpOffset(
-                with(density) { pressOffset.x.toDp() },
-                with(density) { pressOffset.y.toDp() }
-            ),
+        // 将菜单锚点放到长按位置：一个 0 尺寸的 Box 作为 DropdownMenu 的父级，
+        // 这样无论向上还是向下展开，菜单都从手指位置出发（DropdownMenu 的 offset 在翻转方向上参考点不同，
+        // 无法用单一偏移兼顾上下两个方向）。
+        Box(
+            modifier = Modifier.offset {
+                IntOffset(pressOffset.x.roundToInt(), pressOffset.y.roundToInt())
+            }
         ) {
-            longPressMenu(movie) { showMenu = false }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+            ) {
+                longPressMenu(movie) { showMenu = false }
+            }
         }
     }
 }
