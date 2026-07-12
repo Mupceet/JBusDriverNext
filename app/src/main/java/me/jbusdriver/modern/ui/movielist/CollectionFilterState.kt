@@ -10,6 +10,11 @@ import me.jbusdriver.modern.ui.movielist.SortOption.Companion.movieOptions
 enum class CensorFilter { ALL, CENSORED, UNCENSORED }
 
 /**
+ * 本地視頻篩選（全部 / 已下載 / 未下載）。
+ */
+enum class LocalVideoFilter { ALL, DOWNLOADED, NOT_DOWNLOADED }
+
+/**
  * 排序選項。
  *
  * [label] 為 Bottom Sheet 排序下拉中顯示的文本。
@@ -39,7 +44,7 @@ data class CollectionFilterState(
     val publishMonth: Int? = null,
     val collectYear: Int? = null,
     val collectMonth: Int? = null,
-    val onlyDownloaded: Boolean = false,
+    val localVideoFilter: LocalVideoFilter = LocalVideoFilter.ALL,
     val sortOption: SortOption = SortOption.COLLECT_DESC
 ) {
     /** 是否有非默认的筛选条件（排序不算） */
@@ -49,7 +54,7 @@ data class CollectionFilterState(
                 || publishMonth != null
                 || collectYear != null
                 || collectMonth != null
-                || onlyDownloaded
+                || localVideoFilter != LocalVideoFilter.ALL
 
     /** 激活的筛选条件数量（用于筛选按钮上的 badge） */
     val activeFilterCount: Int
@@ -59,7 +64,7 @@ data class CollectionFilterState(
             publishMonth != null,
             collectYear != null,
             collectMonth != null,
-            onlyDownloaded
+            localVideoFilter != LocalVideoFilter.ALL
         ).count { it }
 }
 

@@ -162,14 +162,25 @@ fun CollectionFilterSheet(
                     Spacer(Modifier.padding(top = 6.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         FilterChip(
-                            selected = !filterState.onlyDownloaded,
-                            onClick = { onFilterChange(filterState.copy(onlyDownloaded = false)) },
+                            selected = filterState.localVideoFilter == LocalVideoFilter.ALL,
+                            onClick = {
+                                onFilterChange(filterState.copy(localVideoFilter = LocalVideoFilter.ALL))
+                            },
                             label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
                         )
                         FilterChip(
-                            selected = filterState.onlyDownloaded,
-                            onClick = { onFilterChange(filterState.copy(onlyDownloaded = true)) },
+                            selected = filterState.localVideoFilter == LocalVideoFilter.DOWNLOADED,
+                            onClick = {
+                                onFilterChange(filterState.copy(localVideoFilter = LocalVideoFilter.DOWNLOADED))
+                            },
                             label = { Text(stringResource(R.string.local_video_downloaded), fontSize = 12.sp) }
+                        )
+                        FilterChip(
+                            selected = filterState.localVideoFilter == LocalVideoFilter.NOT_DOWNLOADED,
+                            onClick = {
+                                onFilterChange(filterState.copy(localVideoFilter = LocalVideoFilter.NOT_DOWNLOADED))
+                            },
+                            label = { Text(stringResource(R.string.local_video_not_downloaded), fontSize = 12.sp) }
                         )
                     }
                 }

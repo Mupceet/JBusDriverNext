@@ -276,7 +276,7 @@ class CollectionListViewModel @Inject constructor(
 
         val filteredMovies = allMovies
             .filterByCensor(filter.censorFilter)
-            .filterByDownloaded(filter.onlyDownloaded, currentDownloadedCodes)
+            .filterByLocalVideo(filter.localVideoFilter, currentDownloadedCodes)
             .filterByPublishYear(filter.publishYear, years.publishYears)
             .filterByPublishMonth(filter.publishMonth)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
@@ -345,11 +345,14 @@ private fun List<ActressUiModel>.filterByCensor(censor: CensorFilter): List<Actr
         CensorFilter.UNCENSORED -> filter { it.categoryId == 4 }
     }
 
-private fun List<MovieUiModel>.filterByDownloaded(
-    only: Boolean,
+private fun List<MovieUiModel>.filterByLocalVideo(
+    filter: LocalVideoFilter,
     codes: Set<String>
-): List<MovieUiModel> =
-    if (!only) this else filter { it.code.uppercase() in codes }
+): List<MovieUiModel> = when (filter) {
+    LocalVideoFilter.ALL -> this
+    LocalVideoFilter.DOWNLOADED -> filter { it.code.uppercase() in codes }
+    LocalVideoFilter.NOT_DOWNLOADED -> filter { it.code.uppercase() !in codes }
+}
 
 private fun List<MovieUiModel>.filterByPublishYear(
     year: Int?,
