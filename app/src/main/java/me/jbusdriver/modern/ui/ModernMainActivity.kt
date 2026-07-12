@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.data.localvideo.LocalVideoForegroundScanner
+import me.jbusdriver.modern.data.localvideo.LocalVideoMetadataEnricher
 import me.jbusdriver.modern.ui.theme.JBusTheme
 import javax.inject.Inject
 
@@ -27,6 +28,9 @@ class ModernMainActivity : ComponentActivity() {
     @Inject
     lateinit var localVideoForegroundScanner: LocalVideoForegroundScanner
 
+    @Inject
+    lateinit var localVideoMetadataEnricher: LocalVideoMetadataEnricher
+
     private val _deepLink = MutableStateFlow<NavKey?>(null)
     private val deepLink: StateFlow<NavKey?> = _deepLink
 
@@ -36,6 +40,7 @@ class ModernMainActivity : ComponentActivity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
         handleIntent(intent)
         ProcessLifecycleOwner.get().lifecycle.addObserver(localVideoForegroundScanner)
+        localVideoMetadataEnricher.start()
         setContent {
             JBusTheme {
                 JBusNavigation(
