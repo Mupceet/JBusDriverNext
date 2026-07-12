@@ -53,4 +53,23 @@ class VideoCodeMatcherTest {
         assertFalse(VideoCodeMatcher.matchesCode("ABC-123D.mp4", "ABC-123"))
         assertFalse(VideoCodeMatcher.matchesCode("clip.mp4", "ABC-123"))
     }
+
+    @Test
+    fun extractCode_supportsUnderscoreSeparator() {
+        // 下划线作为"前缀与序号"的分隔符（与 ABC-123 等价的另一写法）
+        assertEquals("ABC_123", VideoCodeMatcher.extractCode("ABC_123.mp4"))
+    }
+
+    @Test
+    fun extractCode_supportsFc2StyleCode() {
+        // 字母数字混合前缀 + 多段 + 长序号
+        assertEquals("FC2-PPV-1234567", VideoCodeMatcher.extractCode("FC2-PPV-1234567.mp4"))
+    }
+
+    @Test
+    fun extractCode_rejectsResolutionPrefix() {
+        // 纯分辨率/画质词不是番号；带分辨率前缀时应取后面的真实番号
+        assertNull(VideoCodeMatcher.extractCode("4K-trailer.mp4"))
+        assertEquals("ABC-123", VideoCodeMatcher.extractCode("1080p_ABC-123.mp4"))
+    }
 }
