@@ -308,7 +308,9 @@ class CollectionListViewModel @Inject constructor(
             )
 
         // 未收藏分区：仅 showUncollectedLocal 开启 + 影片 tab 时计算。
-        // 番号即 URL 路径，link=code 走现有 onMovieClick 导航；movieCount 仅含已收藏，不受此影响。
+        // link 必须用 "/$code" 这种绝对路径（与普通 Movie 一致）：收藏入库会走 stripToPath/wrapImage
+        // 往返，裸番号 "code" 会被 wrapImage 错误拼成 "baseUrlcode" 导致详情加载失败且无法取消收藏。
+        // movieCount 仅含已收藏，不受此分区影响。
         val showUncollected = currentShowUncollected && currentDbType == MovieDBType
         val collectedCodes = allMovies.map { it.code.uppercase() }.toSet()
         val uncollectedVideos = if (showUncollected) {
@@ -320,7 +322,7 @@ class CollectionListViewModel @Inject constructor(
                         imageUrl = g.imageUrl.orEmpty(),
                         code = g.code,
                         date = g.date.orEmpty(),
-                        link = g.code,
+                        link = "/${g.code}",
                     )
                 }
         } else emptyList()
