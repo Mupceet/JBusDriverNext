@@ -2,6 +2,9 @@ package me.jbusdriver.modern.data.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -73,6 +76,14 @@ interface CollectRepository {
 
     /** 获取指定类型的原始收藏数据（包含 createTime），用于筛选和排序 */
     suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem>
+
+    /**
+     * 以 Flow 观察指定类型的收藏数据（实时反映收藏增删 / 改分类）。
+     *
+     * 默认实现返回空 Flow，仅用于让测试桩/伪实现免于逐一实现（与 [updateMovieCategory] 同理）；
+     * 生产实现见 [DefaultCollectRepository.observeCollectedLinkItems]。
+     */
+    fun observeCollectedLinkItems(dbType: Int): Flow<List<LinkItem>> = flowOf(emptyList())
 
     /** Export all collected movies and actresses as a JSON string (new format v1) */
     suspend fun exportCollectionsJson(): String
@@ -180,6 +191,9 @@ class DefaultCollectRepository @Inject constructor(
             linkDao.listByType(dbType)
         }
     }
+
+    override fun observeCollectedLinkItems(dbType: Int): Flow<List<LinkItem>> =
+        linkDao.listAll().map { items -> items.filter { it.dbType == dbType } }
 
     override suspend fun exportCollectionsJson(): String {
         return backupCodec.exportCollectionsJson()

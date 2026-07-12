@@ -7,6 +7,7 @@ import me.jbusdriver.modern.data.repository.DefaultCollectRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -164,6 +165,19 @@ class CollectRepositoryTest {
         assertTrue(result)
         assertEquals(1, transactionRunner.calls)
         assertEquals(1, dao.items.size)
+    }
+
+    @Test
+    fun defaultRepository_observeCollectedLinkItems_filtersByDbType() = runTest {
+        val dao = SimpleLinkItemDao()
+        val repository = defaultRepository(dao, PassthroughTransactionRunner())
+        dao.items += Movie("M1", "http://x", "ABC-001", "2024-01-01", "http://l1").convertDBItem()
+        dao.items += ActressInfo("Alice", "http://a", "http://l2").convertDBItem()
+
+        val movies = repository.observeCollectedLinkItems(MovieDBType).first()
+
+        assertEquals(1, movies.size)
+        assertEquals(MovieDBType, movies.single().dbType)
     }
 
     @Test
