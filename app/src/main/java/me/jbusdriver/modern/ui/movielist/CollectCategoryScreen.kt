@@ -269,6 +269,7 @@ fun CollectCategoryScreen(
             onFilterChange = { activeVm.updateFilter(it) },
             availablePublishMonths = activeFilterState.availablePublishMonths,
             availableCollectMonths = activeFilterState.availableCollectMonths,
+            hasLocalVideoFolder = activeFilterState.hasLocalVideoFolder,
             onDismiss = { showFilterSheet = false }
         )
     }

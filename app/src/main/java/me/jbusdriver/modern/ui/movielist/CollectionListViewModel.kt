@@ -49,6 +49,8 @@ data class CollectionListUiState(
     val availableYears: AvailableYears = AvailableYears(),
     val availablePublishMonths: Set<Int> = emptySet(),
     val availableCollectMonths: Set<Int> = emptySet(),
+    /** 是否已配置本地视频文件夹；未配置时筛选弹窗隐藏「本地视频」一节且该筛选不生效。 */
+    val hasLocalVideoFolder: Boolean = false,
     /** 是否在收藏页显示未收藏的本地视频（来自持久化设置）。 */
     val showUncollectedLocal: Boolean = false,
     /** 未收藏的本地视频（仅 showUncollectedLocal 开启 + 影片 tab 时填充）。 */
@@ -85,6 +87,9 @@ class CollectionListViewModel @Inject constructor(
     /** 当前"显示未收藏本地视频"设置（来自 localVideoRepository 持久化设置）。 */
     private var currentShowUncollected: Boolean = false
 
+    /** 是否已配置本地视频文件夹（控制筛选弹窗显隐及本地视频筛选是否生效）。 */
+    private var currentHasFolder: Boolean = false
+
     /** 未筛选的原始影片数据 */
     private var allMovies: List<MovieUiModel> = emptyList()
 
@@ -117,6 +122,12 @@ class CollectionListViewModel @Inject constructor(
         viewModelScope.launch {
             localVideoRepository.observeShowUncollectedLocal().collect { show ->
                 currentShowUncollected = show
+                applyFilterAndSort()
+            }
+        }
+        viewModelScope.launch {
+            localVideoRepository.hasFolder().collect { hasFolder ->
+                currentHasFolder = hasFolder
                 applyFilterAndSort()
             }
         }
@@ -274,9 +285,13 @@ class CollectionListViewModel @Inject constructor(
             times.filter { it.toYear() == filter.collectYear }.map { it.toMonth() }.toSet()
         } else emptySet()
 
+        // 未配置本地视频文件夹时，本地视频筛选不生效（视作 ALL），避免筛选被「卡住」。
+        val effectiveLocalVideoFilter =
+            if (currentHasFolder) filter.localVideoFilter else LocalVideoFilter.ALL
+
         val filteredMovies = allMovies
             .filterByCensor(filter.censorFilter)
-            .filterByLocalVideo(filter.localVideoFilter, currentDownloadedCodes)
+            .filterByLocalVideo(effectiveLocalVideoFilter, currentDownloadedCodes)
             .filterByPublishYear(filter.publishYear, years.publishYears)
             .filterByPublishMonth(filter.publishMonth)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
@@ -318,6 +333,7 @@ class CollectionListViewModel @Inject constructor(
                 actressCount = allActresses.size,
                 availablePublishMonths = availableMonths,
                 availableCollectMonths = availableCollectMonths,
+                hasLocalVideoFolder = currentHasFolder,
                 showUncollectedLocal = currentShowUncollected,
                 uncollectedVideos = uncollectedVideos,
                 isLoading = false

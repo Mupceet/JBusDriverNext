@@ -285,7 +285,7 @@ class CollectionListViewModelTest {
             override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
             override fun observeDownloadedCodes() = flowOf(setOf("ABC-001"))
             override fun observeSummary() = flowOf(LocalVideoSummary())
-            override fun hasFolder() = flowOf(false)
+            override fun hasFolder() = flowOf(true)
             override suspend fun setFolder(uri: android.net.Uri) {}
             override suspend fun clearFolder() {}
             override suspend fun rescan() = 0
@@ -340,7 +340,7 @@ class CollectionListViewModelTest {
             override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
             override fun observeDownloadedCodes() = flowOf(setOf("ABC-001"))
             override fun observeSummary() = flowOf(LocalVideoSummary())
-            override fun hasFolder() = flowOf(false)
+            override fun hasFolder() = flowOf(true)
             override suspend fun setFolder(uri: android.net.Uri) {}
             override suspend fun clearFolder() {}
             override suspend fun rescan() = 0
