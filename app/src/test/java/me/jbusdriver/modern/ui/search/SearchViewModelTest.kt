@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -12,9 +13,13 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.db.convertDBItem
+import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
+import me.jbusdriver.modern.data.settings.SearchHistoryStore
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
@@ -24,6 +29,8 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.SearchType
+import me.jbusdriver.modern.test.StubCollectRepository
+import me.jbusdriver.modern.ui.MovieUiModel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -73,6 +80,28 @@ class SearchViewModelTest {
         }
     }
 
+    private fun fakeSiteConfig() = object : SiteConfig {
+        override var baseUrl: String = "https://example.test"
+        override fun resolve(pathOrUrl: String): String = pathOrUrl
+    }
+
+    private fun stubSearchRepository() = object : SearchRepository {
+        override suspend fun searchMovies(
+            type: SearchType, query: String, page: Int, forceRefresh: Boolean
+        ) = MoviePageResult(PageInfo(), emptyList())
+
+        override suspend fun searchActresses(
+            query: String, page: Int
+        ): Pair<PageInfo, List<ActressInfo>> = PageInfo() to emptyList()
+    }
+
+    private fun makeViewModel(
+        repository: SearchRepository,
+        collectRepository: CollectRepository = StubCollectRepository()
+    ) = SearchViewModel(
+        repository, fakeHistoryStore(), stubLocalVideoRepo, collectRepository, fakeSiteConfig()
+    )
+
     @Before
     fun setup() {
         testDispatcher = StandardTestDispatcher()
@@ -101,7 +130,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("test")
         advanceUntilIdle()
@@ -130,7 +159,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("test")
         advanceUntilIdle()
@@ -153,7 +182,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 error("Should not be called")
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("")
         advanceUntilIdle()
@@ -178,7 +207,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo(1, 1) to listOf(ActressInfo("Alice", "http://avatar.jpg", "http://alice"))
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("alice", SearchType.ACTRESS)
         advanceUntilIdle()
@@ -204,7 +233,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 PageInfo() to emptyList<ActressInfo>()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("abc")
         advanceUntilIdle()
@@ -234,7 +263,7 @@ class SearchViewModelTest {
             override suspend fun searchActresses(query: String, page: Int) =
                 PageInfo() to emptyList<ActressInfo>()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("abc")
         advanceUntilIdle()
@@ -270,7 +299,7 @@ class SearchViewModelTest {
             ): Pair<PageInfo, List<ActressInfo>> =
                 PageInfo() to emptyList()
         }
-        val viewModel = SearchViewModel(repository, fakeHistoryStore(), stubLocalVideoRepo)
+        val viewModel = makeViewModel(repository)
 
         viewModel.search("old")
         advanceUntilIdle()
@@ -285,5 +314,65 @@ class SearchViewModelTest {
         assertEquals("new", viewModel.uiState.value.query)
         assertEquals(listOf("New"), viewModel.uiState.value.results.map { it.title })
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    @Test
+    fun localResults_matchByCodeAndFilterByCensorChip() = runTest(testDispatcher) {
+        val censored = Movie("Cen", "http://c.jpg", "ABC-001", "2024-01-01", "http://lc")
+            .convertDBItem(categoryId = 1)
+        val uncensored = Movie("Un", "http://u.jpg", "ABC-002", "2024-01-02", "http://lu")
+            .convertDBItem(categoryId = 3)
+        val collectRepo = object : StubCollectRepository() {
+            override fun observeCollectedLinkItems(dbType: Int) =
+                flowOf(listOf(censored, uncensored))
+        }
+        val viewModel = makeViewModel(stubSearchRepository(), collectRepo)
+
+        val collected = mutableListOf<List<MovieUiModel>>()
+        val job = launch { viewModel.localResults.collect { collected += it } }
+        runCurrent()
+
+        viewModel.onSearchInputChanged("abc")
+        advanceUntilIdle()
+        // default chip = CENSORED -> only the censored one
+        assertEquals(listOf("ABC-001"), collected.last().map { it.code })
+
+        viewModel.setSearchType(SearchType.UNCENSORED)
+        advanceUntilIdle()
+        assertEquals(listOf("ABC-002"), collected.last().map { it.code })
+
+        viewModel.setSearchType(SearchType.ACTRESS)
+        advanceUntilIdle()
+        assertTrue(collected.last().isEmpty())
+
+        job.cancel()
+    }
+
+    @Test
+    fun localResults_normalizeQueryMatchTitleAndSortByCreateTimeDesc() = runTest(testDispatcher) {
+        val older = Movie("Old Title", "http://o.jpg", "ABC-001", "2024-01-01", "http://lo")
+            .convertDBItem(categoryId = 1).copy(createTime = 1000L)
+        val newer = Movie("New Title", "http://n.jpg", "ABC-002", "2024-01-02", "http://ln")
+            .convertDBItem(categoryId = 1).copy(createTime = 2000L)
+        val collectRepo = object : StubCollectRepository() {
+            override fun observeCollectedLinkItems(dbType: Int) = flowOf(listOf(older, newer))
+        }
+        val viewModel = makeViewModel(stubSearchRepository(), collectRepo)
+
+        val collected = mutableListOf<List<MovieUiModel>>()
+        val job = launch { viewModel.localResults.collect { collected += it } }
+        runCurrent()
+
+        // separator-insensitive code match
+        viewModel.onSearchInputChanged("ABC_002")
+        advanceUntilIdle()
+        assertEquals(listOf("ABC-002"), collected.last().map { it.code })
+
+        // title substring matches both; sorted newest-collected first
+        viewModel.onSearchInputChanged("title")
+        advanceUntilIdle()
+        assertEquals(listOf("ABC-002", "ABC-001"), collected.last().map { it.code })
+
+        job.cancel()
     }
 }

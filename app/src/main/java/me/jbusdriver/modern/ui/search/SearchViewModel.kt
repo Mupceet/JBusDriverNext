@@ -9,18 +9,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
+import me.jbusdriver.modern.data.settings.SearchHistoryStore
 import me.jbusdriver.modern.domain.model.SearchType
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.isUncensoredCollected
 import me.jbusdriver.modern.ui.toActressUiModel
+import me.jbusdriver.modern.ui.toMovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
@@ -71,7 +78,9 @@ data class SearchUiState(
 class SearchViewModel @Inject constructor(
     private val repository: SearchRepository,
     private val historyStore: SearchHistoryStore,
-    private val localVideoRepository: LocalVideoRepository
+    private val localVideoRepository: LocalVideoRepository,
+    private val collectRepository: CollectRepository,
+    private val siteConfig: SiteConfig,
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -84,6 +93,37 @@ class SearchViewModel @Inject constructor(
     val downloadedCodes: StateFlow<Set<String>> =
         localVideoRepository.observeDownloadedCodes()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** 用户实时输入（与已提交的 [SearchUiState.query] 解耦，避免干扰在线搜索状态机） */
+    private val liveQuery = MutableStateFlow("")
+
+    /** 全部收藏影片（MovieUiModel），随收藏库变化实时更新 */
+    private val collectedMovies: StateFlow<List<MovieUiModel>> =
+        collectRepository.observeCollectedLinkItems(MovieDBType)
+            .map { items -> items.mapNotNull { it.toMovieUiModel(siteConfig.baseUrl) } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * 本地收藏搜索结果：仅在有码/无码 chip 下，按归一化子串匹配番号+标题，
+     * 并按 chip 审查类型过滤（有码=categoryId!=3，无码=categoryId==3），按收藏时间倒序。
+     * 其它 chip（演员/导演等）下为空。
+     */
+    val localResults: StateFlow<List<MovieUiModel>> =
+        combine(collectedMovies, liveQuery, uiState.map { it.searchType }) { items, query, type ->
+            val wantUncensored = when (type) {
+                SearchType.UNCENSORED -> true
+                SearchType.CENSORED -> false
+                else -> return@combine emptyList()
+            }
+            items
+                .filter { it.matchesLocal(query) && it.isUncensoredCollected == wantUncensored }
+                .sortedByDescending { it.createTime }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** 用户输入变化时驱动本地实时搜索（不触发联网） */
+    fun onSearchInputChanged(text: String) {
+        liveQuery.value = text
+    }
 
     /** 当前搜索请求的 Job，用于取消旧请求 */
     private var searchJob: Job? = null
@@ -121,6 +161,7 @@ class SearchViewModel @Inject constructor(
         searchJob?.cancel()
         requestGeneration += 1
         activeIdentity = null
+        liveQuery.value = "" // 清空实时本地搜索
         _uiState.update {
             it.copy(
                 query = "",
@@ -322,17 +363,6 @@ class SearchViewModel @Inject constructor(
     /** 清除当前的错误信息 */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
-    }
-
-    /**
-     * 更新搜索关键词的输入文本。
-     *
-     * 仅更新状态中的关键词，不触发搜索。
-     *
-     * @param query 用户输入的搜索关键词
-     */
-    fun setQuery(query: String) {
-        _uiState.update { it.copy(query = query) }
     }
 
     private fun beginRequest(identity: RequestIdentity): Long {
