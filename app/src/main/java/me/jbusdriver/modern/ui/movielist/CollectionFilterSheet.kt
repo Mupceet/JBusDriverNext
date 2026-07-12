@@ -82,7 +82,10 @@ fun CollectionFilterSheet(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (filterState.hasActiveFilters) {
-                        TextButton(onClick = { onFilterChange(CollectionFilterState()) }) {
+                        TextButton(onClick = {
+                            // 重置只清筛选条件，保留当前排序设定
+                            onFilterChange(CollectionFilterState(sortOption = filterState.sortOption))
+                        }) {
                             Text(stringResource(R.string.reset), fontSize = 12.sp)
                         }
                     }
