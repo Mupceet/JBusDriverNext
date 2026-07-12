@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +21,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.domain.model.MovieCategory
+import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
@@ -98,6 +102,30 @@ fun CollectionListScreen(
                         }
                     },
                     footerMovies = uncollected,
+                    movieLongPressMenu = { movie, close ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.mark_as_censored)) },
+                            onClick = {
+                                viewModel.setMovieCategory(movie, MovieCategory.id ?: 1)
+                                close()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.mark_as_uncensored)) },
+                            onClick = {
+                                viewModel.setMovieCategory(movie, UncensoredMovieCategory.id ?: 3)
+                                close()
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.uncollect_action)) },
+                            onClick = {
+                                viewModel.removeMovie(movie)
+                                close()
+                            }
+                        )
+                    },
                     modifier = modifier
                 )
             }

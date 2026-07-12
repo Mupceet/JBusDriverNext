@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,24 +20,37 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.MovieUiModel
@@ -80,91 +94,145 @@ fun MovieItem(
     movie: MovieUiModel,
     onClick: (MovieUiModel) -> Unit,
     modifier: Modifier = Modifier,
-    isDownloaded: Boolean = false
+    isDownloaded: Boolean = false,
+    /**
+     * 长按菜单 slot：提供时启用长按（振动 + 记录锚点 + 弹出下拉菜单），调用方在 slot 体内渲染 [DropdownMenuItem]；
+     * 不提供（null）时卡片仅响应点击，行为不变。
+     */
+    longPressMenu: (@Composable (MovieUiModel, () -> Unit) -> Unit)? = null,
 ) {
-    Card(
-        onClick = { onClick(movie) },
+    if (longPressMenu == null) {
+        Card(
+            onClick = { onClick(movie) },
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            MovieItemContent(movie, isDownloaded)
+        }
+        return
+    }
+
+    var showMenu by remember { mutableStateOf(false) }
+    var pressOffset by remember { mutableStateOf(Offset.Zero) }
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(vertical = 4.dp)
     ) {
-        Row(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onClick(movie) },
+                        onLongPress = { offset ->
+                            pressOffset = offset
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showMenu = true
+                        }
+                    )
+                },
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Box(
+            MovieItemContent(movie, isDownloaded)
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            offset = DpOffset(
+                with(density) { pressOffset.x.toDp() },
+                with(density) { pressOffset.y.toDp() }
+            ),
+        ) {
+            longPressMenu(movie) { showMenu = false }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MovieItemContent(movie: MovieUiModel, isDownloaded: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .height(90.dp)
+                .aspectRatio(3f / 4f)
+                .clip(RoundedCornerShape(4.dp))
+        ) {
+            AppAsyncImage(
+                model = movie.imageUrl,
+                contentDescription = movie.title,
                 modifier = Modifier
-                    .height(90.dp)
-                    .aspectRatio(3f / 4f)
-                    .clip(RoundedCornerShape(4.dp))
-            ) {
-                AppAsyncImage(
-                    model = movie.imageUrl,
-                    contentDescription = movie.title,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
-                    contentScale = ContentScale.Crop
-                )
-                if (isDownloaded) {
-                    DownloadedBadge(Modifier.align(Alignment.TopStart))
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
+                contentScale = ContentScale.Crop
+            )
+            if (isDownloaded) {
+                DownloadedBadge(Modifier.align(Alignment.TopStart))
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .height(90.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = movie.title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (movie.tags.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    movie.tags.forEach { tag ->
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(90.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = movie.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = movie.code,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
-
-                if (movie.tags.isNotEmpty()) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        movie.tags.forEach { tag ->
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                if (movie.date.isNotBlank()) {
                     Text(
-                        text = movie.code,
+                        text = movie.date,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (movie.date.isNotBlank()) {
-                        Text(
-                            text = movie.date,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
         }
@@ -180,83 +248,134 @@ fun MovieGridItem(
     movie: MovieUiModel,
     onClick: (MovieUiModel) -> Unit,
     modifier: Modifier = Modifier,
-    isDownloaded: Boolean = false
+    isDownloaded: Boolean = false,
+    /** 见 [MovieItem.longPressMenu]。 */
+    longPressMenu: (@Composable (MovieUiModel, () -> Unit) -> Unit)? = null,
 ) {
-    Card(
-        onClick = { onClick(movie) },
-        shape = RoundedCornerShape(8.dp),
+    if (longPressMenu == null) {
+        Card(
+            onClick = { onClick(movie) },
+            shape = RoundedCornerShape(8.dp),
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            MovieGridItemContent(movie, isDownloaded)
+        }
+        return
+    }
+
+    var showMenu by remember { mutableStateOf(false) }
+    var pressOffset by remember { mutableStateOf(Offset.Zero) }
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(vertical = 4.dp)
     ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(3f / 4f)
-            ) {
-                AppAsyncImage(
-                    model = movie.imageUrl,
-                    contentDescription = movie.title,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
-                    contentScale = ContentScale.Crop
-                )
-                if (isDownloaded) {
-                    DownloadedBadge(Modifier.align(Alignment.TopStart))
-                }
-            }
-
-            Column(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                Text(
-                    text = movie.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                    text = movie.code,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                    text = movie.date.ifBlank { " " },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val tagColors = listOf(
-                        MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer,
-                        MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                    (0..1).forEach { index ->
-                        val tag = movie.tags.getOrNull(index)
-                        if (tag != null) {
-                            val (bg, fg) = tagColors[index]
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = fg,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(bg)
-                                    .padding(horizontal = 2.dp, vertical = 2.dp)
-                            )
+        Card(
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onClick(movie) },
+                        onLongPress = { offset ->
+                            pressOffset = offset
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showMenu = true
                         }
+                    )
+                },
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            MovieGridItemContent(movie, isDownloaded)
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            offset = DpOffset(
+                with(density) { pressOffset.x.toDp() },
+                with(density) { pressOffset.y.toDp() }
+            ),
+        ) {
+            longPressMenu(movie) { showMenu = false }
+        }
+    }
+}
+
+@Composable
+private fun MovieGridItemContent(movie: MovieUiModel, isDownloaded: Boolean) {
+    Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(3f / 4f)
+        ) {
+            AppAsyncImage(
+                model = movie.imageUrl,
+                contentDescription = movie.title,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f },
+                contentScale = ContentScale.Crop
+            )
+            if (isDownloaded) {
+                DownloadedBadge(Modifier.align(Alignment.TopStart))
+            }
+        }
+
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            Text(
+                text = movie.title,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = movie.code,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = movie.date.ifBlank { " " },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val tagColors = listOf(
+                    MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer,
+                    MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                (0..1).forEach { index ->
+                    val tag = movie.tags.getOrNull(index)
+                    if (tag != null) {
+                        val (bg, fg) = tagColors[index]
+                        Text(
+                            text = tag,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = fg,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(bg)
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                        )
                     }
                 }
             }

@@ -52,6 +52,11 @@ fun MovieList(
     header: (@Composable () -> Unit)? = null,
     footerHeader: (@Composable () -> Unit)? = null,
     footerMovies: List<MovieUiModel> = emptyList(),
+    /**
+     * 已收藏影片的长按菜单 slot（仅作用于主列表 [movies]，不作用于 [footerMovies]）。
+     * 提供 [MovieItem]/[MovieGridItem] 会启用长按（振动+锚点下拉菜单）；null 时不启用。
+     */
+    movieLongPressMenu: (@Composable (MovieUiModel, () -> Unit) -> Unit)? = null,
     gridState: LazyGridState = rememberLazyGridState(),
     listState: LazyListState = rememberLazyListState()
 ) {
@@ -87,7 +92,8 @@ fun MovieList(
                     MovieGridItem(
                         movie = movie,
                         onClick = { onMovieClick(movie, null) },
-                        isDownloaded = isDownloaded?.invoke(movie) == true
+                        isDownloaded = isDownloaded?.invoke(movie) == true,
+                        longPressMenu = movieLongPressMenu
                     )
                 }
                 if (isLoadingMore) {
@@ -181,7 +187,8 @@ fun MovieList(
                         MovieItem(
                             movie = movie,
                             onClick = { onMovieClick(movie, null) },
-                            isDownloaded = isDownloaded?.invoke(movie) == true
+                            isDownloaded = isDownloaded?.invoke(movie) == true,
+                            longPressMenu = movieLongPressMenu
                         )
                     }
                 }

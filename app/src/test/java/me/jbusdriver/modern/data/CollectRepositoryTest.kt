@@ -355,6 +355,8 @@ class CollectRepositoryTest {
 
         override suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int = 0
 
+        override suspend fun updateCategoryByKey(dbType: Int, key: String, categoryId: Int): Int = 0
+
         override suspend fun hasByKey(dbType: Int, key: String): Int =
             items.count { it.dbType == dbType && it.key == key }
     }
@@ -432,6 +434,19 @@ class CollectRepositoryTest {
             return count
         }
 
+        override suspend fun updateCategoryByKey(dbType: Int, key: String, categoryId: Int): Int {
+            var count = 0
+            items.replaceAll {
+                if (it.dbType == dbType && it.key == key) {
+                    count++
+                    it.copy(categoryId = categoryId)
+                } else {
+                    it
+                }
+            }
+            return count
+        }
+
         override suspend fun hasByKey(dbType: Int, key: String): Int =
             items.count { it.dbType == dbType && it.key == key }
     }
@@ -473,6 +488,8 @@ class CollectRepositoryTest {
             items.filter { it.categoryId == categoryId }
 
         override suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int = 0
+
+        override suspend fun updateCategoryByKey(dbType: Int, key: String, categoryId: Int): Int = 0
 
         override suspend fun hasByKey(dbType: Int, key: String): Int =
             items.count { it.dbType == dbType && it.key == key }

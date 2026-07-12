@@ -203,6 +203,8 @@ class CollectionBackupCodecTest {
 
         override suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int = 0
 
+        override suspend fun updateCategoryByKey(dbType: Int, key: String, categoryId: Int): Int = 0
+
         override suspend fun hasByKey(dbType: Int, key: String): Int =
             items.count { it.dbType == dbType && it.key == key }
     }

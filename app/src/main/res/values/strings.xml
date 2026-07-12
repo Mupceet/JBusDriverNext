@@ -34,6 +34,8 @@
     <string name="genre">類別</string>
     <string name="censored">有碼</string>
     <string name="uncensored">無碼</string>
+    <string name="mark_as_censored">標記為有碼</string>
+    <string name="mark_as_uncensored">標記為無碼</string>
     <plurals name="view_count_label">
         <item quantity="other">%d 瀏覽</item>
     </plurals>

@@ -40,6 +40,19 @@ interface CollectRepository {
      */
     suspend fun toggleMovieCollect(movie: Movie, categoryId: Int? = null): Boolean
 
+    /**
+     * 更新已收藏影片的分类（用于收藏页长按标记有码/无码）。
+     *
+     * @param key 影片去重 key（即 `movie.link.urlPath`）
+     * @param categoryId 目标分类 ID（如 [me.jbusdriver.modern.domain.model.MovieCategory] /
+     *                   [me.jbusdriver.modern.domain.model.UncensoredMovieCategory]）
+     * @return 是否命中并更新了至少一行
+     *
+     * 默认实现为空操作（返回 false），仅用于让测试桩/伪实现免于逐一实现；
+     * 生产实现见 [DefaultCollectRepository.updateMovieCategory]。
+     */
+    suspend fun updateMovieCategory(key: String, categoryId: Int): Boolean = false
+
     /** 检查演员是否已收藏 */
     suspend fun isActressCollected(actress: ActressInfo): Boolean
 
@@ -121,6 +134,12 @@ class DefaultCollectRepository @Inject constructor(
                 linkDao.insert(item)
                 true
             }
+        }
+    }
+
+    override suspend fun updateMovieCategory(key: String, categoryId: Int): Boolean {
+        return withContext(Dispatchers.IO) {
+            linkDao.updateCategoryByKey(MovieDBType, key, categoryId) > 0
         }
     }
 

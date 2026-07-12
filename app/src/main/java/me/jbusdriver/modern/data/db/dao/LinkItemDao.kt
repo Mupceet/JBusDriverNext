@@ -57,6 +57,10 @@ interface LinkItemDao {
     @Query("UPDATE t_link SET categoryId = :setId WHERE categoryId = :categoryId AND dbType = :dbType")
     suspend fun updateByCategoryId(categoryId: Int, dbType: Int, setId: Int): Int
 
+    /** 按 (dbType, key) 更新单条收藏的分类 ID（用于在收藏页长按调整有码/无码）。返回受影响行数。 */
+    @Query("UPDATE t_link SET categoryId = :categoryId WHERE dbType = :dbType AND key = :key")
+    suspend fun updateCategoryByKey(dbType: Int, key: String, categoryId: Int): Int
+
     /**
      * 检查指定 key 是否已收藏
      *

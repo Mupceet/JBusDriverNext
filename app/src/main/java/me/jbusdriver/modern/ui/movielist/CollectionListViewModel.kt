@@ -217,6 +217,23 @@ class CollectionListViewModel @Inject constructor(
     }
 
     /**
+     * 更新已收藏影片的分类（长按菜单：标记为有码/无码）。
+     *
+     * @param categoryId 目标分类 ID（[me.jbusdriver.modern.domain.model.MovieCategory] /
+     *                   [me.jbusdriver.modern.domain.model.UncensoredMovieCategory]）
+     */
+    fun setMovieCategory(movie: MovieUiModel, categoryId: Int) {
+        viewModelScope.launch {
+            try {
+                collectRepository.updateMovieCategory(movie.link.urlPath, categoryId)
+                loadCollection(MovieDBType)
+            } catch (e: Exception) {
+                KLog.e("setMovieCategory failed", e)
+            }
+        }
+    }
+
+    /**
      * 从收藏中移除指定演员。
      */
     fun removeActress(actress: ActressUiModel) {
