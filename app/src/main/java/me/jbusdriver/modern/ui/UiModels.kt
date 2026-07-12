@@ -1,12 +1,15 @@
 package me.jbusdriver.modern.ui
 
 import androidx.compose.runtime.Immutable
+import me.jbusdriver.modern.data.db.entity.LinkItem
+import me.jbusdriver.modern.data.db.toILink
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.Genre
 import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
+import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 
 /**
  * 职责：UI 层的 Immutable 数据模型，从 domain model 转换而来
@@ -72,6 +75,19 @@ data class MagnetUiModel(val name: String, val size: String, val date: String, v
 
 /** Movie domain model → UI model */
 fun Movie.toUiModel() = MovieUiModel(title, imageUrl, code, date, link, tags.orEmpty())
+
+/** 该收藏影片是否为无码（categoryId == [UncensoredMovieCategory].id == 3）。与收藏页 filterByCensor 同一规则。 */
+val MovieUiModel.isUncensoredCollected: Boolean
+    get() = categoryId == (UncensoredMovieCategory.id ?: 3)
+
+/**
+ * 将收藏的 [LinkItem]（dbType=Movie）映射为可渲染的 [MovieUiModel]，
+ * 保留 [LinkItem.createTime] 与 [LinkItem.categoryId]（供排序与审查类型判断）。
+ * 反序列化失败（jsonStr 损坏）时返回 null。
+ */
+fun LinkItem.toMovieUiModel(baseUrl: String): MovieUiModel? =
+    ((toILink(baseUrl) as? Movie)?.toUiModel())
+        ?.copy(createTime = createTime, categoryId = categoryId)
 
 /**
  * MovieDetail domain model → UI model
