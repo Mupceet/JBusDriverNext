@@ -65,7 +65,10 @@ fun CollectionListScreen(
         }
 
         dbType == MovieDBType -> {
-            if (uiState.movies.isEmpty()) {
+            // 即便没有已收藏影片，只要开启了「显示未收藏本地视频」且有数据，也要渲染列表（含未收藏分区），
+            // 否则 0 收藏时会进入空状态分支，未收藏本地视频永远不显示。
+            val uncollected = if (uiState.showUncollectedLocal) uiState.uncollectedVideos else emptyList()
+            if (uiState.movies.isEmpty() && uncollected.isEmpty()) {
                 Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         if (hasItems) stringResource(R.string.no_filter_match) else stringResource(R.string.no_collection_yet),
@@ -81,12 +84,12 @@ fun CollectionListScreen(
                     isDownloaded = { it.code.uppercase() in downloadedCodes },
                     isGrid = isGrid,
                     footerHeader = {
-                        if (uiState.showUncollectedLocal && uiState.uncollectedVideos.isNotEmpty()) {
+                        if (uncollected.isNotEmpty()) {
                             Text(
                                 pluralStringResource(
                                     R.plurals.local_video_uncollected_section_count,
-                                    uiState.uncollectedVideos.size,
-                                    uiState.uncollectedVideos.size,
+                                    uncollected.size,
+                                    uncollected.size,
                                 ),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -94,7 +97,7 @@ fun CollectionListScreen(
                             )
                         }
                     },
-                    footerMovies = if (uiState.showUncollectedLocal) uiState.uncollectedVideos else emptyList(),
+                    footerMovies = uncollected,
                     modifier = modifier
                 )
             }
