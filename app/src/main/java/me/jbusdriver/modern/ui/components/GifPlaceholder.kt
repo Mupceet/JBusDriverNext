@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -22,14 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import me.jbusdriver.R
 
 @Composable
@@ -40,13 +39,10 @@ fun GifPlaceholder(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }
-    var componentSize by remember { mutableStateOf(IntSize.Zero) }
-    val density = LocalDensity.current
 
     Box {
         Box(
             modifier = modifier
-                .onGloballyPositioned { componentSize = it.size }
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .pointerInput(onLoadAllGifs) {
@@ -81,23 +77,28 @@ fun GifPlaceholder(
         }
 
         if (onLoadAllGifs != null) {
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                offset = DpOffset(
-                    with(density) { pressOffset.x.toDp() },
-                    with(density) { (pressOffset.y - componentSize.height).toDp() }
-                ),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            // 将菜单锚点放到长按处：一个 0 尺寸的 Box 作为 DropdownMenu 的父级，
+            // 这样无论向上还是向下展开都从手指位置出发（DropdownMenu 的 offset 在翻转方向上参考点不同，
+            // 无法用单一偏移兼顾上下两个方向）。
+            Box(
+                modifier = Modifier.offset {
+                    IntOffset(pressOffset.x.roundToInt(), pressOffset.y.roundToInt())
+                }
             ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.load_this_gif)) },
-                    onClick = { showMenu = false; onClick() }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.load_all_gifs)) },
-                    onClick = { showMenu = false; onLoadAllGifs() }
-                )
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.load_this_gif)) },
+                        onClick = { showMenu = false; onClick() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.load_all_gifs)) },
+                        onClick = { showMenu = false; onLoadAllGifs() }
+                    )
+                }
             }
         }
     }
