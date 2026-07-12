@@ -4,6 +4,7 @@ import me.jbusdriver.modern.data.db.convertDBItem
 import me.jbusdriver.modern.domain.model.Movie
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,6 +44,7 @@ class MovieUiModelMapperTest {
     fun `isUncensoredCollected is false for default censored category`() {
         val ui = Movie("M", "http://x", "ABC-1", "2024-01-01", "http://l")
             .convertDBItem(categoryId = 1).toMovieUiModel("https://x")
-        assertFalse(ui?.isUncensoredCollected == true)
+        assertNotNull(ui)
+        assertFalse(ui!!.isUncensoredCollected)
     }
 }

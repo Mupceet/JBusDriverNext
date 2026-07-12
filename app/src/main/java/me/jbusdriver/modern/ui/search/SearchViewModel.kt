@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -109,7 +110,7 @@ class SearchViewModel @Inject constructor(
      * 其它 chip（演员/导演等）下为空。
      */
     val localResults: StateFlow<List<MovieUiModel>> =
-        combine(collectedMovies, liveQuery, uiState.map { it.searchType }) { items, query, type ->
+        combine(collectedMovies, liveQuery, uiState.map { it.searchType }.distinctUntilChanged()) { items, query, type ->
             val wantUncensored = when (type) {
                 SearchType.UNCENSORED -> true
                 SearchType.CENSORED -> false

@@ -8,8 +8,10 @@ import me.jbusdriver.modern.ui.MovieUiModel
  * 归一化规则：转小写，去掉所有 `-`、`_`、空白字符；随后按"子串包含"匹配番号或标题。
  * 例：`abc123` 可命中 `ABC-123` / `ABC_0123`。
  */
+private val normalizeSeparator = Regex("[-_\\s]+")
+
 internal fun normalizeSearchText(input: String): String =
-    input.lowercase().replace(Regex("[-_\\s]+"), "")
+    input.lowercase().replace(normalizeSeparator, "")
 
 /**
  * 判断该影片是否匹配本地搜索查询 [query]（对番号 code 与标题 title 做归一化子串匹配）。
