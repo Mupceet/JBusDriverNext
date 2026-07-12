@@ -26,7 +26,7 @@ Claude Code reads `CLAUDE.md`, which imports this file with `@AGENTS.md`.
 
 ## Android / Kotlin Conventions
 
-- This is an Android app using Jetpack Compose, Material 3, Kotlin, Gson, and DataStore.
+- This is an Android app using Jetpack Compose, Material 3, Kotlin, Gson, DataStore, and kotlinx-serialization (for Nav3 route keys).
 - Verify Compose API calls compile before finalizing; do not guess package paths for `inlineContent`, `SubcomposeAsyncImage`, or similar APIs.
 - When implementing caching or stale-while-revalidate behavior, test scroll position retention, duplicate key safety, and tab-switch refresh behavior.
 - ProGuard/R8 keep rules must cover all Gson model classes; add `@Keep` or rules proactively.
@@ -53,7 +53,7 @@ Claude Code reads `CLAUDE.md`, which imports this file with `@AGENTS.md`.
 ./gradlew assemble
 ```
 
-The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `gradle/libs.versions.toml`. AGP 9.2.0 provides built-in Kotlin compilation — no separate `kotlin-android` plugin. KSP is used for annotation processing (Room compiler, Hilt compiler).
+The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `gradle/libs.versions.toml`. AGP 9.2.1 provides built-in Kotlin compilation — no separate `kotlin-android` plugin. KSP is used for annotation processing (Room compiler, Hilt compiler).
 
 ## Architecture
 
@@ -63,59 +63,117 @@ The project uses Kotlin DSL (`build.gradle.kts`) with a version catalog at `grad
 
 ```
 me.jbusdriver.modern/
-  JBusApplication.kt       - @HiltAndroidApp entry point, provides Coil ImageLoader
-  KLog.kt                   - Logging utility
+  JBusApplication.kt          - @HiltAndroidApp entry point, provides Coil ImageLoader
+  KLog.kt                      - Logging utility
   core/
-    GsonExt.kt              - GSON instance, generic fromJson/toJson extensions
-    BaseExtension.kt        - SharedPreferences, Context extensions
-    cache/CacheStore.kt     - Hilt-backed two-tier cache: LruCache (memory) + FileCache (disk)
-    FileCache.kt            - Disk cache implementation (replaces former ACache.java)
-    FileUtil.kt             - File size formatting helpers
-    C.kt                    - Constants (cache durations, component names)
+    GsonExt.kt                 - GSON instance + generic fromJson/toJson extensions
+    BaseExtension.kt           - SharedPreferences, Context extensions
+    FileCache.kt               - Disk cache implementation (replaces former ACache.java)
+    FileUtil.kt                - File size formatting helpers
+    LogDiff.kt                 - Logging diff helpers
+    cache/
+      CacheStore.kt            - Interface + DefaultCacheStore (LruCache memory + FileCache disk);
+                                 lruCached()/persistentCached()/observeCached() SWR extensions
+      CacheModels.kt           - CacheEntry/CacheEnvelope/CachedLoadEvent models
+      PagedSwrState.kt         - Reusable paged stale-while-revalidate state holder
     http/
-      NetClient.kt          - OkHttp singleton, fetchDocument() for HTML→Jsoup parsing
+      NetClient.kt             - OkHttp client singleton + cookie/auth handling
+      HtmlClient.kt            - HTML fetch (OkHttp, WebView session fallback) -> Jsoup Document
+      WebViewFactory.kt        - WebView creation for anti-bot page bypass
+      WebViewHelper.kt         - WebView session/eval helpers
+      BrowserSessionManager.kt - Shared browser session lifecycle
+      BrowserSessionClient.kt  - Session cookie/token client
+      ExistMag.kt              - Magnet existence checks
+    serialization/
+      ContentBlockJsonAdapter.kt - Gson adapter for forum rich-text ContentBlocks
+    site/
+      SiteConfig.kt            - Hilt-managed runtime base URL for the target site
   data/
+    cache/
+      SiteCacheKey.kt          - Site-aware cache key helpers
     db/
-      DBTypes.kt            - DB type constants (MovieDBType, ActressDBType)
-      LinkMappers.kt        - DB entity ↔ domain model mappers
-      JBusDatabase.kt       - Room DB for history tracking
-      CollectDatabase.kt    - Room DB for categories/link items
-      dao/                  - CategoryDao, HistoryDao, LinkItemDao
-      entity/               - Category, History, LinkItem (Room entities)
+      DBTypes.kt               - DB type constants (MovieDBType, ActressDBType)
+      LinkMappers.kt           - DB entity <-> domain model mappers
+      JBusDatabase.kt          - Room DB for history tracking
+      CollectDatabase.kt       - Room DB for categories/link items
+      dao/                     - CategoryDao, HistoryDao, LinkItemDao
+      entity/                  - Category, History, LinkItem (Room entities)
     parser/
-      HtmlParser.kt         - All HTML→domain parsing (loadMovieFromDoc, parseMovieDetails, etc.)
-    magnet/
-      MagnetManager.kt      - Magnet link resolution
-      IMagnetLoader.kt      - Magnet loader interface
-    MovieRepository.kt      - Interface + DefaultMovieRepository (OkHttp + Jsoup + cache)
-    MovieDetailRepository.kt - Interface + DefaultMovieDetailRepository
-    CollectRepository.kt    - Interface + DefaultCollectRepository (Room-backed)
-    SearchRepository.kt     - Interface + DefaultSearchRepository
+      MovieHtmlParser.kt       - Movie list/detail parsing (loadMovieFromDoc, parseMovieDetails)
+      ActressHtmlParser.kt     - Actress list parsing
+      GenreHtmlParser.kt       - Genre parsing
+      ForumHomeParser.kt       - Forum home/boards parsing
+      ForumThreadParser.kt     - Forum thread list parsing
+      ForumPostParser.kt       - Forum post/floor parsing
+      InlineParagraphParser.kt - Inline rich-text paragraph parsing
+      InlineStyle.kt           - Inline style model
+      UrlParserExt.kt          - URL/anchor parsing helpers
+    gateway/
+      CollectionDocumentGateway.kt - Document gateway for collection pages
+      ImageMediaGateway.kt         - Image/media gateway
+    mirror/
+      MirrorScanner.kt         - Mirror site availability scanning
+    repository/
+      MovieRepository.kt          - Interface + DefaultMovieRepository (OkHttp + Jsoup + cache)
+      MovieDetailRepository.kt    - Interface + DefaultMovieDetailRepository
+      MoviePageFetcher.kt         - Paged movie page fetching
+      MovieRepositoryCacheKeys.kt - Cache key builders for movie data
+      MovieRepositoryUrls.kt      - URL builders for movie pages
+      CollectRepository.kt        - Interface + DefaultCollectRepository (Room-backed)
+      CollectTransactionRunner.kt - Transactional collection writes
+      CollectionBackupCodec.kt    - Import/export codec for collections
+      SearchRepository.kt         - Interface + DefaultSearchRepository
+      MagnetRepository.kt         - Magnet link resolution (interface + impl)
+      ForumRepository.kt          - Forum data repository
+    session/
+      GifLoadTracker.kt       - Tracks GIF load progress/state
+    settings/
+      AppSettingsStore.kt     - DataStore-backed app settings
+      UiPrefsStore.kt         - DataStore-backed UI preferences
+      ThemeRepository.kt      - Theme mode repository
+      ThemeMode.kt            - Theme mode enum
+      MovieListStyle.kt       - List style enum
+      MovieLoadMode.kt        - Load mode enum
+      SearchHistoryStore.kt   - DataStore-backed search history
+      ForumFloorOrder.kt      - Forum floor ordering preference
     di/
-      DataModule.kt         - @Binds Repository interfaces → implementations
-      DatabaseModule.kt     - @Provides Room DB instances and DAOs
+      DataModule.kt           - @Binds Repository interfaces -> implementations
+      DatabaseModule.kt       - @Provides Room DB instances and DAOs
   domain/model/
-    Movie.kt, MovieDetail.kt   - Core domain models (Movie, MovieDetail, Header, Genre, etc.)
-    ILink.kt, PageLink.kt      - Link abstraction and pagination
-    ActressInfo, ImageSample, ActressAttrs  - defined in MovieDetail.kt
+    Movie.kt, MovieDetail.kt     - Core models (Movie, MovieDetail; Header, Genre, ActressInfo,
+                                   ImageSample, ActressAttrs are all defined in MovieDetail.kt)
+    ILink.kt, PageLink.kt        - Link abstraction and pagination
     Magnet.kt, SearchType.kt, DataSourceType.kt, Category.kt
-    UrlExt.kt               - URL path extension property
-    MoviePageResult.kt      - Paginated result wrapper
+    UrlExt.kt                    - URL path extension property
+    MoviePageResult.kt           - Paginated result wrapper
+    ForumModels.kt               - Forum domain models
+    GenreGroup.kt                - Grouped genre model
   ui/
-    ModernMainActivity.kt   - Single Activity (@AndroidEntryPoint, edge-to-edge, Compose host)
-    MainScreen.kt           - Tab pager: 有碼/無碼/收藏 × 影片/演員
-    Navigation.kt           - Compose Navigation graph with iOS-style transitions
-    NavigationKeys.kt       - Route constants and URL builders
-    UiModels.kt             - Shared UI state models (MovieUiModel, ActressUiModel, GenreUiModel)
-    components/
-      ActressAvatar.kt       - Actress avatar with placeholder
-      ActressGrid.kt         - Grid layout for actress list
-      MovieList.kt           - Shared movie list/grid composable
-    detail/                 - Movie detail screen + ViewModel
-    image/                  - Full-screen image viewer (Telephoto zoomable)
-    movielist/              - Movie/actress/genre/collection list screens + ViewModels
-    search/                 - Search screen + ViewModel
-    theme/                  - Material3 theme (Color, Theme, Type)
+    ModernMainActivity.kt     - Single Activity (@AndroidEntryPoint, edge-to-edge, Compose host)
+    MainScreen.kt             - Bottom navigation: 影片(Movie) / 演员(Actress) / 论坛(Forum) / 收藏(Collect)
+    MainTabContent.kt         - Per-tab content host
+    Navigation.kt             - Nav3 graph with iOS-style transitions
+    NavigationKeys.kt         - Route NavKey objects (RouteMain, RouteSearch, ...)
+    UiModels.kt               - Shared UI state models (MovieUiModel, ActressUiModel, GenreUiModel)
+    UserMessage.kt            - One-shot UI message model
+    components/               - Reusable composables (MovieList, MovieListItems, ActressGrid,
+                                ActressAvatar, AppAsyncImage, SearchBar, MovieFilterBar,
+                                CollectButton, ShareButton, CategoryBottomSheet, etc.)
+    detail/                   - Movie detail screen + ViewModel (MovieDetailScreen/ViewModel,
+                                MovieDetailSections, MagnetBottomSheet)
+    image/                    - Full-screen image viewer (ImageViewScreen, ImageActionsViewModel;
+                                Telephoto zoomable)
+    movielist/                - Movie/actress/genre/collection list screens + ViewModels +
+                                StateReducers (MovieList, ActressList, GenreList, Collection,
+                                LinkMovieList, CollectCategory)
+    forum/                    - Forum boards/thread list/detail screens + ViewModels + StateReducers
+                                (ForumBoards, ForumThreadList, ForumThreadDetail) + ForumPostContent
+    search/                   - Search screen + ViewModel
+    settings/                 - Settings screen + ViewModel (SettingsScreen, SettingsViewModel,
+                                ThemeViewModel, UiPrefsViewModel)
+    debug/                    - Color scheme debug screen
+    localvideo/               - Local video sheet (SAF DocumentFile)
+    theme/                    - Material3 theme (Theme.kt, Type.kt)
 ```
 
 ### Key Patterns
@@ -123,28 +181,33 @@ me.jbusdriver.modern/
 - **Single Activity**: `ModernMainActivity` with `enableEdgeToEdge()` hosts all Compose UI
 - **Hilt DI**: ViewModels use `hiltViewModel()` (from `hilt-navigation-compose`), repositories are interface+impl pairs bound via `@Binds` in `DataModule`. Navigation-arg ViewModels use `@AssistedInject` + `@AssistedFactory`.
 - **Repository pattern**: Each screen has a ViewModel that delegates to a Hilt-provided repository
-- **HTML scraping**: `NetClient.fetchDocument()` (OkHttp → Jsoup) → domain models via top-level functions in `HtmlParser.kt`
-- **Two-tier cache**: `CacheStore.lruCached()` (memory only) for lists; `CacheStore.persistentCached()` (memory + disk) for details
+- **HTML scraping**: `HtmlClient` / `NetClient` fetch HTML (OkHttp, with a WebView session fallback for anti-bot pages) into a Jsoup `Document`, which top-level functions split across `data/parser/*HtmlParser.kt` convert into domain models
+- **Two-tier cache**: `CacheStore.lruCached()` (memory only) for lists; `CacheStore.persistentCached()` (memory + disk) for details; `CacheStore.observeCached()` for stale-while-revalidate flows
 - **Coroutines throughout**: All repositories use `suspend` functions, no RxJava
 
 ## Data Flow
 
 1. **Network**: `HtmlClient` / `NetClient` fetch HTML via OkHttp and parse to Jsoup `Document`. Runtime base URL is owned by `SiteConfig`.
-2. **Parsing**: Top-level functions in `HtmlParser.kt` convert `Document` → domain models. All Jsoup CSS selectors are centralized there.
-3. **Caching**: `CacheStore` — `lruCached()` for volatile list data, `persistentCached()` for stable detail/genre data. Both use Gson serialization under the hood.
+2. **Parsing**: Top-level functions in the `data/parser/` files (`*HtmlParser.kt`) convert `Document` -> domain models; Jsoup CSS selectors live in those per-domain parser files.
+3. **Caching**: `CacheStore` — `lruCached()` for volatile list data, `persistentCached()` for stable detail/genre data, `observeCached()` for SWR flows. All use Gson serialization under the hood.
 4. **Database**: Room with two databases:
    - `JBusDatabase`: history tracking
    - `CollectDatabase`: categories and link items, built through the Hilt database module
 
 ## Navigation Routes (Nav3)
 
+Routes are `@Serializable NavKey` objects defined in `NavigationKeys.kt`.
+
 | Route Key | Purpose |
 |-----------|---------|
-| `RouteMain` | Tab pager (home) |
+| `RouteMain` | Home (bottom navigation) |
 | `RouteSearch(defaultSearchType)` | Search screen |
-| `RouteMovieDetail(movieUrl)` | Movie detail |
+| `RouteMovieDetail(movieUrl, censorType)` | Movie detail |
 | `RouteImageViewer(images, startIndex)` | Full-screen image viewer |
-| `RouteLinkMovies(linkUrl, title, type, avatar)` | Actress/genre movie list |
+| `RouteLinkMovies(linkUrl, title, type, avatar, censorType)` | Actress/genre movie list |
+| `RouteForumThreadList(fid, title, typeId)` | Forum thread list |
+| `RouteForumThreadDetail(tid)` | Forum thread detail |
+| `RouteSettings` | Settings screen |
 
 ## Key Libraries
 
@@ -153,20 +216,24 @@ me.jbusdriver.modern/
 | UI | Jetpack Compose + Material3 (BOM-managed) |
 | DI | Hilt |
 | Async | Kotlin Coroutines |
-| Network | OkHttp 5.4 |
-| HTML Parsing | Jsoup 1.22 |
-| Database | Room 2.8 (KSP) |
-| Image Loading | Coil 2.7 |
-| Image Zoom | Telephoto 0.19 |
-| JSON | Gson 2.14 |
-| Navigation | Navigation 3 (1.1.1) |
+| Network | OkHttp 5.4.0 |
+| HTML Parsing | Jsoup 1.22.2 |
+| Database | Room 2.8.4 (KSP) |
+| Image Loading | Coil 2.7.0 |
+| Image Zoom | Telephoto 0.19.0 |
+| Animation | Lottie Compose 6.7.1 |
+| JSON | Gson 2.14.0 |
+| Serialization | kotlinx-serialization (pinned to 1.8.1; used for Nav3 route keys) |
+| Navigation | Navigation 3 (1.1.4) |
+| Preferences | DataStore Preferences 1.2.1 |
+| Storage Access | DocumentFile 1.1.0 |
 | Debug | LeakCanary 2.14 (debugOnly) |
 
 ## Project Configuration
 
 - **Package**: `me.jbusdriver` (namespace) / `me.jbus` (applicationId)
 - **Compile SDK**: 37
-- **Target SDK**: 36 / **Min SDK**: 28
+- **Min SDK**: 28 / **Target SDK**: not pinned (uses compileSdk)
 - **Java target**: 17
 - **ProGuard**: enabled for release (`isMinifyEnabled` + `isShrinkResources`)
 - **Versioning**: `versionCode = 10000 + gitCommitCount`, `versionName = 1.<yyyyMMdd>`
@@ -206,7 +273,7 @@ See `docs/CODE_REVIEW.md` for the full code review report. Key findings:
 ### Remaining Non-Blocking Technical Debt
 - The former `JBus`, `JBusManager`, `NetClient.defaultFastUrl`, and `CacheLoader` global entry points have been removed from production code. Prefer Hilt `@ApplicationContext`, `SiteConfig`, `WebViewFactory`, and `CacheStore` for new code.
 - UI i18n is only partially complete. New visible UI strings, Toast messages, dialog labels, and content descriptions should use resources; count labels should use plurals.
-- Several files remain large, including `MovieList.kt`, `ForumPostContent.kt`, `LinkMovieListViewModel.kt`, `LinkMovieListScreen.kt`, `MovieDetailScreen.kt`, `MovieListViewModel.kt`, `LabSettingsScreen.kt`, `MovieRepository.kt`, `ForumBoardsScreen.kt`, and `ForumThreadDetailViewModel.kt`. Prefer small section/helper extraction when touching those files.
+- Several files remain large, including `MovieList.kt`, `ForumPostContent.kt`, `LinkMovieListViewModel.kt`, `LinkMovieListScreen.kt`, `MovieDetailScreen.kt`, `MovieListViewModel.kt`, `SettingsScreen.kt`, `MovieRepository.kt`, `ForumBoardsScreen.kt`, and `ForumThreadDetailViewModel.kt`. Prefer small section/helper extraction when touching those files.
 - ViewModel `loadFirstPage/revalidate/loadMore/refresh` orchestration still repeats across list-style screens. Reducers already cover state transitions; avoid broad abstraction until a stable shared shape is obvious.
 - If release minify/Gson/forum rich-text code changes, add or run a release smoke test for JSON deserialization and `ContentBlock` payloads.
 
@@ -215,33 +282,3 @@ List and forum screens use the same stale-while-revalidate pattern via `CacheSto
 1. Emit `CachedLoadEvent.Cached` from memory/disk cache (immediate)
 2. Background fetch emits `CachedLoadEvent.Fresh` (new data)
 3. Reducer/ViewModel logic applies fresh data immediately when appropriate, or stores pending fresh data while the user is away from the top
-
-### Navigation Routes (Nav3)
-
-| Route Key | Purpose |
-|-----------|---------|
-| `RouteMain` | Tab pager (home) |
-| `RouteSearch(defaultSearchType)` | Search screen |
-| `RouteMovieDetail(movieUrl, censorType)` | Movie detail |
-| `RouteImageViewer(images, startIndex)` | Full-screen image viewer |
-| `RouteLinkMovies(linkUrl, title, type, avatar, censorType)` | Actress/genre movie list |
-| `RouteForumThreadList(fid, title, typeId)` | Forum thread list |
-| `RouteForumThreadDetail(tid)` | Forum thread detail |
-| `RouteLabSettings` | Lab/experimental settings |
-
-### Key Libraries
-
-| Purpose | Library |
-|---------|---------|
-| UI | Jetpack Compose + Material3 (BOM-managed) |
-| DI | Hilt |
-| Async | Kotlin Coroutines |
-| Network | OkHttp 5.4 |
-| HTML Parsing | Jsoup 1.22 |
-| Database | Room 2.8 (KSP) |
-| Image Loading | Coil 2.7 |
-| Image Zoom | Telephoto 0.19 |
-| JSON | Gson 2.14 |
-| Navigation | Navigation 3 (1.1.1) |
-| Preferences | DataStore Preferences |
-| Debug | LeakCanary 2.14 (debugOnly) |
