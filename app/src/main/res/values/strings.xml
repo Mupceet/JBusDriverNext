@@ -50,7 +50,6 @@
     <string name="no_magnet">暫無磁力連結</string>
 
     <!-- Collect -->
-    <string name="my_collect">我的收藏</string>
     <string name="collect_success">收藏成功</string>
     <string name="uncollect">已取消收藏</string>
     <string name="collect">收藏</string>

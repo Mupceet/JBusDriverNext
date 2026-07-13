@@ -36,7 +36,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -46,6 +45,7 @@ import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.components.SearchBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,6 +55,7 @@ fun CollectCategoryScreen(
     onMovieClick: (MovieUiModel, String?) -> Unit,
     onActressClick: (ActressUiModel, String?) -> Unit,
     modifier: Modifier = Modifier,
+    onSearchClick: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -132,59 +133,10 @@ fun CollectCategoryScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, top = 4.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                stringResource(R.string.my_collect),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(
-                        painterResource(R.drawable.more_vert_24px),
-                        contentDescription = stringResource(R.string.more)
-                    )
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.export_collect)) },
-                        onClick = {
-                            showMenu = false
-                            val filename = "jbus_backup_${
-                                SimpleDateFormat(
-                                    "yyyyMMdd",
-                                    Locale.US
-                                ).format(Date())
-                            }.json"
-                            exportLauncher.launch(filename)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.import_collect)) },
-                        onClick = {
-                            showMenu = false
-                            importLauncher.launch(arrayOf("application/json"))
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("更多設置") },
-                        onClick = {
-                            showMenu = false
-                            onSettingsClick()
-                        }
-                    )
-                }
-            }
-        }
+        SearchBar(
+            onClick = { onSearchClick("") },
+            modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp)
+        )
 
         Row(
             modifier = Modifier
@@ -239,6 +191,46 @@ fun CollectCategoryScreen(
                     )
                 }
             )
+            Spacer(Modifier.width(8.dp))
+            Box {
+                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        painterResource(R.drawable.more_vert_24px),
+                        contentDescription = stringResource(R.string.more),
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.export_collect)) },
+                        onClick = {
+                            showMenu = false
+                            val filename = "jbus_backup_${
+                                SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+                            }.json"
+                            exportLauncher.launch(filename)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.import_collect)) },
+                        onClick = {
+                            showMenu = false
+                            importLauncher.launch(arrayOf("application/json"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("更多設置") },
+                        onClick = {
+                            showMenu = false
+                            onSettingsClick()
+                        }
+                    )
+                }
+            }
         }
 
         HorizontalPager(

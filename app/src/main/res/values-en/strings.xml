@@ -50,7 +50,6 @@
     <string name="no_magnet">No magnet links available</string>
 
     <!-- Collect -->
-    <string name="my_collect">My Collection</string>
     <string name="collect_success">Added to collection</string>
     <string name="uncollect">Removed from collection</string>
     <string name="collect">Collect</string>
