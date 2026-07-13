@@ -34,6 +34,8 @@
     <string name="genre">Genre</string>
     <string name="censored">Censored</string>
     <string name="uncensored">Uncensored</string>
+    <string name="mark_as_censored">Mark as censored</string>
+    <string name="mark_as_uncensored">Mark as uncensored</string>
     <plurals name="view_count_label">
         <item quantity="one">%d view</item>
         <item quantity="other">%d views</item>
