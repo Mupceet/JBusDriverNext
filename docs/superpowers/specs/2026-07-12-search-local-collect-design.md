@@ -3,6 +3,8 @@
 **Date:** 2026-07-12
 **Status:** Approved
 
+> **Revision (2026-07-13, commit `7ff9ea9`):** The merged-display model described below (`MovieList.headerMovies`, local rows pinned above online results in one scroll) was **replaced after review** with a simpler, **mutually-exclusive** model that avoids mixing and duplication. Local instant-search results now render **only while the user is composing** — i.e. the current input has not been submitted as an online search (`searchInput.trim() != uiState.query`). Once an online search is submitted, its results **fully replace** the view (no local section, no header). Editing the query again returns to the composing/local phase. `MovieList.headerMovies` was therefore **dropped** (the Task-5 addition reverted; `footerMovies` unchanged). Any text below that describes `headerMovies` or header-slot merging is superseded by this revision.
+
 ## Problem
 
 The search screen only searches the remote site, triggered explicitly (Enter / type-chip tap / history-chip tap). Users who have already collected a movie must wait for a network round-trip to find it again, even though the collected data is fully on-device. Collection data is fast to search locally and contains everything needed to render a movie row (code, title, cover, date, tags, detail link), so it can power a real-time, type-as-you-go search that appears above the online results.
@@ -23,10 +25,10 @@ The online search flow is untouched (still on-submit). Local search is a separat
 |---|---|
 | Match fields | **Code + title** (substring on either) |
 | Normalization | Lowercase + strip `-`, `_`, and whitespace; then substring-contains. e.g. `abc123` matches `ABC-123` / `ABC_0123`. Query of only separators → no match. |
-| Result layout | Vertical `MovieList` showing **all** matches, below the type chips, above online results. Shown only when query is non-blank and there is ≥1 match. |
+| Result layout (revised) | Vertical `MovieList` showing **all** local matches, below the type chips. **Mutually exclusive with online results:** shown only while composing (`searchInput.trim() != uiState.query`); once an online search is submitted, online results fully replace it. |
 | Chip gating | Local section appears **only** for `CENSORED` / `UNCENSORED` chips. |
 | Chip linkage | `CENSORED` → local censored only (`categoryId != 3`); `UNCENSORED` → local uncensored only (`categoryId == 3`). Matches the Collection page's `filterByCensor`. |
-| Rendering | Local rows are emitted by `MovieList` via a new `headerMovies` param (mirrors the existing `footerMovies`), not by manually composing `MovieItem`. |
+| Rendering (revised) | Local results render via a standalone `MovieList` (with the `本地收藏` header) **only while composing**; online results (plain `MovieList`, no header) fully replace them once an online search is submitted. No `headerMovies` merging. |
 | Ordering | Local results sorted by collect time, newest first (`createTime` desc). |
 
 ## Censor convention (load-bearing)
