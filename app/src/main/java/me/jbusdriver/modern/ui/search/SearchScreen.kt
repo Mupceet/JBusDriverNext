@@ -107,12 +107,6 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(uiState.query) {
-        if (uiState.query != searchInput) {
-            searchInput = uiState.query
-        }
-    }
-
     LaunchedEffect(searchInput) {
         viewModel.onSearchInputChanged(searchInput)
     }
