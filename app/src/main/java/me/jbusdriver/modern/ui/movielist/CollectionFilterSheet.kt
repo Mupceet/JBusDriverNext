@@ -304,7 +304,7 @@ private fun SortDropdown(
     Box {
         OutlinedButton(
             onClick = { expanded = true },
-            contentPadding = PaddingValues(horizontal = 12.dp)
+            contentPadding = PaddingValues(horizontal = 14.dp)
         ) {
             Text(current.label, style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.width(2.dp))

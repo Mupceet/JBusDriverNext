@@ -181,7 +181,7 @@ fun ForumThreadDetailScreen(
                             modifier = Modifier.fillMaxSize(),
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(12.dp)
+                            contentPadding = PaddingValues(14.dp)
                         ) {
                             item(key = "header") {
                                 ThreadHeader(

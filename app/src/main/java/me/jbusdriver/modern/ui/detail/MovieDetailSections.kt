@@ -43,7 +43,7 @@ import me.jbusdriver.modern.ui.components.ActressAvatar
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GenreSection(genres: List<GenreUiModel>, onGenreClick: (GenreUiModel) -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
         Text(stringResource(R.string.genre), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -72,12 +72,12 @@ internal fun ImageSampleSection(
         Text(
             stringResource(R.string.screenshot),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 14.dp)
         )
         Spacer(Modifier.height(4.dp))
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(horizontal = 14.dp)
         ) {
             items(samples.size) { index ->
                 val sample = samples[index]
@@ -113,12 +113,12 @@ internal fun ActressSection(
         Text(
             stringResource(R.string.actresses),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 14.dp)
         )
         Spacer(Modifier.height(4.dp))
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(horizontal = 14.dp)
         ) {
             items(actresses.size) { index ->
                 val actress = actresses[index]
@@ -158,12 +158,12 @@ internal fun RelatedMovieSection(movies: List<MovieUiModel>, onMovieClick: (Movi
         Text(
             stringResource(R.string.related),
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            modifier = Modifier.padding(horizontal = 14.dp)
         )
         Spacer(Modifier.height(4.dp))
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(horizontal = 14.dp)
         ) {
             items(movies.size) { index ->
                 val movie = movies[index]

@@ -252,7 +252,7 @@ private fun ThumbnailStrip(
     LazyRow(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 12.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         itemsIndexed(images) { index, imageUrl ->

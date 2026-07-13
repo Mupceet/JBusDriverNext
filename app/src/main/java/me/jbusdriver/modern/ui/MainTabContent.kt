@@ -114,13 +114,13 @@ internal fun MovieTabContent(
 
     SearchBar(
         onClick = { onSearchClick("") },
-        modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp)
+        modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         CensorFilter.entries.forEach { filter ->
@@ -248,13 +248,13 @@ internal fun ActressTabContent(
 
     SearchBar(
         onClick = { onSearchClick("") },
-        modifier = Modifier.padding(start = 12.dp, top = 4.dp, end = 12.dp)
+        modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         CensorFilter.entries.forEach { filter ->

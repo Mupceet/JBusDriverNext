@@ -150,9 +150,9 @@ fun MainScreen(
                         SearchBar(
                             onClick = { onSearchClick("") },
                             modifier = Modifier.padding(
-                                start = 12.dp,
+                                start = 14.dp,
                                 top = 4.dp,
-                                end = 12.dp,
+                                end = 14.dp,
                                 bottom = 8.dp
                             )
                         )

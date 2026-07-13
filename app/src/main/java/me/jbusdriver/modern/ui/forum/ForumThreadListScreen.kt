@@ -157,7 +157,7 @@ fun ForumThreadListScreen(
                         }
                         LazyRow(
                             state = chipListState,
-                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             item {
@@ -183,7 +183,7 @@ fun ForumThreadListScreen(
                         state.threads.isNotEmpty() -> {
                             LazyColumn(
                                 state = listState,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(state.threads, key = { it.tid }) { thread ->
@@ -247,7 +247,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AppAsyncImage(

@@ -50,7 +50,7 @@ fun ActressDetailCard(actress: ActressDetailUiModel) {
         if (actress.info.isNotEmpty()) {
             // Layout: avatar+name on left, info on right, vertically centered
             Row(
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -88,7 +88,7 @@ fun ActressDetailCard(actress: ActressDetailUiModel) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 ActressAvatar(
@@ -128,7 +128,7 @@ fun ActressDetailLoadingPlaceholder() {
             .fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -177,7 +177,7 @@ fun ActressDetailLoadingPlaceholder() {
 @Composable
 fun ActressDetailErrorCard(error: String) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(1.dp),
         color = MaterialTheme.colorScheme.errorContainer,
         modifier = Modifier
             .fillMaxWidth()
@@ -186,7 +186,7 @@ fun ActressDetailErrorCard(error: String) {
             text = error,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(14.dp)
         )
     }
 }

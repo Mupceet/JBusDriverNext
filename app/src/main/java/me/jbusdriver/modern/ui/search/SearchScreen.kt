@@ -165,7 +165,7 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 14.dp),
             leadingIcon = {
                 IconButton(onClick = {
                     focusManager.clearFocus()
@@ -196,7 +196,7 @@ fun SearchScreen(
         // Search type chips
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(SearchType.entries) { type ->
@@ -276,7 +276,7 @@ fun SearchScreen(
 
             !hasResults && uiState.query.isBlank() -> {
                 if (searchHistory.isNotEmpty()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -400,7 +400,7 @@ private fun LocalCollectHeader(count: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

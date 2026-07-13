@@ -80,7 +80,7 @@ fun MovieList(
                 columns = GridCells.Adaptive(minSize = 95.dp),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (header != null) {
@@ -166,7 +166,7 @@ fun MovieList(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp),
             ) {
                 if (header != null) {
                     item { header() }

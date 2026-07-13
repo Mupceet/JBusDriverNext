@@ -423,7 +423,7 @@ internal fun DetailContent(
                         },
                         onClick = {}
                     )
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             )
         }
 
@@ -435,7 +435,7 @@ internal fun DetailContent(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         detail.headers.forEach { header ->
@@ -548,7 +548,7 @@ internal fun DetailContent(
                     enabled = hasMagnets,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .padding(horizontal = 14.dp, vertical = 16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,

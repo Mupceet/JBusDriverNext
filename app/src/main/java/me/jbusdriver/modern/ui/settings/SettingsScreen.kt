@@ -136,7 +136,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 14.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -218,7 +218,7 @@ private fun AppearanceCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
             // Header
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -246,7 +246,7 @@ private fun AppearanceCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { themeExpanded = true }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -314,7 +314,7 @@ private fun SwitchRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -345,7 +345,7 @@ private fun DynamicColorRow(
                     Modifier.clickable { onDynamicColorChange(!dynamicColor) }
                 else Modifier
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -387,7 +387,7 @@ private fun FloorOrderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { floorExpanded = true }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -427,7 +427,7 @@ private fun MovieListStyleRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { styleExpanded = true }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -467,7 +467,7 @@ private fun MovieLoadModeRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { modeExpanded = true }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -545,7 +545,7 @@ private fun NetworkCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painterResource(R.drawable.public_24px),
@@ -751,7 +751,7 @@ private fun LocalVideoCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
             // Header
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -778,7 +778,7 @@ private fun LocalVideoCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onPickFolder)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
