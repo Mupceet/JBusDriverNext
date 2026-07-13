@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -11,11 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.data.repository.CollectRepository
@@ -82,6 +85,7 @@ class SearchViewModel @Inject constructor(
     private val localVideoRepository: LocalVideoRepository,
     private val collectRepository: CollectRepository,
     private val siteConfig: SiteConfig,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -102,6 +106,9 @@ class SearchViewModel @Inject constructor(
     private val collectedMovies: StateFlow<List<MovieUiModel>> =
         collectRepository.observeCollectedLinkItems(MovieDBType)
             .map { items -> items.mapNotNull { it.toMovieUiModel(siteConfig.baseUrl) } }
+            // toMovieUiModel 会对每条收藏做 Gson 反序列化；放到 IO 线程，避免在主线程
+            // （stateIn 的 viewModelScope = Main.immediate）一次性反序列化全部收藏导致掉帧。
+            .flowOn(ioDispatcher)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
