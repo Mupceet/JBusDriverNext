@@ -89,11 +89,12 @@ fun SearchScreen(
     var searchInput by rememberSaveable { mutableStateOf(uiState.query) }
     val isMovieChip = uiState.searchType == SearchType.CENSORED ||
         uiState.searchType == SearchType.UNCENSORED
-    val localVisible = isMovieChip &&
+    // 输入阶段：当前文本尚未作为联网搜索提交（searchInput 与已提交的 uiState.query 不同）。
+    // 此阶段只显示本地即时搜索结果，不展示可能过期的联网结果；发起联网搜索后两者相等，进入联网阶段，
+    // 由联网结果完整覆盖（不再显示本地结果与头部）。
+    val localPhase = isMovieChip &&
         searchInput.trim().isNotBlank() &&
-        localResults.isNotEmpty()
-    val localHeader: (@Composable () -> Unit)? =
-        if (localVisible) { { LocalCollectHeader(localResults.size) } } else null
+        searchInput.trim() != uiState.query
     var isDeletingHistory by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -218,49 +219,41 @@ fun SearchScreen(
         val isActress = uiState.searchType == SearchType.ACTRESS
         val hasResults =
             if (isActress) uiState.actressResults.isNotEmpty() else uiState.results.isNotEmpty()
-        val onlineIsMovieList = !uiState.isLoading && uiState.error == null &&
-            !isActress && hasResults
 
         when {
-            // 主场景：联网影片结果就绪 → 单条滚动，本地命中通过 headerMovies 置顶
-            onlineIsMovieList -> MovieList(
-                movies = uiState.results,
-                header = localHeader,
-                headerMovies = if (localVisible) localResults else emptyList(),
-                hasMore = uiState.hasMore,
-                isLoadingMore = uiState.isLoadingMore,
-                onLoadMore = { viewModel.loadMore() },
-                onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
-                isGrid = isGrid,
-                isDownloaded = { it.code.uppercase() in downloadedCodes },
-                modifier = dismissKeyboardModifier
-            )
-
-            // 影片 chip 但还没有联网影片结果（输入中/加载/无结果/错误）：
-            // 本地独立 MovieList 占主体（自带滚动，任意命中数不溢出），下方小块状态
-            localVisible -> Column(modifier = Modifier.fillMaxSize()) {
-                MovieList(
-                    movies = localResults,
-                    header = { LocalCollectHeader(localResults.size) },
-                    hasMore = false,
-                    onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
-                    isGrid = isGrid,
-                    isDownloaded = { it.code.uppercase() in downloadedCodes },
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(dismissKeyboardModifier)
-                )
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        uiState.isLoading -> CircularProgressIndicator()
-                        uiState.error != null -> Text(
-                            stringResource(uiState.error ?: R.string.search_failed),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+            // 输入阶段（影片 chip 且当前文本尚未提交联网搜索）：只显示本地即时搜索结果，
+            // 联网结果（可能已过期）隐藏。发起联网搜索后进入下方联网阶段，联网结果完整覆盖。
+            localPhase -> {
+                if (localResults.isNotEmpty()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        MovieList(
+                            movies = localResults,
+                            header = { LocalCollectHeader(localResults.size) },
+                            hasMore = false,
+                            onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
+                            isGrid = isGrid,
+                            isDownloaded = { it.code.uppercase() in downloadedCodes },
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(dismissKeyboardModifier)
                         )
-                        else -> Text(
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.search_press_enter_hint),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    // 本地无匹配：提示按回车联网搜索（不展示过期的联网结果）
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
                             stringResource(R.string.search_press_enter_hint),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -387,11 +380,9 @@ fun SearchScreen(
                 modifier = dismissKeyboardModifier
             )
 
-            // 兜底：联网影片结果（刷新中/带错误但仍有结果时），同样支持 headerMovies
+            // 联网影片结果（已提交搜索；不再混入本地结果/header）
             else -> MovieList(
                 movies = uiState.results,
-                header = localHeader,
-                headerMovies = if (localVisible) localResults else emptyList(),
                 hasMore = uiState.hasMore,
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
