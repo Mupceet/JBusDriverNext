@@ -30,11 +30,11 @@ data class CacheEnvelope(
 )
 
 object ForumCacheTtl {
-    val HOME_MILLIS: Long = cacheRefreshTtl(10_000L, 5 * 60_000L)
-    val THREAD_LIST_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 2 * 60_000L)
-    val THREAD_LIST_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 5 * 60_000L)
-    val THREAD_DETAIL_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 15 * 60_000L)
-    val THREAD_DETAIL_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 10 * 60_000L)
+    val HOME_MILLIS: Long = cacheRefreshTtl(10_000L, 15 * 60_000L)
+    val THREAD_LIST_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 20 * 60_000L)
+    val THREAD_LIST_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 20 * 60_000L)
+    val THREAD_DETAIL_FIRST_PAGE_MILLIS: Long = cacheRefreshTtl(10_000L, 20 * 60_000L)
+    val THREAD_DETAIL_NEXT_PAGE_MILLIS: Long = cacheRefreshTtl(30_000L, 20 * 60_000L)
 }
 
 object MovieCacheTtl {
