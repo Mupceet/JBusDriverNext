@@ -120,7 +120,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("設置") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -250,7 +250,7 @@ private fun AppearanceCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("主題模式", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.theme_mode), style = MaterialTheme.typography.bodyLarge)
                 Box {
                     Text(
                         themeModeLabel(themeMode),
@@ -391,7 +391,7 @@ private fun FloorOrderRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("樓層瀏覽順序", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.floor_order), style = MaterialTheme.typography.bodyLarge)
         Box {
             Text(
                 floorOrderLabel(forumFloorOrder),
@@ -431,7 +431,7 @@ private fun MovieListStyleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("影片列表樣式", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.movie_list_style), style = MaterialTheme.typography.bodyLarge)
         Box {
             Text(
                 movieListStyleLabel(movieListStyle),

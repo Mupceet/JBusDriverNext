@@ -104,6 +104,9 @@
     <string name="auto_load_gif">自動載入動圖</string>
     <string name="auto_load_gif_desc">論壇帖中的 GIF 圖片無需點擊直接播放</string>
     <string name="floor_order">樓層瀏覽順序</string>
+    <string name="settings_title">設置</string>
+    <string name="theme_mode">主題模式</string>
+    <string name="movie_list_style">影片列表樣式</string>
     <string name="select_url">選擇網址</string>
     <string name="scan_url">掃描網址</string>
     <string name="rescan">重新掃描</string>
@@ -116,6 +119,7 @@
 
     <!-- Misc -->
     <string name="more">更多</string>
+    <string name="more_settings">更多設置</string>
     <string name="delete">刪除</string>
     <string name="actress_type">演員: %1$s</string>
     <string name="genre_type">類別: %1$s</string>

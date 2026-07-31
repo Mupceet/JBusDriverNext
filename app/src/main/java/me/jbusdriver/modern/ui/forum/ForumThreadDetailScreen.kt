@@ -122,7 +122,7 @@ fun ForumThreadDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             painterResource(R.drawable.arrow_back_24px),
-                            contentDescription = "返回"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },

@@ -223,7 +223,7 @@ fun CollectCategoryScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("更多設置") },
+                        text = { Text(stringResource(R.string.more_settings)) },
                         onClick = {
                             showMenu = false
                             onSettingsClick()

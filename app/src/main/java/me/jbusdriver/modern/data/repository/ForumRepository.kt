@@ -1,6 +1,8 @@
 package me.jbusdriver.modern.data.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
@@ -126,23 +128,28 @@ class DefaultForumRepository @Inject constructor(
         forceRefresh: Boolean,
         revalidate: Boolean,
         nowMillis: () -> Long
-    ): Flow<CachedLoadEvent<ForumHomeData>> {
-        val url = "${siteConfig.baseUrl}/forum/forum.php"
+    ): Flow<CachedLoadEvent<ForumHomeData>> = flow {
+        // 等待站点配置就绪，避免冷启动时用默认域名构建 URL/缓存 key（用户可能已选镜像）。
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = "$baseUrl/forum/forum.php"
         forumLogD("[Forum] loadForumBoards: url=$url")
-        return cacheStore.observeCached(
-            key = forumBoardsCacheKey(),
-            ttlMillis = ForumCacheTtl.HOME_MILLIS,
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate,
-            nowMillis = nowMillis,
-            isCacheable = { it.boardGroups.isNotEmpty() }
-        ) {
-            val doc = fetchForumDocument(url)
-            val result = parseForumHomeData(doc, siteConfig.baseUrl)
-            forumLogD("[Forum] parseForumHomeData: ${result.banners.size} banners, ${result.boardGroups.sumOf { it.boards.size }} boards")
-            result
-        }
+        emitAll(
+            cacheStore.observeCached(
+                key = forumBoardsCacheKey(baseUrl),
+                ttlMillis = ForumCacheTtl.HOME_MILLIS,
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate,
+                nowMillis = nowMillis,
+                isCacheable = { it.boardGroups.isNotEmpty() }
+            ) {
+                val doc = fetchForumDocument(url)
+                val result = parseForumHomeData(doc, baseUrl)
+                forumLogD("[Forum] parseForumHomeData: ${result.banners.size} banners, ${result.boardGroups.sumOf { it.boards.size }} boards")
+                result
+            }
+        )
     }
 
     override fun observeThreads(
@@ -152,21 +159,25 @@ class DefaultForumRepository @Inject constructor(
         forceRefresh: Boolean,
         revalidate: Boolean,
         nowMillis: () -> Long
-    ): Flow<CachedLoadEvent<ForumThreadPageResult>> {
-        val baseUrl = "${siteConfig.baseUrl}/forum/forum.php?mod=forumdisplay&fid=$fid&page=$page"
-        val url = if (typeId != null) "$baseUrl&filter=typeid&typeid=$typeId" else baseUrl
+    ): Flow<CachedLoadEvent<ForumThreadPageResult>> = flow {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val displayUrl = "$baseUrl/forum/forum.php?mod=forumdisplay&fid=$fid&page=$page"
+        val url = if (typeId != null) "$displayUrl&filter=typeid&typeid=$typeId" else displayUrl
         forumLogD("[Forum] loadThreads: url=$url")
-        return cacheStore.observeCached(
-            key = forumThreadsCacheKey(fid, page, typeId),
-            ttlMillis = threadListTtl(page),
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate && page == 1,
-            nowMillis = nowMillis
-        ) {
-            val doc = fetchForumDocument(url)
-            parseForumThreads(doc, siteConfig.baseUrl)
-        }
+        emitAll(
+            cacheStore.observeCached(
+                key = forumThreadsCacheKey(baseUrl, fid, page, typeId),
+                ttlMillis = threadListTtl(page),
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate && page == 1,
+                nowMillis = nowMillis
+            ) {
+                val doc = fetchForumDocument(url)
+                parseForumThreads(doc, baseUrl)
+            }
+        )
     }
 
     override fun observeThreadDetail(
@@ -176,20 +187,24 @@ class DefaultForumRepository @Inject constructor(
         forceRefresh: Boolean,
         revalidate: Boolean,
         nowMillis: () -> Long
-    ): Flow<CachedLoadEvent<ForumThreadDetail>> {
-        val url = buildForumThreadDetailUrl(siteConfig.baseUrl, tid, page, floorOrder)
+    ): Flow<CachedLoadEvent<ForumThreadDetail>> = flow {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = buildForumThreadDetailUrl(baseUrl, tid, page, floorOrder)
         forumLogD("[Forum] loadThreadDetail: url=$url")
-        return cacheStore.observeCached(
-            key = forumDetailCacheKey(tid, page, floorOrder),
-            ttlMillis = threadDetailTtl(page),
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = revalidate && page == 1,
-            nowMillis = nowMillis
-        ) {
-            val doc = fetchForumDocument(url)
-            parseForumThreadDetail(doc, siteConfig.baseUrl)
-        }
+        emitAll(
+            cacheStore.observeCached(
+                key = forumDetailCacheKey(baseUrl, tid, page, floorOrder),
+                ttlMillis = threadDetailTtl(page),
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate && page == 1,
+                nowMillis = nowMillis
+            ) {
+                val doc = fetchForumDocument(url)
+                parseForumThreadDetail(doc, baseUrl)
+            }
+        )
     }
 
     override suspend fun loadForumBoards(forceRefresh: Boolean): ForumHomeData =
@@ -229,33 +244,47 @@ class DefaultForumRepository @Inject constructor(
         page: Int,
         forceRefresh: Boolean
     ): ForumCommentPageResult {
-        val url = "${siteConfig.baseUrl}/forum/forum.php?mod=misc&action=commentmore&tid=$tid&pid=$pid&page=$page&inajax=1&ajaxtarget=comment_$pid"
-        val referer = "${siteConfig.baseUrl}/forum/forum.php?mod=viewthread&tid=$tid"
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = "$baseUrl/forum/forum.php?mod=misc&action=commentmore&tid=$tid&pid=$pid&page=$page&inajax=1&ajaxtarget=comment_$pid"
+        val referer = "$baseUrl/forum/forum.php?mod=viewthread&tid=$tid"
         forumLogD("[Forum] loadFloorComments: url=$url")
         return cacheStore.observeCached(
-            key = forumFloorCommentsCacheKey(tid, pid, page),
+            key = forumFloorCommentsCacheKey(baseUrl, tid, pid, page),
             ttlMillis = ForumCacheTtl.THREAD_DETAIL_NEXT_PAGE_MILLIS,
             disk = true,
             forceRefresh = forceRefresh,
             revalidate = false
         ) {
             val doc = fetchForumAjaxDocument(url, referer)
-            parseForumFloorComments(doc, siteConfig.baseUrl, pid)
+            parseForumFloorComments(doc, baseUrl, pid)
         }.firstCachedOrFresh()
     }
 
-    private fun forumCachePrefix(): String = "forum:${siteConfig.baseUrl}"
+    private fun forumCachePrefix(baseUrl: String): String = "forum:$baseUrl"
 
-    private fun forumBoardsCacheKey(): String = "${forumCachePrefix()}:boards"
+    private fun forumBoardsCacheKey(baseUrl: String): String = "${forumCachePrefix(baseUrl)}:boards"
 
-    private fun forumThreadsCacheKey(fid: Int, page: Int, typeId: Int?): String =
-        "${forumCachePrefix()}:threads:$fid:$page:${typeId ?: "all"}"
+    private fun forumThreadsCacheKey(
+        baseUrl: String,
+        fid: Int,
+        page: Int,
+        typeId: Int?
+    ): String = "${forumCachePrefix(baseUrl)}:threads:$fid:$page:${typeId ?: "all"}"
 
-    private fun forumDetailCacheKey(tid: Int, page: Int, floorOrder: ForumFloorOrder): String =
-        "${forumCachePrefix()}:detail:v3:$tid:$page:${floorOrder.name.lowercase()}"
+    private fun forumDetailCacheKey(
+        baseUrl: String,
+        tid: Int,
+        page: Int,
+        floorOrder: ForumFloorOrder
+    ): String = "${forumCachePrefix(baseUrl)}:detail:v3:$tid:$page:${floorOrder.name.lowercase()}"
 
-    private fun forumFloorCommentsCacheKey(tid: Int, pid: Int, page: Int): String =
-        "${forumCachePrefix()}:floor-comments:v2:$tid:$pid:$page"
+    private fun forumFloorCommentsCacheKey(
+        baseUrl: String,
+        tid: Int,
+        pid: Int,
+        page: Int
+    ): String = "${forumCachePrefix(baseUrl)}:floor-comments:v2:$tid:$pid:$page"
 
     private fun threadListTtl(page: Int): Long =
         if (page == 1) ForumCacheTtl.THREAD_LIST_FIRST_PAGE_MILLIS
