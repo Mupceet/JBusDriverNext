@@ -45,6 +45,14 @@ interface LinkItemDao {
     @Query("SELECT * FROM t_link WHERE dbType = :dbType ORDER BY id DESC")
     suspend fun listByType(dbType: Int): List<LinkItem>
 
+    /**
+     * 按类型实时观察收藏项（Flow 查询），避免全表读取后在内存过滤。
+     *
+     * @param dbType 数据类型（MovieDBType=1, ActressDBType=2 等）
+     */
+    @Query("SELECT * FROM t_link WHERE dbType = :dbType ORDER BY id DESC")
+    fun listByTypeFlow(dbType: Int): Flow<List<LinkItem>>
+
     /** 查询非电影/演员类型的收藏链接（如类别、搜索链接等） */
     @Query("SELECT * FROM t_link WHERE dbType NOT IN (1, 2) ORDER BY id DESC")
     suspend fun queryLink(): List<LinkItem>

@@ -4,7 +4,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
@@ -193,7 +192,7 @@ class DefaultCollectRepository @Inject constructor(
     }
 
     override fun observeCollectedLinkItems(dbType: Int): Flow<List<LinkItem>> =
-        linkDao.listAll().map { items -> items.filter { it.dbType == dbType } }
+        linkDao.listByTypeFlow(dbType)
 
     override suspend fun exportCollectionsJson(): String {
         return backupCodec.exportCollectionsJson()

@@ -2,6 +2,7 @@ package me.jbusdriver.modern.data.repository
 
 import com.google.gson.JsonParser
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import me.jbusdriver.modern.core.site.SiteConfig
@@ -194,6 +195,10 @@ class CollectionBackupCodecTest {
 
         override suspend fun listByType(dbType: Int): List<LinkItem> =
             items.filter { it.dbType == dbType }
+
+        override fun listByTypeFlow(dbType: Int): Flow<List<LinkItem>> = flow {
+            emit(items.filter { it.dbType == dbType })
+        }
 
         override suspend fun queryLink(): List<LinkItem> =
             items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }

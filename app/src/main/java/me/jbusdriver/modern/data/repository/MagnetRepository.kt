@@ -20,6 +20,7 @@ class DefaultMagnetRepository @Inject constructor(
 ) : MagnetRepository {
 
     override suspend fun fetchMagnets(gid: String, uc: String): List<Magnet> {
+        siteConfig.awaitReady()
         val baseUrl = siteConfig.baseUrl
         val floor = Random.nextInt(1, 1001)
         val ajaxUrl = "$baseUrl/ajax/uncledatoolsbyajax.php?gid=$gid&lang=zh&uc=$uc&floor=$floor"

@@ -361,6 +361,10 @@ class CollectRepositoryTest {
         override suspend fun listByType(dbType: Int): List<LinkItem> =
             items.filter { it.dbType == dbType }
 
+        override fun listByTypeFlow(dbType: Int): Flow<List<LinkItem>> = flow {
+            emit(items.filter { it.dbType == dbType })
+        }
+
         override suspend fun queryLink(): List<LinkItem> =
             items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }
 
@@ -429,6 +433,10 @@ class CollectRepositoryTest {
         override suspend fun listByType(dbType: Int): List<LinkItem> =
             items.filter { it.dbType == dbType }
 
+        override fun listByTypeFlow(dbType: Int): Flow<List<LinkItem>> = flow {
+            emit(items.filter { it.dbType == dbType })
+        }
+
         override suspend fun queryLink(): List<LinkItem> =
             items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }
 
@@ -494,6 +502,10 @@ class CollectRepositoryTest {
 
         override suspend fun listByType(dbType: Int): List<LinkItem> =
             items.filter { it.dbType == dbType }
+
+        override fun listByTypeFlow(dbType: Int): Flow<List<LinkItem>> = flow {
+            emit(items.filter { it.dbType == dbType })
+        }
 
         override suspend fun queryLink(): List<LinkItem> =
             items.filter { it.dbType !in setOf(MovieDBType, ActressDBType) }
