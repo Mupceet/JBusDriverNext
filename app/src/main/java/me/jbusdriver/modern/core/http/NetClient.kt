@@ -56,36 +56,25 @@ object NetClient {
     /**
      * 磁力链接 / 列表 Cookie 拦截器
      *
-     * 注入 Cookie：existmag=all/mag 控制是否显示全部磁力链接，
-     * bus_auth（可选）为站点认证 token，仅在用户通过 JAVBUS_AUTH_COOKIE 配置时注入，
-     * 作为 OkHttp 快速通道；默认为空，HTML 页面改由 WebView 会话获取。
-     * 与 CookieJar 中的 cookies 合并，而非覆盖。
+     * 注入 Cookie：existmag=all/mag 控制是否显示全部磁力链接。
+     * 站点 HTML 页面由 WebView 会话获取（driver-verify 门槛），这里只服务
+     * OkHttp 的 ajax/图片请求，与 CookieJar 中的 cookies 合并而非覆盖。
      */
     private val EXIST_MAGNET_INTERCEPTOR by lazy {
         Interceptor { chain ->
-            var request = chain.request()
+            val request = chain.request()
             // Preserve any cookies already set by CookieJar
             val existingCookies = request.header("Cookie") ?: ""
             // The existmag header (set by fetchHtmlResponse via existMagCookieValue) carries the
             // desired cookie value; requests that don't set it default to magnet-only.
             val existMagValue = request.header(EXIST_MAG_COOKIE) ?: existMagCookieValue(false)
-            var mergedCookies = mergeControlledCookie(existingCookies, EXIST_MAG_COOKIE, existMagValue)
-            // bus_auth only when a user-supplied token is configured (optional OkHttp fast-path).
-            // By default it is empty: the site's driver-verify gate is passed by the WebView
-            // session instead, so HTML pages are fetched via BrowserSessionClient, not here.
-            val authCookie = BuildConfig.JAVBUS_AUTH_COOKIE
-            if (authCookie.isNotBlank()) {
-                mergedCookies = mergeControlledCookie(mergedCookies, "bus_auth", authCookie)
-            }
-            request = request.newBuilder()
+            val mergedCookies = mergeControlledCookie(existingCookies, EXIST_MAG_COOKIE, existMagValue)
+            val prepared = request.newBuilder()
                 .header("User-Agent", USER_AGENT)
                 .header("Cookie", mergedCookies)
                 .build()
-            KLog.d(
-                "Prepared cookies for ${request.url}; auth=${authCookie.isNotBlank()}",
-                "NetClient"
-            )
-            chain.proceed(request)
+            KLog.d("Prepared cookies for ${prepared.url}", "NetClient")
+            chain.proceed(prepared)
         }
     }
 

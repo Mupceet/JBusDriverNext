@@ -252,14 +252,10 @@ class DefaultHtmlClient @Inject constructor(
     }
 
     private suspend fun fetchPage(url: String, showAll: Boolean): HtmlResponse {
-        // 默认情况：driver-verify 反爬只对真实浏览器放行，所以走 WebView
-        // 配置了 JAVBUS_AUTH_COOKIE 时走 OkHttp 快路径（失败再回退 WebView）
-        return if (BuildConfig.JAVBUS_AUTH_COOKIE.isNotBlank()) {
-            fetchViaOkHttpWithFallback(url, showAll, referer = null)   // 快路径
-        } else {
-            val doc = browserSessionClient.fetchDocument(url)          // 慢路径：WebView 渲染
-            HtmlResponse(doc.location(), doc.html())
-        }
+        // driver-verify 反爬只对真实浏览器放行，所以页面一律走 WebView 会话。
+        // OkHttp 仅用于 ajax 端点（如磁力列表）和图片，它们不在反爬门槛之后。
+        val doc = browserSessionClient.fetchDocument(url)
+        HtmlResponse(doc.location(), doc.html())
     }
 }
 ```
@@ -268,10 +264,10 @@ class DefaultHtmlClient @Inject constructor(
 
 1. **接口 + 实现**：Repository 注入的是 `HtmlClient`（接口），不是 `DefaultHtmlClient`。方便测试时塞假实现——这是第 4 章讲过的"`@Binds` 把接口绑实现"的实战。
 2. **`@Singleton` + `@Inject constructor`**：Hilt 单例。整个 App 只有一个 `HtmlClient`，cookie/会话状态跨 Repository 共享。
-3. **反爬决策在这里**：`fetchPage` 这个 private 方法是核心——它判断"走 OkHttp 还是 WebView"。这个决策对外完全不可见，调用方只看到一个 `suspend fun fetchDocument(...)`。
+3. **反爬决策在这里**：`fetchPage` 这个 private 方法是核心——它决定页面 HTML 一律走 WebView 会话；ajax 端点走 OkHttp（见 `fetchViaOkHttpWithFallback`，命中 driver-verify 时回退 WebView）。这个决策对外完全不可见，调用方只看到一个 `suspend fun fetchDocument(...)`。
 4. **`BrowserSessionClient`**：管理共享 WebView 会话（warmup、cookie 同步、URL 加载）。它的实现也用 `WebViewFactory`，下面看。
 
-> `BuildConfig.JAVBUS_AUTH_COOKIE` 是个构建期变量——用户自己配的快速通道 token。默认空字符串，所有 HTML 都走 WebView。把这种"决策由配置驱动"的逻辑集中在 `HtmlClient`，比散在各 Repository 里强一万倍。
+> 早期版本曾支持把用户配置的 `JAVBUS_AUTH_COOKIE` 编进 BuildConfig 走 OkHttp 快路径，出于安全考虑已移除：页面 HTML 统一由 WebView 会话获取，不依赖构建期埋入的会话凭证。
 
 ### 7.4.3 WebViewFactory — 测试友好的 WebView 抽象
 

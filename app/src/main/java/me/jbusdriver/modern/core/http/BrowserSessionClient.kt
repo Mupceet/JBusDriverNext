@@ -6,8 +6,8 @@ import org.jsoup.nodes.Document
  * Shared browser-engine (WebView) session for the target site.
  *
  * The site gates HTML pages behind `/doc/driver-verify`, which only a real browser engine
- * can pass — plain OkHttp (a non-browser) is redirected there unless it carries a valid
- * `bus_auth`. This session keeps a hidden WebView alive that has already passed the gate,
+ * can pass — plain OkHttp (a non-browser) is redirected there. This session keeps a hidden
+ * WebView alive that has already passed the gate,
  * and is used by BOTH the movie/list/detail pipeline and the forum pipeline to fetch pages
  * and ajax fragments the OkHttp client cannot reach on its own.
  */
