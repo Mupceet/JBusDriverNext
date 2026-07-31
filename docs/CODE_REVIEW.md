@@ -1,6 +1,6 @@
 # JBusDriver 代码检视闭环报告
 
-**更新日期**: 2026-06-19
+**更新日期**: 2026-07-31
 **检视范围**: `app/src/main`、`app/src/test`、Gradle 配置、架构整改记录
 **检视目标**: 对照当前项目实际状态和 Android/Compose/Data layer/Coroutine 最佳实践，确认已闭环问题、剩余风险和后续优化优先级。
 
@@ -8,7 +8,7 @@
 
 ## 一、当前结论
 
-当前没有发现新的 P0/P1 正确性问题，也没有发现会阻塞 debug/release 构建的 lint 或编译问题。Phase A/B/C 中面向正确性和架构边界的主要问题已经闭环：
+当前没有发现新的 P0/P1 正确性问题，也没有发现会阻塞 debug/release 构建的 lint 或编译问题。Phase A/B/C 中面向正确性和架构边界的主要问题已经闭环；2026-07-31 复查轮（Phase D）进一步闭环了剩余的安全项与一批工程化问题：
 
 1. 跨站点缓存隔离、`SiteConfig.awaitReady()`、搜索与列表请求竞态。
 2. Forum WebView session 生命周期、线程边界和可等待销毁。
@@ -16,8 +16,12 @@
 4. 平台 IO 从 Composable 收口到 gateway/ViewModel。
 5. movielist/forum stale-while-revalidate 状态更新迁移到 reducer，并增加纯函数测试。
 6. lint/compiler 剩余项清理和依赖小版本升级。
+7. `JAVBUS_AUTH_COOKIE` 构建支持移除（不再把会话凭证编入 release APK）。
+8. Forum/Magnet 仓储补齐 `SiteConfig.awaitReady()`，消除冷启动默认域名竞态。
+9. 剩余硬编码 UI 文案全部迁移到字符串资源。
+10. 取消异常、loadMore 竞态、深链解析、FileCache 并发等一批 P3 加固。
 
-后续不再是“必须立即修复的正确性缺陷”，而是持续工程化优化：减少全局状态、推动 i18n、继续拆分大文件、压缩 ViewModel 流程重复。
+后续不再是“必须立即修复的正确性缺陷”，而是持续工程化优化：继续拆分大文件、压缩 ViewModel 流程重复、补充 release minify smoke test。
 
 ---
 
@@ -97,21 +101,41 @@
 
 ---
 
+### Phase D（2026-07-31）
+
+1. **`JAVBUS_AUTH_COOKIE` 构建支持移除（安全）**
+   删除 BuildConfig 字段、`local.properties`/环境变量读取与 OkHttp `bus_auth` 快路径；页面 HTML 一律走共享 WebView 会话，ajax 端点保留 OkHttp + WebView 回退。修复了该 cookie 会被编入 release APK 的问题，并同步更新 `gradle.properties` 与学习文档。
+
+2. **Forum/Magnet 站点配置就绪**
+   `DefaultForumRepository` 的 observe*/loadFloorComments 与 `DefaultMagnetRepository.fetchMagnets` 补齐 `siteConfig.awaitReady()`，并在就绪后再构建 URL/缓存 key，消除冷启动时用默认域名请求的竞态（与 Movie/Search/Detail 仓储对齐）。
+
+3. **UI 硬编码文案迁移**
+   迁移剩余 6 处硬编码 UI 文案（SettingsScreen、CollectCategoryScreen、ForumThreadDetailScreen）到字符串资源，中/英文案同步补齐。
+
+4. **取消异常一致性**
+   `MovieDetailViewModel` 与其余列表 ViewModel 的 `catch (Exception)` 统一先重抛 `CancellationException`，避免作用域取消被映射为错误消息/状态写入。
+
+5. **loadMore 竞态**
+   6 个列表 ViewModel 的 loadMore/loadMoreReplies 在启动协程前同步置位 `isLoadingMore`，防止快速连点重复请求同一页。
+
+6. **调试与并发加固**
+   `logListDiff` 在 release 下跳过整个 diff 计算（避免主线程无谓开销）；`FileCache` 读写/trim 加 `@Synchronized`；深链解析用 `runCatching` 兜底；`@IoDispatcher` 显式限定参数目标；删除 CategoryBottomSheet 注释死代码；修正 `setDataSourceType` 误导性 KDoc。
+
+7. **收藏观察查询下推**
+   `LinkItemDao.listByTypeFlow(dbType)` Flow 查询替代全表读取后的内存过滤。
+---
+
 ## 三、当前仍成立的问题
 
 这些问题仍存在，但按当前证据不属于阻塞发布的正确性缺陷。
 
-### 3.1 UI i18n 尚未系统完成
+### 3.1 UI i18n 剩余硬编码文案已迁移（2026-07-31 闭环）
 
 **位置**: `ui/**`
 
-已有部分字符串迁移到 `strings.xml`，但仍能在 UI 层看到硬编码中文/英文文案，例如 `ForumThreadDetailScreen` 中的返回与复制提示、部分 icon contentDescription，以及若干 Toast/Dialog 文案。
+Phase D 已把剩余硬编码用户可见文案（`SettingsScreen` 的设置/主题模式/楼层浏览顺序/影片列表样式、`CollectCategoryScreen` 的更多设置、`ForumThreadDetailScreen` 的返回）迁移到 `values/strings.xml` + `values-en/strings.xml`。复查未发现新的硬编码 UI 文案。
 
-**建议**: 按屏幕分批迁移到资源：
-
-1. 优先迁移 Toast、contentDescription、Dialog/Button 文案。
-2. 对计数类文案继续使用 `plurals`。
-3. 对来自服务端或 domain model 的标题/分类名保持原样，不强行资源化。
+**约定**: 新增 UI 文案继续使用字符串资源；计数类文案使用 `plurals`；服务端/domain model 提供的标题、分类名保持原样，不强行资源化。
 
 ### 3.2 大文件和 ViewModel 流程重复仍存在
 
@@ -164,6 +188,16 @@ rg -n "lateinit var JBus|AppContext|JBusManager|NetClient\.defaultFastUrl|NetCli
 1. 生产代码未发现 `runBlocking`、`object DB`、`DB.xxx`、旧 `Uri.parse`、旧 `Color.parseColor`、旧 `MenuAnchorType` 回归。
 2. `lateinit var JBus`、`AppContext`、`JBusManager`、`NetClient.defaultFastUrl`、`NetClient.siteConfig`、`CacheLoader` 未在生产代码中继续作为入口存在。
 
+2026-07-31 Phase D 补充执行（全部通过）：
+
+```bash
+./gradlew.bat testDebugUnitTest assembleDebug lintDebug --console=plain
+./gradlew.bat assembleRelease --console=plain
+git diff --check
+```
+
+补充核查：`JAVBUS_AUTH_COOKIE`/`bus_auth` 在生产代码（`app/src`）已无引用；`catch (e: Exception)` 均伴随 `CancellationException` 重抛（独立 catch 分支或内联 `if (e is CancellationException) throw e`）。
+
 ---
 
 ## 五、发布前建议门槛
@@ -186,5 +220,6 @@ rg -n "lateinit var JBus|AppContext|JBusManager|NetClient\.defaultFastUrl|NetCli
 
 ## 六、下一步优先级
 
-1. 分屏幕推进 UI 文案资源化，优先 Toast、Dialog、contentDescription。
-2. 继续拆分大文件中的纯 UI section，保持小步提交和单测覆盖。
+1. 继续拆分大文件中的纯 UI section（`MovieList.kt`、`ForumPostContent.kt`、`LinkMovieListViewModel.kt`、`SettingsScreen.kt` 等），保持小步提交和单测覆盖。
+2. 若改动触及 R8/Gson/Forum 富文本，补充 release minify smoke test（覆盖 `ContentBlock`、收藏导入 JSON、详情页缓存反序列化）。
+3. 观察 ViewModel `loadFirstPage/revalidate/loadMore/refresh` 重复结构，仅在稳定后抽象共享 shape。

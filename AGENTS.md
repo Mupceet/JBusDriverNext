@@ -268,11 +268,12 @@ See `docs/CODE_REVIEW.md` for the full code review report. Key findings:
 ### Current Status
 - No current P0/P1 correctness issue is known from the latest review.
 - Phase A/B/C remediation is closed for: `SiteConfig.awaitReady()`, site-aware cache keys, request identity/race guards, forum WebView session synchronization, collection transaction boundaries, JVM URL parsing, Hilt database entry points, platform IO gateway boundaries, and movielist/forum SWR reducers.
+- Phase D (2026-07-31) closed: `JAVBUS_AUTH_COOKIE` build support removed (no longer embeds a session cookie in release APKs), Forum/Magnet repositories await `SiteConfig` before building URLs, remaining hardcoded UI strings migrated to resources, `CancellationException` rethrow made consistent, `loadMore` race guarded, `logListDiff`/`FileCache`/deep-link hardening, and collection observation queries pushed into SQL.
 - The latest quality gates used were `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and `assembleRelease`.
 
 ### Remaining Non-Blocking Technical Debt
 - The former `JBus`, `JBusManager`, `NetClient.defaultFastUrl`, and `CacheLoader` global entry points have been removed from production code. Prefer Hilt `@ApplicationContext`, `SiteConfig`, `WebViewFactory`, and `CacheStore` for new code.
-- UI i18n is only partially complete. New visible UI strings, Toast messages, dialog labels, and content descriptions should use resources; count labels should use plurals.
+- UI i18n is complete for existing screens. Keep using string resources for new visible UI strings, Toast messages, dialog labels, and content descriptions; use plurals for count labels. Server/domain-provided titles and category names stay as-is.
 - Several files remain large, including `MovieList.kt`, `ForumPostContent.kt`, `LinkMovieListViewModel.kt`, `LinkMovieListScreen.kt`, `MovieDetailScreen.kt`, `MovieListViewModel.kt`, `SettingsScreen.kt`, `MovieRepository.kt`, `ForumBoardsScreen.kt`, and `ForumThreadDetailViewModel.kt`. Prefer small section/helper extraction when touching those files.
 - ViewModel `loadFirstPage/revalidate/loadMore/refresh` orchestration still repeats across list-style screens. Reducers already cover state transitions; avoid broad abstraction until a stable shared shape is obvious.
 - If release minify/Gson/forum rich-text code changes, add or run a release smoke test for JSON deserialization and `ContentBlock` payloads.
