@@ -70,8 +70,8 @@ class ModernMainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: android.content.Intent?) {
-        val key = resolveDeepLink(intent)
-        _deepLink.value = key
+        // 深链解析失败（异常格式的分享文本等）不能拖垮启动流程，回退到主界面。
+        _deepLink.value = runCatching { resolveDeepLink(intent) }.getOrNull()
     }
 
     private fun resolveDeepLink(intent: android.content.Intent?): NavKey? {
@@ -91,7 +91,8 @@ class ModernMainActivity : ComponentActivity() {
     }
 
     private fun resolveJavbusRoute(url: String): NavKey {
-        val path = java.net.URL(url).path.orEmpty().trimEnd('/')
+        val path = runCatching { java.net.URL(url).path.orEmpty().trimEnd('/') }
+            .getOrElse { return RouteMain }
         val segments = path.split("/").filter { it.isNotBlank() }
         val isUncensored = "/uncensored/" in url || path.startsWith("/uncensored")
         val censorType = if (isUncensored) "UNCENSORED" else null

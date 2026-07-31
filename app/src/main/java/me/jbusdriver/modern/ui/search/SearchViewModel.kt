@@ -85,7 +85,7 @@ class SearchViewModel @Inject constructor(
     private val localVideoRepository: LocalVideoRepository,
     private val collectRepository: CollectRepository,
     private val siteConfig: SiteConfig,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -316,8 +316,8 @@ class SearchViewModel @Inject constructor(
         val identity = RequestIdentity(state.query, state.searchType)
         val generation = beginRequest(identity)
 
+        _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 if (state.searchType == SearchType.ACTRESS) {
                     val result = repository.searchActresses(state.query, nextPage)

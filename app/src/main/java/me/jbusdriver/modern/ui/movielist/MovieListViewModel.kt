@@ -198,8 +198,9 @@ class MovieListViewModel @Inject constructor(
     /**
      * 设置数据源类型并重新加载列表。
      *
-     * 如果类型未变化且列表中已有数据，则触发后台 revalidate。
-     * 重置页码和 UI 状态后自动调用 [loadFirstPage]。
+     * 如果类型未变化且列表中已有数据，则直接跳过（后台 revalidate 由
+     * 屏幕的 [androidx.lifecycle.compose.LifecycleResumeEffect] 在回到前台时触发）。
+     * 否则重置页码和 UI 状态后自动调用 [loadFirstPage]。
      *
      * @param type 数据源类型，如 [DataSourceType.CENSORED]、[DataSourceType.UNCENSORED] 等
      */
@@ -468,8 +469,8 @@ class MovieListViewModel @Inject constructor(
         val identity = currentListIdentity()
         val generation = beginListRequest(identity)
         val source = pageSource
+        _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = source.loadNextPage(nextPage, showAll = identity.showAll)
                 if (!isCurrent(generation, identity)) return@launch

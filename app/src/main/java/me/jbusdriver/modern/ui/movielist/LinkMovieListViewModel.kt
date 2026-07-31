@@ -280,8 +280,8 @@ class LinkMovieListViewModel @AssistedInject constructor(
         pages.advanceTo(nextPage)
         val identity = currentListIdentity()
         val generation = beginListRequest(identity)
+        _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result =
                     repository.loadPageByUrl(identity.linkUrl, nextPage, showAll = identity.showAll)

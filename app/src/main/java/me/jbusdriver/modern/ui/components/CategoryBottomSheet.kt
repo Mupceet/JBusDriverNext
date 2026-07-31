@@ -106,18 +106,7 @@ fun CategoryBottomSheet(
                         Text(stringResource(R.string.reset), fontSize = 12.sp)
                     }
                 }
-//                Text("多選", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-//                Spacer(Modifier.width(4.dp))
-//                Checkbox(
-//                    checked = isMultiSelect,
-//                    onCheckedChange = {
-//                        isMultiSelect = it
-//                        if (!it && selectedGenres.size > 1) {
-//                            onSelectionChange(selectedGenres.lastOrNull()?.let { setOf(it) } ?: emptySet())
-//                        }
-//                    },
-//                    modifier = Modifier.height(24.dp)
-//                )
+
             }
         }
 

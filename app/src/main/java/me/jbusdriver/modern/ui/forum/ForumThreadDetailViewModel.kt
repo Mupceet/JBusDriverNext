@@ -354,8 +354,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         val floorOrder = _uiState.value.floorOrder
         val identity = DetailRequestIdentity(tid, nextPage, floorOrder)
         val generation = beginRequest(identity)
+        _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
                 if (!isCurrent(generation, identity)) return@launch

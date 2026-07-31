@@ -210,8 +210,8 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (nextPage <= currentPage) return
 
         currentPage = nextPage
+        _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = repository.loadThreads(fid, nextPage, state.currentTypeId)
                 _uiState.update {

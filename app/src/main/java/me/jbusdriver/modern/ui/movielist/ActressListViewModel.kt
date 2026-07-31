@@ -297,8 +297,8 @@ class ActressListViewModel @Inject constructor(
         pages.advanceTo(nextPage)
         val type = dataSourceType
         val generation = beginRequest(type)
+        _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             try {
                 val result = repository.loadActresses(type, nextPage)
                 if (!isCurrent(generation, type)) return@launch

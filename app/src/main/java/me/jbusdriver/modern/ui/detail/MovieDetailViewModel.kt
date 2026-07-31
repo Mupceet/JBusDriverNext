@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,6 +95,8 @@ class MovieDetailViewModel @Inject constructor(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = R.string.load_failed) }
             }
@@ -107,6 +110,8 @@ class MovieDetailViewModel @Inject constructor(
             try {
                 val detail = repository.getMovieDetail(currentUrl, forceRefresh = true)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isRefreshing = false) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, error = R.string.load_failed) }
             }
@@ -124,6 +129,8 @@ class MovieDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(magnets = magnets, isLoadingMagnets = false)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(

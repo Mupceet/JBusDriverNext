@@ -11,8 +11,9 @@ import java.security.MessageDigest
  *
  * 使用场景：DefaultCacheStore 和 CacheStore.persistentCached 的磁盘读写。
  *
- * 线程：非线程安全，调用方需在 IO 调度器上执行（DefaultCacheStore 已通过
- * withContext(Dispatchers.IO) 保证）。
+ * 线程：公开读写方法以 @Synchronized 串行化，可安全地由多个 IO 协程并发调用；
+ * 但单次 put/get 仍非原子（写入不是临时文件+rename），读侧需容忍半截文件
+ * （Gson 解析失败返回 null 兜底）。
  *
  * @param cacheDir 缓存文件存放目录
  * @param maxSizeBytes 磁盘缓存上限，默认 50MB
@@ -23,14 +24,14 @@ class FileCache(
 ) {
 
     /** 将 [value] 写入以 [key] 的 SHA-256 哈希命名的文件。 */
-    fun put(key: String, value: String) {
+    @Synchronized fun put(key: String, value: String) {
         cacheDir.mkdirs()
         file(key).writeText(value)
         trim()
     }
 
     /** 读取 [key] 对应的文件内容，文件不存在时返回 null。 */
-    fun get(key: String): String? {
+    @Synchronized fun get(key: String): String? {
         val f = file(key)
         if (f.exists()) return f.readText()
         val legacy = legacyFile(key)
@@ -38,7 +39,7 @@ class FileCache(
     }
 
     /** 删除 [key] 对应的缓存文件。 */
-    fun remove(key: String) {
+    @Synchronized fun remove(key: String) {
         file(key).let { if (it.exists()) it.delete() }
         legacyFile(key).let { if (it.exists()) it.delete() }
     }
@@ -53,7 +54,7 @@ class FileCache(
     }
 
     /** 超过上限时按最后修改时间删除最旧的文件，回退到 75% 容量。 */
-    private fun trim() {
+    @Synchronized private fun trim() {
         val files = cacheDir.listFiles()?.asList() ?: return
         val totalSize = files.sumOf { it.length() }
         if (totalSize <= maxSizeBytes) return

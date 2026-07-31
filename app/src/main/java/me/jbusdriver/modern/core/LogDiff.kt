@@ -11,6 +11,9 @@ fun <T, K : Any> logListDiff(
     describe: (T) -> String = { it.toString() },
     diffFields: (old: T, new: T) -> List<String> = { _, _ -> emptyList() }
 ) {
+    // 该函数仅为调试日志服务：release 下 KLog.d 是 no-op，跳过整个 diff 计算，
+    // 避免在主线程（revalidate/loadFirstPage 路径）做无谓的列表对比。
+    if (!KLog.isDebug) return
     val oldMap = oldItems.associateBy(keySelector)
     val newMap = newItems.associateBy(keySelector)
     val added = newItems.filter { keySelector(it) !in oldMap }
