@@ -223,6 +223,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                     )
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 currentPage = _uiState.value.pageInfo.activePage
                 _uiState.update { it.copy(isLoadingMore = false) }
             }

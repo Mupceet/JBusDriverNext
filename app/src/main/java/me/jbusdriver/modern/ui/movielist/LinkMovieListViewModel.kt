@@ -456,6 +456,7 @@ class LinkMovieListViewModel @AssistedInject constructor(
                     }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 KLog.e("loadActressDetail failed", e)
                 _uiState.update {
                     it.copy(actressHeader = it.actressHeader.finishWithError(e.message))

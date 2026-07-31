@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.movielist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -175,6 +176,7 @@ class CollectionListViewModel @Inject constructor(
                 updateAvailableYears()
                 applyFilterAndSort()
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(isLoading = false, error = R.string.collect_load_failed) }
             }
         }
@@ -210,6 +212,7 @@ class CollectionListViewModel @Inject constructor(
                 collectRepository.removeCollect(linkItem)
                 loadCollection(MovieDBType)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 // 本地数据库删除失败时记录日志；列表不会刷新，影片仍保留在收藏中（UI 状态一致）
                 KLog.e("removeMovie failed", e)
             }
@@ -228,6 +231,7 @@ class CollectionListViewModel @Inject constructor(
                 collectRepository.updateMovieCategory(movie.link.urlPath, categoryId)
                 loadCollection(MovieDBType)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 KLog.e("setMovieCategory failed", e)
             }
         }
@@ -248,6 +252,7 @@ class CollectionListViewModel @Inject constructor(
                 collectRepository.removeCollect(linkItem)
                 loadCollection(ActressDBType)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 KLog.e("removeActress failed", e)
             }
         }
