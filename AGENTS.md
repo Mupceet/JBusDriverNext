@@ -20,6 +20,9 @@ Claude Code reads `CLAUDE.md`, which imports this file with `@AGENTS.md`.
 
 - ViewModels must not expose callbacks to the UI; expose state and one-shot events as Flow/StateFlow/SharedFlow instead.
 - Prefer StateFlow with `.cachedIn()` or `.stateIn()` over raw Flow for ViewModel state holders when it avoids recomputation and flickering.
+- Follow Unidirectional Data Flow (UDF): screen-level state lives in the ViewModel as a single immutable `UiState` data class exposed via `StateFlow` (`_uiState.asStateFlow()`), and the UI renders `UI = f(state)` while expressing intents through ViewModel methods (`loadFirstPage`, `updateFilter`, ...). Keep state transitions in pure reducer functions where the shape repeats.
+- Keep only ephemeral UI-local state in composables via `remember`/`rememberSaveable` (e.g. dropdown expanded, dialog visibility, pager position, long-press offset). Any state that must survive navigation, is shared across screens, or drives business/filter logic belongs in the ViewModel, not in composition.
+- Emit one-shot events (Snackbar/Toast, navigation, import/export results) through `SharedFlow`/`Channel`; do not encode one-shot events as booleans/flags inside `UiState`.
 - When refactoring multiple files, keep changes minimal and targeted; do not redesign UI the user did not ask for.
 - After any Gson, ProGuard, or R8 changes, verify debug and release behavior for representative JSON payloads.
 - When removing or renaming a data field, add backward-compatible `@SerializedName` aliases for old field names where Gson compatibility matters.
