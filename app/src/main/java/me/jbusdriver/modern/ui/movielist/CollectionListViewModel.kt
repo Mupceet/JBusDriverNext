@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,8 +13,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
@@ -71,7 +74,8 @@ class CollectionListViewModel @Inject constructor(
     private val collectRepository: CollectRepository,
     private val uiPrefsStore: CollectionUiPrefs,
     private val siteConfig: SiteConfig,
-    private val localVideoRepository: LocalVideoRepository
+    private val localVideoRepository: LocalVideoRepository,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionListUiState())
@@ -103,6 +107,10 @@ class CollectionListViewModel @Inject constructor(
 
     /** 是否已从持久化加载排序设定 */
     private var sortRestored = false
+
+    /** 筛选/排序计算代数：并发触发时只应用最新一次结果（丢弃过期慢任务）。 */
+    @Volatile
+    private var computeGeneration = 0L
 
     // 此 init 块必须在 allMovies/allActresses/currentDbType 等属性初始化之后：
     // viewModelScope 默认走 Dispatchers.Main.immediate，构造期间会同步触发 downloadedCodes
@@ -164,13 +172,17 @@ class CollectionListViewModel @Inject constructor(
                 val actressItems = collectRepository.getCollectedLinkItems(ActressDBType)
                 val baseUrl = siteConfig.baseUrl
 
-                allMovies = movieItems.mapNotNull { item ->
-                    ((item.toILink(baseUrl) as? Movie)?.toUiModel())
-                        ?.copy(createTime = item.createTime, categoryId = item.categoryId)
-                }
-                allActresses = actressItems.mapNotNull { item ->
-                    ((item.toILink(baseUrl) as? ActressInfo)?.toActressUiModel())
-                        ?.copy(createTime = item.createTime, categoryId = item.categoryId)
+                // Gson 反序列化 + 领域→UI 映射是 CPU 密集工作，下推 IO 调度器避免主线程卡顿
+                // （与 SearchViewModel.collectedMovies 的处理一致）。
+                withContext(ioDispatcher) {
+                    allMovies = movieItems.mapNotNull { item ->
+                        ((item.toILink(baseUrl) as? Movie)?.toUiModel())
+                            ?.copy(createTime = item.createTime, categoryId = item.categoryId)
+                    }
+                    allActresses = actressItems.mapNotNull { item ->
+                        ((item.toILink(baseUrl) as? ActressInfo)?.toActressUiModel())
+                            ?.copy(createTime = item.createTime, categoryId = item.categoryId)
+                    }
                 }
 
                 updateAvailableYears()
@@ -282,14 +294,78 @@ class CollectionListViewModel @Inject constructor(
         _uiState.update { it.copy(availableYears = AvailableYears(publishYears, collectYears)) }
     }
 
-    /** 对原始数据应用当前筛选和排序，更新 UI 状态 */
+    /** 对原始数据应用当前筛选和排序，更新 UI 状态（计算在 IO 调度器执行，避免主线程卡顿） */
     private fun applyFilterAndSort() {
+        // 在 Main 线程快照输入（这些字段只被 Main 线程写入），把纯计算下推 ioDispatcher；
+        // 用代数丢弃过期结果，避免慢任务晚到覆盖新状态。
         val filter = _uiState.value.filterState
         val years = _uiState.value.availableYears
+        val movies = allMovies
+        val actresses = allActresses
+        val groups = allLocalVideoGroups
+        val dbType = currentDbType
+        val hasFolder = currentHasFolder
+        val downloaded = currentDownloadedCodes
+        val showUncollected = currentShowUncollected
+        computeGeneration += 1
+        val generation = computeGeneration
+        viewModelScope.launch(ioDispatcher) {
+            val result = computeCollectionResult(
+                movies = movies,
+                actresses = actresses,
+                groups = groups,
+                filter = filter,
+                years = years,
+                dbType = dbType,
+                hasFolder = hasFolder,
+                downloaded = downloaded,
+                showUncollected = showUncollected,
+            )
+            if (generation != computeGeneration) return@launch
+            _uiState.update {
+                it.copy(
+                    movies = result.movies,
+                    actresses = result.actresses,
+                    movieCount = result.movieCount,
+                    actressCount = result.actressCount,
+                    availablePublishMonths = result.availablePublishMonths,
+                    availableCollectMonths = result.availableCollectMonths,
+                    hasLocalVideoFolder = result.hasLocalVideoFolder,
+                    showUncollectedLocal = result.showUncollectedLocal,
+                    uncollectedVideos = result.uncollectedVideos,
+                    isLoading = false,
+                )
+            }
+        }
+    }
 
+    /** 筛选/排序的纯计算结果，由 [applyFilterAndSort] 在后台线程生成。 */
+    private data class CollectionComputedResult(
+        val movies: List<MovieUiModel>,
+        val actresses: List<ActressUiModel>,
+        val movieCount: Int,
+        val actressCount: Int,
+        val availablePublishMonths: Set<Int>,
+        val availableCollectMonths: Set<Int>,
+        val hasLocalVideoFolder: Boolean,
+        val showUncollectedLocal: Boolean,
+        val uncollectedVideos: List<MovieUiModel>,
+    )
+
+    private fun computeCollectionResult(
+        movies: List<MovieUiModel>,
+        actresses: List<ActressUiModel>,
+        groups: List<LocalVideoGroup>,
+        filter: CollectionFilterState,
+        years: AvailableYears,
+        dbType: Int,
+        hasFolder: Boolean,
+        downloaded: Set<String>,
+        showUncollected: Boolean,
+    ): CollectionComputedResult {
         // Compute available publish months for the selected year
         val availableMonths = if (filter.publishYear != null && filter.publishYear > 0) {
-            allMovies
+            movies
                 .filter { it.date.take(4).toIntOrNull() == filter.publishYear }
                 .mapNotNull {
                     if (it.date.length >= 7) it.date.substring(5, 7).toIntOrNull() else null
@@ -299,28 +375,28 @@ class CollectionListViewModel @Inject constructor(
 
         // Compute available collect months for the selected collect year, scoped to current db type
         val availableCollectMonths = if (filter.collectYear != null && filter.collectYear > 0) {
-            val times = if (currentDbType == MovieDBType) {
-                allMovies.map { it.createTime }
+            val times = if (dbType == MovieDBType) {
+                movies.map { it.createTime }
             } else {
-                allActresses.map { it.createTime }
+                actresses.map { it.createTime }
             }
             times.filter { it.toYear() == filter.collectYear }.map { it.toMonth() }.toSet()
         } else emptySet()
 
         // 未配置本地视频文件夹时，本地视频筛选不生效（视作 ALL），避免筛选被「卡住」。
         val effectiveLocalVideoFilter =
-            if (currentHasFolder) filter.localVideoFilter else LocalVideoFilter.ALL
+            if (hasFolder) filter.localVideoFilter else LocalVideoFilter.ALL
 
-        val filteredMovies = allMovies
+        val filteredMovies = movies
             .filterByCensor(filter.censorFilter)
-            .filterByLocalVideo(effectiveLocalVideoFilter, currentDownloadedCodes)
+            .filterByLocalVideo(effectiveLocalVideoFilter, downloaded)
             .filterByPublishYear(filter.publishYear, years.publishYears)
             .filterByPublishMonth(filter.publishMonth)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
             .filterByCollectMonth(filter.collectMonth) { it.createTime }
             .sortedWith(filter.sortOption.toMovieComparator())
 
-        val filteredActresses = allActresses
+        val filteredActresses = actresses
             .filterByCensor(filter.censorFilter)
             .filterByCollectYear(filter.collectYear, years.collectYears) { it.createTime }
             .filterByCollectMonth(filter.collectMonth) { it.createTime }
@@ -333,10 +409,10 @@ class CollectionListViewModel @Inject constructor(
         // link 必须用 "/$code" 这种绝对路径（与普通 Movie 一致）：收藏入库会走 stripToPath/wrapImage
         // 往返，裸番号 "code" 会被 wrapImage 错误拼成 "baseUrlcode" 导致详情加载失败且无法取消收藏。
         // movieCount 仅含已收藏，不受此分区影响。
-        val showUncollected = currentShowUncollected && currentDbType == MovieDBType
-        val collectedCodes = allMovies.map { it.code.uppercase() }.toSet()
-        val uncollectedVideos = if (showUncollected) {
-            allLocalVideoGroups
+        val showUncollectedSection = showUncollected && dbType == MovieDBType
+        val collectedCodes = movies.map { it.code.uppercase() }.toSet()
+        val uncollectedVideos = if (showUncollectedSection) {
+            groups
                 .filter { it.code.uppercase() !in collectedCodes }
                 .map { g ->
                     MovieUiModel(
@@ -349,20 +425,17 @@ class CollectionListViewModel @Inject constructor(
                 }
         } else emptyList()
 
-        _uiState.update {
-            it.copy(
-                movies = filteredMovies,
-                actresses = filteredActresses,
-                movieCount = allMovies.size,
-                actressCount = allActresses.size,
-                availablePublishMonths = availableMonths,
-                availableCollectMonths = availableCollectMonths,
-                hasLocalVideoFolder = currentHasFolder,
-                showUncollectedLocal = currentShowUncollected,
-                uncollectedVideos = uncollectedVideos,
-                isLoading = false
-            )
-        }
+        return CollectionComputedResult(
+            movies = filteredMovies,
+            actresses = filteredActresses,
+            movieCount = movies.size,
+            actressCount = actresses.size,
+            availablePublishMonths = availableMonths,
+            availableCollectMonths = availableCollectMonths,
+            hasLocalVideoFolder = hasFolder,
+            showUncollectedLocal = showUncollected,
+            uncollectedVideos = uncollectedVideos,
+        )
     }
 
 // endregion

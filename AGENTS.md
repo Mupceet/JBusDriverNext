@@ -23,6 +23,8 @@ Claude Code reads `CLAUDE.md`, which imports this file with `@AGENTS.md`.
 - When refactoring multiple files, keep changes minimal and targeted; do not redesign UI the user did not ask for.
 - After any Gson, ProGuard, or R8 changes, verify debug and release behavior for representative JSON payloads.
 - When removing or renaming a data field, add backward-compatible `@SerializedName` aliases for old field names where Gson compatibility matters.
+- Data-layer `suspend` functions must be main-safe: the data layer owns thread switching (`withContext(Dispatchers.IO/Default)` or main-safe libraries such as Room/DataStore/OkHttp), so callers can invoke them from `viewModelScope.launch` on the Main thread without extra `withContext`.
+- ViewModels must not hardcode `Dispatchers.IO`/`Dispatchers.Default`; when background work is needed (e.g. Gson deserialization, list filter/sort), inject the `@IoDispatcher`-qualified dispatcher (or a test-injectable dispatcher) so tests can substitute a `TestDispatcher`.
 
 ## Android / Kotlin Conventions
 

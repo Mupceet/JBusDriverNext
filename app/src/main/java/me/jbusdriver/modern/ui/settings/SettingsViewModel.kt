@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.mirror.ScanState
@@ -26,6 +27,7 @@ class SettingsViewModel @Inject constructor(
     val store: AppSettingsContract,
     private val siteConfig: SiteConfig,
     private val localVideoRepository: LocalVideoRepository,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val _scanState = MutableStateFlow(ScanState())
@@ -61,7 +63,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { store.selectUrl(url); siteConfig.baseUrl = url }
     }
     private fun launchScan(block: suspend () -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 _scanState.value = ScanState()
                 block()

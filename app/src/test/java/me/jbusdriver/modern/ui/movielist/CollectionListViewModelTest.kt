@@ -88,8 +88,8 @@ class CollectionListViewModelTest {
 
     @After
     fun tearDown() {
-        // Cancel any viewModelScope coroutine still running on Dispatchers.IO so it doesn't
-        // access Dispatchers.Main after resetMain() (which surfaces as UncaughtExceptionsBeforeTest).
+        // Cancel any viewModelScope coroutine still pending (e.g. background filter/sort
+        // computations) so it doesn't touch Dispatchers.Main after resetMain().
         if (this::viewModel.isInitialized) viewModel.viewModelScope.cancel()
         Dispatchers.resetMain()
     }
@@ -116,12 +116,10 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo, testDispatcher)
 
         assertTrue(testMovies.first().toLinkItem().toILink(FakeSiteConfig().baseUrl) is Movie)
         viewModel.loadCollection(1) // MovieDBType
-        advanceUntilIdle()
-        Thread.sleep(500)
         advanceUntilIdle()
         val state = viewModel.uiState.value
 
@@ -153,12 +151,10 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo, testDispatcher)
 
         assertTrue(testActresses.first().toLinkItem().toILink(FakeSiteConfig().baseUrl) is ActressInfo)
         viewModel.loadCollection(2) // ActressDBType
-        advanceUntilIdle()
-        Thread.sleep(500)
         advanceUntilIdle()
         val state = viewModel.uiState.value
 
@@ -196,11 +192,9 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo, testDispatcher)
 
         viewModel.loadCollection(2) // ActressDBType
-        advanceUntilIdle()
-        Thread.sleep(500)
         advanceUntilIdle()
 
         // Default filter is ALL: both actresses present
@@ -241,11 +235,9 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo, testDispatcher)
 
         viewModel.loadCollection(MovieDBType)
-        advanceUntilIdle()
-        Thread.sleep(500)
         advanceUntilIdle()
 
         viewModel.updateFilter(CollectionFilterState(collectYear = 2026, collectMonth = 6))
@@ -296,11 +288,9 @@ class CollectionListViewModelTest {
             override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
         }
         viewModel =
-            CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), downloadedRepo)
+            CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), downloadedRepo, testDispatcher)
 
         viewModel.loadCollection(MovieDBType)
-        advanceUntilIdle()
-        Thread.sleep(500)
         advanceUntilIdle()
 
         // Default: both movies present
@@ -351,11 +341,9 @@ class CollectionListViewModelTest {
             override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
         }
         viewModel =
-            CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), downloadedRepo)
+            CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), downloadedRepo, testDispatcher)
 
         viewModel.loadCollection(MovieDBType)
-        advanceUntilIdle()
-        Thread.sleep(500)
         advanceUntilIdle()
 
         // Default: both movies present
@@ -405,10 +393,10 @@ class CollectionListViewModelTest {
             override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
             override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo)
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo, testDispatcher)
 
         viewModel.loadCollection(MovieDBType)
-        advanceUntilIdle(); Thread.sleep(500); advanceUntilIdle()
+        advanceUntilIdle()
 
         val uncollected = viewModel.uiState.value.uncollectedVideos
         assertEquals(1, uncollected.size)
@@ -442,11 +430,9 @@ class CollectionListViewModelTest {
             override suspend fun exportCollectionsJson() = "{}"
             override suspend fun importCollectionsFromJson(json: String) = 0 to 0
         }
-        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo)
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), stubLocalVideoRepo, testDispatcher)
 
         viewModel.loadCollection(1)
-        advanceUntilIdle()
-        Thread.sleep(100)
         advanceUntilIdle()
 
         assertEquals(R.string.collect_load_failed, viewModel.uiState.value.error)
