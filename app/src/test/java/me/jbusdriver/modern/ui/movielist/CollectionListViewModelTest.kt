@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -404,6 +405,60 @@ class CollectionListViewModelTest {
         assertEquals("DEF Title", uncollected.first().title)
         // movieCount 仅含已收藏，未被污染
         assertEquals(1, viewModel.uiState.value.movieCount)
+    }
+
+    @Test
+    fun uncollectedVideos_coverAppearsWhenMetadataArrivesAfterLoad() = runTest(testDispatcher) {
+        // 模拟 LocalVideoMetadataEnricher：列表先出现无封面的未收藏分组，
+        // 元数据回填（DB 更新 → Room flow 重发射）后带来封面，VM 必须自动应用新封面。
+        val groupsFlow = MutableStateFlow<List<LocalVideoGroup>>(
+            listOf(LocalVideoGroup("DEF-002", null, null, null, null, emptyList()))
+        )
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = emptyList<Movie>()
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = emptyList()
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        val localRepo = object : LocalVideoRepository {
+            override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+            override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+            override fun observeSummary() = flowOf(LocalVideoSummary())
+            override fun hasFolder() = flowOf(true)
+            override suspend fun setFolder(uri: android.net.Uri) {}
+            override suspend fun clearFolder() {}
+            override suspend fun rescan() = 0
+            override fun observeAllGroupedByCode() = groupsFlow
+            override fun observeShowUncollectedLocal() = flowOf(true)
+            override suspend fun setShowUncollectedLocal(value: Boolean) {}
+            override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+            override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo, testDispatcher)
+
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.uncollectedVideos.size)
+        assertTrue(viewModel.uiState.value.uncollectedVideos.first().imageUrl.isEmpty())
+
+        // 元数据回填后分组重发射，封面必须自动出现
+        groupsFlow.value = listOf(
+            LocalVideoGroup("DEF-002", "DEF Title", "http://def-cover.jpg", "2026-01-01", null, emptyList())
+        )
+        advanceUntilIdle()
+
+        val updated = viewModel.uiState.value.uncollectedVideos
+        assertEquals(1, updated.size)
+        assertEquals("http://def-cover.jpg", updated.first().imageUrl)
     }
 
     private fun mktime(year: Int, month: Int, day: Int): Long =

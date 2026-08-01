@@ -59,20 +59,30 @@ class LocalVideoMetadataEnricher @Inject constructor(
     }
 
     private suspend fun enrich(group: LocalVideoGroup) {
+        val detail = runCatching {
+            movieDetailRepository.getMovieDetail("/${group.code}")
+        }.getOrElse {
+            KLog.w("Local video enrich ${group.code} failed: ${it.message}")
+            // 失败不加入 attempted：下次 flow 发射仍会重试，避免一次超时导致封面永久缺失。
+            return
+        }
+        // 站点反爬/超时可能返回空壳详情（如 driver-verify 页）：只有拿到非空标题或封面才回填，
+        // 否则保留原样等待下次重试，避免把快照写成空标题/空封面（写空后该分组不再被判定为 pending）。
+        if (detail.title.isBlank() && detail.cover.isBlank()) {
+            KLog.w("Local video enrich ${group.code} skipped: empty detail")
+            return
+        }
         attempted.add(group.code)
-        runCatching {
-            val detail = movieDetailRepository.getMovieDetail("/${group.code}")
-            localVideoRepository.snapshotMetadata(
-                code = group.code,
-                title = detail.title,
-                imageUrl = detail.cover,
-                date = detail.headers
-                    .firstOrNull { it.name in RELEASE_DATE_NAMES }
-                    ?.value
-                    .orEmpty(),
-                censorType = null,
-            )
-        }.onFailure { KLog.w("Local video enrich ${group.code} failed: ${it.message}") }
+        localVideoRepository.snapshotMetadata(
+            code = group.code,
+            title = detail.title,
+            imageUrl = detail.cover,
+            date = detail.headers
+                .firstOrNull { it.name in RELEASE_DATE_NAMES }
+                ?.value
+                .orEmpty(),
+            censorType = null,
+        )
     }
 
     private companion object {
