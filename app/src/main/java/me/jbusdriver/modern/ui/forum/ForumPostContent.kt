@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,70 @@ import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.ui.components.GifPlaceholder
 import kotlin.math.abs
 import kotlin.math.max
+
+/**
+ * 首帖分段:把连续的非图片块聚合成 [FirstPostSection.Text],每个图片块单独成 [FirstPostSection.ImageBlock]。
+ * 供 [ForumThreadDetailScreen] 把首帖拆成多个 LazyColumn items,让图片可随滚动被回收(解决单楼层多图 OOM)。
+ */
+internal sealed interface FirstPostSection {
+    /** 该段在原始 blocks 列表中的起始下标,用作 LazyColumn item key(负载不可变,故稳定)。 */
+    val startBlockIndex: Int
+
+    @Immutable
+    data class Text(
+        override val startBlockIndex: Int,
+        val blocks: List<ContentBlock>
+    ) : FirstPostSection
+
+    @Immutable
+    data class ImageBlock(
+        override val startBlockIndex: Int,
+        val block: ContentBlock.Image,
+        /** 在全局可查看图片列表中的下标;-1 表示未加载的 GIF(占位,不进入查看器分页)。 */
+        val viewableIndex: Int
+    ) : FirstPostSection
+}
+
+/**
+ * 按顺序把首帖 [blocks] 聚合为「文本段 + 单图」分段,并算出全局可查看图片 URL 列表。
+ * viewable 判定与 [ForumPostContent] 内部的 viewableImageUrls 一致:
+ * 非 GIF 总是可查看;GIF 仅在 autoLoadGifs 或已加载([loadedGifUrls])时可查看。
+ */
+internal fun groupFirstPostBlocks(
+    blocks: List<ContentBlock>,
+    autoLoadGifs: Boolean,
+    loadedGifUrls: Set<String>
+): Pair<List<FirstPostSection>, List<String>> {
+    val sections = mutableListOf<FirstPostSection>()
+    val viewableImageUrls = mutableListOf<String>()
+    val textBuffer = mutableListOf<ContentBlock>()
+    var textStart = -1
+    fun flushText() {
+        if (textBuffer.isNotEmpty()) {
+            sections += FirstPostSection.Text(textStart, textBuffer.toList())
+            textBuffer.clear()
+            textStart = -1
+        }
+    }
+    blocks.forEachIndexed { index, block ->
+        if (block is ContentBlock.Image) {
+            flushText()
+            val viewable = !block.isGif || autoLoadGifs || block.url in loadedGifUrls
+            val viewableIndex = if (viewable) {
+                viewableImageUrls += block.url
+                viewableImageUrls.size - 1
+            } else {
+                -1
+            }
+            sections += FirstPostSection.ImageBlock(index, block, viewableIndex)
+        } else {
+            if (textBuffer.isEmpty()) textStart = index
+            textBuffer += block
+        }
+    }
+    flushText()
+    return sections to viewableImageUrls
+}
 
 @Composable
 internal fun ForumPostContent(
@@ -352,7 +417,7 @@ private fun RichListContent(list: RichList, depth: Int = 0) {
 }
 
 @Composable
-private fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
+internal fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
     if (block.isFullSize) {
         SubcomposeAsyncImage(
             model = block.url,

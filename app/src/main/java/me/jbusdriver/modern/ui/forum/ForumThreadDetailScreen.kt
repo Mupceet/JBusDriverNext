@@ -7,13 +7,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,6 +49,7 @@ import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.EmptyStateView
+import me.jbusdriver.modern.ui.components.GifPlaceholder
 import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.ShareButton
@@ -151,6 +150,11 @@ fun ForumThreadDetailScreen(
                 when {
                     detail != null -> {
                         var dialogContent by remember { mutableStateOf<ForumDialogContent?>(null) }
+                        val (firstPostSections, firstPostViewableImages) = remember(
+                            detail.contentBlocks, autoLoadGifs, loadedGifUrls
+                        ) {
+                            groupFirstPostBlocks(detail.contentBlocks, autoLoadGifs, loadedGifUrls)
+                        }
 
                         dialogContent?.let { content ->
                             SelectableContentDialog(
@@ -180,83 +184,113 @@ fun ForumThreadDetailScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             state = listState,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(14.dp)
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
                         ) {
                             item(key = "header") {
-                                ThreadHeader(
-                                    detail = detail,
-                                    onTitleLongClick = {
-                                        context.copy(detail.title)
-                                        Toast.makeText(
-                                            context,
-                                            R.string.copied,
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                )
-                            }
-
-                            item(key = "content") {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    border = CardDefaults.outlinedCardBorder(),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                                ) {
-                                    ForumPostContent(
-                                        blocks = detail.contentBlocks,
-                                        onImageClick = onImageClick,
-                                        modifier = Modifier.padding(10.dp),
-                                        loadedGifUrls = loadedGifUrls,
-                                        autoLoadGifs = autoLoadGifs,
-                                        onLoadGif = { viewModel.onLoadGif(it) },
-                                        onLoadAllGifs = { viewModel.onLoadAllGifs() },
-                                        onLongClick = {
-                                            dialogContent =
-                                                ForumDialogContent.Blocks(detail.contentBlocks)
+                                Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                                    ThreadHeader(
+                                        detail = detail,
+                                        onTitleLongClick = {
+                                            context.copy(detail.title)
+                                            Toast.makeText(
+                                                context,
+                                                R.string.copied,
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     )
-                                    PostCommentsPreview(
-                                        comments = detail.comments,
-                                        pageInfo = detail.commentPageInfo,
-                                        onViewMore = viewModel::openFirstPostCommentsSheet,
-                                        modifier = Modifier.padding(
-                                            start = 10.dp,
-                                            end = 10.dp,
-                                            bottom = 10.dp
-                                        )
-                                    )
                                 }
+                            }
+
+                            firstPostSections.forEach { section ->
+                                when (section) {
+                                    is FirstPostSection.Text -> item(
+                                        key = "content_${section.startBlockIndex}"
+                                    ) {
+                                        ForumPostContent(
+                                            blocks = section.blocks,
+                                            onImageClick = onImageClick,
+                                            modifier = Modifier.padding(vertical = 2.dp),
+                                            loadedGifUrls = loadedGifUrls,
+                                            autoLoadGifs = autoLoadGifs,
+                                            onLoadGif = { viewModel.onLoadGif(it) },
+                                            onLoadAllGifs = { viewModel.onLoadAllGifs() },
+                                            onLongClick = {
+                                                dialogContent =
+                                                    ForumDialogContent.Blocks(detail.contentBlocks)
+                                            }
+                                        )
+                                    }
+
+                                    is FirstPostSection.ImageBlock -> item(
+                                        key = "content_${section.startBlockIndex}"
+                                    ) {
+                                        Box(modifier = Modifier.padding(vertical = 2.dp)) {
+                                            if (section.viewableIndex >= 0) {
+                                                ForumImage(
+                                                    block = section.block,
+                                                    onClick = {
+                                                        onImageClick(
+                                                            firstPostViewableImages,
+                                                            section.viewableIndex
+                                                        )
+                                                    }
+                                                )
+                                            } else {
+                                                GifPlaceholder(
+                                                    onClick = { viewModel.onLoadGif(section.block.url) },
+                                                    onLoadAllGifs = { viewModel.onLoadAllGifs() },
+                                                    modifier = if (section.block.isFullSize) {
+                                                        Modifier.fillMaxWidth().height(180.dp)
+                                                    } else {
+                                                        Modifier.size(48.dp)
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            item(key = "content_comments") {
+                                PostCommentsPreview(
+                                    comments = detail.comments,
+                                    pageInfo = detail.commentPageInfo,
+                                    onViewMore = viewModel::openFirstPostCommentsSheet,
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                                )
                             }
 
                             if (detail.replies.isNotEmpty()) {
                                 item(key = "replies_header") {
-                                    RepliesHeader(
-                                        replyCount = detail.replyCount,
-                                        floorOrder = state.floorOrder,
-                                        onFloorOrderSelected = viewModel::setFloorOrder
-                                    )
+                                    Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                                        RepliesHeader(
+                                            replyCount = detail.replyCount,
+                                            floorOrder = state.floorOrder,
+                                            onFloorOrderSelected = viewModel::setFloorOrder
+                                        )
+                                    }
                                 }
                                 items(count = detail.replies.size, key = { "reply_$it" }) { index ->
-                                    ReplyItem(
-                                        reply = detail.replies[index],
-                                        onImageClick = onImageClick,
-                                        loadedGifUrls = loadedGifUrls,
-                                        autoLoadGifs = autoLoadGifs,
-                                        onLoadGif = { viewModel.onLoadGif(it) },
-                                        onLoadAllGifs = { viewModel.onLoadAllGifs() },
-                                        onLongClick = {
-                                            dialogContent =
-                                                ForumDialogContent.Blocks(
-                                                    detail.replies[index].contentBlocks
-                                                )
-                                        },
-                                        onViewComments = { reply ->
-                                            viewModel.openReplyCommentsSheet(reply.floor)
-                                        }
-                                    )
+                                    Box(modifier = Modifier.padding(bottom = 16.dp)) {
+                                        ReplyItem(
+                                            reply = detail.replies[index],
+                                            onImageClick = onImageClick,
+                                            loadedGifUrls = loadedGifUrls,
+                                            autoLoadGifs = autoLoadGifs,
+                                            onLoadGif = { viewModel.onLoadGif(it) },
+                                            onLoadAllGifs = { viewModel.onLoadAllGifs() },
+                                            onLongClick = {
+                                                dialogContent =
+                                                    ForumDialogContent.Blocks(
+                                                        detail.replies[index].contentBlocks
+                                                    )
+                                            },
+                                            onViewComments = { reply ->
+                                                viewModel.openReplyCommentsSheet(reply.floor)
+                                            }
+                                        )
+                                    }
                                 }
                             }
 

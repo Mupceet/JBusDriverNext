@@ -268,71 +268,63 @@ internal fun ReplyItem(
     onLongClick: () -> Unit = {},
     onViewComments: (ForumReply) -> Unit = {}
 ) {
-    Card(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = CardDefaults.outlinedCardBorder(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            AppAsyncImage(
-                model = reply.authorAvatar,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentScale = ContentScale.Crop
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        reply.author,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Text(
-                        "${
-                            forumFloorLabel(
-                                reply.floor,
-                                reply.isPinned,
-                                stringResource(R.string.pinned)
-                            )
-                        } · ${reply.postTime}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (reply.authorGroup.isNotEmpty()) {
-                    Text(
-                        reply.authorGroup,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 1.dp)
-                    )
-                }
-                ForumPostContent(
-                    blocks = reply.contentBlocks,
-                    onImageClick = onImageClick,
-                    modifier = Modifier.padding(top = 4.dp),
-                    loadedGifUrls = loadedGifUrls,
-                    autoLoadGifs = autoLoadGifs,
-                    onLoadGif = onLoadGif,
-                    onLoadAllGifs = onLoadAllGifs,
-                    onLongClick = onLongClick
+        AppAsyncImage(
+            model = reply.authorAvatar,
+            contentDescription = null,
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = ContentScale.Crop
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    reply.author,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                 )
-                PostCommentsPreview(
-                    comments = reply.comments,
-                    pageInfo = reply.commentPageInfo,
-                    onViewMore = { onViewComments(reply) }
+                Text(
+                    "${
+                        forumFloorLabel(
+                            reply.floor,
+                            reply.isPinned,
+                            stringResource(R.string.pinned)
+                        )
+                    } · ${reply.postTime}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            if (reply.authorGroup.isNotEmpty()) {
+                Text(
+                    reply.authorGroup,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
+            }
+            ForumPostContent(
+                blocks = reply.contentBlocks,
+                onImageClick = onImageClick,
+                modifier = Modifier.padding(top = 4.dp),
+                loadedGifUrls = loadedGifUrls,
+                autoLoadGifs = autoLoadGifs,
+                onLoadGif = onLoadGif,
+                onLoadAllGifs = onLoadAllGifs,
+                onLongClick = onLongClick
+            )
+            PostCommentsPreview(
+                comments = reply.comments,
+                pageInfo = reply.commentPageInfo,
+                onViewMore = { onViewComments(reply) }
+            )
         }
     }
 }
