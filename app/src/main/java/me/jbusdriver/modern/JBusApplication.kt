@@ -1,11 +1,16 @@
 package me.jbusdriver.modern
 
 import android.app.Application
-import android.util.Log
+import coil.EventListener
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
 import coil.disk.DiskCache
+import coil.fetch.FetchResult
+import coil.fetch.Fetcher
+import coil.fetch.SourceResult
+import coil.request.ImageRequest
+import coil.request.Options
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.HtmlClient
@@ -32,9 +37,7 @@ class JBusApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.DEBUG) {
-            Log.d("JBusApplication", "Hilt initialization complete")
-        }
+        KLog.d("Hilt initialization complete", "JBusApplication")
     }
 
     /**
@@ -64,7 +67,28 @@ class JBusApplication : Application(), ImageLoaderFactory {
                     .build()
             }
             .components { add(GifDecoder.Factory()) }
+            .respectCacheHeaders(false)
             .crossfade(true)
+            .eventListenerFactory(if (BuildConfig.DEBUG) {
+                EventListener.Factory { request ->
+                    object : EventListener {
+                        override fun fetchEnd(
+                            request: ImageRequest,
+                            fetcher: Fetcher,
+                            options: Options,
+                            result: FetchResult?
+                        ) {
+                            val dataSource = (result as? SourceResult)?.dataSource?.name
+                            KLog.d(
+                                "fetch ${request.data} ds=$dataSource",
+                                "CoilCache",
+                            )
+                        }
+                    }
+                }
+            } else {
+                EventListener.Factory.NONE
+            })
             .build()
     }
 }

@@ -1,5 +1,7 @@
 package me.jbusdriver.modern.data.parser
 
+import me.jbusdriver.BuildConfig
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
@@ -204,6 +206,15 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
                 commentPageInfo = replyCommentPageInfo
             )
         }
+
+    if (BuildConfig.DEBUG) {
+        val replyAvatars = replies.map { it.authorAvatar }.filter { it.isNotBlank() }
+        KLog.d(
+            "ForumParse detailUrl=${doc.location()} firstAvatar=$avatarSrc " +
+                "replyAvatars=$replyAvatars",
+            "ForumParse"
+        )
+    }
 
     return ForumThreadDetail(
         tid = tidMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0,
