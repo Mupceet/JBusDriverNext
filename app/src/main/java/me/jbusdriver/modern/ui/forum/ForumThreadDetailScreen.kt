@@ -337,13 +337,13 @@ fun ForumThreadDetailScreen(
                         )
                         if (result == SnackbarResult.ActionPerformed) {
                             viewModel.applyPendingFreshDetail()
-                            scope.launch { listState.animateScrollToItem(0) }
+                            scope.launch { listState.scrollToItem(0) }
                         }
                     }
                 }
                 ScrollToTopButton(
                     visible = showScrollToTop,
-                    onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                    onClick = { scope.launch { listState.scrollToItem(0) } },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 64.dp)
