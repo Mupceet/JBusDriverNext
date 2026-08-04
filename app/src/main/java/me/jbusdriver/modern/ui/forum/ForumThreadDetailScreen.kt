@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -271,10 +272,10 @@ fun ForumThreadDetailScreen(
                                         )
                                     }
                                 }
-                                items(count = detail.replies.size, key = { "reply_$it" }) { index ->
+                                items(items = detail.replies, key = { reply -> "reply_${reply.floor}" }) { reply ->
                                     Box(modifier = Modifier.padding(bottom = 16.dp)) {
                                         ReplyItem(
-                                            reply = detail.replies[index],
+                                            reply = reply,
                                             onImageClick = onImageClick,
                                             loadedGifUrls = loadedGifUrls,
                                             autoLoadGifs = autoLoadGifs,
@@ -282,12 +283,10 @@ fun ForumThreadDetailScreen(
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                             onLongClick = {
                                                 dialogContent =
-                                                    ForumDialogContent.Blocks(
-                                                        detail.replies[index].contentBlocks
-                                                    )
+                                                    ForumDialogContent.Blocks(reply.contentBlocks)
                                             },
-                                            onViewComments = { reply ->
-                                                viewModel.openReplyCommentsSheet(reply.floor)
+                                            onViewComments = { r ->
+                                                viewModel.openReplyCommentsSheet(r.floor)
                                             }
                                         )
                                     }

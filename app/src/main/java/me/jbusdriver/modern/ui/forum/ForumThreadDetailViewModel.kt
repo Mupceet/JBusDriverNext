@@ -359,10 +359,15 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             try {
                 val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
                 if (!isCurrent(generation, identity)) return@launch
+                // 置顶/广播楼层会在每一页重复出现，直接拼接会产生重复 floor，
+                // 导致 LazyColumn 的 key 冲突崩溃。按 floor 去重，保留已展示的首现版本。
+                val existingFloors = detail.replies.mapTo(HashSet()) { it.floor }
+                val mergedReplies =
+                    detail.replies + nextDetail.replies.filter { it.floor !in existingFloors }
                 _uiState.update {
                     it.copy(
                         detail = detail.copy(
-                            replies = detail.replies + nextDetail.replies,
+                            replies = mergedReplies,
                             pageInfo = nextDetail.pageInfo
                         ),
                         isLoadingMore = false
