@@ -272,6 +272,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 isAtTop = isAtTopForFreshUpdates,
                                 forceApply = forceRefresh || !showLoading
                             )
+                            if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
+                                KLog.d("[Forum] loadDetail 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
+                            }
                             _uiState.value = reduction.state
                         }
 
@@ -322,6 +325,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             )
                             if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
                                 currentPage = 1
+                            }
+                            if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
+                                KLog.d("[Forum] revalidate 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
                             }
                             _uiState.value = reduction.state
                         }

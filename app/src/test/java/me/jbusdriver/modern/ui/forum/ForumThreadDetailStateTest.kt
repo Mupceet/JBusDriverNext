@@ -6,6 +6,7 @@ import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.PageInfo
@@ -61,7 +62,7 @@ class ForumThreadDetailStateTest {
     }
 
     @Test
-    fun `detail revalidate fresh away from top without changes only stops revalidating`() {
+    fun `detail revalidate without changes silently refreshes timestamp and keeps detail`() {
         val current = detail("Title", replies = listOf(reply(1), reply(2)))
         val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
 
@@ -71,14 +72,35 @@ class ForumThreadDetailStateTest {
         )
 
         assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
-        assertSame(current, reduction.state.detail)
+        assertEquals(current, reduction.state.detail)
+        assertEquals(1_000L, reduction.state.lastUpdatedAtMillis)
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshDetail)
     }
 
     @Test
-    fun `view count change alone away from top is not treated as new data`() {
-        val current = detail("Title", replies = listOf(reply(1))).copy(viewCount = 1_000)
+    fun `counter-only change away from top silently refreshes counters without prompting`() {
+        val current = detail("Title", replies = listOf(reply(1))).copy(viewCount = 1_000, replyCount = 50)
+        val fresh = detail("Title", replies = listOf(reply(1))).copy(viewCount = 5_000, replyCount = 51)
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertNull(reduction.state.pendingFreshDetail)
+        assertFalse(reduction.state.isRevalidating)
+        assertEquals(5_000, reduction.state.detail?.viewCount)
+        assertEquals(51, reduction.state.detail?.replyCount)
+    }
+
+    @Test
+    fun `counter-only revalidate preserves already loaded later-page replies`() {
+        // 用户已翻页合并了 floor 1..3；仅计数器变化的 revalidate 不应丢掉已加载的后续楼层。
+        val current = detail("Title", replies = listOf(reply(1), reply(2), reply(3)))
+            .copy(viewCount = 1_000)
         val fresh = detail("Title", replies = listOf(reply(1))).copy(viewCount = 5_000)
         val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
 
@@ -88,9 +110,57 @@ class ForumThreadDetailStateTest {
         )
 
         assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
-        assertSame(current, reduction.state.detail)
         assertNull(reduction.state.pendingFreshDetail)
-        assertFalse(reduction.state.isRevalidating)
+        assertEquals(listOf(1, 2, 3), reduction.state.detail?.replies?.map { it.floor })
+        assertEquals(5_000, reduction.state.detail?.viewCount)
+    }
+
+    @Test
+    fun `new first-page reply away from top prompts to refresh`() {
+        // 倒序：新增回复进入首屏楼层 → 视为内容变化 → 不在顶部时提示刷新。
+        val current = detail("T", replies = listOf(reply(5), reply(4), reply(3)))
+        val fresh = detail("T", replies = listOf(reply(6), reply(5), reply(4)))
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
+        assertEquals(fresh, reduction.state.pendingFreshDetail)
+        assertSame(current, reduction.state.detail)
+    }
+
+    @Test
+    fun `relative comment time drift alone is not treated as new data`() {
+        // 点评时间为相对文案（"半小时前"等），会持续刷新而非固定时间戳，不应据此判为有新数据。
+        val current = detail("T", replies = listOf(reply(1).copy(comments = listOf(comment("c", "半小时前")))))
+        val fresh = detail("T", replies = listOf(reply(1).copy(comments = listOf(comment("c", "1小时前")))))
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertNull(reduction.state.pendingFreshDetail)
+    }
+
+    @Test
+    fun `real comment content change away from top still prompts to refresh`() {
+        val current = detail("T", replies = listOf(reply(1).copy(comments = listOf(comment("old")))))
+        val fresh = detail("T", replies = listOf(reply(1).copy(comments = listOf(comment("new")))))
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
+        assertEquals("楼层1#点评", reduction.changeReason)
     }
 
     @Test
@@ -140,5 +210,12 @@ class ForumThreadDetailStateTest {
         authorGroup = "",
         contentBlocks = emptyList(),
         postTime = ""
+    )
+
+    private fun comment(content: String, time: String = "") = Comment(
+        author = "C",
+        authorAvatar = "",
+        content = content,
+        time = time
     )
 }
