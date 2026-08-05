@@ -48,6 +48,7 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
                 json.addProperty("type", "quote")
                 json.addProperty("author", value.author)
                 json.addProperty("content", value.content)
+                if (value.quotedPid > 0) json.addProperty("quotedPid", value.quotedPid)
             }
 
             is ContentBlock.RestrictedNotice -> {
@@ -77,7 +78,11 @@ class ContentBlockTypeAdapter(private val gson: Gson) : TypeAdapter<ContentBlock
                 isGif = json.boolean("isGif")
             )
 
-            "quote" -> ContentBlock.Quote(json.string("author"), json.string("content"))
+            "quote" -> ContentBlock.Quote(
+                author = json.string("author"),
+                content = json.string("content"),
+                quotedPid = json.int("quotedPid")
+            )
             "restricted" -> ContentBlock.RestrictedNotice(json.string("message"))
             else -> null
         }

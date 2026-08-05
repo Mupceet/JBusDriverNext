@@ -60,4 +60,53 @@ class ForumPostParserTest {
         assertTrue("a part should be marked as a link", linkPart.isLink)
         assertEquals("link href should be retained", "https://example.com", linkPart.linkUrl)
     }
+
+    @Test
+    fun parsesQuoteWithQuotedFloorIdFromFindpostLink() {
+        val html = """
+            <div class="post">
+              <div class="quote">
+                <blockquote>
+                  <font size="2">
+                    <a href="/forum/forum.php?mod=redirect&amp;goto=findpost&amp;pid=4853889&amp;ptid=174488">
+                      <font color="#999999">jackf12138 發表於 2026-8-5 23:32</font>
+                    </a>
+                  </font>
+                  <br>
+                  quoted body text
+                </blockquote>
+              </div>
+              reply text
+            </div>
+        """.trimIndent()
+        val root = Jsoup.parse(html, baseUrl).selectFirst("div.post")
+
+        val blocks = parseForumPostContent(root, baseUrl)
+
+        val quote = blocks.filterIsInstance<ContentBlock.Quote>().single()
+        assertEquals("jackf12138 發表於 2026-8-5 23:32", quote.author)
+        assertEquals("quoted body text", quote.content)
+        assertEquals(4853889, quote.quotedPid)
+    }
+
+    @Test
+    fun parsesQuoteWithoutFindpostLinkAsZeroPid() {
+        val html = """
+            <div class="post">
+              <div class="quote">
+                <blockquote>
+                  <font size="2"><a href="https://example.com">someone</a></font>
+                  <br>
+                  quoted body
+                </blockquote>
+              </div>
+            </div>
+        """.trimIndent()
+        val root = Jsoup.parse(html, baseUrl).selectFirst("div.post")
+
+        val blocks = parseForumPostContent(root, baseUrl)
+
+        val quote = blocks.filterIsInstance<ContentBlock.Quote>().single()
+        assertEquals(0, quote.quotedPid)
+    }
 }

@@ -165,11 +165,16 @@ private class PostContentParser(private val baseUrl: String) {
     private fun appendQuote(element: Element) {
         flushRichText()
         val blockquote = element.selectFirst("blockquote") ?: return
-        val author = blockquote.selectFirst("a[href]")?.text()?.trim().orEmpty()
+        val authorLink = blockquote.selectFirst("a[href]")
+        val author = authorLink?.text()?.trim().orEmpty()
+        // 引用链接形如 forum.php?mod=redirect&goto=findpost&pid=<楼层id>&ptid=<帖子id>
+        val quotedPid = authorLink?.attr("href")
+            ?.let { Regex("pid=(\\d+)").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+            ?: 0
         val clone = blockquote.clone()
         clone.select("font > a").remove()
         clone.text().trim().takeIf(String::isNotEmpty)?.let {
-            blocks.add(ContentBlock.Quote(author, it))
+            blocks.add(ContentBlock.Quote(author, it, quotedPid))
         }
     }
 

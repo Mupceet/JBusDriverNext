@@ -157,6 +157,23 @@ fun ForumThreadDetailScreen(
                             groupFirstPostBlocks(detail.contentBlocks, autoLoadGifs, loadedGifUrls)
                         }
 
+                        // 点击引用楼层的 "xxx 发表于 xxx"：跳转到被引楼层。
+                        // 列表顺序：header + 首帖分块 + content_comments + replies_header + replies。
+                        val jumpToFloor: (Int) -> Unit = jump@{ quotedPid ->
+                            if (quotedPid <= 0) return@jump
+                            if (quotedPid == detail.pid) {
+                                scope.launch { listState.animateScrollToItem(0) }
+                            } else {
+                                val replyIndex = detail.replies.indexOfFirst { it.pid == quotedPid }
+                                if (replyIndex >= 0) {
+                                    val replyStartIndex = firstPostSections.size + 3
+                                    scope.launch {
+                                        listState.animateScrollToItem(replyStartIndex + replyIndex)
+                                    }
+                                }
+                            }
+                        }
+
                         dialogContent?.let { content ->
                             SelectableContentDialog(
                                 blocks = content.blocks,
@@ -216,6 +233,7 @@ fun ForumThreadDetailScreen(
                                             autoLoadGifs = autoLoadGifs,
                                             onLoadGif = { viewModel.onLoadGif(it) },
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
+                                            onQuoteClick = jumpToFloor,
                                             onLongClick = {
                                                 dialogContent =
                                                     ForumDialogContent.Blocks(detail.contentBlocks)
@@ -281,6 +299,7 @@ fun ForumThreadDetailScreen(
                                             autoLoadGifs = autoLoadGifs,
                                             onLoadGif = { viewModel.onLoadGif(it) },
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
+                                            onQuoteClick = jumpToFloor,
                                             onLongClick = {
                                                 dialogContent =
                                                     ForumDialogContent.Blocks(reply.contentBlocks)

@@ -266,6 +266,7 @@ internal fun ReplyItem(
     onLoadGif: (String) -> Unit = {},
     onLoadAllGifs: () -> Unit = {},
     onLongClick: () -> Unit = {},
+    onQuoteClick: (Int) -> Unit = {},
     onViewComments: (ForumReply) -> Unit = {}
 ) {
     Row(
@@ -318,7 +319,8 @@ internal fun ReplyItem(
                 autoLoadGifs = autoLoadGifs,
                 onLoadGif = onLoadGif,
                 onLoadAllGifs = onLoadAllGifs,
-                onLongClick = onLongClick
+                onLongClick = onLongClick,
+                onQuoteClick = onQuoteClick
             )
             PostCommentsPreview(
                 comments = reply.comments,
@@ -499,4 +501,3 @@ internal fun SelectableContentDialog(
         }
     }
 }
-

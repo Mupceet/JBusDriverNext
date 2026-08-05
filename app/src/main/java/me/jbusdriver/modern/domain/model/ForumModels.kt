@@ -181,7 +181,15 @@ sealed class ContentBlock {
     ) : ContentBlock()
 
     @Immutable
-    data class Quote(val author: String, val content: String) : ContentBlock()
+    data class Quote(
+        val author: String,
+        val content: String,
+        /**
+         * 被引用楼层的 id（引用链接 `goto=findpost` 中的 `pid` 参数）。
+         * 论坛 URL 里 `ptid` 是帖子（主题）id，`pid` 才是楼层 id。
+         */
+        val quotedPid: Int = 0
+    ) : ContentBlock()
 
     @Immutable
     data class RestrictedNotice(val message: String) : ContentBlock()

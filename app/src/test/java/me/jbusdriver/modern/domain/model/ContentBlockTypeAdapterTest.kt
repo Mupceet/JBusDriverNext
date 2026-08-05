@@ -134,6 +134,29 @@ class ContentBlockTypeAdapterTest {
     }
 
     @Test
+    fun `quote with quoted pid round trips`() {
+        val block = ContentBlock.Quote(
+            author = "Alice 發表於 2026-8-5 12:00",
+            content = "quoted body",
+            quotedPid = 4853889
+        )
+
+        val decoded = roundTrip(block)
+
+        assertEquals(block, decoded)
+    }
+
+    @Test
+    fun `legacy quote without quoted pid defaults to zero`() {
+        val decoded = GSON.fromJson(
+            """{"type":"quote","author":"Alice","content":"body"}""",
+            ContentBlock::class.java
+        )
+
+        assertEquals(ContentBlock.Quote("Alice", "body", quotedPid = 0), decoded)
+    }
+
+    @Test
     fun `legacy rich text parts decode into one paragraph`() {
         val json = """
             {

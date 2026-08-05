@@ -144,6 +144,7 @@ internal fun ForumPostContent(
     onLoadGif: (String) -> Unit = {},
     onLoadAllGifs: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    onQuoteClick: (Int) -> Unit = {},
     showImages: Boolean = true
 ) {
     val viewableImageUrls = remember(blocks, loadedGifUrls, autoLoadGifs, showImages) {
@@ -202,7 +203,7 @@ internal fun ForumPostContent(
                     }
                 }
 
-                is ContentBlock.Quote -> QuoteContent(block)
+                is ContentBlock.Quote -> QuoteContent(block, onQuoteClick)
                 is ContentBlock.RestrictedNotice -> RestrictedNotice(block.message)
             }
         }
@@ -464,7 +465,10 @@ internal fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
 }
 
 @Composable
-private fun QuoteContent(block: ContentBlock.Quote) {
+private fun QuoteContent(
+    block: ContentBlock.Quote,
+    onQuoteClick: (Int) -> Unit
+) {
     val accentColor = MaterialTheme.colorScheme.primary
     Card(
         shape = RoundedCornerShape(6.dp),
@@ -486,13 +490,30 @@ private fun QuoteContent(block: ContentBlock.Quote) {
         ) {
             Column {
                 if (block.author.isNotEmpty()) {
+                    val onClick = if (block.quotedPid > 0) {
+                        { onQuoteClick(block.quotedPid) }
+                    } else {
+                        null
+                    }
                     Text(
-                        text = "${block.author}：",
+                        text = if (onClick != null) block.author else "${block.author}：",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontStyle = FontStyle.Italic,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            textDecoration = if (onClick != null) {
+                                TextDecoration.Underline
+                            } else {
+                                null
+                            }
                         ),
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = if (onClick != null) {
+                            Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable(onClick = onClick)
+                        } else {
+                            Modifier
+                        }
                     )
                 }
                 Text(
