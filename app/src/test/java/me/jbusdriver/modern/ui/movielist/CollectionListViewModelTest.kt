@@ -450,15 +450,24 @@ class CollectionListViewModelTest {
         assertEquals(1, viewModel.uiState.value.uncollectedVideos.size)
         assertTrue(viewModel.uiState.value.uncollectedVideos.first().imageUrl.isEmpty())
 
-        // 元数据回填后分组重发射，封面必须自动出现
+        // 元数据回填后分组重发射，封面必须自动出现；
+        // 且存库的旧镜像绝对 URL 应重新按当前 baseUrl 解析（与已收藏条目一致），
+        // 避免清缓存/切换站点后旧 host 的封面无法加载。
         groupsFlow.value = listOf(
-            LocalVideoGroup("DEF-002", "DEF Title", "http://def-cover.jpg", "2026-01-01", null, emptyList())
+            LocalVideoGroup(
+                "DEF-002",
+                "DEF Title",
+                "http://old-mirror.com/pics/cover/abc.jpg",
+                "2026-01-01",
+                null,
+                emptyList()
+            )
         )
         advanceUntilIdle()
 
         val updated = viewModel.uiState.value.uncollectedVideos
         assertEquals(1, updated.size)
-        assertEquals("http://def-cover.jpg", updated.first().imageUrl)
+        assertEquals("https://www.javbus.com/pics/cover/abc.jpg", updated.first().imageUrl)
     }
 
     private fun mktime(year: Int, month: Int, day: Int): Long =

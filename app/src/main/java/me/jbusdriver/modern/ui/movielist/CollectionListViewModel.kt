@@ -29,6 +29,8 @@ import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.urlPath
+import me.jbusdriver.modern.data.parser.stripToPath
+import me.jbusdriver.modern.data.parser.wrapImage
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toActressUiModel
@@ -320,6 +322,7 @@ class CollectionListViewModel @Inject constructor(
                 hasFolder = hasFolder,
                 downloaded = downloaded,
                 showUncollected = showUncollected,
+                baseUrl = siteConfig.baseUrl,
             )
             if (generation != computeGeneration) return@launch
             _uiState.update {
@@ -362,6 +365,7 @@ class CollectionListViewModel @Inject constructor(
         hasFolder: Boolean,
         downloaded: Set<String>,
         showUncollected: Boolean,
+        baseUrl: String,
     ): CollectionComputedResult {
         // Compute available publish months for the selected year
         val availableMonths = if (filter.publishYear != null && filter.publishYear > 0) {
@@ -417,7 +421,9 @@ class CollectionListViewModel @Inject constructor(
                 .map { g ->
                     MovieUiModel(
                         title = g.title ?: g.files.firstOrNull()?.name ?: g.code,
-                        imageUrl = g.imageUrl.orEmpty(),
+                        // 与已收藏条目的封面保持一致：按当前站点 baseUrl 重新解析，
+                        // 避免清缓存/切换镜像后存库时的旧绝对 URL 无法加载。
+                        imageUrl = g.imageUrl.orEmpty().stripToPath().wrapImage(baseUrl),
                         code = g.code,
                         date = g.date.orEmpty(),
                         link = "/${g.code}",

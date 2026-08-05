@@ -7,6 +7,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
@@ -48,11 +49,27 @@ class LocalVideoMetadataEnricher @Inject constructor(
                 .conflate()
                 .collect { (enabled, groups) ->
                     if (!enabled) return@collect
-                    val pending = groups.filter { it.title == null && it.code !in attempted }
-                    for (group in pending) {
-                        // 串行抓取过程中若用户关闭了开关，则中断本次批次
-                        if (!localVideoRepository.observeShowUncollectedLocal().first()) break
-                        enrich(group)
+                    // 一轮抓取后若仍有失败/空壳（如首次命中 driver-verify 页）的番号，
+                    // 短暂等待后按最新分组重试几次，避免"失败后无下一次 flow 发射"导致封面永久不补全。
+                    var currentGroups = groups
+                    var retries = MAX_RETRIES
+                    while (retries > 0) {
+                        val pending =
+                            currentGroups.filter { it.title == null && it.code !in attempted }
+                        if (pending.isEmpty()) return@collect
+                        for (group in pending) {
+                            // 串行抓取过程中若用户关闭了开关，则中断本次批次
+                            if (!localVideoRepository.observeShowUncollectedLocal().first()) {
+                                return@collect
+                            }
+                            enrich(group)
+                        }
+                        currentGroups = localVideoRepository.observeAllGroupedByCode().first()
+                        val stillPending =
+                            currentGroups.filter { it.title == null && it.code !in attempted }
+                        if (stillPending.isEmpty()) return@collect
+                        retries -= 1
+                        if (retries > 0) delay(RETRY_DELAY_MILLIS)
                     }
                 }
         }
@@ -86,6 +103,12 @@ class LocalVideoMetadataEnricher @Inject constructor(
     }
 
     private companion object {
+        /** 每轮 flow 发射后对失败/空壳番号的有界重试次数（不含首轮）。 */
+        const val MAX_RETRIES = 2
+
+        /** 重试之间的等待时间，给 WebView 会话/反爬挑战留出稳定时间。 */
+        const val RETRY_DELAY_MILLIS = 10_000L
+
         // 与 MovieDetailViewModel 取发行日期的表头名保持一致。
         val RELEASE_DATE_NAMES = setOf("發行日期", "日期", "发行日期")
     }
