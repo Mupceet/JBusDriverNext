@@ -22,6 +22,7 @@ import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.session.GifCacheReader
 import me.jbusdriver.modern.data.session.LoadedGifTracker
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
@@ -61,6 +62,7 @@ class ForumThreadDetailViewModelTest {
             repository = repository,
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
             navKey = RouteForumThreadDetail(42)
         )
@@ -90,6 +92,7 @@ class ForumThreadDetailViewModelTest {
             repository = FakeForumDetailRepository(CompletableDeferred()),
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://Mirror.Example.test/base/"),
             navKey = RouteForumThreadDetail(42)
         )
@@ -106,6 +109,7 @@ class ForumThreadDetailViewModelTest {
             repository = FakeForumDetailRepository(CompletableDeferred()),
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
             navKey = RouteForumThreadDetail(42)
         )
@@ -139,6 +143,7 @@ class ForumThreadDetailViewModelTest {
             repository = repository,
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
             navKey = RouteForumThreadDetail(42)
         )
@@ -168,6 +173,7 @@ class ForumThreadDetailViewModelTest {
             repository = repository,
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
             navKey = RouteForumThreadDetail(42)
         )
@@ -196,6 +202,7 @@ class ForumThreadDetailViewModelTest {
             repository = repository,
             forumSettingsReader = FakeForumSettingsReader(),
             loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
             navKey = RouteForumThreadDetail(42)
         )
@@ -330,6 +337,10 @@ class ForumThreadDetailViewModelTest {
     private class FakeLoadedGifTracker : LoadedGifTracker {
         override suspend fun loadedUrls(): Set<String> = emptySet()
         override suspend fun markLoaded(url: String) = Unit
+    }
+
+    private class FakeGifCacheReader : GifCacheReader {
+        override suspend fun presentInDiskCache(urls: Set<String>): Set<String> = emptySet()
     }
 
     private class FakeSiteConfig(initialBaseUrl: String) : SiteConfig {

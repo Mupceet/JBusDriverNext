@@ -10,6 +10,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -21,6 +23,7 @@ import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.domain.model.Comment
+import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
@@ -95,6 +98,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
     private val forumSettingsReader: me.jbusdriver.modern.data.settings.ForumSettingsReader,
     private val loadedGifTracker: me.jbusdriver.modern.data.session.LoadedGifTracker,
+    private val gifCacheReader: me.jbusdriver.modern.data.session.GifCacheReader,
     private val siteConfig: SiteConfig,
     @Assisted private val navKey: RouteForumThreadDetail
 ) : ViewModel() {
@@ -111,8 +115,14 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
-    val loadedGifUrls: Set<String> get() = _loadedGifUrls.value
     val autoLoadGifs: StateFlow<Boolean> = forumSettingsReader.autoLoadGifs
+
+    /** 历史加载过（DataStore 持久化）的 GIF，仅用于和磁盘缓存做交集确认。 */
+    private var persistedGifUrls: Set<String> = emptySet()
+    /** 本会话内用户点击加载过的 GIF，始终直接展示（正在写入缓存，无需再次确认）。 */
+    private val sessionTappedGifs = mutableSetOf<String>()
+    /** 防止延迟到达的旧重算结果覆盖新结果。 */
+    private var loadedGifsGeneration = 0L
 
     private fun beginRequest(identity: DetailRequestIdentity): Long {
         requestGeneration += 1
@@ -124,31 +134,51 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         generation == requestGeneration && activeIdentity == identity
 
     fun onLoadGif(url: String) {
-        _loadedGifUrls.update { it + url }
+        if (sessionTappedGifs.add(url)) {
+            _loadedGifUrls.update { it + url }
+        }
         viewModelScope.launch { persistGifUrls(setOf(url)) }
     }
 
     fun onLoadAllGifs() {
         val detail = _uiState.value.detail ?: return
-        val allGifUrls = collectUnloadedGifUrls(detail)
-        if (allGifUrls.isEmpty()) return
-        _loadedGifUrls.update { it + allGifUrls }
-        viewModelScope.launch { persistGifUrls(allGifUrls) }
+        val unloaded = collectThreadGifUrls(detail) - _loadedGifUrls.value
+        if (unloaded.isEmpty()) return
+        sessionTappedGifs += unloaded
+        _loadedGifUrls.update { it + unloaded }
+        viewModelScope.launch { persistGifUrls(unloaded) }
     }
 
-    private fun collectUnloadedGifUrls(detail: ForumThreadDetail): Set<String> {
-        val loaded = _loadedGifUrls.value
-        val allBlocks = detail.contentBlocks + detail.replies.flatMap { it.contentBlocks }
-        return allBlocks
-            .filterIsInstance<me.jbusdriver.modern.domain.model.ContentBlock.Image>()
+    /**
+     * 重算并刷新暴露给 UI 的"已加载 GIF"集合：
+     * 本会话点击过的 ∪ (历史加载过 ∩ 本帖 GIF ∩ 磁盘缓存仍在)。
+     *
+     * 历史记录里"加载过"但磁盘缓存已被 LRU 淘汰的 GIF 会被剔除，回退为占位等待用户再次点击，
+     * 避免直接渲染触发网络重下载而浪费流量。
+     */
+    private fun recomputeLoadedGifs() {
+        val detail = _uiState.value.detail ?: return
+        val candidates = collectThreadGifUrls(detail) intersect persistedGifUrls
+        val generation = ++loadedGifsGeneration
+        viewModelScope.launch {
+            val cached = if (candidates.isEmpty()) {
+                emptySet()
+            } else {
+                gifCacheReader.presentInDiskCache(candidates)
+            }
+            if (generation != loadedGifsGeneration) return@launch
+            _loadedGifUrls.value = sessionTappedGifs + cached
+        }
+    }
+
+    private fun collectThreadGifUrls(detail: ForumThreadDetail): Set<String> =
+        (detail.contentBlocks.asSequence() + detail.replies.asSequence().flatMap { it.contentBlocks.asSequence() })
+            .filterIsInstance<ContentBlock.Image>()
+            .filter { it.isGif }
             .map { it.url }
-            .filter { it !in loaded }
             .toSet()
-    }
 
-    private suspend fun loadPersistedGifUrls(): Set<String> {
-        return loadedGifTracker.loadedUrls()
-    }
+    private suspend fun loadPersistedGifUrls(): Set<String> = loadedGifTracker.loadedUrls()
 
     private suspend fun persistGifUrls(urls: Set<String>) {
         for (url in urls) loadedGifTracker.markLoaded(url)
@@ -156,7 +186,17 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
-        viewModelScope.launch { _loadedGifUrls.value = loadPersistedGifUrls() }
+        viewModelScope.launch {
+            persistedGifUrls = loadPersistedGifUrls()
+            recomputeLoadedGifs()
+        }
+        // 首次加载 / 刷新 / 翻页合并都会替换 detail，触发重算"已加载且磁盘仍在"的 GIF 集合。
+        viewModelScope.launch {
+            _uiState
+                .map { it.detail }
+                .distinctUntilChanged()
+                .collect { detail -> if (detail != null) recomputeLoadedGifs() }
+        }
         viewModelScope.launch {
             val defaultOrder = forumSettingsReader.currentForumFloorOrder()
             _uiState.update { it.copy(floorOrder = defaultOrder) }

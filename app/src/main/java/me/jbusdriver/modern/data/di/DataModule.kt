@@ -34,6 +34,8 @@ import me.jbusdriver.modern.data.settings.AppSettingsStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
 import me.jbusdriver.modern.data.settings.MovieListSettings
 import me.jbusdriver.modern.data.settings.ThemeSettingsReader
+import me.jbusdriver.modern.data.session.CoilGifCacheReader
+import me.jbusdriver.modern.data.session.GifCacheReader
 import me.jbusdriver.modern.data.session.GifLoadTracker
 import me.jbusdriver.modern.data.gateway.AndroidImageMediaGateway
 import me.jbusdriver.modern.data.gateway.ImageMediaGateway
@@ -199,6 +201,12 @@ abstract class DataModule {
     abstract fun bindLoadedGifTracker(
         impl: GifLoadTracker
     ): LoadedGifTracker
+
+    @Binds
+    @Singleton
+    abstract fun bindGifCacheReader(
+        impl: CoilGifCacheReader
+    ): GifCacheReader
 
     @Binds
     @Singleton
