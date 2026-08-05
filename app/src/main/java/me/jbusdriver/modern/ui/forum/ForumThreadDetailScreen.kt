@@ -280,15 +280,18 @@ fun ForumThreadDetailScreen(
                                 )
                             }
 
-                            if (detail.replies.isNotEmpty()) {
-                                item(key = "replies_header") {
-                                    Box(modifier = Modifier.padding(bottom = 8.dp)) {
-                                        RepliesHeader(
-                                            replyCount = detail.replyCount,
-                                            floorOrder = state.floorOrder,
-                                            onFloorOrderSelected = viewModel::setFloorOrder
-                                        )
-                                    }
+                            if (detail.replies.isNotEmpty() || state.showAuthorOnly) {
+                                stickyHeader(key = "replies_header") {
+                                    ReplyOperationBar(
+                                        allReplyCount = state.allReplyCount,
+                                        authorReplyCount = state.authorReplyCount,
+                                        showAuthorOnly = state.showAuthorOnly,
+                                        floorOrder = state.floorOrder,
+                                        isSwitching = state.isChangingFloorOrder ||
+                                            state.isChangingAuthorFilter,
+                                        onAuthorFilterSelected = viewModel::setAuthorFilter,
+                                        onFloorOrderSelected = viewModel::setFloorOrder
+                                    )
                                 }
                                 items(items = detail.replies, key = { reply -> "reply_${reply.floor}" }) { reply ->
                                     Box(modifier = Modifier.padding(bottom = 16.dp)) {

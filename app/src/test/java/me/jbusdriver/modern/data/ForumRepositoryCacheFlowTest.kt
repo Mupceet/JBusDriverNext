@@ -269,6 +269,21 @@ class ForumRepositoryCacheFlowTest {
     }
 
     @Test
+    fun `observeThreadDetail builds url with authorid when author filter active`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadDetailHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreadDetail(
+            tid = 9,
+            page = 1,
+            floorOrder = ForumFloorOrder.REGULAR,
+            authorUid = 436478
+        ).toList()
+
+        assertTrue(sessionClient.urls.single().contains("authorid=436478"))
+    }
+
+    @Test
     fun `loadThreadDetail returns parsed detail title`() = runBlocking {
         val sessionClient = FakeSessionClient(threadDetailHtml())
         val repository = repository(FakeCacheStore(), sessionClient)

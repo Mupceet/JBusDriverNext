@@ -17,12 +17,14 @@ fun buildForumThreadDetailUrl(
     baseUrl: String,
     tid: Int,
     page: Int,
-    floorOrder: ForumFloorOrder
+    floorOrder: ForumFloorOrder,
+    authorUid: Int? = null
 ): String {
     val url = "$baseUrl/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
+    val withAuthor = if (authorUid != null && authorUid > 0) "$url&authorid=$authorUid" else url
     return when (floorOrder) {
-        ForumFloorOrder.REGULAR -> url
-        ForumFloorOrder.REVERSE -> "$url&ordertype=1"
+        ForumFloorOrder.REGULAR -> withAuthor
+        ForumFloorOrder.REVERSE -> "$withAuthor&ordertype=1"
     }
 }
 

@@ -76,10 +76,10 @@
     </plurals>
 
     <!-- Forum -->
-    <string name="forum_reply_count">Top comments (%1$d)</string>
-    <string name="floor_sort">Floor order</string>
     <string name="floor_order_regular">Ascending</string>
     <string name="floor_order_reverse">Descending</string>
+    <string name="reply_filter_all">All comments</string>
+    <string name="reply_filter_author">OP only</string>
     <string name="comment">Reviews</string>
     <string name="view_more_comments">View more reviews</string>
     <string name="floor_comments">Reviews</string>

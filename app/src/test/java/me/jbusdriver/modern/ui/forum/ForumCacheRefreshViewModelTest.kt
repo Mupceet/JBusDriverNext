@@ -70,6 +70,7 @@ class ForumCacheRefreshViewModelTest {
             tid: Int,
             page: Int,
             floorOrder: ForumFloorOrder,
+            authorUid: Int?,
             forceRefresh: Boolean,
             revalidate: Boolean,
             nowMillis: () -> Long
@@ -89,6 +90,7 @@ class ForumCacheRefreshViewModelTest {
             tid: Int,
             page: Int,
             floorOrder: ForumFloorOrder,
+            authorUid: Int?,
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
 
@@ -276,6 +278,7 @@ class ForumCacheRefreshViewModelTest {
             tid: Int,
             page: Int,
             floorOrder: ForumFloorOrder,
+            authorUid: Int?,
             forceRefresh: Boolean,
             revalidate: Boolean,
             nowMillis: () -> Long
@@ -295,6 +298,7 @@ class ForumCacheRefreshViewModelTest {
             tid: Int,
             page: Int,
             floorOrder: ForumFloorOrder,
+            authorUid: Int?,
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
 

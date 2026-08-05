@@ -22,6 +22,7 @@ internal fun ForumThreadDetailUiState.applyLoadDetailCached(
         isLoading = false,
         isRevalidating = entry.isExpired,
         isChangingFloorOrder = false,
+        isChangingAuthorFilter = false,
         lastUpdatedAtMillis = entry.storedAtMillis
     )
 
@@ -37,7 +38,8 @@ internal fun ForumThreadDetailUiState.applyLoadDetailFresh(
             state.copy(
                 isLoading = false,
                 isRevalidating = false,
-                isChangingFloorOrder = false
+                isChangingFloorOrder = false,
+                isChangingAuthorFilter = false
             )
         }
     )
@@ -60,13 +62,15 @@ internal fun ForumThreadDetailUiState.applyLoadDetailFailure(
         copy(
             isLoading = false,
             isRevalidating = false,
-            isChangingFloorOrder = false
+            isChangingFloorOrder = false,
+            isChangingAuthorFilter = false
         )
     } else {
         copy(
             isLoading = false,
             isRevalidating = false,
             isChangingFloorOrder = false,
+            isChangingAuthorFilter = false,
             error = R.string.load_failed
         )
     }

@@ -49,6 +49,7 @@ interface ForumRepository {
         tid: Int,
         page: Int = 1,
         floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
+        authorUid: Int? = null,
         forceRefresh: Boolean = false
     ): ForumThreadDetail
 
@@ -78,6 +79,7 @@ interface ForumRepository {
         tid: Int,
         page: Int = 1,
         floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
+        authorUid: Int? = null,
         forceRefresh: Boolean = false,
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
@@ -184,17 +186,18 @@ class DefaultForumRepository @Inject constructor(
         tid: Int,
         page: Int,
         floorOrder: ForumFloorOrder,
+        authorUid: Int?,
         forceRefresh: Boolean,
         revalidate: Boolean,
         nowMillis: () -> Long
     ): Flow<CachedLoadEvent<ForumThreadDetail>> = flow {
         siteConfig.awaitReady()
         val baseUrl = siteConfig.baseUrl
-        val url = buildForumThreadDetailUrl(baseUrl, tid, page, floorOrder)
+        val url = buildForumThreadDetailUrl(baseUrl, tid, page, floorOrder, authorUid)
         forumLogD("[Forum] loadThreadDetail: url=$url")
         emitAll(
             cacheStore.observeCached(
-                key = forumDetailCacheKey(baseUrl, tid, page, floorOrder),
+                key = forumDetailCacheKey(baseUrl, tid, page, floorOrder, authorUid),
                 ttlMillis = threadDetailTtl(page),
                 disk = true,
                 forceRefresh = forceRefresh,
@@ -228,12 +231,14 @@ class DefaultForumRepository @Inject constructor(
         tid: Int,
         page: Int,
         floorOrder: ForumFloorOrder,
+        authorUid: Int?,
         forceRefresh: Boolean
     ): ForumThreadDetail =
         observeThreadDetail(
             tid,
             page,
             floorOrder,
+            authorUid = authorUid,
             forceRefresh = forceRefresh,
             revalidate = false
         ).firstCachedOrFresh()
@@ -276,8 +281,12 @@ class DefaultForumRepository @Inject constructor(
         baseUrl: String,
         tid: Int,
         page: Int,
-        floorOrder: ForumFloorOrder
-    ): String = "${forumCachePrefix(baseUrl)}:detail:v3:$tid:$page:${floorOrder.name.lowercase()}"
+        floorOrder: ForumFloorOrder,
+        authorUid: Int?
+    ): String {
+        val base = "${forumCachePrefix(baseUrl)}:detail:v3:$tid:$page:${floorOrder.name.lowercase()}"
+        return if (authorUid != null && authorUid > 0) "$base:author$authorUid" else base
+    }
 
     private fun forumFloorCommentsCacheKey(
         baseUrl: String,

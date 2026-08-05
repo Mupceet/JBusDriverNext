@@ -1,6 +1,8 @@
 package me.jbusdriver.modern.ui.forum
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -26,12 +28,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -45,13 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,7 +60,6 @@ import androidx.compose.ui.window.Dialog
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
-import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumReply
@@ -110,59 +110,111 @@ internal fun ThreadHeader(
 }
 
 @Composable
-internal fun RepliesHeader(
-    replyCount: Int,
+internal fun ReplyOperationBar(
+    allReplyCount: Int?,
+    authorReplyCount: Int?,
+    showAuthorOnly: Boolean,
     floorOrder: ForumFloorOrder,
+    isSwitching: Boolean,
+    onAuthorFilterSelected: (Boolean) -> Unit,
     onFloorOrderSelected: (ForumFloorOrder) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            stringResource(R.string.forum_reply_count, replyCount),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Box {
-            IconButton(
-                onClick = { expanded = true },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    painterResource(R.drawable.sort_24px),
-                    contentDescription = stringResource(R.string.floor_sort),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                SelectableDropdownItem(
-                    label = stringResource(R.string.floor_order_regular),
-                    selected = floorOrder == ForumFloorOrder.REGULAR,
-                    onClick = {
-                        expanded = false
-                        onFloorOrderSelected(ForumFloorOrder.REGULAR)
-                    }
-                )
-                SelectableDropdownItem(
-                    label = stringResource(R.string.floor_order_reverse),
-                    selected = floorOrder == ForumFloorOrder.REVERSE,
-                    onClick = {
-                        expanded = false
-                        onFloorOrderSelected(ForumFloorOrder.REVERSE)
-                    }
-                )
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ReplyFilterButton(
+                label = stringResource(R.string.reply_filter_all),
+                count = allReplyCount,
+                selected = !showAuthorOnly,
+                onClick = { onAuthorFilterSelected(false) }
+            )
+            ReplyFilterButton(
+                label = stringResource(R.string.reply_filter_author),
+                count = authorReplyCount,
+                selected = showAuthorOnly,
+                onClick = { onAuthorFilterSelected(true) }
+            )
         }
+
+        Spacer(Modifier.size(8.dp))
+
+        if (isSwitching) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(14.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        FloorOrderPill(
+            label = stringResource(R.string.floor_order_regular),
+            selected = floorOrder == ForumFloorOrder.REGULAR,
+            onClick = { onFloorOrderSelected(ForumFloorOrder.REGULAR) }
+        )
+        FloorOrderPill(
+            label = stringResource(R.string.floor_order_reverse),
+            selected = floorOrder == ForumFloorOrder.REVERSE,
+            onClick = { onFloorOrderSelected(ForumFloorOrder.REVERSE) }
+        )
+    }
+}
+
+/** 左侧“全部评论 / 只看楼主”过滤按钮：TextButton，选中态用主色文字。 */
+@Composable
+private fun ReplyFilterButton(
+    label: String,
+    count: Int?,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val text = if (selected && count != null) "$label ($count)" else label
+    Text(
+        modifier = Modifier.clickable(
+            onClick = onClick,
+        ),
+        text = text,
+        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        maxLines = 1
+    )
+}
+
+/** 右侧“正序 / 倒序”胶囊：比左侧弱化（描边、小号字）。 */
+@Composable
+private fun FloorOrderPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val border =
+        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        else MaterialTheme.colorScheme.outlineVariant
+    val content =
+        if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = Color.Transparent,
+        contentColor = content,
+        border = BorderStroke(1.dp, border),
+        onClick = onClick
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            maxLines = 1
+        )
     }
 }
 

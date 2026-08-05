@@ -36,6 +36,7 @@ import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -102,6 +103,31 @@ class ForumThreadDetailViewModelTest {
             viewModel.shareThreadUrl
         )
     }
+
+    @Test
+    fun `setAuthorFilter loads authorid page and fills author count after load`() =
+        runTest(testDispatcher) {
+            val repository = FakeForumDetailRepository(CompletableDeferred())
+            val viewModel = ForumThreadDetailViewModel(
+                repository = repository,
+                forumSettingsReader = FakeForumSettingsReader(),
+                loadedGifTracker = FakeLoadedGifTracker(),
+                gifCacheReader = FakeGifCacheReader(),
+                siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+                navKey = RouteForumThreadDetail(42)
+            )
+            advanceUntilIdle()
+            assertEquals(337947, viewModel.uiState.value.detail?.authorUid)
+
+            viewModel.setAuthorFilter(true)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showAuthorOnly)
+            assertEquals(337947, repository.detailRequests.last())
+            assertEquals("AuthorOnly", viewModel.uiState.value.detail?.title)
+            // 楼主首帖 + authorid 页解析出的回复数（0）
+            assertEquals(1, viewModel.uiState.value.authorReplyCount)
+        }
 
     @Test
     fun `openReplyCommentsSheet uses parsed reply comments and page info for floor`() = runTest(testDispatcher) {
@@ -257,6 +283,9 @@ class ForumThreadDetailViewModelTest {
     private class FakeForumDetailRepository(
         private val staleRefresh: CompletableDeferred<ForumThreadDetail>
     ) : ForumRepository {
+        /** 楼主 uid，用于模拟 authorid 过滤；与 [detail] 辅助函数的默认作者一致。 */
+        private val threadAuthorUid: Int = 337947
+        val detailRequests = mutableListOf<Int?>()
         var floorCommentResult: ForumCommentPageResult = ForumCommentPageResult(
             pid = 4773820,
             comments = listOf(comment("page two reply comment")),
@@ -270,14 +299,30 @@ class ForumThreadDetailViewModelTest {
             tid: Int,
             page: Int,
             floorOrder: ForumFloorOrder,
+            authorUid: Int?,
             forceRefresh: Boolean,
             revalidate: Boolean,
             nowMillis: () -> Long
         ): Flow<CachedLoadEvent<ForumThreadDetail>> = flow {
+            detailRequests += authorUid
             val next = when {
+                authorUid != null -> detail(
+                    "AuthorOnly",
+                    floorOrder,
+                    page,
+                    uid = threadAuthorUid,
+                    replyCount = 7,
+                    replies = emptyList()
+                )
+
                 forceRefresh && floorOrder == ForumFloorOrder.REGULAR -> staleRefresh.await()
-                floorOrder == ForumFloorOrder.REVERSE -> detail("Reverse", floorOrder)
-                else -> detail("Regular", floorOrder)
+                floorOrder == ForumFloorOrder.REVERSE -> detail(
+                    "Reverse",
+                    floorOrder,
+                    uid = threadAuthorUid
+                )
+
+                else -> detail("Regular", floorOrder, uid = threadAuthorUid)
             }
             emit(CachedLoadEvent.Fresh(CacheEntry(next, page.toLong(), CacheSource.Network, false)))
         }
@@ -286,6 +331,7 @@ class ForumThreadDetailViewModelTest {
             tid: Int,
             page: Int,
             floorOrder: ForumFloorOrder,
+            authorUid: Int?,
             forceRefresh: Boolean
         ): ForumThreadDetail = detail("Page $page", floorOrder, page)
 
@@ -362,7 +408,10 @@ private val replyBlock = ContentBlock.RichText(emptyList())
 private fun detail(
     title: String,
     floorOrder: ForumFloorOrder,
-    page: Int = 1
+    page: Int = 1,
+    uid: Int = 0,
+    replyCount: Int = 0,
+    replies: List<ForumReply> = listOf(defaultReply())
 ): ForumThreadDetail = ForumThreadDetail(
     tid = 42,
     typeId = 0,
@@ -370,29 +419,29 @@ private fun detail(
     typeColor = "",
     title = title,
     viewCount = 0,
-    replyCount = 0,
+    replyCount = replyCount,
     author = "Original Poster",
-    authorUid = 0,
+    authorUid = uid,
     authorAvatar = "",
     postTime = "",
     contentBlocks = listOf(firstPostBlock),
     comments = listOf(comment("inline first post comment")),
-    replies = listOf(
-        ForumReply(
-            floor = 2,
-            author = "Reply Author",
-            authorUid = 0,
-            authorAvatar = "",
-            authorGroup = "",
-            contentBlocks = listOf(replyBlock),
-            postTime = "",
-            pid = 4773820,
-            comments = listOf(comment("inline reply comment")),
-            commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
-        )
-    ),
+    replies = replies,
     pageInfo = PageInfo(activePage = page, nextPage = page, referPages = listOf(page)),
     pid = 4773811,
+    commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
+)
+
+private fun defaultReply(): ForumReply = ForumReply(
+    floor = 2,
+    author = "Reply Author",
+    authorUid = 0,
+    authorAvatar = "",
+    authorGroup = "",
+    contentBlocks = listOf(replyBlock),
+    postTime = "",
+    pid = 4773820,
+    comments = listOf(comment("inline reply comment")),
     commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
 )
 

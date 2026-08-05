@@ -64,6 +64,12 @@ data class FloorCommentSheetState(
 data class ForumThreadDetailUiState(
     val detail: ForumThreadDetail? = null,
     val floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR,
+    /** 是否只看楼主（authorid 过滤）。 */
+    val showAuthorOnly: Boolean = false,
+    /** 全部评论计数：加载“全部”页后由回复数得到，加载完成前为 null。 */
+    val allReplyCount: Int? = null,
+    /** 只看楼主计数：加载 authorid 页后由楼主帖子数得到，加载完成前为 null。 */
+    val authorReplyCount: Int? = null,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val isRevalidating: Boolean = false,
@@ -73,13 +79,15 @@ data class ForumThreadDetailUiState(
     val error: Int? = null,
     val isLoadingMore: Boolean = false,
     val isChangingFloorOrder: Boolean = false,
+    val isChangingAuthorFilter: Boolean = false,
     val commentSheet: FloorCommentSheetState? = null
 )
 
 private data class DetailRequestIdentity(
     val tid: Int,
     val page: Int,
-    val floorOrder: ForumFloorOrder
+    val floorOrder: ForumFloorOrder,
+    val authorUid: Int?
 )
 
 fun ForumThreadDetailUiState.prepareFloorOrderReload(order: ForumFloorOrder): ForumThreadDetailUiState =
@@ -90,8 +98,23 @@ fun ForumThreadDetailUiState.prepareFloorOrderReload(order: ForumFloorOrder): Fo
         isRefreshing = false,
         isRevalidating = false,
         isLoadingMore = false,
-        isChangingFloorOrder = true
+        isChangingFloorOrder = true,
+        isChangingAuthorFilter = false
     )
+
+/**
+ * 根据刚加载的详情维护“全部评论 / 只看楼主”计数：
+ * - 全部页：计数来自页面回复数（[ForumThreadDetail.replyCount]）；
+ * - 只看楼主页：计数 = 楼主首帖 + 该页解析出的楼主回复数。
+ */
+private fun ForumThreadDetailUiState.withFilterCounts(authorUid: Int?): ForumThreadDetailUiState {
+    val current = detail ?: return this
+    return copy(
+        allReplyCount = if (authorUid == null) current.replyCount else allReplyCount,
+        authorReplyCount = if (authorUid != null) 1 + current.replies.size else authorReplyCount,
+        isChangingAuthorFilter = false
+    )
+}
 
 @HiltViewModel(assistedFactory = ForumThreadDetailViewModel.Factory::class)
 class ForumThreadDetailViewModel @AssistedInject constructor(
@@ -129,6 +152,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         activeIdentity = identity
         return requestGeneration
     }
+
+    /** 楼主 uid（用于 authorid 参数）；是否启用过滤由 [ForumThreadDetailUiState.showAuthorOnly] 决定。 */
+    private fun currentAuthorUid(): Int? =
+        _uiState.value.detail?.authorUid?.takeIf { it > 0 }
 
     private fun isCurrent(generation: Long, identity: DetailRequestIdentity): Boolean =
         generation == requestGeneration && activeIdentity == identity
@@ -207,10 +234,14 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun loadDetail(forceRefresh: Boolean = false, showLoading: Boolean = true) {
         if (showLoading && _uiState.value.isLoading) return
         val floorOrder = _uiState.value.floorOrder
+        val authorUid = if (_uiState.value.showAuthorOnly) currentAuthorUid() else null
         val page = currentPage
-        val identity = DetailRequestIdentity(tid, page, floorOrder)
+        val identity = DetailRequestIdentity(tid, page, floorOrder, authorUid)
         val generation = beginRequest(identity)
-        KLog.d("[Forum] loadDetail: tid=$tid, page=$page, floorOrder=$floorOrder", TAG)
+        KLog.d(
+            "[Forum] loadDetail: tid=$tid, page=$page, floorOrder=$floorOrder, authorUid=$authorUid",
+            TAG
+        )
         viewModelScope.launch {
             var hasContent = _uiState.value.detail != null
             _uiState.update {
@@ -238,6 +269,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 tid,
                 page,
                 floorOrder,
+                authorUid = authorUid,
                 forceRefresh = forceRefresh,
                 revalidate = false
             )
@@ -246,7 +278,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            _uiState.update { it.applyLoadDetailCached(event.entry) }
+                            _uiState.update {
+                                it.applyLoadDetailCached(event.entry)
+                                    .withFilterCounts(authorUid)
+                            }
                         }
 
                         is CachedLoadEvent.Fresh -> {
@@ -275,11 +310,14 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
                                 KLog.d("[Forum] loadDetail 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
                             }
-                            _uiState.value = reduction.state
+                            _uiState.value = reduction.state.withFilterCounts(authorUid)
                         }
 
                         is CachedLoadEvent.Failure -> {
-                            _uiState.update { it.applyLoadDetailFailure(event, hasContent) }
+                            _uiState.update {
+                                it.applyLoadDetailFailure(event, hasContent)
+                                    .copy(isChangingAuthorFilter = false)
+                            }
                         }
                     }
                 }
@@ -289,11 +327,18 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun revalidate() {
         val state = _uiState.value
         if (state.detail == null || state.isLoading || state.isRevalidating || state.isRefreshing) return
-        val identity = DetailRequestIdentity(tid, 1, state.floorOrder)
+        val authorUid = if (state.showAuthorOnly) currentAuthorUid() else null
+        val identity = DetailRequestIdentity(tid, 1, state.floorOrder, authorUid)
         val generation = beginRequest(identity)
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
-            repository.observeThreadDetail(tid, 1, state.floorOrder, revalidate = false)
+            repository.observeThreadDetail(
+                tid,
+                1,
+                state.floorOrder,
+                authorUid = authorUid,
+                revalidate = false
+            )
                 .collect { event ->
                     if (!isCurrent(generation, identity)) return@collect
                     when (event) {
@@ -343,8 +388,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         val floorOrder = _uiState.value.floorOrder
+        val authorUid = if (_uiState.value.showAuthorOnly) currentAuthorUid() else null
         currentPage = 1
-        val identity = DetailRequestIdentity(tid, 1, floorOrder)
+        val identity = DetailRequestIdentity(tid, 1, floorOrder, authorUid)
         val generation = beginRequest(identity)
         viewModelScope.launch {
             _uiState.update {
@@ -359,6 +405,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 tid,
                 1,
                 floorOrder,
+                authorUid = authorUid,
                 forceRefresh = true,
                 revalidate = false
             )
@@ -372,7 +419,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                     detail = event.entry.value,
                                     isRefreshing = false,
                                     lastUpdatedAtMillis = event.entry.storedAtMillis
-                                )
+                                ).withFilterCounts(authorUid)
                             }
                         }
 
@@ -398,12 +445,18 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
         currentPage = nextPage
         val floorOrder = _uiState.value.floorOrder
-        val identity = DetailRequestIdentity(tid, nextPage, floorOrder)
+        val authorUid = if (_uiState.value.showAuthorOnly) currentAuthorUid() else null
+        val identity = DetailRequestIdentity(tid, nextPage, floorOrder, authorUid)
         val generation = beginRequest(identity)
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
             try {
-                val nextDetail = repository.loadThreadDetail(tid, nextPage, floorOrder)
+                val nextDetail = repository.loadThreadDetail(
+                    tid,
+                    nextPage,
+                    floorOrder,
+                    authorUid = authorUid
+                )
                 if (!isCurrent(generation, identity)) return@launch
                 // 置顶/广播楼层会在每一页重复出现，直接拼接会产生重复 floor，
                 // 导致 LazyColumn 的 key 冲突崩溃。按 floor 去重，保留已展示的首现版本。
@@ -539,6 +592,29 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         loadDetail(forceRefresh = true, showLoading = false)
     }
 
+    /** 切换“全部评论 / 只看楼主”过滤（authorid 参数），切换后重新加载第 1 页。 */
+    fun setAuthorFilter(showAuthorOnly: Boolean) {
+        if (
+            _uiState.value.showAuthorOnly == showAuthorOnly ||
+            _uiState.value.isLoading ||
+            _uiState.value.isChangingAuthorFilter
+        ) {
+            return
+        }
+        if (showAuthorOnly && currentAuthorUid() == null) return
+        currentPage = 1
+        _uiState.update {
+            it.copy(
+                showAuthorOnly = showAuthorOnly,
+                isChangingAuthorFilter = true,
+                isChangingFloorOrder = false,
+                error = null,
+                refreshMessage = null
+            )
+        }
+        loadDetail(forceRefresh = true, showLoading = false)
+    }
+
     private var isAtTopForFreshUpdates: Boolean = true
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
@@ -564,6 +640,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 pendingFreshDetail = null,
                 refreshMessage = null,
                 lastUpdatedAtMillis = System.currentTimeMillis()
+            ).withFilterCounts(
+                if (_uiState.value.showAuthorOnly) currentAuthorUid() else null
             )
         }
     }
