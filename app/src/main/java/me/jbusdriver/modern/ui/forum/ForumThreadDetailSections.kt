@@ -117,10 +117,11 @@ internal fun ReplyOperationBar(
     floorOrder: ForumFloorOrder,
     isSwitching: Boolean,
     onAuthorFilterSelected: (Boolean) -> Unit,
-    onFloorOrderSelected: (ForumFloorOrder) -> Unit
+    onFloorOrderSelected: (ForumFloorOrder) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface),
         verticalAlignment = Alignment.CenterVertically

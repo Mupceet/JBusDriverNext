@@ -29,12 +29,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -156,9 +158,12 @@ fun ForumThreadDetailScreen(
                         ) {
                             groupFirstPostBlocks(detail.contentBlocks, autoLoadGifs, loadedGifUrls)
                         }
+                        // sticky 操作条高度，跳转引用楼层时用它让目标楼层落在操作条下方
+                        var operationBarHeightPx by remember { mutableIntStateOf(0) }
 
                         // 点击引用楼层的 "xxx 发表于 xxx"：跳转到被引楼层。
                         // 列表顺序：header + 首帖分块 + content_comments + replies_header + replies。
+                        // 负偏移让目标楼层的名称落在 sticky 操作条下方，避免被遮挡。
                         val jumpToFloor: (Int) -> Unit = jump@{ quotedPid ->
                             if (quotedPid <= 0) return@jump
                             if (quotedPid == detail.pid) {
@@ -168,7 +173,10 @@ fun ForumThreadDetailScreen(
                                 if (replyIndex >= 0) {
                                     val replyStartIndex = firstPostSections.size + 3
                                     scope.launch {
-                                        listState.animateScrollToItem(replyStartIndex + replyIndex)
+                                        listState.animateScrollToItem(
+                                            replyStartIndex + replyIndex,
+                                            -operationBarHeightPx
+                                        )
                                     }
                                 }
                             }
@@ -290,7 +298,10 @@ fun ForumThreadDetailScreen(
                                         isSwitching = state.isChangingFloorOrder ||
                                             state.isChangingAuthorFilter,
                                         onAuthorFilterSelected = viewModel::setAuthorFilter,
-                                        onFloorOrderSelected = viewModel::setFloorOrder
+                                        onFloorOrderSelected = viewModel::setFloorOrder,
+                                        modifier = Modifier.onSizeChanged {
+                                            operationBarHeightPx = it.height
+                                        }
                                     )
                                 }
                                 items(items = detail.replies, key = { reply -> "reply_${reply.floor}" }) { reply ->
