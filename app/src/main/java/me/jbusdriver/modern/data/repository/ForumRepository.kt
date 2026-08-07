@@ -17,7 +17,9 @@ import me.jbusdriver.modern.data.parser.parseForumThreads
 import me.jbusdriver.modern.core.http.BrowserCookiePersister
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
+import me.jbusdriver.modern.data.settings.buildForumThreadListUrl
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
@@ -42,6 +44,7 @@ interface ForumRepository {
         fid: Int,
         page: Int,
         typeId: Int? = null,
+        threadOrder: ForumThreadOrder = ForumThreadOrder.LASTPOST,
         forceRefresh: Boolean = false
     ): ForumThreadPageResult
 
@@ -70,6 +73,7 @@ interface ForumRepository {
         fid: Int,
         page: Int,
         typeId: Int? = null,
+        threadOrder: ForumThreadOrder = ForumThreadOrder.LASTPOST,
         forceRefresh: Boolean = false,
         revalidate: Boolean = true,
         nowMillis: () -> Long = { System.currentTimeMillis() }
@@ -158,18 +162,18 @@ class DefaultForumRepository @Inject constructor(
         fid: Int,
         page: Int,
         typeId: Int?,
+        threadOrder: ForumThreadOrder,
         forceRefresh: Boolean,
         revalidate: Boolean,
         nowMillis: () -> Long
     ): Flow<CachedLoadEvent<ForumThreadPageResult>> = flow {
         siteConfig.awaitReady()
         val baseUrl = siteConfig.baseUrl
-        val displayUrl = "$baseUrl/forum/forum.php?mod=forumdisplay&fid=$fid&page=$page"
-        val url = if (typeId != null) "$displayUrl&filter=typeid&typeid=$typeId" else displayUrl
+        val url = buildForumThreadListUrl(baseUrl, fid, page, typeId, threadOrder)
         forumLogD("[Forum] loadThreads: url=$url")
         emitAll(
             cacheStore.observeCached(
-                key = forumThreadsCacheKey(baseUrl, fid, page, typeId),
+                key = forumThreadsCacheKey(baseUrl, fid, page, typeId, threadOrder),
                 ttlMillis = threadListTtl(page),
                 disk = true,
                 forceRefresh = forceRefresh,
@@ -217,12 +221,14 @@ class DefaultForumRepository @Inject constructor(
         fid: Int,
         page: Int,
         typeId: Int?,
+        threadOrder: ForumThreadOrder,
         forceRefresh: Boolean
     ): ForumThreadPageResult =
         observeThreads(
             fid,
             page,
             typeId,
+            threadOrder,
             forceRefresh = forceRefresh,
             revalidate = false
         ).firstCachedOrFresh()
@@ -274,8 +280,9 @@ class DefaultForumRepository @Inject constructor(
         baseUrl: String,
         fid: Int,
         page: Int,
-        typeId: Int?
-    ): String = "${forumCachePrefix(baseUrl)}:threads:$fid:$page:${typeId ?: "all"}"
+        typeId: Int?,
+        threadOrder: ForumThreadOrder
+    ): String = "${forumCachePrefix(baseUrl)}:threads:$fid:$page:${typeId ?: "all"}:${threadOrder.cacheValue}"
 
     private fun forumDetailCacheKey(
         baseUrl: String,

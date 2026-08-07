@@ -5,6 +5,7 @@ import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.core.http.BrowserCookiePersister
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import me.jbusdriver.modern.core.cache.CacheStore
@@ -224,6 +225,27 @@ class ForumRepositoryCacheFlowTest {
         repository.observeThreads(fid = 5, page = 1, typeId = 7).toList()
 
         assertTrue(sessionClient.urls.single().contains("filter=typeid&typeid=7"))
+    }
+
+    @Test
+    fun `observeThreads default thread order omits orderby`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadListHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreads(fid = 5, page = 1, typeId = null).toList()
+
+        assertFalse(sessionClient.urls.single().contains("orderby"))
+    }
+
+    @Test
+    fun `observeThreads dateline order appends only orderby`() = runBlocking {
+        val sessionClient = FakeSessionClient(threadListHtml())
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        repository.observeThreads(fid = 5, page = 1, typeId = null, threadOrder = ForumThreadOrder.DATELINE).toList()
+
+        assertTrue(sessionClient.urls.single().contains("orderby=dateline"))
+        assertFalse(sessionClient.urls.single().contains("filter=author"))
     }
 
     @Test

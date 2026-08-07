@@ -30,10 +30,11 @@ interface ThemeSettingsReader {
     val dynamicColor: StateFlow<Boolean>
 }
 
-/** Narrow read interface for forum consumers (ForumThreadDetailViewModel). */
+/** Narrow read interface for forum consumers (ForumThreadDetailViewModel / ForumThreadListViewModel). */
 interface ForumSettingsReader {
     val autoLoadGifs: StateFlow<Boolean>
     suspend fun currentForumFloorOrder(): ForumFloorOrder
+    suspend fun currentThreadSortOrder(): ForumThreadOrder
 }
 
 /** Narrow read/write interface for movie list display consumers (UiPrefsViewModel). */
@@ -51,6 +52,7 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     val showActressTab: StateFlow<Boolean>
     val showForumTab: StateFlow<Boolean>
     val forumFloorOrder: StateFlow<ForumFloorOrder>
+    val threadSortOrder: StateFlow<ForumThreadOrder>
     // Network
     val selectedBaseUrl: StateFlow<String>
     val cachedMirrorUrls: StateFlow<List<String>>
@@ -62,6 +64,7 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setShowForumTab(enabled: Boolean)
     suspend fun setAutoLoadGifs(enabled: Boolean)
     suspend fun setForumFloorOrder(order: ForumFloorOrder)
+    suspend fun setThreadSortOrder(order: ForumThreadOrder)
     suspend fun selectUrl(url: String)
 
     suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String)
@@ -113,10 +116,14 @@ class AppSettingsStore @Inject constructor(
     // region Forum
     override val autoLoadGifs: StateFlow<Boolean> = flowOf(KEY_AUTO_LOAD_GIFS, false)
     override val forumFloorOrder: StateFlow<ForumFloorOrder> = mapped(KEY_FORUM_FLOOR_ORDER, ForumFloorOrder.REGULAR) { ForumFloorOrder.fromPreferenceValue(it) }
+    override val threadSortOrder: StateFlow<ForumThreadOrder> = mapped(KEY_THREAD_SORT_ORDER, ForumThreadOrder.LASTPOST) { ForumThreadOrder.fromPreferenceValue(it) }
     override suspend fun currentForumFloorOrder(): ForumFloorOrder =
         ForumFloorOrder.fromPreferenceValue(dataStore.data.first()[KEY_FORUM_FLOOR_ORDER])
+    override suspend fun currentThreadSortOrder(): ForumThreadOrder =
+        ForumThreadOrder.fromPreferenceValue(dataStore.data.first()[KEY_THREAD_SORT_ORDER])
     override suspend fun setAutoLoadGifs(enabled: Boolean) = put(KEY_AUTO_LOAD_GIFS, enabled)
     override suspend fun setForumFloorOrder(order: ForumFloorOrder) = put(KEY_FORUM_FLOOR_ORDER, order.preferenceValue)
+    override suspend fun setThreadSortOrder(order: ForumThreadOrder) = put(KEY_THREAD_SORT_ORDER, order.preferenceValue)
     // endregion
 
     // region Network
@@ -145,6 +152,7 @@ class AppSettingsStore @Inject constructor(
         private val KEY_SHOW_FORUM_TAB = booleanPreferencesKey("show_forum_tab")
         private val KEY_AUTO_LOAD_GIFS = booleanPreferencesKey("auto_load_gifs")
         private val KEY_FORUM_FLOOR_ORDER = stringPreferencesKey("forum_floor_order")
+        private val KEY_THREAD_SORT_ORDER = stringPreferencesKey("forum_thread_sort_order")
         private val KEY_MOVIE_LIST_STYLE = stringPreferencesKey("movie_list_style")
         private val KEY_MOVIE_LOAD_MODE = stringPreferencesKey("movie_load_mode")
         private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")

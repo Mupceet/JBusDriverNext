@@ -18,6 +18,8 @@ import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.repository.ForumRepository
+import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.ForumTypeFilter
@@ -57,6 +59,7 @@ data class ForumThreadListUiState(
     val threads: List<ForumThread> = emptyList(),
     val pageInfo: PageInfo = PageInfo(),
     val currentTypeId: Int? = null,
+    val currentThreadOrder: ForumThreadOrder = ForumThreadOrder.LASTPOST,
     val typeFilters: List<ForumTypeFilter> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
@@ -72,6 +75,7 @@ data class ForumThreadListUiState(
 @HiltViewModel(assistedFactory = ForumThreadListViewModel.Factory::class)
 class ForumThreadListViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
+    private val forumSettingsReader: ForumSettingsReader,
     @Assisted private val navKey: RouteForumThreadList
 ) : ViewModel() {
     private val fid: Int = navKey.fid
@@ -84,7 +88,8 @@ class ForumThreadListViewModel @AssistedInject constructor(
 
     private data class ThreadListIdentity(
         val fid: Int,
-        val typeId: Int?
+        val typeId: Int?,
+        val threadOrder: ForumThreadOrder
     )
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
@@ -115,7 +120,11 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (initialTypeId != null) {
             _uiState.update { it.copy(currentTypeId = initialTypeId) }
         }
-        loadFirstPage()
+        viewModelScope.launch {
+            val defaultOrder = forumSettingsReader.currentThreadSortOrder()
+            _uiState.update { it.copy(currentThreadOrder = defaultOrder) }
+            loadFirstPage()
+        }
     }
 
     fun loadFirstPage() {
@@ -135,7 +144,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                 )
             }
             var hasContent = false
-            repository.observeThreads(identity.fid, 1, identity.typeId, revalidate = false)
+            repository.observeThreads(identity.fid, 1, identity.typeId, identity.threadOrder, revalidate = false)
                 .collect { event ->
                     if (!isCurrent(generation, identity)) return@collect
                     when (event) {
@@ -171,7 +180,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
         if (state.threads.isEmpty() || state.isLoading || state.isRevalidating || state.isRefreshing) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
-            repository.observeThreads(fid, 1, state.currentTypeId, revalidate = false)
+            repository.observeThreads(fid, 1, state.currentTypeId, state.currentThreadOrder, revalidate = false)
                 .collect { event ->
                     when (event) {
                         is CachedLoadEvent.Cached -> {
@@ -213,7 +222,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
             try {
-                val result = repository.loadThreads(fid, nextPage, state.currentTypeId)
+                val result = repository.loadThreads(fid, nextPage, state.currentTypeId, state.currentThreadOrder)
                 _uiState.update {
                     it.copy(
                         threads = (it.threads + result.threads).distinctBy { it.tid },
@@ -240,6 +249,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                 identity.fid,
                 1,
                 identity.typeId,
+                identity.threadOrder,
                 forceRefresh = true,
                 revalidate = false
             )
@@ -289,8 +299,22 @@ class ForumThreadListViewModel @AssistedInject constructor(
         loadFirstPage()
     }
 
+    fun setThreadOrder(order: ForumThreadOrder) {
+        if (_uiState.value.currentThreadOrder == order) return
+        currentPage = 0
+        isAtTopForFreshUpdates = true
+        _uiState.update {
+            it.copy(
+                currentThreadOrder = order,
+                threads = emptyList(),
+                pageInfo = PageInfo()
+            )
+        }
+        loadFirstPage()
+    }
+
     private fun currentListIdentity(): ThreadListIdentity =
-        ThreadListIdentity(fid, _uiState.value.currentTypeId)
+        ThreadListIdentity(fid, _uiState.value.currentTypeId, _uiState.value.currentThreadOrder)
 
     private fun beginListRequest(identity: ThreadListIdentity): Long {
         requestGeneration += 1

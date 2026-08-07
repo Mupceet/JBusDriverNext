@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -17,6 +19,8 @@ import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
@@ -61,6 +65,7 @@ class ForumCacheRefreshViewModelTest {
             fid: Int,
             page: Int,
             typeId: Int?,
+            threadOrder: ForumThreadOrder,
             forceRefresh: Boolean,
             revalidate: Boolean,
             nowMillis: () -> Long
@@ -83,6 +88,7 @@ class ForumCacheRefreshViewModelTest {
             fid: Int,
             page: Int,
             typeId: Int?,
+            threadOrder: ForumThreadOrder,
             forceRefresh: Boolean
         ): ForumThreadPageResult = error("not used")
 
@@ -267,6 +273,7 @@ class ForumCacheRefreshViewModelTest {
             fid: Int,
             page: Int,
             typeId: Int?,
+            threadOrder: ForumThreadOrder,
             forceRefresh: Boolean,
             revalidate: Boolean,
             nowMillis: () -> Long
@@ -291,6 +298,7 @@ class ForumCacheRefreshViewModelTest {
             fid: Int,
             page: Int,
             typeId: Int?,
+            threadOrder: ForumThreadOrder,
             forceRefresh: Boolean
         ): ForumThreadPageResult = error("not used")
 
@@ -309,6 +317,12 @@ class ForumCacheRefreshViewModelTest {
             forceRefresh: Boolean
         ): ForumCommentPageResult = error("not used")
 
+    }
+
+    private class FakeForumSettingsReader : ForumSettingsReader {
+        override val autoLoadGifs: StateFlow<Boolean> = MutableStateFlow(false)
+        override suspend fun currentForumFloorOrder(): ForumFloorOrder = ForumFloorOrder.REGULAR
+        override suspend fun currentThreadSortOrder(): ForumThreadOrder = ForumThreadOrder.LASTPOST
     }
 
     private fun threadResult(count: Int) = ForumThreadPageResult(
@@ -339,7 +353,7 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
         val viewModel = ForumThreadListViewModel(
-            repository, me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
         )
         advanceUntilIdle()
 
@@ -362,7 +376,7 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
         val viewModel = ForumThreadListViewModel(
-            repository, me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
         )
 
         viewModel.setAtTopForFreshUpdates(true)
@@ -401,7 +415,7 @@ class ForumCacheRefreshViewModelTest {
             )
         )
         val viewModel = ForumThreadListViewModel(
-            repository, me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
         )
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.threads.size)

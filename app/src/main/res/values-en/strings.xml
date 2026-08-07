@@ -78,6 +78,11 @@
     <!-- Forum -->
     <string name="floor_order_regular">Ascending</string>
     <string name="floor_order_reverse">Descending</string>
+    <string name="thread_order_dateline">Post time</string>
+    <string name="thread_order_lastpost">Last post</string>
+    <string name="thread_order_heats">Popular</string>
+    <string name="thread_order_replies">Replies</string>
+    <string name="thread_order_views">Views</string>
     <string name="reply_filter_all">All comments</string>
     <string name="reply_filter_author">OP only</string>
     <string name="comment">Reviews</string>
@@ -107,6 +112,7 @@
     <string name="auto_load_gif">Auto-load GIFs</string>
     <string name="auto_load_gif_desc">Load GIF images in forum posts automatically</string>
     <string name="floor_order">Floor browsing order</string>
+    <string name="thread_order">Thread sort order</string>
     <string name="settings_title">Settings</string>
     <string name="theme_mode">Theme mode</string>
     <string name="movie_list_style">Movie list style</string>

@@ -63,6 +63,7 @@ import me.jbusdriver.modern.data.mirror.MirrorUrl
 import me.jbusdriver.modern.data.mirror.ScanPhase
 import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
@@ -89,6 +90,7 @@ fun SettingsScreen(
     val showForumTab by store.showForumTab.collectAsStateWithLifecycle()
     val autoLoadGifs by store.autoLoadGifs.collectAsStateWithLifecycle()
     val forumFloorOrder by store.forumFloorOrder.collectAsStateWithLifecycle()
+    val threadSortOrder by store.threadSortOrder.collectAsStateWithLifecycle()
     val movieListStyle by store.movieListStyle.collectAsStateWithLifecycle()
     val movieLoadMode by store.movieLoadMode.collectAsStateWithLifecycle()
 
@@ -149,6 +151,7 @@ fun SettingsScreen(
                 showForumTab = showForumTab,
                 autoLoadGifs = autoLoadGifs,
                 forumFloorOrder = forumFloorOrder,
+                threadSortOrder = threadSortOrder,
                 movieListStyle = movieListStyle,
                 movieLoadMode = movieLoadMode,
                 onThemeModeChange = { scope.launch { store.setThemeMode(it) } },
@@ -158,6 +161,7 @@ fun SettingsScreen(
                 onShowForumTabChange = { scope.launch { store.setShowForumTab(it) } },
                 onAutoLoadGifsChange = { scope.launch { store.setAutoLoadGifs(it) } },
                 onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } },
+                onThreadSortOrderChange = { scope.launch { store.setThreadSortOrder(it) } },
                 onMovieListStyleChange = { scope.launch { store.setMovieListStyle(it) } },
                 onMovieLoadModeChange = { scope.launch { store.setMovieLoadMode(it) } }
             )
@@ -200,6 +204,7 @@ private fun AppearanceCard(
     showForumTab: Boolean,
     autoLoadGifs: Boolean,
     forumFloorOrder: ForumFloorOrder,
+    threadSortOrder: ForumThreadOrder,
     movieListStyle: MovieListStyle,
     movieLoadMode: MovieLoadMode,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -209,6 +214,7 @@ private fun AppearanceCard(
     onShowForumTabChange: (Boolean) -> Unit,
     onAutoLoadGifsChange: (Boolean) -> Unit,
     onForumFloorOrderChange: (ForumFloorOrder) -> Unit,
+    onThreadSortOrderChange: (ForumThreadOrder) -> Unit,
     onMovieListStyleChange: (MovieListStyle) -> Unit,
     onMovieLoadModeChange: (MovieLoadMode) -> Unit
 ) {
@@ -298,6 +304,7 @@ private fun AppearanceCard(
                 Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
                     SwitchRow("自動載入動圖", autoLoadGifs, onAutoLoadGifsChange)
                     FloorOrderRow(forumFloorOrder, onForumFloorOrderChange)
+                    ThreadSortOrderRow(threadSortOrder, onThreadSortOrderChange)
                 }
             }
         }
@@ -506,6 +513,55 @@ private fun themeModeLabel(mode: ThemeMode) = when (mode) {
 private fun floorOrderLabel(order: ForumFloorOrder) = when (order) {
     ForumFloorOrder.REGULAR -> "正序"
     ForumFloorOrder.REVERSE -> "倒序"
+}
+
+@Composable
+private fun ThreadSortOrderRow(
+    threadSortOrder: ForumThreadOrder,
+    onThreadSortOrderChange: (ForumThreadOrder) -> Unit
+) {
+    var sortExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { sortExpanded = true }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.thread_order), style = MaterialTheme.typography.bodyLarge)
+        Box {
+            Text(
+                threadSortOrderLabel(threadSortOrder),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            DropdownMenu(
+                expanded = sortExpanded,
+                onDismissRequest = { sortExpanded = false }
+            ) {
+                ForumThreadOrder.entries.forEach { order ->
+                    SelectableDropdownItem(
+                        label = threadSortOrderLabel(order),
+                        selected = order == threadSortOrder,
+                        onClick = {
+                            onThreadSortOrderChange(order)
+                            sortExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun threadSortOrderLabel(order: ForumThreadOrder): String = when (order) {
+    ForumThreadOrder.DATELINE -> stringResource(R.string.thread_order_dateline)
+    ForumThreadOrder.LASTPOST -> stringResource(R.string.thread_order_lastpost)
+    ForumThreadOrder.HEATS -> stringResource(R.string.thread_order_heats)
+    ForumThreadOrder.REPLIES -> stringResource(R.string.thread_order_replies)
+    ForumThreadOrder.VIEWS -> stringResource(R.string.thread_order_views)
 }
 
 /** Settings switches render slightly smaller than the default Material3 size. */

@@ -77,6 +77,11 @@
     <string name="reply_filter_author">只看樓主</string>
     <string name="floor_order_regular">正序</string>
     <string name="floor_order_reverse">倒序</string>
+    <string name="thread_order_dateline">發貼時間</string>
+    <string name="thread_order_lastpost">最後發表</string>
+    <string name="thread_order_heats">熱門</string>
+    <string name="thread_order_replies">回覆數量</string>
+    <string name="thread_order_views">查看數量</string>
     <string name="comment">點評</string>
     <string name="view_more_comments">查看更多點評</string>
     <string name="floor_comments">點評</string>
@@ -104,6 +109,7 @@
     <string name="auto_load_gif">自動載入動圖</string>
     <string name="auto_load_gif_desc">論壇帖中的 GIF 圖片無需點擊直接播放</string>
     <string name="floor_order">樓層瀏覽順序</string>
+    <string name="thread_order">主題排序</string>
     <string name="settings_title">設置</string>
     <string name="theme_mode">主題模式</string>
     <string name="movie_list_style">影片列表樣式</string>

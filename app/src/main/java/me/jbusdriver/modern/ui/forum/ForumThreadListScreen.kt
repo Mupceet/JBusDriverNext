@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -36,8 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,11 +57,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.ui.RouteForumThreadList
 import me.jbusdriver.modern.ui.components.EmptyStateView
 import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
+import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
@@ -129,6 +134,12 @@ fun ForumThreadListScreen(
                             contentDescription = stringResource(R.string.back)
                         )
                     }
+                },
+                actions = {
+                    ThreadSortMenu(
+                        currentOrder = state.currentThreadOrder,
+                        onOrderChange = { viewModel.setThreadOrder(it) }
+                    )
                 }
             )
         }, snackbarHost = {
@@ -235,6 +246,46 @@ fun ForumThreadListScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ThreadSortMenu(
+    currentOrder: ForumThreadOrder,
+    onOrderChange: (ForumThreadOrder) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                painterResource(R.drawable.sort_24px),
+                contentDescription = stringResource(R.string.thread_order)
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            ForumThreadOrder.entries.forEach { order ->
+                SelectableDropdownItem(
+                    label = threadOrderLabel(order),
+                    selected = order == currentOrder,
+                    onClick = {
+                        onOrderChange(order)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun threadOrderLabel(order: ForumThreadOrder): String = when (order) {
+    ForumThreadOrder.DATELINE -> stringResource(R.string.thread_order_dateline)
+    ForumThreadOrder.LASTPOST -> stringResource(R.string.thread_order_lastpost)
+    ForumThreadOrder.HEATS -> stringResource(R.string.thread_order_heats)
+    ForumThreadOrder.REPLIES -> stringResource(R.string.thread_order_replies)
+    ForumThreadOrder.VIEWS -> stringResource(R.string.thread_order_views)
 }
 
 @Composable

@@ -22,6 +22,7 @@ import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.data.session.GifCacheReader
 import me.jbusdriver.modern.data.session.LoadedGifTracker
 import me.jbusdriver.modern.domain.model.Comment
@@ -359,6 +360,7 @@ class ForumThreadDetailViewModelTest {
             fid: Int,
             page: Int,
             typeId: Int?,
+            threadOrder: ForumThreadOrder,
             forceRefresh: Boolean,
             revalidate: Boolean,
             nowMillis: () -> Long
@@ -371,6 +373,7 @@ class ForumThreadDetailViewModelTest {
             fid: Int,
             page: Int,
             typeId: Int?,
+            threadOrder: ForumThreadOrder,
             forceRefresh: Boolean
         ): ForumThreadPageResult = error("not used")
     }
@@ -378,6 +381,7 @@ class ForumThreadDetailViewModelTest {
     private class FakeForumSettingsReader : ForumSettingsReader {
         override val autoLoadGifs: StateFlow<Boolean> = MutableStateFlow(false)
         override suspend fun currentForumFloorOrder(): ForumFloorOrder = ForumFloorOrder.REGULAR
+        override suspend fun currentThreadSortOrder(): ForumThreadOrder = ForumThreadOrder.LASTPOST
     }
 
     private class FakeLoadedGifTracker : LoadedGifTracker {
