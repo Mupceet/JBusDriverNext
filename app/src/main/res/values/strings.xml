@@ -40,7 +40,7 @@
         <item quantity="other">%d 瀏覽</item>
     </plurals>
     <plurals name="reply_count_label">
-        <item quantity="other">%d 回復</item>
+        <item quantity="other">%d 回覆</item>
     </plurals>
     <string name="screenshot">截圖</string>
     <string name="actresses">演員</string>
@@ -77,11 +77,11 @@
     <string name="reply_filter_author">只看樓主</string>
     <string name="floor_order_regular">正序</string>
     <string name="floor_order_reverse">倒序</string>
-    <string name="thread_order_dateline">發貼時間</string>
-    <string name="thread_order_lastpost">最後發表</string>
-    <string name="thread_order_heats">熱門</string>
-    <string name="thread_order_replies">回覆數量</string>
-    <string name="thread_order_views">查看數量</string>
+    <string name="thread_order_dateline">最新主題</string>
+    <string name="thread_order_lastpost">最新回覆</string>
+    <string name="thread_order_heats">熱門主题</string>
+    <string name="thread_order_replies">最多回覆</string>
+    <string name="thread_order_views">最多浏览</string>
     <string name="comment">點評</string>
     <string name="view_more_comments">查看更多點評</string>
     <string name="floor_comments">點評</string>
@@ -98,7 +98,7 @@
     <string name="no_handler">未找到可處理的應用</string>
     <string name="share_image">分享圖片</string>
     <string name="forum_tab_latest">最新主題</string>
-    <string name="forum_tab_latest_reply">最新回復</string>
+    <string name="forum_tab_latest_reply">最新回覆</string>
     <string name="forum_tab_hot">熱點話題</string>
 
     <!-- Settings -->

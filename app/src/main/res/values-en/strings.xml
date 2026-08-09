@@ -78,11 +78,11 @@
     <!-- Forum -->
     <string name="floor_order_regular">Ascending</string>
     <string name="floor_order_reverse">Descending</string>
-    <string name="thread_order_dateline">Post time</string>
-    <string name="thread_order_lastpost">Last post</string>
-    <string name="thread_order_heats">Popular</string>
-    <string name="thread_order_replies">Replies</string>
-    <string name="thread_order_views">Views</string>
+    <string name="thread_order_dateline">Latest topics</string>
+    <string name="thread_order_lastpost">Latest replies</string>
+    <string name="thread_order_heats">Hot topics</string>
+    <string name="thread_order_replies">Most replies</string>
+    <string name="thread_order_views">Most viewed</string>
     <string name="reply_filter_all">All comments</string>
     <string name="reply_filter_author">OP only</string>
     <string name="comment">Reviews</string>

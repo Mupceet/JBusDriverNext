@@ -49,9 +49,9 @@ class ForumThreadOrderTest {
     }
 
     @Test
-    fun `default lastpost thread order keeps list url unchanged`() {
+    fun `lastpost thread order appends orderby parameter`() {
         assertEquals(
-            "https://www.javbus.com/forum/forum.php?mod=forumdisplay&fid=2&page=1",
+            "https://www.javbus.com/forum/forum.php?mod=forumdisplay&fid=2&page=1&orderby=lastpost",
             buildForumThreadListUrl(
                 baseUrl = "https://www.javbus.com",
                 fid = 2,

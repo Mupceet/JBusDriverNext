@@ -228,13 +228,13 @@ class ForumRepositoryCacheFlowTest {
     }
 
     @Test
-    fun `observeThreads default thread order omits orderby`() = runBlocking {
+    fun `observeThreads default thread order appends orderby=lastpost`() = runBlocking {
         val sessionClient = FakeSessionClient(threadListHtml())
         val repository = repository(FakeCacheStore(), sessionClient)
 
         repository.observeThreads(fid = 5, page = 1, typeId = null).toList()
 
-        assertFalse(sessionClient.urls.single().contains("orderby"))
+        assertTrue(sessionClient.urls.single().contains("orderby=lastpost"))
     }
 
     @Test
