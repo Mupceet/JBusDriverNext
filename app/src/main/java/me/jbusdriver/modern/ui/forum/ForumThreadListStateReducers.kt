@@ -4,7 +4,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
-import me.jbusdriver.modern.core.cache.decideFreshRevalidate
+import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.hasNext
 
@@ -65,13 +65,15 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
     loadingCopy: (ForumThreadListUiState) -> ForumThreadListUiState
 ): ForumThreadListFreshReduction {
     val fresh = entry.value
-    return when (
-        val outcome = decideFreshRevalidate(
-            currentItems = threads,
-            freshItems = fresh.threads,
-            isAtTop = isAtTop
-        )
-    ) {
+    val outcome = when {
+        isAtTop -> FreshRevalidateOutcome.ApplyImmediately
+        // 主题数量与排序未变（仅浏览数、回复数等卡片内字段变化）：
+        // 静默就地刷新，不弹"有新数据"提示，也不打断已滚动的列表。
+        threads.take(fresh.threads.size).map { it.tid } == fresh.threads.map { it.tid } ->
+            FreshRevalidateOutcome.NoChange
+        else -> FreshRevalidateOutcome.StorePending
+    }
+    return when (outcome) {
         FreshRevalidateOutcome.ApplyImmediately -> ForumThreadListFreshReduction(
             state = loadingCopy(
                 copy(
@@ -98,8 +100,23 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
         )
 
         FreshRevalidateOutcome.NoChange -> ForumThreadListFreshReduction(
-            state = loadingCopy(this),
+            state = loadingCopy(
+                copy(
+                    threads = threads.mergeFreshFirstPage(fresh.threads),
+                    lastUpdatedAtMillis = entry.storedAtMillis
+                )
+            ),
             outcome = outcome
         )
     }
+}
+
+/**
+ * 把新首页主题按 tid 就地合并进当前列表：已加载的后续页保持不变，
+ * 避免用户在列表中部时静默刷新导致已加载内容丢失。
+ */
+private fun List<ForumThread>.mergeFreshFirstPage(freshFirstPage: List<ForumThread>): List<ForumThread> {
+    if (freshFirstPage.isEmpty()) return this
+    val freshByTid = freshFirstPage.associateBy { it.tid }
+    return map { freshByTid[it.tid] ?: it }
 }

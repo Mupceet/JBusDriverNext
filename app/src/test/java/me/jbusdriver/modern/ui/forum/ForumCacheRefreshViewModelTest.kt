@@ -325,12 +325,16 @@ class ForumCacheRefreshViewModelTest {
         override suspend fun currentThreadSortOrder(): ForumThreadOrder = ForumThreadOrder.LASTPOST
     }
 
-    private fun threadResult(count: Int) = ForumThreadPageResult(
+    private fun threadResult(
+        count: Int,
+        viewCount: Int = 0,
+        replyCount: Int = 0
+    ) = ForumThreadPageResult(
         threads = List(count) { idx ->
             me.jbusdriver.modern.domain.model.ForumThread(
                 tid = idx + 1, typeId = 0, typeName = "T$idx", typeColor = "",
                 title = "Thread $idx", author = "A", authorUid = 0, authorAvatar = "",
-                dateLine = "", viewCount = 0, replyCount = 0,
+                dateLine = "", viewCount = viewCount, replyCount = replyCount,
                 lastReplyAuthor = "", lastReplyTime = "",
                 images = emptyList(), isPinned = false, isDigest = false,
                 pages = 1, isLocked = false, isHot = false
@@ -365,6 +369,32 @@ class ForumCacheRefreshViewModelTest {
 
         assertEquals(3, viewModel.uiState.value.threads.size)
         assertEquals(5, viewModel.uiState.value.pendingFreshThreads!!.threads.size)
+    }
+
+    @Test
+    fun `thread list silently merges count-only fresh when away from top`() = runTest(testDispatcher) {
+        val cached = threadResult(3)
+        val fresh = threadResult(3, viewCount = 100, replyCount = 5)
+        val repository = FakeThreadListRepository(mutableListOf(flow {
+            emit(CachedLoadEvent.Cached(CacheEntry(cached, 1_000L, CacheSource.Disk, true)))
+            emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
+        }))
+        val viewModel = ForumThreadListViewModel(
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+        )
+        advanceUntilIdle()
+        assertEquals(3, viewModel.uiState.value.threads.size)
+
+        viewModel.setAtTopForFreshUpdates(false)
+        viewModel.revalidate()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(1, 2, 3), state.threads.map { it.tid })
+        assertTrue(state.threads.all { it.viewCount == 100 && it.replyCount == 5 })
+        assertNull(state.pendingFreshThreads)
+        assertNull(state.refreshMessage)
+        assertFalse(state.isRevalidating)
     }
 
     @Test
