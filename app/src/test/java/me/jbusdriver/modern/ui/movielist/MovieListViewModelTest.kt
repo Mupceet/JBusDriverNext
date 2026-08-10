@@ -8,6 +8,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -33,6 +34,7 @@ import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieFilterInfo
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.PageInfo
+import me.jbusdriver.modern.ui.UserMessage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -463,6 +465,8 @@ class MovieListViewModelTest {
             revalidateArgs
         )
         viewModel = MovieListViewModel(repository, stubLocalVideoRepo)
+        val messages = mutableListOf<UserMessage>()
+        val messagesJob = launch { viewModel.messages.collect { messages += it } }
         viewModel.loadFirstPage()
         advanceUntilIdle()
         viewModel.setAtTopForFreshUpdates(false)
@@ -472,8 +476,9 @@ class MovieListViewModelTest {
 
         assertEquals(2, viewModel.uiState.value.movies.size)
         assertEquals(3, viewModel.uiState.value.pendingFreshResult?.movies?.size)
-        assertEquals(R.string.new_data_available, viewModel.uiState.value.refreshMessage)
+        assertEquals(R.string.new_data_available, messages.single().resId)
         assertEquals(listOf(false, false), revalidateArgs)
+        messagesJob.cancel()
     }
 
     @Test
@@ -511,7 +516,6 @@ class MovieListViewModelTest {
 
         assertEquals(3, viewModel.uiState.value.movies.size)
         assertNull(viewModel.uiState.value.pendingFreshResult)
-        assertNull(viewModel.uiState.value.refreshMessage)
     }
 
     @Test

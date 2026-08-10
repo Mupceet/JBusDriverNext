@@ -56,14 +56,13 @@ class ForumBoardsStateReducerTest {
     }
 
     @Test
-    fun applyBoardsRefreshFailure_withContentShowsRefreshMessage() {
+    fun applyBoardsRefreshFailure_withContentKeepsContentWithoutError() {
         val state = ForumBoardsUiState(groups = homeData(groups = 1).boardGroups, isRefreshing = true)
 
         val result = state.applyBoardsRefreshFailure()
 
         assertFalse(result.isRefreshing)
         assertNull(result.error)
-        assertEquals(R.string.refresh_failed, result.refreshMessage)
     }
 
     private fun cacheEntry(

@@ -55,7 +55,6 @@ class ForumThreadDetailStateTest {
         assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
         assertSame(current, reduction.state.detail)
         assertEquals(fresh, reduction.state.pendingFreshDetail)
-        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
         assertFalse(reduction.state.isLoading)
         assertFalse(reduction.state.isRevalidating)
         assertFalse(reduction.state.isChangingFloorOrder)

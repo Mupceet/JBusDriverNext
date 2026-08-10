@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -73,20 +74,18 @@ fun ActressListScreen(
         onPauseOrDispose { }
     }
 
-    val refreshMessageRes = uiState.refreshMessage
-    val refreshMessage = refreshMessageRes?.let { stringResource(it) }
-    LaunchedEffect(refreshMessageRes) {
-        if (refreshMessage != null) {
+    val context = LocalContext.current
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { message ->
             val result = snackbarHostState.showSnackbar(
-                message = refreshMessage,
-                actionLabel = refreshLabel,
+                message = message.format(context),
+                actionLabel = if (message.resId == R.string.new_data_available) refreshLabel else null,
                 duration = SnackbarDuration.Long
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.applyPendingFreshActresses()
                 scope.launch { gridState.animateScrollToItem(0) }
             }
-            viewModel.consumeRefreshMessage()
         }
     }
 

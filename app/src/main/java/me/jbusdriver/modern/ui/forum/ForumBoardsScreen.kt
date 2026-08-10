@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -42,6 +43,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,15 +87,13 @@ fun ForumBoardsScreen(
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize()
     ) {
-        val refreshMessageRes = state.refreshMessage
-        val refreshMessage = refreshMessageRes?.let { stringResource(it) }
-        LaunchedEffect(refreshMessageRes) {
-            if (refreshMessage != null) {
+        val context = LocalContext.current
+        LaunchedEffect(viewModel) {
+            viewModel.messages.collect { message ->
                 snackbarHostState.showSnackbar(
-                    message = refreshMessage,
-                    duration = androidx.compose.material3.SnackbarDuration.Long
+                    message = message.format(context),
+                    duration = SnackbarDuration.Long
                 )
-                viewModel.consumeRefreshMessage()
             }
         }
         if (state.groups.isNotEmpty()) {

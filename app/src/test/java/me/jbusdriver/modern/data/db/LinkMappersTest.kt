@@ -41,8 +41,7 @@ class LinkMappersTest {
         val actress = ActressInfo(
             name = "Alice",
             avatar = "https://example.test/avatar/alice.jpg",
-            link = "https://example.test/star/alice",
-            tag = "12部"
+            link = "https://example.test/star/alice"
         )
 
         val item = actress.convertDBItem()

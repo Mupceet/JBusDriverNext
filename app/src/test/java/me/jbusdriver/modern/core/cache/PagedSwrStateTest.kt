@@ -83,4 +83,39 @@ class PagedSwrStateTest {
         )
         assertEquals(FreshRevalidateOutcome.NoChange, outcome)
     }
+
+    @Test
+    fun pagedSwrHolder_tracksPagesAndTopGate() {
+        val holder = PagedSwrStateHolder<String>()
+        assertEquals(0, holder.pages.current)
+        assertTrue(holder.atTop.isAtTop)
+
+        holder.atTop.isAtTop = false
+        holder.pages.startFirstPage()
+
+        assertEquals(1, holder.pages.current)
+        assertFalse(holder.atTop.isAtTop)
+    }
+
+    @Test
+    fun pagedSwrHolder_generationGuardDiscardsStaleIdentity() {
+        val holder = PagedSwrStateHolder<String>()
+        val stale = holder.begin("list-a")
+        val current = holder.begin("list-b")
+
+        // 旧代际 + 旧身份：过期
+        assertFalse(holder.isCurrent(stale, "list-a"))
+        // 新代际 + 新身份：有效
+        assertTrue(holder.isCurrent(current, "list-b"))
+        // 新代际 + 旧身份：无效
+        assertFalse(holder.isCurrent(current, "list-a"))
+    }
+
+    @Test
+    fun pagedSwrHolder_resetForNewSourceResetsPagination() {
+        val holder = PagedSwrStateHolder<String>()
+        holder.pages.advanceTo(4)
+        holder.resetForNewSource()
+        assertEquals(0, holder.pages.current)
+    }
 }

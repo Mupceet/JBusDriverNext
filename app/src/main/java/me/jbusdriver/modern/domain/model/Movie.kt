@@ -31,7 +31,6 @@ data class Movie(
     @SerializedName("detailUrl") override val link: String,
     val tags: List<String>? = listOf(),
 ) : ILink
-    /** 所属收藏分类 ID，默认关联 [MovieCategory] */
 
 /**
  * 创建用于分页导航的占位 [Movie] 实例。

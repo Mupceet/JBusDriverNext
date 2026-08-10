@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -86,6 +87,7 @@ class SearchViewModel @Inject constructor(
     private val collectRepository: CollectRepository,
     private val siteConfig: SiteConfig,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     /** 内部可变的 UI 状态 */
@@ -145,6 +147,11 @@ class SearchViewModel @Inject constructor(
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
 
     init {
+        savedStateHandle.get<String>(KEY_SEARCH_TYPE)?.let { name ->
+            runCatching { SearchType.valueOf(name) }.getOrNull()?.let { type ->
+                _uiState.update { it.copy(searchType = type) }
+            }
+        }
         viewModelScope.launch { _searchHistory.value = historyStore.getHistory() }
     }
 
@@ -198,6 +205,7 @@ class SearchViewModel @Inject constructor(
     fun search(query: String, type: SearchType? = null) {
         if (query.isBlank()) return
         val searchType = type ?: _uiState.value.searchType
+        savedStateHandle[KEY_SEARCH_TYPE] = searchType.name
         val identity = RequestIdentity(query, searchType)
         val generation = beginRequest(identity)
         viewModelScope.launch {
@@ -360,6 +368,7 @@ class SearchViewModel @Inject constructor(
      * @param type 新的搜索类型
      */
     fun setSearchType(type: SearchType) {
+        savedStateHandle[KEY_SEARCH_TYPE] = type.name
         val query = _uiState.value.query
         if (query.isNotBlank()) {
             search(query, type)
@@ -382,5 +391,9 @@ class SearchViewModel @Inject constructor(
     private fun isCurrent(generation: Long, identity: RequestIdentity): Boolean {
         return generation == requestGeneration &&
             activeIdentity == identity
+    }
+
+    private companion object {
+        const val KEY_SEARCH_TYPE = "search_type"
     }
 }

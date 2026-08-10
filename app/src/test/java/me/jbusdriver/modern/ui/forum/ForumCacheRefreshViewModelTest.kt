@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -357,7 +358,8 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
         val viewModel = ForumThreadListViewModel(
-            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"),
+            SavedStateHandle()
         )
         advanceUntilIdle()
 
@@ -380,7 +382,8 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
         val viewModel = ForumThreadListViewModel(
-            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"),
+            SavedStateHandle()
         )
         advanceUntilIdle()
         assertEquals(3, viewModel.uiState.value.threads.size)
@@ -393,7 +396,6 @@ class ForumCacheRefreshViewModelTest {
         assertEquals(listOf(1, 2, 3), state.threads.map { it.tid })
         assertTrue(state.threads.all { it.viewCount == 100 && it.replyCount == 5 })
         assertNull(state.pendingFreshThreads)
-        assertNull(state.refreshMessage)
         assertFalse(state.isRevalidating)
     }
 
@@ -406,7 +408,8 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
         val viewModel = ForumThreadListViewModel(
-            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"),
+            SavedStateHandle()
         )
 
         viewModel.setAtTopForFreshUpdates(true)
@@ -445,7 +448,8 @@ class ForumCacheRefreshViewModelTest {
             )
         )
         val viewModel = ForumThreadListViewModel(
-            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board")
+            repository, FakeForumSettingsReader(), me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"),
+            SavedStateHandle()
         )
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.threads.size)

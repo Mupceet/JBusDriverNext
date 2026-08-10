@@ -100,13 +100,8 @@ data class Genre(val name: String, override val link: String) : ILink
 data class ActressInfo(
     val name: String,
     val avatar: String,
-    override val link: String, @Transient var tag: String? = null
-) : ILink {
-
-    /** 所属收藏分类 ID，默认关联 [ActressCategory] */
-    override fun toString() =
-        "ActressInfo(name='$name', avatar='$avatar', link='$link', tag=$tag) "
-}
+    override val link: String
+) : ILink
 
 /**
  * 影片截图样本，包含缩略图和全尺寸图的 URL。

@@ -27,7 +27,6 @@ class ActressHtmlParserTest {
         assertEquals("https://example.test/avatars/alice.jpg", actresses[0].avatar)
         assertEquals("https://cdn.example/betty.jpg", actresses[1].avatar)
         assertEquals(listOf("/star/alice", "/star/betty"), actresses.map { it.link })
-        assertEquals(listOf("12部", "8部"), actresses.map { it.tag })
     }
 
     @Test

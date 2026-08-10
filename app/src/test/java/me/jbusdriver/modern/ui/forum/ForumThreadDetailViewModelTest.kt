@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -66,7 +67,8 @@ class ForumThreadDetailViewModelTest {
             loadedGifTracker = FakeLoadedGifTracker(),
             gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
-            navKey = RouteForumThreadDetail(42)
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
         )
         advanceUntilIdle()
         assertEquals("Regular", viewModel.uiState.value.detail?.title)
@@ -96,7 +98,8 @@ class ForumThreadDetailViewModelTest {
             loadedGifTracker = FakeLoadedGifTracker(),
             gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://Mirror.Example.test/base/"),
-            navKey = RouteForumThreadDetail(42)
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
         )
 
         assertEquals(
@@ -113,10 +116,11 @@ class ForumThreadDetailViewModelTest {
                 repository = repository,
                 forumSettingsReader = FakeForumSettingsReader(),
                 loadedGifTracker = FakeLoadedGifTracker(),
-                gifCacheReader = FakeGifCacheReader(),
-                siteConfig = FakeSiteConfig("https://forum.example.test/root"),
-                navKey = RouteForumThreadDetail(42)
-            )
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
             advanceUntilIdle()
             assertEquals(337947, viewModel.uiState.value.detail?.authorUid)
 
@@ -138,7 +142,8 @@ class ForumThreadDetailViewModelTest {
             loadedGifTracker = FakeLoadedGifTracker(),
             gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
-            navKey = RouteForumThreadDetail(42)
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
         )
         advanceUntilIdle()
 
@@ -172,7 +177,8 @@ class ForumThreadDetailViewModelTest {
             loadedGifTracker = FakeLoadedGifTracker(),
             gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
-            navKey = RouteForumThreadDetail(42)
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
         )
         advanceUntilIdle()
         viewModel.openReplyCommentsSheet(2)
@@ -202,7 +208,8 @@ class ForumThreadDetailViewModelTest {
             loadedGifTracker = FakeLoadedGifTracker(),
             gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
-            navKey = RouteForumThreadDetail(42)
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
         )
         advanceUntilIdle()
         viewModel.openReplyCommentsSheet(2)
@@ -231,7 +238,8 @@ class ForumThreadDetailViewModelTest {
             loadedGifTracker = FakeLoadedGifTracker(),
             gifCacheReader = FakeGifCacheReader(),
             siteConfig = FakeSiteConfig("https://forum.example.test/root"),
-            navKey = RouteForumThreadDetail(42)
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
         )
         advanceUntilIdle()
 

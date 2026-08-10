@@ -80,9 +80,7 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
                     threads = fresh.threads,
                     pageInfo = fresh.pageInfo,
                     typeFilters = fresh.typeFilters,
-                    hasMore = fresh.pageInfo.hasNext,
                     pendingFreshThreads = null,
-                    refreshMessage = null,
                     lastUpdatedAtMillis = entry.storedAtMillis
                 )
             ),
@@ -92,8 +90,7 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
         FreshRevalidateOutcome.StorePending -> ForumThreadListFreshReduction(
             state = loadingCopy(
                 copy(
-                    pendingFreshThreads = fresh,
-                    refreshMessage = R.string.new_data_available
+                    pendingFreshThreads = fresh
                 )
             ),
             outcome = outcome

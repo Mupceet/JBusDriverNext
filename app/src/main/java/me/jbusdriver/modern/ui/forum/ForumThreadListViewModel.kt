@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.assisted.Assisted
@@ -7,8 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -16,6 +20,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
+import me.jbusdriver.modern.core.cache.PagedSwrStateHolder
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
@@ -26,6 +31,7 @@ import me.jbusdriver.modern.domain.model.ForumTypeFilter
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadList
+import me.jbusdriver.modern.ui.UserMessage
 
 private const val TAG = "ForumVM"
 
@@ -65,26 +71,26 @@ data class ForumThreadListUiState(
     val isLoadingMore: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: Int? = null,
-    val hasMore: Boolean = true,
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
-    val pendingFreshThreads: ForumThreadPageResult? = null,
-    val refreshMessage: Int? = null
-)
+    val pendingFreshThreads: ForumThreadPageResult? = null
+) {
+    /** 是否还有更多数据可加载（由 [pageInfo] 派生，避免与 hasNext 重复保存） */
+    val hasMore: Boolean
+        get() = pageInfo.hasNext
+}
 
 @HiltViewModel(assistedFactory = ForumThreadListViewModel.Factory::class)
 class ForumThreadListViewModel @AssistedInject constructor(
     private val repository: ForumRepository,
     private val forumSettingsReader: ForumSettingsReader,
-    @Assisted private val navKey: RouteForumThreadList
+    @Assisted private val navKey: RouteForumThreadList,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val fid: Int = navKey.fid
     private val initialTypeId: Int? = navKey.typeId
-    private var currentPage = 0
-
-    private var isAtTopForFreshUpdates: Boolean = true
-    private var requestGeneration = 0L
-    private var activeListIdentity: ThreadListIdentity? = null
+    /** 分页/顶部开关/请求代际的状态机 */
+    private val swr = PagedSwrStateHolder<ThreadListIdentity>()
 
     private data class ThreadListIdentity(
         val fid: Int,
@@ -93,27 +99,29 @@ class ForumThreadListViewModel @AssistedInject constructor(
     )
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
-        isAtTopForFreshUpdates = isAtTop
+        swr.atTop.isAtTop = isAtTop
     }
 
     fun applyPendingFreshThreads() {
         val pending = _uiState.value.pendingFreshThreads ?: return
         logThreadDiff(_uiState.value.threads, pending.threads, "ThreadList.applyPending")
-        currentPage = 1
+        swr.pages.startFirstPage()
         _uiState.update {
             it.copy(
                 threads = pending.threads,
                 pageInfo = pending.pageInfo,
                 typeFilters = pending.typeFilters,
-                pendingFreshThreads = null,
-                refreshMessage = null,
-                hasMore = pending.pageInfo.hasNext
+                pendingFreshThreads = null
             )
         }
     }
 
     private val _uiState = MutableStateFlow(ForumThreadListUiState())
     val uiState: StateFlow<ForumThreadListUiState> = _uiState.asStateFlow()
+
+    /** 一次性用户消息（Snackbar/Toast），UI 展示后即视为消费 */
+    private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 4)
+    val messages: SharedFlow<UserMessage> = _messages.asSharedFlow()
 
     init {
         KLog.d("[Forum] ForumThreadListViewModel init: fid=$fid, typeId=$initialTypeId", TAG)
@@ -122,31 +130,38 @@ class ForumThreadListViewModel @AssistedInject constructor(
         }
         viewModelScope.launch {
             val defaultOrder = forumSettingsReader.currentThreadSortOrder()
-            _uiState.update { it.copy(currentThreadOrder = defaultOrder) }
+            val restoredOrder = savedStateHandle.get<String>(KEY_THREAD_ORDER)
+                ?.let { name -> runCatching { ForumThreadOrder.valueOf(name) }.getOrNull() }
+            val restoredTypeId = savedStateHandle.get<String>(KEY_TYPE_ID)?.toIntOrNull()
+            _uiState.update {
+                it.copy(
+                    currentThreadOrder = restoredOrder ?: defaultOrder,
+                    currentTypeId = restoredTypeId ?: it.currentTypeId
+                )
+            }
             loadFirstPage()
         }
     }
 
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
-        currentPage = 1
+        swr.pages.startFirstPage()
         KLog.d("[Forum] loadFirstPage: fid=$fid, typeId=${_uiState.value.currentTypeId}", TAG)
         val identity = currentListIdentity()
-        val generation = beginListRequest(identity)
+        val generation = swr.begin(identity)
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
                     isRefreshing = false,
                     isLoadingMore = false,
-                    error = null,
-                    refreshMessage = null
+                    error = null
                 )
             }
             var hasContent = false
             repository.observeThreads(identity.fid, 1, identity.typeId, identity.threadOrder, revalidate = false)
                 .collect { event ->
-                    if (!isCurrent(generation, identity)) return@collect
+                    if (!swr.isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -162,7 +177,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             logThreadDiff(oldFirstPage, fresh.threads, "ThreadList.loadFirstPage")
                             val reduction = _uiState.value.applyFirstPageFresh(
                                 event.entry.copy(value = fresh),
-                                isAtTop = isAtTopForFreshUpdates
+                                isAtTop = swr.atTop.isAtTop
                             )
                             _uiState.value = reduction.state
                         }
@@ -196,12 +211,15 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             logThreadDiff(oldFirstPage, fresh.threads, "ThreadList.revalidate")
                             val reduction = _uiState.value.applyFreshRevalidate(
                                 event.entry.copy(value = fresh),
-                                isAtTop = isAtTopForFreshUpdates
+                                isAtTop = swr.atTop.isAtTop
                             )
                             if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
-                                currentPage = 1
+                                swr.pages.startFirstPage()
                             }
                             _uiState.value = reduction.state
+                            if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
+                                _messages.emit(UserMessage(R.string.new_data_available))
+                            }
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -216,9 +234,9 @@ class ForumThreadListViewModel @AssistedInject constructor(
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore || !state.hasMore) return
         val nextPage = state.pageInfo.nextPage
-        if (nextPage <= currentPage) return
+        if (!swr.pages.shouldLoadMore(state.pageInfo)) return
 
-        currentPage = nextPage
+        swr.pages.advanceTo(nextPage)
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
             try {
@@ -228,12 +246,11 @@ class ForumThreadListViewModel @AssistedInject constructor(
                         threads = (it.threads + result.threads).distinctBy { it.tid },
                         pageInfo = result.pageInfo,
                         isLoadingMore = false,
-                        hasMore = result.pageInfo.hasNext
                     )
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                currentPage = _uiState.value.pageInfo.activePage
+                swr.pages.rollbackTo(_uiState.value.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false) }
             }
         }
@@ -242,9 +259,9 @@ class ForumThreadListViewModel @AssistedInject constructor(
     fun refresh() {
         if (_uiState.value.isRefreshing) return
         val identity = currentListIdentity()
-        val generation = beginListRequest(identity)
+        val generation = swr.begin(identity)
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
             repository.observeThreads(
                 identity.fid,
                 1,
@@ -254,20 +271,18 @@ class ForumThreadListViewModel @AssistedInject constructor(
                 revalidate = false
             )
                 .collect { event ->
-                    if (!isCurrent(generation, identity)) return@collect
+                    if (!swr.isCurrent(generation, identity)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
-                            currentPage = 1
+                            swr.pages.startFirstPage()
                             _uiState.update {
                                 it.copy(
                                     threads = event.entry.value.threads,
                                     pageInfo = event.entry.value.pageInfo,
                                     typeFilters = event.entry.value.typeFilters,
                                     isRefreshing = false,
-                                    hasMore = event.entry.value.pageInfo.hasNext,
-                                    pendingFreshThreads = null,
-                                    refreshMessage = null
+                                    pendingFreshThreads = null
                                 )
                             }
                         }
@@ -287,8 +302,9 @@ class ForumThreadListViewModel @AssistedInject constructor(
 
     fun filterByType(typeId: Int?) {
         if (_uiState.value.currentTypeId == typeId) return
-        currentPage = 0
-        isAtTopForFreshUpdates = true
+        savedStateHandle[KEY_TYPE_ID] = typeId?.toString()
+        swr.resetForNewSource()
+        swr.atTop.isAtTop = true
         _uiState.update {
             it.copy(
                 currentTypeId = typeId,
@@ -301,8 +317,9 @@ class ForumThreadListViewModel @AssistedInject constructor(
 
     fun setThreadOrder(order: ForumThreadOrder) {
         if (_uiState.value.currentThreadOrder == order) return
-        currentPage = 0
-        isAtTopForFreshUpdates = true
+        savedStateHandle[KEY_THREAD_ORDER] = order.name
+        swr.resetForNewSource()
+        swr.atTop.isAtTop = true
         _uiState.update {
             it.copy(
                 currentThreadOrder = order,
@@ -316,14 +333,10 @@ class ForumThreadListViewModel @AssistedInject constructor(
     private fun currentListIdentity(): ThreadListIdentity =
         ThreadListIdentity(fid, _uiState.value.currentTypeId, _uiState.value.currentThreadOrder)
 
-    private fun beginListRequest(identity: ThreadListIdentity): Long {
-        requestGeneration += 1
-        activeListIdentity = identity
-        return requestGeneration
+    private companion object {
+        const val KEY_TYPE_ID = "forum_thread_list_type_id"
+        const val KEY_THREAD_ORDER = "forum_thread_list_thread_order"
     }
-
-    private fun isCurrent(generation: Long, identity: ThreadListIdentity): Boolean =
-        generation == requestGeneration && activeListIdentity == identity
 
     @AssistedFactory
     interface Factory {

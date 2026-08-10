@@ -3,17 +3,22 @@ package me.jbusdriver.modern.ui.forum
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
 import me.jbusdriver.modern.domain.model.ForumHomeSummary
+import me.jbusdriver.modern.ui.UserMessage
 import javax.inject.Inject
 
 private const val TAG = "ForumVM"
@@ -26,8 +31,7 @@ data class ForumBoardsUiState(
     val isRefreshing: Boolean = false,
     val error: Int? = null,
     val isRevalidating: Boolean = false,
-    val lastUpdatedAtMillis: Long? = null,
-    val refreshMessage: Int? = null
+    val lastUpdatedAtMillis: Long? = null
 )
 
 @HiltViewModel
@@ -36,6 +40,11 @@ class ForumBoardsViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ForumBoardsUiState())
     val uiState: StateFlow<ForumBoardsUiState> = _uiState.asStateFlow()
+
+    /** 一次性用户消息（Snackbar/Toast），UI 展示后即视为消费 */
+    private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 4)
+    val messages: SharedFlow<UserMessage> = _messages.asSharedFlow()
+
     private var requestGeneration = 0L
 
     private fun beginRequest(): Long {
@@ -59,8 +68,7 @@ class ForumBoardsViewModel @Inject constructor(
                 it.copy(
                     isLoading = true,
                     isRefreshing = false,
-                    error = null,
-                    refreshMessage = null
+                    error = null
                 )
             }
             var hasContent = false
@@ -88,7 +96,7 @@ class ForumBoardsViewModel @Inject constructor(
     fun refresh() {
         val generation = beginRequest()
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, refreshMessage = null) }
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
             repository.observeForumBoards(forceRefresh = true, revalidate = false)
                 .collect { event ->
                     if (!isCurrent(generation)) return@collect
@@ -99,7 +107,11 @@ class ForumBoardsViewModel @Inject constructor(
                         }
 
                         is CachedLoadEvent.Failure -> {
+                            val hadContent = _uiState.value.groups.isNotEmpty()
                             _uiState.update { it.applyBoardsRefreshFailure() }
+                            if (hadContent) {
+                                _messages.emit(UserMessage(R.string.refresh_failed))
+                            }
                         }
                     }
                 }
@@ -110,7 +122,4 @@ class ForumBoardsViewModel @Inject constructor(
         if (_uiState.value.groups.isNotEmpty()) loadBoards()
     }
 
-    fun consumeRefreshMessage() {
-        _uiState.update { it.copy(refreshMessage = null) }
-    }
 }

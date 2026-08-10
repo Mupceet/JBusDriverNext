@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
 import me.jbusdriver.modern.data.repository.CollectRepository
 import javax.inject.Inject
@@ -32,17 +32,9 @@ sealed interface CollectActionEvent {
 @HiltViewModel
 class CollectCategoryViewModel @Inject constructor(
     private val repository: CollectRepository,
-    private val documentGateway: CollectionDocumentGateway
+    private val documentGateway: CollectionDocumentGateway,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
-    private var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-
-    constructor(
-        repository: CollectRepository,
-        documentGateway: CollectionDocumentGateway,
-        ioDispatcher: CoroutineDispatcher
-    ) : this(repository, documentGateway) {
-        this.ioDispatcher = ioDispatcher
-    }
 
     private val _isBusy = MutableStateFlow(false)
     val isBusy: StateFlow<Boolean> = _isBusy.asStateFlow()

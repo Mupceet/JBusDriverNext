@@ -5,22 +5,25 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.core.cache.AtTopGate
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
-import me.jbusdriver.modern.core.cache.PageTracker
+import me.jbusdriver.modern.core.cache.PagedSwrStateHolder
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.ActressUiModel
+import me.jbusdriver.modern.ui.UserMessage
 import me.jbusdriver.modern.ui.toActressUiModel
 import javax.inject.Inject
 
@@ -40,8 +43,6 @@ data class ActressListUiState(
     val isRefreshing: Boolean = false,
     /** 是否正在加载更多（翻页） */
     val isLoadingMore: Boolean = false,
-    /** 是否还有更多数据可加载 */
-    val hasMore: Boolean = true,
     /** 错误信息，正常时为 null */
     val error: Int? = null,
     /** 后台刷新中（有缓存数据时显示顶部进度条） */
@@ -49,10 +50,12 @@ data class ActressListUiState(
     /** 缓存数据的时间戳 */
     val lastUpdatedAtMillis: Long? = null,
     /** 后台刷新获得的新数据，等待用户应用 */
-    val pendingFreshActresses: Pair<List<ActressInfo>, PageInfo>? = null,
-    /** 轻量刷新反馈消息（Snackbar） */
-    val refreshMessage: Int? = null
-)
+    val pendingFreshActresses: Pair<List<ActressInfo>, PageInfo>? = null
+) {
+    /** 是否还有更多数据可加载（由 [pageInfo] 派生，避免与 hasNext 重复保存） */
+    val hasMore: Boolean
+        get() = pageInfo.hasNext
+}
 
 /**
  * 女优列表页 ViewModel。
@@ -78,27 +81,18 @@ class ActressListViewModel @Inject constructor(
     /** 对外暴露的只读 UI 状态流 */
     val uiState: StateFlow<ActressListUiState> = _uiState.asStateFlow()
 
-    /** 当前已加载到的页码 */
-    private val pages = PageTracker()
+    /** 一次性用户消息（Snackbar/Toast），UI 展示后即视为消费 */
+    private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 4)
+    val messages: SharedFlow<UserMessage> = _messages.asSharedFlow()
 
     /** 当前的数据源类型（默认为女优分类） */
     private var dataSourceType: DataSourceType = DataSourceType.ACTRESSES
-    private val atTop = AtTopGate()
+    /** 分页/顶部开关/请求代际的状态机 */
+    private val swr = PagedSwrStateHolder<DataSourceType>()
     private var firstPageJob: Job? = null
-    private var requestGeneration = 0L
-    private var activeIdentity: DataSourceType? = null
-
-    private fun beginRequest(type: DataSourceType): Long {
-        requestGeneration += 1
-        activeIdentity = type
-        return requestGeneration
-    }
-
-    private fun isCurrent(generation: Long, type: DataSourceType): Boolean =
-        generation == requestGeneration && activeIdentity == type
 
     fun setAtTopForFreshUpdates(isAtTop: Boolean) {
-        atTop.isAtTop = isAtTop
+        swr.atTop.isAtTop = isAtTop
     }
 
     /**
@@ -113,7 +107,7 @@ class ActressListViewModel @Inject constructor(
             return
         }
         dataSourceType = type
-        pages.reset()
+        swr.resetForNewSource()
         _uiState.value = ActressListUiState()
         loadFirstPage()
     }
@@ -125,14 +119,12 @@ class ActressListViewModel @Inject constructor(
      */
     fun applyPendingFreshActresses() {
         val pending = _uiState.value.pendingFreshActresses ?: return
-        pages.startFirstPage()
+        swr.pages.startFirstPage()
         _uiState.update {
             it.copy(
                 actresses = pending.first.map { a -> a.toActressUiModel() },
                 pageInfo = pending.second,
-                hasMore = pending.second.hasNext,
-                pendingFreshActresses = null,
-                refreshMessage = null
+                pendingFreshActresses = null
             )
         }
     }
@@ -144,24 +136,23 @@ class ActressListViewModel @Inject constructor(
      */
     fun loadFirstPage() {
         if (_uiState.value.isLoading) return
-        pages.startFirstPage()
+        swr.pages.startFirstPage()
         firstPageJob?.cancel()
         val type = dataSourceType
-        val generation = beginRequest(type)
+        val generation = swr.begin(type)
         firstPageJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
                     isRefreshing = false,
                     isLoadingMore = false,
-                    error = null,
-                    refreshMessage = null
+                    error = null
                 )
             }
             var hasContent = false
             repository.observeActresses(type, 1, revalidate = false)
                 .collect { event ->
-                    if (!isCurrent(generation, type)) return@collect
+                    if (!swr.isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
@@ -192,12 +183,12 @@ class ActressListViewModel @Inject constructor(
         if (state.isRevalidating || state.isLoading || state.isRefreshing) return
         if (state.actresses.isEmpty()) return
         val type = dataSourceType
-        val generation = beginRequest(type)
+        val generation = swr.begin(type)
         viewModelScope.launch {
             _uiState.update { it.copy(isRevalidating = true) }
             repository.observeActresses(type, 1, revalidate = false)
                 .collect { event ->
-                    if (!isCurrent(generation, type)) return@collect
+                    if (!swr.isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             _uiState.update { it.copy(isRevalidating = event.entry.isExpired) }
@@ -206,12 +197,15 @@ class ActressListViewModel @Inject constructor(
                         is CachedLoadEvent.Fresh -> {
                             val reduction = _uiState.value.applyFreshRevalidate(
                                 event.entry,
-                                isAtTop = atTop.isAtTop
+                                isAtTop = swr.atTop.isAtTop
                             )
                             if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
-                                pages.startFirstPage()
-                            }
-                            _uiState.value = reduction.state
+                                swr.pages.startFirstPage()
+                        }
+                        _uiState.value = reduction.state
+                        if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
+                            _messages.emit(UserMessage(R.string.new_data_available))
+                        }
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -231,45 +225,46 @@ class ActressListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isRefreshing || state.isLoading) return
         val useInitialLoading = state.actresses.isEmpty()
-        pages.startFirstPage()
+        swr.pages.startFirstPage()
         val type = dataSourceType
-        val generation = beginRequest(type)
+        val generation = swr.begin(type)
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = useInitialLoading,
                     isRefreshing = !useInitialLoading,
-                    error = null,
-                    refreshMessage = null
+                    error = null
                 )
             }
             repository.observeActresses(type, 1, forceRefresh = true, revalidate = false)
                 .collect { event ->
-                    if (!isCurrent(generation, type)) return@collect
+                    if (!swr.isCurrent(generation, type)) return@collect
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
                             _uiState.update {
-                                it.copy(
-                                    actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
-                                    pageInfo = event.entry.value.second,
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    hasMore = event.entry.value.second.hasNext
-                                )
+                            it.copy(
+                                actresses = event.entry.value.first.map { a -> a.toActressUiModel() },
+                                pageInfo = event.entry.value.second,
+                                isLoading = false,
+                                isRefreshing = false,
+                            )
                             }
                         }
 
-                        is CachedLoadEvent.Failure -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    isRefreshing = false,
-                                    error = if (it.actresses.isEmpty()) R.string.load_failed else it.error,
-                                    refreshMessage = if (it.actresses.isNotEmpty()) R.string.refresh_failed else null
-                                )
-                            }
+                    is CachedLoadEvent.Failure -> {
+                        val hadContent = _uiState.value.actresses.isNotEmpty()
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isRefreshing = false,
+                                error = if (it.actresses.isEmpty()) R.string.load_failed else it.error
+                            )
                         }
+                        if (hadContent) {
+                            _messages.emit(UserMessage(R.string.refresh_failed))
+                        }
+                    }
                     }
                 }
         }
@@ -282,36 +277,31 @@ class ActressListViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore || !state.hasMore) return
         val nextPage = state.pageInfo.nextPage
-        if (!pages.shouldLoadMore(state.pageInfo)) return
+        if (!swr.pages.shouldLoadMore(state.pageInfo)) return
 
-        pages.advanceTo(nextPage)
+        swr.pages.advanceTo(nextPage)
         val type = dataSourceType
-        val generation = beginRequest(type)
+        val generation = swr.begin(type)
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
             try {
                 val result = repository.loadActresses(type, nextPage)
-                if (!isCurrent(generation, type)) return@launch
+                if (!swr.isCurrent(generation, type)) return@launch
                 _uiState.update {
                     it.copy(
                         actresses = it.actresses + result.first.map { a -> a.toActressUiModel() },
                         pageInfo = result.second,
                         isLoadingMore = false,
-                        hasMore = result.second.hasNext
                     )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (!isCurrent(generation, type)) return@launch
-                pages.rollbackTo(state.pageInfo.activePage)
+                if (!swr.isCurrent(generation, type)) return@launch
+                swr.pages.rollbackTo(state.pageInfo.activePage)
                 _uiState.update { it.copy(isLoadingMore = false, error = R.string.load_failed) }
             }
         }
     }
 
-    /** 消费轻量刷新消息（Snackbar） */
-    fun consumeRefreshMessage() {
-        _uiState.update { it.copy(refreshMessage = null) }
-    }
 }

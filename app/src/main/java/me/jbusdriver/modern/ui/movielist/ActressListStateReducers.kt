@@ -25,7 +25,6 @@ internal fun ActressListUiState.applyFirstPageCached(
         pageInfo = entry.value.second,
         isLoading = false,
         isRefreshing = false,
-        hasMore = entry.value.second.hasNext,
         error = if (entry.value.first.isEmpty()) R.string.no_data else null,
         isRevalidating = entry.isExpired,
         lastUpdatedAtMillis = entry.storedAtMillis
@@ -41,7 +40,6 @@ internal fun ActressListUiState.applyFirstPageFresh(
         isLoading = false,
         isRefreshing = false,
         isRevalidating = false,
-        hasMore = entry.value.second.hasNext,
         lastUpdatedAtMillis = entry.storedAtMillis
     )
 
@@ -77,17 +75,14 @@ internal fun ActressListUiState.applyFreshRevalidate(
         FreshRevalidateOutcome.ApplyImmediately -> copy(
             actresses = freshUiModels,
             pageInfo = fresh.second,
-            hasMore = fresh.second.hasNext,
             isRevalidating = false,
             pendingFreshActresses = null,
-            refreshMessage = null,
             lastUpdatedAtMillis = entry.storedAtMillis
         )
 
         FreshRevalidateOutcome.StorePending -> copy(
             isRevalidating = false,
-            pendingFreshActresses = fresh,
-            refreshMessage = R.string.new_data_available
+            pendingFreshActresses = fresh
         )
 
         // 女优列表暂无静默就地合并策略；决策函数不会产出该值，保留分支保证 when 穷尽。

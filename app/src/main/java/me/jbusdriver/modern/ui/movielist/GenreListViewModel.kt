@@ -35,9 +35,7 @@ data class GenreListUiState(
     /** 后台刷新中（有缓存数据时显示顶部进度条） */
     val isRevalidating: Boolean = false,
     /** 缓存数据的时间戳 */
-    val lastUpdatedAtMillis: Long? = null,
-    /** 轻量刷新反馈消息（Snackbar） */
-    val refreshMessage: Int? = null
+    val lastUpdatedAtMillis: Long? = null
 )
 
 /**
@@ -111,8 +109,7 @@ class GenreListViewModel @Inject constructor(
                 it.copy(
                     isLoading = true,
                     isRefreshing = false,
-                    error = null,
-                    refreshMessage = null
+                    error = null
                 )
             }
             var hasContent = false
@@ -183,8 +180,7 @@ class GenreListViewModel @Inject constructor(
                 it.copy(
                     isLoading = useInitialLoading,
                     isRefreshing = !useInitialLoading,
-                    error = null,
-                    refreshMessage = null
+                    error = null
                 )
             }
             repository.observeGenreCategories(
@@ -212,18 +208,12 @@ class GenreListViewModel @Inject constructor(
                                 it.copy(
                                     isLoading = false,
                                     isRefreshing = false,
-                                    error = if (it.genreCategories.isEmpty()) R.string.load_failed else it.error,
-                                    refreshMessage = if (it.genreCategories.isNotEmpty()) R.string.refresh_failed else null
+                                    error = if (it.genreCategories.isEmpty()) R.string.load_failed else it.error
                                 )
                             }
                         }
                     }
                 }
         }
-    }
-
-    /** 消费轻量刷新消息（Snackbar） */
-    fun consumeRefreshMessage() {
-        _uiState.update { it.copy(refreshMessage = null) }
     }
 }

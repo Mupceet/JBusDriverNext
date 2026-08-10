@@ -54,7 +54,6 @@ class ForumThreadListStateReducerTest {
         assertFalse(reduction.state.isLoading)
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshThreads)
-        assertNull(reduction.state.refreshMessage)
     }
 
     @Test
@@ -73,7 +72,6 @@ class ForumThreadListStateReducerTest {
         assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
         assertEquals(listOf(1, 2, 3), reduction.state.threads.map { it.tid })
         assertEquals(fresh, reduction.state.pendingFreshThreads)
-        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
         assertFalse(reduction.state.isLoading)
     }
 
@@ -108,7 +106,6 @@ class ForumThreadListStateReducerTest {
         assertTrue(reduction.state.threads.all { it.viewCount == 99 && it.replyCount == 7 })
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshThreads)
-        assertNull(reduction.state.refreshMessage)
     }
 
     @Test
@@ -151,7 +148,6 @@ class ForumThreadListStateReducerTest {
         assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
         assertEquals(listOf(1, 2, 3), reduction.state.threads.map { it.tid })
         assertEquals(fresh, reduction.state.pendingFreshThreads)
-        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
     }
 
     private fun cacheEntry(

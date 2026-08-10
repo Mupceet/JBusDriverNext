@@ -10,8 +10,7 @@ fun parseActressList(doc: Document, baseUrl: String): List<ActressInfo> {
         ActressInfo(
             img.attr("title"),
             img.attr("src").wrapImage(baseUrl),
-            it.attr("href"),
-            it.select("button").text()
+            it.attr("href")
         )
     }
 }

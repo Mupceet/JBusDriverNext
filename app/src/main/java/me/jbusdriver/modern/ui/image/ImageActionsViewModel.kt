@@ -5,12 +5,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.data.gateway.ImageMediaGateway
 import javax.inject.Inject
 
@@ -21,16 +21,9 @@ data class ImageActionMessage(
 
 @HiltViewModel
 class ImageActionsViewModel @Inject constructor(
-    private val imageMediaGateway: ImageMediaGateway
+    private val imageMediaGateway: ImageMediaGateway,
+    @IoDispatcher private val dispatcher: CoroutineDispatcher
 ) : ViewModel() {
-    private var dispatcher: CoroutineDispatcher = Dispatchers.IO
-
-    constructor(
-        imageMediaGateway: ImageMediaGateway,
-        dispatcher: CoroutineDispatcher
-    ) : this(imageMediaGateway) {
-        this.dispatcher = dispatcher
-    }
 
     private val _messages = MutableSharedFlow<ImageActionMessage>(
         extraBufferCapacity = 1,

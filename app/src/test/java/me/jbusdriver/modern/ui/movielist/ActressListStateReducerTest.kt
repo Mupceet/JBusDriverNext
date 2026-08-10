@@ -104,15 +104,13 @@ class ActressListStateReducerTest {
         val reduction = ActressListUiState(
             actresses = listOf(actress("A").toActressUiModel()),
             isRevalidating = true,
-            pendingFreshActresses = listOf(actress("old")) to PageInfo(activePage = 1, nextPage = 1),
-            refreshMessage = R.string.new_data_available
+            pendingFreshActresses = listOf(actress("old")) to PageInfo(activePage = 1, nextPage = 1)
         ).applyFreshRevalidate(entry, isAtTop = true)
 
         assertEquals(FreshRevalidateOutcome.ApplyImmediately, reduction.outcome)
         assertEquals(listOf("C"), reduction.state.actresses.map { it.name })
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshActresses)
-        assertNull(reduction.state.refreshMessage)
         assertEquals(789L, reduction.state.lastUpdatedAtMillis)
         assertTrue(reduction.state.hasMore)
     }
@@ -132,7 +130,6 @@ class ActressListStateReducerTest {
         assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
         assertFalse(reduction.state.isRevalidating)
         assertEquals(fresh, reduction.state.pendingFreshActresses)
-        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
     }
 
     @Test
@@ -151,7 +148,6 @@ class ActressListStateReducerTest {
         assertEquals(current.actresses, reduction.state.actresses)
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshActresses)
-        assertNull(reduction.state.refreshMessage)
     }
 
     private fun cacheEntry(

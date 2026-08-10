@@ -26,7 +26,6 @@ internal fun LinkMovieListUiState.applyFirstPageCached(
         pageInfo = result.pageInfo,
         isLoading = false,
         isFilterSwitching = false,
-        hasMore = result.pageInfo.hasNext,
         error = if (result.movies.isEmpty()) R.string.no_data else null,
         filterInfo = result.filterInfo,
         isRevalidating = entry.isExpired,
@@ -45,10 +44,8 @@ internal fun LinkMovieListUiState.applyFirstPageFresh(
         isLoading = false,
         isFilterSwitching = false,
         isRevalidating = false,
-        hasMore = result.pageInfo.hasNext,
         filterInfo = result.filterInfo,
         pendingFreshResult = null,
-        refreshMessage = null,
         lastUpdatedAtMillis = entry.storedAtMillis,
         resolvedTitle = result.filterInfo?.toResolvedTitle() ?: resolvedTitle
     )
@@ -90,11 +87,9 @@ internal fun LinkMovieListUiState.applyFreshRevalidate(
         FreshRevalidateOutcome.ApplyImmediately -> copy(
             movies = freshUiModels,
             pageInfo = fresh.pageInfo,
-            hasMore = fresh.pageInfo.hasNext,
             filterInfo = fresh.filterInfo,
             isRevalidating = false,
             pendingFreshResult = null,
-            refreshMessage = null,
             lastUpdatedAtMillis = entry.storedAtMillis
         )
 
@@ -106,8 +101,7 @@ internal fun LinkMovieListUiState.applyFreshRevalidate(
 
         FreshRevalidateOutcome.StorePending -> copy(
             isRevalidating = false,
-            pendingFreshResult = fresh,
-            refreshMessage = R.string.new_data_available
+            pendingFreshResult = fresh
         )
 
         FreshRevalidateOutcome.NoChange -> copy(isRevalidating = false)

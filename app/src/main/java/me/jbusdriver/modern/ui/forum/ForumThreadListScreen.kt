@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -229,13 +230,12 @@ fun ForumThreadListScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 64.dp)
             )
-            val pendingFreshMessage =
-                stringResource(state.refreshMessage ?: R.string.new_data_available)
-            LaunchedEffect(state.pendingFreshThreads) {
-                if (state.pendingFreshThreads != null) {
+            val context = LocalContext.current
+            LaunchedEffect(viewModel) {
+                viewModel.messages.collect { message ->
                     val result = snackbarHostState.showSnackbar(
-                        message = pendingFreshMessage,
-                        actionLabel = refreshLabel,
+                        message = message.format(context),
+                        actionLabel = if (message.resId == R.string.new_data_available) refreshLabel else null,
                         duration = SnackbarDuration.Long
                     )
                     if (result == SnackbarResult.ActionPerformed) {

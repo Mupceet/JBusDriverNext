@@ -63,7 +63,6 @@ class LinkMovieListStateReducerTest {
             isFilterSwitching = true,
             isRevalidating = true,
             pendingFreshResult = pageResult("old"),
-            refreshMessage = R.string.new_data_available,
             resolvedTitle = existingTitle
         ).applyFirstPageFresh(entry)
 
@@ -73,7 +72,6 @@ class LinkMovieListStateReducerTest {
         assertFalse(state.isFilterSwitching)
         assertFalse(state.isRevalidating)
         assertNull(state.pendingFreshResult)
-        assertNull(state.refreshMessage)
         assertEquals(456L, state.lastUpdatedAtMillis)
     }
 
@@ -121,15 +119,13 @@ class LinkMovieListStateReducerTest {
         val reduction = LinkMovieListUiState(
             movies = listOf(movie("A").toUiModel()),
             isRevalidating = true,
-            pendingFreshResult = pageResult("old"),
-            refreshMessage = R.string.new_data_available
+            pendingFreshResult = pageResult("old")
         ).applyFreshRevalidate(entry, isAtTop = true)
 
         assertEquals(FreshRevalidateOutcome.ApplyImmediately, reduction.outcome)
         assertEquals(listOf("C"), reduction.state.movies.map { it.code })
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshResult)
-        assertNull(reduction.state.refreshMessage)
         assertEquals(789L, reduction.state.lastUpdatedAtMillis)
         assertTrue(reduction.state.hasMore)
     }
@@ -149,7 +145,6 @@ class LinkMovieListStateReducerTest {
         assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
         assertFalse(reduction.state.isRevalidating)
         assertEquals(fresh, reduction.state.pendingFreshResult)
-        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
     }
 
     @Test
@@ -168,7 +163,6 @@ class LinkMovieListStateReducerTest {
         assertEquals(current.movies, reduction.state.movies)
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshResult)
-        assertNull(reduction.state.refreshMessage)
     }
 
     @Test
@@ -202,7 +196,6 @@ class LinkMovieListStateReducerTest {
         assertEquals(listOf("A", "B", "C"), reduction.state.movies.map { it.code })
         assertFalse(reduction.state.isRevalidating)
         assertNull(reduction.state.pendingFreshResult)
-        assertNull(reduction.state.refreshMessage)
         assertEquals(999L, reduction.state.lastUpdatedAtMillis)
     }
 
@@ -225,7 +218,6 @@ class LinkMovieListStateReducerTest {
         assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
         assertEquals(current.movies, reduction.state.movies)
         assertEquals(fresh, reduction.state.pendingFreshResult)
-        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
     }
 
     private fun cacheEntry(

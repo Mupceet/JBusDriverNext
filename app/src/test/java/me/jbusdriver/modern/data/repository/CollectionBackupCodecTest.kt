@@ -225,8 +225,7 @@ class CollectionBackupCodecTest {
     private fun actress() = ActressInfo(
         name = "Alice",
         avatar = "https://example.test/avatar/alice.jpg",
-        link = "https://example.test/star/alice",
-        tag = "12部"
+        link = "https://example.test/star/alice"
     )
 
     private fun fakeSiteConfig(base: String) = object : SiteConfig {

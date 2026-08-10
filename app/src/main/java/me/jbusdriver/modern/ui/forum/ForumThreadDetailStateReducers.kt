@@ -93,7 +93,6 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
                 copy(
                     detail = fresh,
                     pendingFreshDetail = null,
-                    refreshMessage = null,
                     lastUpdatedAtMillis = entry.storedAtMillis
                 )
             ),
@@ -104,8 +103,7 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
         FreshRevalidateOutcome.StorePending -> ForumThreadDetailFreshReduction(
             state = loadingCopy(
                 copy(
-                    pendingFreshDetail = fresh,
-                    refreshMessage = R.string.new_data_available
+                    pendingFreshDetail = fresh
                 )
             ),
             outcome = outcome,

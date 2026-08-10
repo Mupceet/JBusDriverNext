@@ -49,6 +49,43 @@ class PageTracker {
 class AtTopGate(var isAtTop: Boolean = true)
 
 /**
+ * 分页列表 SWR 请求的状态机容器。
+ *
+ * 收拢各列表 ViewModel 重复的页码跟踪、顶部开关与请求代际守卫：
+ * - [pages]：首页/翻页/回滚的页码状态；
+ * - [atTop]：后台刷新拿到新首页后是否直接应用的顶部开关；
+ * - [begin]/[isCurrent]：请求代际 + 列表身份守卫，丢弃过期请求的结果。
+ *
+ * 列表身份（如数据源 key + 筛选条件）由调用方以泛型 [Identity] 提供。
+ */
+class PagedSwrStateHolder<Identity> {
+    /** 分页页码状态 */
+    val pages = PageTracker()
+
+    /** 用户是否位于列表顶部（后台刷新是否可直接应用新首页） */
+    val atTop = AtTopGate()
+
+    private var requestGeneration = 0L
+    private var activeIdentity: Identity? = null
+
+    /** 开启一次新的列表请求，返回该请求的代际号；旧请求结果将被 [isCurrent] 拦截。 */
+    fun begin(identity: Identity): Long {
+        requestGeneration += 1
+        activeIdentity = identity
+        return requestGeneration
+    }
+
+    /** 判断某次请求是否仍是最新（代际与列表身份均未变）。 */
+    fun isCurrent(generation: Long, identity: Identity): Boolean =
+        generation == requestGeneration && activeIdentity == identity
+
+    /** 切换数据源时重置页码。 */
+    fun resetForNewSource() {
+        pages.reset()
+    }
+}
+
+/**
  * 后台 revalidate 拿到新首页数据后的处理结果。
  */
 enum class FreshRevalidateOutcome {

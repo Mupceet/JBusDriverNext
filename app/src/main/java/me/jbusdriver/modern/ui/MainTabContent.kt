@@ -39,7 +39,7 @@ import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.GenreListViewModel
-import me.jbusdriver.modern.ui.movielist.MovieListScreen
+import me.jbusdriver.modern.ui.movielist.MovieListRoute
 import me.jbusdriver.modern.ui.movielist.MovieListViewModel
 
 internal enum class CensorFilter(val labelRes: Int) {
@@ -54,11 +54,12 @@ internal fun MovieTabContent(
     onSearchClick: (String) -> Unit,
     onMovieClick: (MovieUiModel, String?) -> Unit
 ) {
-    var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
+    val movieTabViewModel: MovieTabViewModel = hiltViewModel()
+    val tabState by movieTabViewModel.uiState.collectAsStateWithLifecycle()
     var showCategorySheet by rememberSaveable { mutableStateOf(false) }
-    var selectedGenreLinks by rememberSaveable { mutableStateOf(emptySet<String>()) }
-    var genreLinkMemory by rememberSaveable { mutableStateOf(emptyMap<String, Set<String>>()) }
-    val moviePagerState = rememberPagerState { CensorFilter.entries.size }
+    val moviePagerState = rememberPagerState(
+        initialPage = CensorFilter.entries.indexOf(tabState.censorFilter).coerceAtLeast(0)
+    ) { CensorFilter.entries.size }
 
     val genreViewModel: GenreListViewModel = hiltViewModel()
     val genreState by genreViewModel.uiState.collectAsStateWithLifecycle()
@@ -68,8 +69,8 @@ internal fun MovieTabContent(
         onPauseOrDispose { }
     }
 
-    LaunchedEffect(censorFilter) {
-        val genreType = when (censorFilter) {
+    LaunchedEffect(tabState.censorFilter) {
+        val genreType = when (tabState.censorFilter) {
             CensorFilter.UNCENSORED -> DataSourceType.UNCENSORED_GENRE
             else -> DataSourceType.GENRE
         }
@@ -78,14 +79,12 @@ internal fun MovieTabContent(
 
     LaunchedEffect(moviePagerState.currentPage) {
         val filter = CensorFilter.entries[moviePagerState.currentPage]
-        if (censorFilter != filter) {
-            genreLinkMemory = genreLinkMemory + (censorFilter.name to selectedGenreLinks)
-            censorFilter = filter
-            selectedGenreLinks = genreLinkMemory[filter.name] ?: emptySet()
+        if (tabState.censorFilter != filter) {
+            movieTabViewModel.onCensorFilterChanged(filter)
         }
     }
-    LaunchedEffect(censorFilter) {
-        val target = CensorFilter.entries.indexOf(censorFilter)
+    LaunchedEffect(tabState.censorFilter) {
+        val target = CensorFilter.entries.indexOf(tabState.censorFilter)
         if (moviePagerState.currentPage != target) {
             moviePagerState.animateScrollToPage(target)
         }
@@ -93,7 +92,7 @@ internal fun MovieTabContent(
 
     if (showCategorySheet) {
         val allGenres = genreState.genreCategories.flatMap { it.genres.orEmpty() }
-        val selectedGenres = allGenres.filter { it.link in selectedGenreLinks }.toSet()
+        val selectedGenres = allGenres.filter { it.link in tabState.selectedGenreLinks }.toSet()
 
         ModalBottomSheet(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -103,10 +102,7 @@ internal fun MovieTabContent(
                 categories = genreState.genreCategories,
                 selectedGenres = selectedGenres,
                 onSelectionChange = { newSelection ->
-                    selectedGenreLinks = newSelection.map { it.link }.toSet()
-                    genreLinkMemory =
-                        genreLinkMemory + (censorFilter.name to newSelection.map { it.link }
-                            .toSet())
+                    movieTabViewModel.onGenreSelectionChanged(newSelection.map { it.link }.toSet())
                 },
             )
         }
@@ -125,15 +121,8 @@ internal fun MovieTabContent(
     ) {
         CensorFilter.entries.forEach { filter ->
             FilterChip(
-                selected = censorFilter == filter,
-                onClick = {
-                    if (censorFilter != filter) {
-                        genreLinkMemory =
-                            genreLinkMemory + (censorFilter.name to selectedGenreLinks)
-                        censorFilter = filter
-                        selectedGenreLinks = genreLinkMemory[filter.name] ?: emptySet()
-                    }
-                },
+                selected = tabState.censorFilter == filter,
+                onClick = { movieTabViewModel.onCensorFilterChanged(filter) },
                 label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
             )
             Spacer(Modifier.width(6.dp))
@@ -141,13 +130,13 @@ internal fun MovieTabContent(
         Spacer(Modifier.weight(1f))
         val allGenresForChip = genreState.genreCategories.flatMap { it.genres.orEmpty() }
         val selectedGenresForChip =
-            allGenresForChip.filter { it.link in selectedGenreLinks }.toSet()
+            allGenresForChip.filter { it.link in tabState.selectedGenreLinks }.toSet()
         FilterChip(
-            selected = selectedGenreLinks.isNotEmpty(),
+            selected = tabState.selectedGenreLinks.isNotEmpty(),
             onClick = { showCategorySheet = true },
             label = {
                 Text(
-                    if (selectedGenreLinks.isEmpty()) stringResource(R.string.genre)
+                    if (tabState.selectedGenreLinks.isEmpty()) stringResource(R.string.genre)
                     else selectedGenresForChip.joinToString("+") { it.name },
                     fontSize = 12.sp,
                     maxLines = 1
@@ -188,8 +177,11 @@ internal fun MovieTabContent(
             else -> null
         }
         val pageLinks =
-            if (filter == censorFilter) selectedGenreLinks else (genreLinkMemory[filter.name]
-                ?: emptySet())
+            if (filter == tabState.censorFilter) {
+                tabState.selectedGenreLinks
+            } else {
+                tabState.genreLinkMemory[filter.name] ?: emptySet()
+            }
         val genreUrl = if (pageLinks.isNotEmpty()) {
             pageLinks.joinToString("-") { it.trimEnd('/').substringAfterLast("/") }
                 .let { ids ->
@@ -204,7 +196,7 @@ internal fun MovieTabContent(
             LaunchedEffect(genreUrl, active) {
                 if (active) genreVm.setGenreUrl(genreUrl)
             }
-            MovieListScreen(
+            MovieListRoute(
                 dataSourceType = null,
                 active = active,
                 onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
@@ -217,7 +209,7 @@ internal fun MovieTabContent(
                 else -> DataSourceType.CENSORED
             }
             val vm: MovieListViewModel = hiltViewModel(key = "pager_$filter")
-            MovieListScreen(
+            MovieListRoute(
                 dataSourceType = dataSourceType,
                 active = page == moviePagerState.settledPage,
                 onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },

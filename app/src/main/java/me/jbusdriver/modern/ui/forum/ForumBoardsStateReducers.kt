@@ -57,6 +57,5 @@ internal fun ForumBoardsUiState.applyBoardsRefreshFresh(
 internal fun ForumBoardsUiState.applyBoardsRefreshFailure(): ForumBoardsUiState =
     copy(
         isRefreshing = false,
-        error = if (groups.isEmpty()) R.string.load_failed else error,
-        refreshMessage = if (groups.isNotEmpty()) R.string.refresh_failed else null
+        error = if (groups.isEmpty()) R.string.load_failed else error
     )

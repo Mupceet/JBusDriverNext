@@ -31,7 +31,7 @@ import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
-import me.jbusdriver.modern.ui.movielist.LinkMovieListScreen
+import me.jbusdriver.modern.ui.movielist.LinkMovieListRoute
 import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.settings.SettingsScreen
 
@@ -254,7 +254,7 @@ fun JBusNavigation(
                 )
             }
             entry<RouteLinkMovies> { key ->
-                LinkMovieListScreen(
+                LinkMovieListRoute(
                     linkUrl = key.linkUrl,
                     title = key.title,
                     type = key.type,

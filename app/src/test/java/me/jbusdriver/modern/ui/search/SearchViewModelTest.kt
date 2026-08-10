@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.search
 
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -102,7 +103,8 @@ class SearchViewModelTest {
         repository, fakeHistoryStore(), stubLocalVideoRepo, collectRepository, fakeSiteConfig(),
         // 注入测试调度器作为 IO 线程：使 collectedMovies 的 flowOn 跑在 TestScheduler 上，
         // runTest 才能确定性地驱动（真实 Dispatchers.IO 不受 TestScheduler 控制）。
-        testDispatcher
+        testDispatcher,
+        SavedStateHandle()
     )
 
     @Before

@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui.forum
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.assisted.Assisted
@@ -7,8 +8,11 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -28,6 +32,7 @@ import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.UserMessage
 
 private const val TAG = "ForumVM"
 
@@ -75,7 +80,6 @@ data class ForumThreadDetailUiState(
     val isRevalidating: Boolean = false,
     val lastUpdatedAtMillis: Long? = null,
     val pendingFreshDetail: ForumThreadDetail? = null,
-    val refreshMessage: Int? = null,
     val error: Int? = null,
     val isLoadingMore: Boolean = false,
     val isChangingFloorOrder: Boolean = false,
@@ -123,7 +127,8 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val loadedGifTracker: me.jbusdriver.modern.data.session.LoadedGifTracker,
     private val gifCacheReader: me.jbusdriver.modern.data.session.GifCacheReader,
     private val siteConfig: SiteConfig,
-    @Assisted private val navKey: RouteForumThreadDetail
+    @Assisted private val navKey: RouteForumThreadDetail,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val tid: Int = navKey.tid
     val shareThreadUrl: String
@@ -135,6 +140,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     private val _uiState = MutableStateFlow(ForumThreadDetailUiState())
     val uiState: StateFlow<ForumThreadDetailUiState> = _uiState.asStateFlow()
+
+    /** 一次性用户消息（Snackbar/Toast），UI 展示后即视为消费 */
+    private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 4)
+    val messages: SharedFlow<UserMessage> = _messages.asSharedFlow()
 
     private val _loadedGifUrls = MutableStateFlow<Set<String>>(emptySet())
     val loadedGifUrlsFlow: StateFlow<Set<String>> = _loadedGifUrls
@@ -226,7 +235,15 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         }
         viewModelScope.launch {
             val defaultOrder = forumSettingsReader.currentForumFloorOrder()
-            _uiState.update { it.copy(floorOrder = defaultOrder) }
+            val restoredOrder = savedStateHandle.get<String>(KEY_FLOOR_ORDER)
+                ?.let { name -> runCatching { ForumFloorOrder.valueOf(name) }.getOrNull() }
+            val restoredAuthorOnly = savedStateHandle.get<Boolean>(KEY_SHOW_AUTHOR_ONLY) ?: false
+            _uiState.update {
+                it.copy(
+                    floorOrder = restoredOrder ?: defaultOrder,
+                    showAuthorOnly = restoredAuthorOnly
+                )
+            }
             loadDetail()
         }
     }
@@ -248,20 +265,17 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 when {
                     showLoading && !hasContent -> it.copy(
                         isLoading = true,
-                        error = null,
-                        refreshMessage = null
+                        error = null
                     )
 
                     showLoading -> it.copy(
                         isRevalidating = true,
-                        error = null,
-                        refreshMessage = null
+                        error = null
                     )
 
                     else -> it.copy(
                         error = null,
-                        isChangingFloorOrder = true,
-                        refreshMessage = null
+                        isChangingFloorOrder = true
                     )
                 }
             }
@@ -311,6 +325,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 KLog.d("[Forum] loadDetail 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
                             }
                             _uiState.value = reduction.state.withFilterCounts(authorUid)
+                            if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
+                                _messages.emit(UserMessage(R.string.new_data_available))
+                            }
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -375,6 +392,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                                 KLog.d("[Forum] revalidate 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
                             }
                             _uiState.value = reduction.state
+                            if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
+                                _messages.emit(UserMessage(R.string.new_data_available))
+                            }
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -397,7 +417,6 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                 it.copy(
                     isRefreshing = true,
                     error = null,
-                    refreshMessage = null,
                     pendingFreshDetail = null
                 )
             }
@@ -424,12 +443,15 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                         }
 
                         is CachedLoadEvent.Failure -> {
+                            val hadContent = _uiState.value.detail != null
                             _uiState.update {
                                 it.copy(
                                     isRefreshing = false,
-                                    error = if (it.detail == null) R.string.load_failed else it.error,
-                                    refreshMessage = if (it.detail != null) R.string.refresh_failed else null
+                                    error = if (it.detail == null) R.string.load_failed else it.error
                                 )
+                            }
+                            if (hadContent) {
+                                _messages.emit(UserMessage(R.string.refresh_failed))
                             }
                         }
                     }
@@ -587,6 +609,7 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     fun setFloorOrder(order: ForumFloorOrder) {
         if (_uiState.value.floorOrder == order || _uiState.value.isLoading || _uiState.value.isChangingFloorOrder) return
+        savedStateHandle[KEY_FLOOR_ORDER] = order.name
         currentPage = 1
         _uiState.update { it.prepareFloorOrderReload(order) }
         loadDetail(forceRefresh = true, showLoading = false)
@@ -602,14 +625,14 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             return
         }
         if (showAuthorOnly && currentAuthorUid() == null) return
+        savedStateHandle[KEY_SHOW_AUTHOR_ONLY] = showAuthorOnly
         currentPage = 1
         _uiState.update {
             it.copy(
                 showAuthorOnly = showAuthorOnly,
                 isChangingAuthorFilter = true,
                 isChangingFloorOrder = false,
-                error = null,
-                refreshMessage = null
+                error = null
             )
         }
         loadDetail(forceRefresh = true, showLoading = false)
@@ -638,12 +661,16 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
             it.copy(
                 detail = pending,
                 pendingFreshDetail = null,
-                refreshMessage = null,
                 lastUpdatedAtMillis = System.currentTimeMillis()
             ).withFilterCounts(
                 if (_uiState.value.showAuthorOnly) currentAuthorUid() else null
             )
         }
+    }
+
+    private companion object {
+        const val KEY_FLOOR_ORDER = "forum_thread_detail_floor_order"
+        const val KEY_SHOW_AUTHOR_ONLY = "forum_thread_detail_show_author_only"
     }
 
     @AssistedFactory
