@@ -4,7 +4,6 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
-import me.jbusdriver.modern.core.cache.decideFreshRevalidate
 import me.jbusdriver.modern.core.cache.simulateCacheRefreshChange
 import me.jbusdriver.modern.domain.model.MoviePageResult
 import me.jbusdriver.modern.domain.model.hasNext
@@ -75,7 +74,14 @@ internal fun MovieListUiState.applyFreshRevalidate(
         movies = entry.value.movies.simulateCacheRefreshChange()
     )
     val freshUiModels = fresh.movies.map { it.toUiModel() }
-    val outcome = decideFreshRevalidate(movies, freshUiModels, isAtTop)
+    val currentFirstPage = movies.take(freshUiModels.size)
+    val outcome = when {
+        isAtTop -> FreshRevalidateOutcome.ApplyImmediately
+        currentFirstPage == freshUiModels -> FreshRevalidateOutcome.NoChange
+        // 首页影片同序且仅 tag 字段变化：静默就地刷新，不弹"有新数据"提示。
+        currentFirstPage.onlyTagsChanged(freshUiModels) -> FreshRevalidateOutcome.NoChange
+        else -> FreshRevalidateOutcome.StorePending
+    }
     val nextState = when (outcome) {
         FreshRevalidateOutcome.ApplyImmediately -> copy(
             movies = freshUiModels,
@@ -94,7 +100,17 @@ internal fun MovieListUiState.applyFreshRevalidate(
             refreshMessage = R.string.new_data_available
         )
 
-        FreshRevalidateOutcome.NoChange -> copy(isRevalidating = false)
+        FreshRevalidateOutcome.NoChange -> {
+            if (currentFirstPage == freshUiModels) {
+                copy(isRevalidating = false)
+            } else {
+                copy(
+                    movies = movies.mergeFreshFirstPage(freshUiModels),
+                    isRevalidating = false,
+                    lastUpdatedAtMillis = entry.storedAtMillis
+                )
+            }
+        }
     }
 
     return MovieListRevalidateReduction(

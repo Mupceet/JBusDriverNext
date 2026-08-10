@@ -173,6 +173,63 @@ class MovieListStateReducerTest {
         assertNull(reduction.state.refreshMessage)
     }
 
+    @Test
+    fun freshRevalidate_awayFromTopWithOnlyTagUpdatesMergesSilently() {
+        val current = MovieListUiState(
+            movies = listOf(
+                movie("A", tags = listOf("old")).toUiModel(),
+                movie("B", tags = listOf("old")).toUiModel(),
+                movie("C", tags = listOf("old")).toUiModel()
+            ),
+            isRevalidating = true
+        )
+        val fresh = MoviePageResult(
+            pageInfo = PageInfo(activePage = 1, nextPage = 2),
+            movies = listOf(
+                movie("A", tags = listOf("new")),
+                movie("B", tags = listOf("new"))
+            )
+        )
+
+        val reduction = current.applyFreshRevalidate(
+            entry = cacheEntry(result = fresh, storedAtMillis = 999L),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(
+            listOf("new", "new", "old"),
+            reduction.state.movies.map { it.tags.single() }
+        )
+        assertEquals(listOf("A", "B", "C"), reduction.state.movies.map { it.code })
+        assertFalse(reduction.state.isRevalidating)
+        assertNull(reduction.state.pendingFreshResult)
+        assertNull(reduction.state.refreshMessage)
+        assertEquals(999L, reduction.state.lastUpdatedAtMillis)
+    }
+
+    @Test
+    fun freshRevalidate_awayFromTopWithTitleChangeStillPrompts() {
+        val current = MovieListUiState(
+            movies = listOf(movie("A").toUiModel(), movie("B").toUiModel()),
+            isRevalidating = true
+        )
+        val fresh = MoviePageResult(
+            pageInfo = PageInfo(activePage = 1, nextPage = 2),
+            movies = listOf(movie("A").copy(title = "New Title A"), movie("B"))
+        )
+
+        val reduction = current.applyFreshRevalidate(
+            entry = cacheEntry(result = fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
+        assertEquals(current.movies, reduction.state.movies)
+        assertEquals(fresh, reduction.state.pendingFreshResult)
+        assertEquals(R.string.new_data_available, reduction.state.refreshMessage)
+    }
+
     private fun cacheEntry(
         result: MoviePageResult,
         isExpired: Boolean = false,
@@ -189,12 +246,12 @@ class MovieListStateReducerTest {
         filterInfo = filterInfo
     )
 
-    private fun movie(code: String) = Movie(
+    private fun movie(code: String, tags: List<String> = listOf("tag")) = Movie(
         title = "Title $code",
         imageUrl = "https://image.test/$code.jpg",
         code = code,
         date = "2026-06-18",
         link = "https://movie.test/$code",
-        tags = listOf("tag")
+        tags = tags
     )
 }
