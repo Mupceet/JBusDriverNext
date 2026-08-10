@@ -71,7 +71,7 @@ class ForumThreadDetailStateTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertEquals(current, reduction.state.detail)
         assertEquals(1_000L, reduction.state.lastUpdatedAtMillis)
         assertFalse(reduction.state.isRevalidating)
@@ -89,7 +89,7 @@ class ForumThreadDetailStateTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertNull(reduction.state.pendingFreshDetail)
         assertFalse(reduction.state.isRevalidating)
         assertEquals(5_000, reduction.state.detail?.viewCount)
@@ -109,7 +109,7 @@ class ForumThreadDetailStateTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertNull(reduction.state.pendingFreshDetail)
         assertEquals(listOf(1, 2, 3), reduction.state.detail?.replies?.map { it.floor })
         assertEquals(5_000, reduction.state.detail?.viewCount)
@@ -144,7 +144,7 @@ class ForumThreadDetailStateTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertNull(reduction.state.pendingFreshDetail)
     }
 

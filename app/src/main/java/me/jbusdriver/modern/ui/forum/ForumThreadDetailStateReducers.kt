@@ -85,7 +85,7 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
     val outcome = when {
         shouldApplyImmediately -> FreshRevalidateOutcome.ApplyImmediately
         changeReason != null -> FreshRevalidateOutcome.StorePending
-        else -> FreshRevalidateOutcome.NoChange
+        else -> FreshRevalidateOutcome.ApplyInPlace
     }
     return when (outcome) {
         FreshRevalidateOutcome.ApplyImmediately -> ForumThreadDetailFreshReduction(
@@ -112,7 +112,7 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
             changeReason = changeReason
         )
 
-        FreshRevalidateOutcome.NoChange -> ForumThreadDetailFreshReduction(
+        FreshRevalidateOutcome.ApplyInPlace -> ForumThreadDetailFreshReduction(
             // 首屏内容未变（仅浏览数/回复数等高频计数器变动）：静默刷新计数器与时间戳，
             // 既不弹"有新数据"打扰用户，也不替换已加载的多页楼层（避免丢页/回到顶部）。
             state = loadingCopy(
@@ -124,6 +124,13 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
                     lastUpdatedAtMillis = entry.storedAtMillis
                 )
             ),
+            outcome = outcome,
+            changeReason = changeReason
+        )
+
+        // 当前策略不会产出该值（无内容变化时也会静默刷新计数器）；保留分支保证 when 穷尽。
+        FreshRevalidateOutcome.NoChange -> ForumThreadDetailFreshReduction(
+            state = loadingCopy(this),
             outcome = outcome,
             changeReason = changeReason
         )
@@ -139,7 +146,7 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
  *   为相对时间、会持续刷新而非固定时间戳，故比对前先归一化。
  *
  * 由此倒序下新增回复会进入首屏楼层 → 视为有新数据（提示刷新）；
- * 正序下新增回复落在更后页、首屏楼层不变 → 不视为有新数据（仅 NoChange 分支静默刷新计数器）。
+ * 正序下新增回复落在更后页、首屏楼层不变 → 不视为有新数据（仅 ApplyInPlace 分支静默刷新计数器）。
  */
 private fun ForumThreadDetailUiState.detailChangeReason(fresh: ForumThreadDetail): String? {
     val old = detail ?: return "首次加载"

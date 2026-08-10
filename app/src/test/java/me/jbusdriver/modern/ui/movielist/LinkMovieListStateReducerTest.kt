@@ -172,7 +172,7 @@ class LinkMovieListStateReducerTest {
     }
 
     @Test
-    fun freshRevalidate_awayFromTopWithOnlyTagUpdatesMergesSilently() {
+    fun freshRevalidate_awayFromTopWithOnlyTagUpdatesAppliesInPlace() {
         val current = LinkMovieListUiState(
             movies = listOf(
                 movie("A", tags = listOf("old")).toUiModel(),
@@ -194,7 +194,7 @@ class LinkMovieListStateReducerTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertEquals(
             listOf("new", "new", "old"),
             reduction.state.movies.map { it.tags.single() }

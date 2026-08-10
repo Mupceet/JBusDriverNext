@@ -90,6 +90,9 @@ internal fun ActressListUiState.applyFreshRevalidate(
             refreshMessage = R.string.new_data_available
         )
 
+        // 女优列表暂无静默就地合并策略；决策函数不会产出该值，保留分支保证 when 穷尽。
+        FreshRevalidateOutcome.ApplyInPlace -> copy(isRevalidating = false)
+
         FreshRevalidateOutcome.NoChange -> copy(isRevalidating = false)
     }
 

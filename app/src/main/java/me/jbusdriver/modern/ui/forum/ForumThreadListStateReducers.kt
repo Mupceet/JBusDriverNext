@@ -4,7 +4,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
-import me.jbusdriver.modern.domain.model.ForumThread
+import me.jbusdriver.modern.core.cache.mergeFirstPage
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
 import me.jbusdriver.modern.domain.model.hasNext
 
@@ -70,7 +70,7 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
         // 主题数量与排序未变（仅浏览数、回复数等卡片内字段变化）：
         // 静默就地刷新，不弹"有新数据"提示，也不打断已滚动的列表。
         threads.take(fresh.threads.size).map { it.tid } == fresh.threads.map { it.tid } ->
-            FreshRevalidateOutcome.NoChange
+            FreshRevalidateOutcome.ApplyInPlace
         else -> FreshRevalidateOutcome.StorePending
     }
     return when (outcome) {
@@ -99,24 +99,20 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
             outcome = outcome
         )
 
-        FreshRevalidateOutcome.NoChange -> ForumThreadListFreshReduction(
+        FreshRevalidateOutcome.ApplyInPlace -> ForumThreadListFreshReduction(
             state = loadingCopy(
                 copy(
-                    threads = threads.mergeFreshFirstPage(fresh.threads),
+                    threads = threads.mergeFirstPage(fresh.threads),
                     lastUpdatedAtMillis = entry.storedAtMillis
                 )
             ),
             outcome = outcome
         )
-    }
-}
 
-/**
- * 把新首页主题按 tid 就地合并进当前列表：已加载的后续页保持不变，
- * 避免用户在列表中部时静默刷新导致已加载内容丢失。
- */
-private fun List<ForumThread>.mergeFreshFirstPage(freshFirstPage: List<ForumThread>): List<ForumThread> {
-    if (freshFirstPage.isEmpty()) return this
-    val freshByTid = freshFirstPage.associateBy { it.tid }
-    return map { freshByTid[it.tid] ?: it }
+        // 当前策略不会产出该值（同序即视为就地刷新）；保留分支保证 when 穷尽。
+        FreshRevalidateOutcome.NoChange -> ForumThreadListFreshReduction(
+            state = loadingCopy(this),
+            outcome = outcome
+        )
+    }
 }

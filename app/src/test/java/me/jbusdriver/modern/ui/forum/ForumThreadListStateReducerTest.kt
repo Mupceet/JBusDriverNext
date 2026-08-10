@@ -103,7 +103,7 @@ class ForumThreadListStateReducerTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertEquals(listOf(1, 2), reduction.state.threads.map { it.tid })
         assertTrue(reduction.state.threads.all { it.viewCount == 99 && it.replyCount == 7 })
         assertFalse(reduction.state.isRevalidating)
@@ -124,7 +124,7 @@ class ForumThreadListStateReducerTest {
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.NoChange, reduction.outcome)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertEquals(listOf(1, 2, 3, 4, 5), reduction.state.threads.map { it.tid })
         assertEquals(listOf(10, 10, 10, 0, 0), reduction.state.threads.map { it.viewCount })
         assertEquals(PageInfo(2, 3, listOf(1, 2, 3)), reduction.state.pageInfo)

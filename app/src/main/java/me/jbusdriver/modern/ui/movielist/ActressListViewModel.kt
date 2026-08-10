@@ -208,20 +208,10 @@ class ActressListViewModel @Inject constructor(
                                 event.entry,
                                 isAtTop = atTop.isAtTop
                             )
-                            when (reduction.outcome) {
-                                FreshRevalidateOutcome.ApplyImmediately -> {
-                                    pages.startFirstPage()
-                                    _uiState.value = reduction.state
-                                }
-
-                                FreshRevalidateOutcome.StorePending -> {
-                                    _uiState.value = reduction.state
-                                }
-
-                                FreshRevalidateOutcome.NoChange -> {
-                                    _uiState.value = reduction.state
-                                }
+                            if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
+                                pages.startFirstPage()
                             }
+                            _uiState.value = reduction.state
                         }
 
                         is CachedLoadEvent.Failure -> {

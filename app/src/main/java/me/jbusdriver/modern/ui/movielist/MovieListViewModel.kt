@@ -370,21 +370,11 @@ class MovieListViewModel @Inject constructor(
                         val oldMovies = _uiState.value.movies
                         val oldFirstPage = oldMovies.take(freshUiModels.size)
                         logMovieDiff(oldFirstPage, freshUiModels, "MovieList.revalidate")
-                        when (reduction.outcome) {
-                            FreshRevalidateOutcome.ApplyImmediately -> {
+                            if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
                                 pages.startFirstPage()
-                                _uiState.value = reduction.state
                             }
-
-                            FreshRevalidateOutcome.StorePending -> {
-                                _uiState.value = reduction.state
-                            }
-
-                            FreshRevalidateOutcome.NoChange -> {
-                                _uiState.value = reduction.state
-                            }
+                            _uiState.value = reduction.state
                         }
-                    }
 
                     is CachedLoadEvent.Failure -> {
                         _uiState.update { it.copy(isRevalidating = false) }
