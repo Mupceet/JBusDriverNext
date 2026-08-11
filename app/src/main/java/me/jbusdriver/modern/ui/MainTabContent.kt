@@ -35,7 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
-import me.jbusdriver.modern.ui.components.SearchBar
+import me.jbusdriver.modern.ui.components.SearchBarWithSettings
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.GenreListViewModel
@@ -52,6 +52,7 @@ internal fun MovieTabContent(
     isGrid: Boolean,
     toggleGrid: () -> Unit,
     onSearchClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     onMovieClick: (MovieUiModel, String?) -> Unit
 ) {
     val movieTabViewModel: MovieTabViewModel = hiltViewModel()
@@ -108,8 +109,9 @@ internal fun MovieTabContent(
         }
     }
 
-    SearchBar(
-        onClick = { onSearchClick("") },
+    SearchBarWithSettings(
+        onSearchClick = { onSearchClick("") },
+        onSettingsClick = onSettingsClick,
         modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
     )
 
@@ -223,6 +225,7 @@ internal fun MovieTabContent(
 @Composable
 internal fun ActressTabContent(
     onSearchClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     onActressClick: (ActressUiModel, String?) -> Unit
 ) {
     var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
@@ -238,8 +241,9 @@ internal fun ActressTabContent(
         }
     }
 
-    SearchBar(
-        onClick = { onSearchClick("") },
+    SearchBarWithSettings(
+        onSearchClick = { onSearchClick("") },
+        onSettingsClick = onSettingsClick,
         modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
     )
 

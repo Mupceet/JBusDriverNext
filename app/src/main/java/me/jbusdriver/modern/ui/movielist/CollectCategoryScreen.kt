@@ -45,7 +45,7 @@ import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.modern.ui.components.SearchBar
+import me.jbusdriver.modern.ui.components.SearchBarWithSettings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -133,8 +133,9 @@ fun CollectCategoryScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        SearchBar(
-            onClick = { onSearchClick("") },
+        SearchBarWithSettings(
+            onSearchClick = { onSearchClick("") },
+            onSettingsClick = onSettingsClick,
             modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
         )
 
@@ -195,8 +196,8 @@ fun CollectCategoryScreen(
             Box {
                 IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
                     Icon(
-                        painterResource(R.drawable.more_vert_24px),
-                        contentDescription = stringResource(R.string.more),
+                        painterResource(R.drawable.import_export_24px),
+                        contentDescription = stringResource(R.string.import_export),
                         modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -220,13 +221,6 @@ fun CollectCategoryScreen(
                         onClick = {
                             showMenu = false
                             importLauncher.launch(arrayOf("application/json"))
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.more_settings)) },
-                        onClick = {
-                            showMenu = false
-                            onSettingsClick()
                         }
                     )
                 }

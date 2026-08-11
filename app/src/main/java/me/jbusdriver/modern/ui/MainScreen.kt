@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.ui.components.SearchBar
+import me.jbusdriver.modern.ui.components.SearchBarWithSettings
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
@@ -131,11 +131,13 @@ fun MainScreen(
                         isGrid = isGrid,
                         toggleGrid = toggleGrid,
                         onSearchClick = onSearchClick,
+                        onSettingsClick = onSettingsClick,
                         onMovieClick = onMovieClick
                     )
 
                     BottomNavCategory.ACTRESS -> ActressTabContent(
                         onSearchClick = onSearchClick,
+                        onSettingsClick = onSettingsClick,
                         onActressClick = onActressClick
                     )
 
@@ -147,8 +149,9 @@ fun MainScreen(
                     )
 
                     BottomNavCategory.FORUM -> {
-                        SearchBar(
-                            onClick = { onSearchClick("") },
+                        SearchBarWithSettings(
+                            onSearchClick = { onSearchClick("") },
+                            onSettingsClick = onSettingsClick,
                             modifier = Modifier.padding(
                                 start = 14.dp,
                                 top = 4.dp,
