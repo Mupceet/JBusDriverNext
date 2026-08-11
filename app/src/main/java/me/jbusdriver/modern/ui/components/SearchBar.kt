@@ -141,11 +141,14 @@ fun CollapsingSearchBar(
             constraints.copy(maxHeight = Constraints.Infinity)
         )
         state.heightPx = placeable.height.toFloat()
-        val visibleHeight = (placeable.height + state.translationY)
+        val translation = state.translationY
+        val visibleHeight = (placeable.height + translation)
             .coerceIn(0f, placeable.height.toFloat())
             .roundToInt()
         layout(constraints.maxWidth, visibleHeight) {
-            placeable.place(0, 0)
+            // Slide the bar up (negative y) and clip the part above the content area, so it
+            // exits through the top instead of looking covered by the content below.
+            placeable.place(0, translation.roundToInt())
         }
     }
 }
