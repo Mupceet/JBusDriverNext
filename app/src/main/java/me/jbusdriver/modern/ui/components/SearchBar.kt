@@ -106,7 +106,7 @@ fun CollapsingSearchBar(
         targetValue = scrollState.heightOffset,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            stiffness = Spring.StiffnessHigh
         ),
         label = "searchBarOffset"
     )
