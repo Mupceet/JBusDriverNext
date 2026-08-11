@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.movielist
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -11,7 +10,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -28,6 +26,7 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.components.ScrollableCenteredState
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
@@ -56,7 +55,7 @@ fun CollectionListScreen(
 
     when {
         uiState.isLoading && uiState.movies.isEmpty() && uiState.actresses.isEmpty() -> {
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ScrollableCenteredState(modifier = modifier) {
                 CircularProgressIndicator()
             }
         }
@@ -74,7 +73,7 @@ fun CollectionListScreen(
             // 否则 0 收藏时会进入空状态分支，未收藏本地视频永远不显示。
             val uncollected = if (uiState.showUncollectedLocal) uiState.uncollectedVideos else emptyList()
             if (uiState.movies.isEmpty() && uncollected.isEmpty()) {
-                Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ScrollableCenteredState(modifier = modifier) {
                     Text(
                         if (hasItems) stringResource(R.string.no_filter_match) else stringResource(R.string.no_collection_yet),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -137,7 +136,7 @@ fun CollectionListScreen(
 
         dbType == ActressDBType -> {
             if (uiState.actresses.isEmpty()) {
-                Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ScrollableCenteredState(modifier = modifier) {
                     Text(
                         if (hasItems) stringResource(R.string.no_filter_match) else stringResource(R.string.no_collection_yet),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
