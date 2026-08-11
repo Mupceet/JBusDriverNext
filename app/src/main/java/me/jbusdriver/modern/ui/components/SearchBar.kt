@@ -1,5 +1,8 @@
 package me.jbusdriver.modern.ui.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -95,6 +99,17 @@ fun CollapsingSearchBar(
     scrollState: TopAppBarState,
     modifier: Modifier = Modifier
 ) {
+    // Smooth the bar's motion: the raw offset tracks/consumes scroll (collapse first, list
+    // frozen), while the rendered offset springs toward it so fast flings glide instead of
+    // snapping the bar away instantly.
+    val barOffset by animateFloatAsState(
+        targetValue = scrollState.heightOffset,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "searchBarOffset"
+    )
     Layout(
         modifier = modifier
             .fillMaxWidth()
@@ -113,7 +128,7 @@ fun CollapsingSearchBar(
         // Bound the collapse to the bar's own height so the enterAlways behavior stops
         // consuming scroll once the bar is fully hidden (default is -Float.MAX_VALUE).
         scrollState.heightOffsetLimit = -placeable.height.toFloat()
-        val offset = scrollState.heightOffset
+        val offset = barOffset
         val visibleHeight = (placeable.height + offset)
             .coerceIn(0f, placeable.height.toFloat())
             .roundToInt()
