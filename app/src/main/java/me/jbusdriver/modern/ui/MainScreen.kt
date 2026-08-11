@@ -98,11 +98,6 @@ fun MainScreen(
     // Shared search bar follows the active list's scroll (observe-only, never consumes).
     val searchBarState = rememberSearchBarVisibilityState()
 
-    // A freshly selected tab smoothly slides the search bar back into view.
-    LaunchedEffect(selectedCategory) {
-        searchBarState.animateToTop()
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {

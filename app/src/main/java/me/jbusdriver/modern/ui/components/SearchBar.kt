@@ -17,9 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +31,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.jbusdriver.R
-import kotlin.coroutines.coroutineContext
 import kotlin.math.roundToInt
-import kotlinx.coroutines.Job
 
 @Composable
 fun SearchBar(
@@ -109,37 +104,12 @@ class SearchBarVisibilityState internal constructor() {
     internal var heightPx by mutableFloatStateOf(0f)
         internal set
 
-    private var resetJob: Job? = null
-
     internal val nestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
             if (source == NestedScrollSource.UserInput || source == NestedScrollSource.SideEffect) {
-                // User is scrolling: cancel any reset animation and follow the finger.
-                resetJob?.cancel()
-                resetJob = null
                 translationY = (translationY + available.y).coerceIn(-heightPx, 0f)
             }
             return Offset.Zero
-        }
-    }
-
-    /**
-    * Smoothly slides the search bar back to fully visible. Used when switching tabs so the
-    * bar does not snap/jump. Cancelled automatically if the user scrolls during the animation.
-    */
-    suspend fun animateToTop() {
-        resetJob?.cancel()
-        resetJob = coroutineContext[Job]
-        try {
-            animate(
-                initialValue = translationY,
-                targetValue = 0f,
-                animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
-            ) { value, _ ->
-                translationY = value
-            }
-        } finally {
-            if (resetJob == coroutineContext[Job]) resetJob = null
         }
     }
 }

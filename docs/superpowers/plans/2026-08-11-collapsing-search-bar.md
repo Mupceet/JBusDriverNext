@@ -6,7 +6,7 @@
 
 **Goal:** Replace the four per-tab search bars with a single shared search bar above the main tabs that hides as the list scrolls down, reappears as it scrolls up, and never conflicts with pull-to-refresh at the top.
 
-**Architecture:** `MainScreen` owns one `CollapsingSearchBar` at the top of its content `Column`. `SearchBarVisibilityState` exposes an observe-only `NestedScrollConnection` that accumulates scroll deltas into `translationY` (clamped to `[-barHeight, 0]`) and never consumes, so the list always scrolls normally and the bar follows the finger 1:1. `CollapsingSearchBar` renders its visible height as `max(0, naturalHeight + translationY)`. Pull-to-refresh is unaffected because the connection never consumes; at the top `translationY` is 0 so the bar is fully visible while `PullToRefreshBox` handles the pull. On tab switch the bar resets to expanded.
+**Architecture:** `MainScreen` owns one `CollapsingSearchBar` at the top of its content `Column`. `SearchBarVisibilityState` exposes an observe-only `NestedScrollConnection` that accumulates scroll deltas into `translationY` (clamped to `[-barHeight, 0]`) and never consumes, so the list always scrolls normally and the bar follows the finger 1:1. `CollapsingSearchBar` renders its visible height as `max(0, naturalHeight + translationY)`. Pull-to-refresh is unaffected because the connection never consumes; at the top `translationY` is 0 so the bar is fully visible while `PullToRefreshBox` handles the pull. The bar keeps its current visibility across tab switches (no reset/expansion on tab change).
 
 **Tech Stack:** Jetpack Compose, Material3 1.4.0 (`TopAppBarState`, `TopAppBarDefaults.enterAlwaysScrollBehavior`, `PullToRefreshBox`), Kotlin, Hilt.
 
