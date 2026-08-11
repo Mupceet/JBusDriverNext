@@ -12,11 +12,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -88,11 +95,38 @@ fun SearchBarWithSettings(
     }
 }
 
+@Stable
+class SearchBarVisibilityState internal constructor() {
+    /** Current vertical translation in px: 0 = fully visible, negative = sliding up / hidden. */
+    var translationY by mutableFloatStateOf(0f)
+        private set
+
+    internal var heightPx by mutableFloatStateOf(0f)
+        internal set
+
+    internal val nestedScrollConnection = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            if (source == NestedScrollSource.UserInput || source == NestedScrollSource.SideEffect) {
+                translationY = (translationY + available.y).coerceIn(-heightPx, 0f)
+            }
+            return Offset.Zero
+        }
+    }
+
+    fun reset() {
+        translationY = 0f
+    }
+}
+
+@Composable
+fun rememberSearchBarVisibilityState(): SearchBarVisibilityState =
+    remember { SearchBarVisibilityState() }
+
 @Composable
 fun CollapsingSearchBar(
     onSearchClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    scrollState: TopAppBarState,
+    state: SearchBarVisibilityState,
     modifier: Modifier = Modifier
 ) {
     Layout(
@@ -110,7 +144,10 @@ fun CollapsingSearchBar(
         val placeable = measurables[0].measure(
             constraints.copy(maxHeight = Constraints.Infinity)
         )
-        val visibleHeight = (placeable.height + scrollState.heightOffset).coerceAtLeast(0f).roundToInt()
+        state.heightPx = placeable.height.toFloat()
+        val visibleHeight = (placeable.height + state.translationY)
+            .coerceIn(0f, placeable.height.toFloat())
+            .roundToInt()
         layout(constraints.maxWidth, visibleHeight) {
             placeable.place(0, 0)
         }

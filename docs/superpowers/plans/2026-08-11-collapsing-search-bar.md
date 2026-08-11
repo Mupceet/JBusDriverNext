@@ -1,10 +1,12 @@
 # Collapsing Shared Search Bar Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+> **Revision (2026-08-11):** The first implementation used Material3 `TopAppBarDefaults.enterAlwaysScrollBehavior()`. On-device testing showed it consumed all scroll (its `TopAppBarState.heightOffsetLimit` stays `-Float.MAX_VALUE` until a `TopAppBar` sets it), so the list could not keep scrolling and the bar could not expand following the finger. Replaced with an observe-only `SearchBarVisibilityState` (a `NestedScrollConnection` that never consumes; filters `UserInput`/`SideEffect`) and a 1:1 translate in `CollapsingSearchBar`. The task code below reflects the final approach.
 
 **Goal:** Replace the four per-tab search bars with a single shared search bar above the main tabs that hides as the list scrolls down, reappears as it scrolls up, and never conflicts with pull-to-refresh at the top.
 
-**Architecture:** `MainScreen` owns one `CollapsingSearchBar` at the top of its content `Column`, driven by Material3 `TopAppBarDefaults.enterAlwaysScrollBehavior()`. The tab content is wrapped with `Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)`; the bar's visible height is `max(0, naturalHeight + state.heightOffset)` so it collapses continuously with scroll. Pull-to-refresh is safe because `PullToRefreshBox` sits inside the scroll hierarchy and consumes the pull-down delta before the enterAlways connection observes it; at the top the bar is always fully expanded. On tab switch the bar resets to expanded.
+**Architecture:** `MainScreen` owns one `CollapsingSearchBar` at the top of its content `Column`. `SearchBarVisibilityState` exposes an observe-only `NestedScrollConnection` that accumulates scroll deltas into `translationY` (clamped to `[-barHeight, 0]`) and never consumes, so the list always scrolls normally and the bar follows the finger 1:1. `CollapsingSearchBar` renders its visible height as `max(0, naturalHeight + translationY)`. Pull-to-refresh is unaffected because the connection never consumes; at the top `translationY` is 0 so the bar is fully visible while `PullToRefreshBox` handles the pull. On tab switch the bar resets to expanded.
 
 **Tech Stack:** Jetpack Compose, Material3 1.4.0 (`TopAppBarState`, `TopAppBarDefaults.enterAlwaysScrollBehavior`, `PullToRefreshBox`), Kotlin, Hilt.
 

@@ -11,7 +11,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +27,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.CollapsingSearchBar
+import me.jbusdriver.modern.ui.components.rememberSearchBarVisibilityState
 import me.jbusdriver.modern.ui.components.SearchBarWithSettings
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
@@ -95,12 +95,12 @@ fun MainScreen(
     // Preload forum data when enabled
     if (showForumTab) hiltViewModel<ForumBoardsViewModel>()
 
-    // Shared search bar collapses when the active list scrolls down (Material enterAlways).
-    val searchBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    // Shared search bar follows the active list's scroll (observe-only, never consumes).
+    val searchBarState = rememberSearchBarVisibilityState()
 
     // A freshly selected tab starts with the search bar expanded.
     LaunchedEffect(selectedCategory) {
-        searchBarScrollBehavior.state.heightOffset = 0f
+        searchBarState.reset()
     }
 
     Scaffold(
@@ -139,13 +139,13 @@ fun MainScreen(
             CollapsingSearchBar(
                 onSearchClick = { onSearchClick("") },
                 onSettingsClick = onSettingsClick,
-                scrollState = searchBarScrollBehavior.state
+                state = searchBarState
             )
             saveableStateHolder.SaveableStateProvider(selectedCategory) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .nestedScroll(searchBarScrollBehavior.nestedScrollConnection)
+                        .nestedScroll(searchBarState.nestedScrollConnection)
                 ) {
                     when (selectedCategory) {
                         BottomNavCategory.MOVIE -> MovieTabContent(
