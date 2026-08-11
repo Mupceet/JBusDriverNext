@@ -45,7 +45,6 @@ import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.MovieUiModel
-import me.jbusdriver.modern.ui.components.SearchBarWithSettings
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -56,7 +55,6 @@ fun CollectCategoryScreen(
     onActressClick: (ActressUiModel, String?) -> Unit,
     modifier: Modifier = Modifier,
     onSearchClick: (String) -> Unit = {},
-    onSettingsClick: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState { 2 }
@@ -133,12 +131,6 @@ fun CollectCategoryScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        SearchBarWithSettings(
-            onSearchClick = { onSearchClick("") },
-            onSettingsClick = onSettingsClick,
-            modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()

@@ -12,14 +12,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.jbusdriver.R
+import kotlin.math.roundToInt
 
 @Composable
 fun SearchBar(
@@ -79,6 +84,35 @@ fun SearchBarWithSettings(
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun CollapsingSearchBar(
+    onSearchClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    scrollState: TopAppBarState,
+    modifier: Modifier = Modifier
+) {
+    Layout(
+        modifier = modifier
+            .fillMaxWidth()
+            .clipToBounds(),
+        content = {
+            SearchBarWithSettings(
+                onSearchClick = onSearchClick,
+                onSettingsClick = onSettingsClick,
+                modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp, bottom = 8.dp)
+            )
+        }
+    ) { measurables, constraints ->
+        val placeable = measurables[0].measure(
+            constraints.copy(maxHeight = Constraints.Infinity)
+        )
+        val visibleHeight = (placeable.height + scrollState.heightOffset).coerceAtLeast(0f).roundToInt()
+        layout(constraints.maxWidth, visibleHeight) {
+            placeable.place(0, 0)
         }
     }
 }
