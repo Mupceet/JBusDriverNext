@@ -73,3 +73,24 @@ fun NoMoreItemsView(modifier: Modifier = Modifier) {
         )
     }
 }
+
+/**
+ * A full-screen, scrollable, centered container for transient states (loading, empty, error
+ * placeholders). Being scrollable lets pull gestures reach nested-scroll consumers (e.g. the
+ * collapsing search bar) even when there is no list content to scroll.
+ */
+@Composable
+fun ScrollableCenteredState(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        content()
+    }
+}

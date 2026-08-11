@@ -34,6 +34,7 @@ import me.jbusdriver.modern.ui.UserMessage
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.components.ScrollableCenteredState
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
@@ -157,7 +158,7 @@ fun MovieListScreen(
     ) {
         when {
             state.isLoading && state.movies.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ScrollableCenteredState {
                     CircularProgressIndicator()
                 }
             }

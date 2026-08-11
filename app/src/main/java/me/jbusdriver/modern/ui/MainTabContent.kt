@@ -35,7 +35,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.components.CategoryBottomSheet
-import me.jbusdriver.modern.ui.components.SearchBar
 import me.jbusdriver.modern.ui.movielist.ActressListScreen
 import me.jbusdriver.modern.ui.movielist.ActressListViewModel
 import me.jbusdriver.modern.ui.movielist.GenreListViewModel
@@ -107,11 +106,6 @@ internal fun MovieTabContent(
             )
         }
     }
-
-    SearchBar(
-        onClick = { onSearchClick("") },
-        modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
-    )
 
     Row(
         modifier = Modifier
@@ -237,11 +231,6 @@ internal fun ActressTabContent(
             actressPagerState.animateScrollToPage(target)
         }
     }
-
-    SearchBar(
-        onClick = { onSearchClick("") },
-        modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp)
-    )
 
     Row(
         modifier = Modifier

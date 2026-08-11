@@ -56,6 +56,7 @@
     <string name="uncollect_action">取消收藏</string>
     <string name="export_collect">導出收藏</string>
     <string name="import_collect">導入收藏</string>
+    <string name="import_export">導入/導出</string>
     <string name="export_success">導出成功</string>
     <string name="collect_load_failed">載入收藏失敗</string>
 
@@ -124,8 +125,6 @@
     <string name="verifying">正在驗證 %1$d/%2$d…</string>
 
     <!-- Misc -->
-    <string name="more">更多</string>
-    <string name="more_settings">更多設置</string>
     <string name="delete">刪除</string>
     <string name="actress_type">演員: %1$s</string>
     <string name="genre_type">類別: %1$s</string>

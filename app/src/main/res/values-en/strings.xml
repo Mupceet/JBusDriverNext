@@ -58,6 +58,7 @@
     <string name="uncollect_action">Uncollect</string>
     <string name="export_collect">Export Collection</string>
     <string name="import_collect">Import Collection</string>
+    <string name="import_export">Import/Export</string>
     <string name="export_success">Export successful</string>
     <string name="collect_load_failed">Failed to load collection</string>
 
@@ -127,8 +128,6 @@
     <string name="verifying">Verifying %1$d/%2$d…</string>
 
     <!-- Misc -->
-    <string name="more">More</string>
-    <string name="more_settings">More settings</string>
     <string name="delete">Delete</string>
     <string name="actress_type">Actress: %1$s</string>
     <string name="genre_type">Genre: %1$s</string>

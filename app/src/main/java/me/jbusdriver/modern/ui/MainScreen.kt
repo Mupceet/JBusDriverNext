@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,13 +20,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.ui.components.SearchBar
+import me.jbusdriver.modern.ui.components.CollapsingSearchBar
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
@@ -92,6 +94,9 @@ fun MainScreen(
     // Preload forum data when enabled
     if (showForumTab) hiltViewModel<ForumBoardsViewModel>()
 
+    // Shared search bar collapses first (consuming scroll), then the list scrolls.
+    val searchBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -120,46 +125,47 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        saveableStateHolder.SaveableStateProvider(selectedCategory) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                when (selectedCategory) {
-                    BottomNavCategory.MOVIE -> MovieTabContent(
-                        isGrid = isGrid,
-                        toggleGrid = toggleGrid,
-                        onSearchClick = onSearchClick,
-                        onMovieClick = onMovieClick
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            CollapsingSearchBar(
+                onSearchClick = { onSearchClick("") },
+                onSettingsClick = onSettingsClick,
+                scrollState = searchBarScrollBehavior.state
+            )
+            saveableStateHolder.SaveableStateProvider(selectedCategory) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(searchBarScrollBehavior.nestedScrollConnection)
+                ) {
+                    when (selectedCategory) {
+                        BottomNavCategory.MOVIE -> MovieTabContent(
+                            isGrid = isGrid,
+                            toggleGrid = toggleGrid,
+                            onSearchClick = onSearchClick,
+                            onMovieClick = onMovieClick
+                        )
 
-                    BottomNavCategory.ACTRESS -> ActressTabContent(
-                        onSearchClick = onSearchClick,
-                        onActressClick = onActressClick
-                    )
+                        BottomNavCategory.ACTRESS -> ActressTabContent(
+                            onSearchClick = onSearchClick,
+                            onActressClick = onActressClick
+                        )
 
-                    BottomNavCategory.COLLECT -> CollectCategoryScreen(
-                        onMovieClick = onMovieClick,
-                        onActressClick = onActressClick,
-                        onSearchClick = onSearchClick,
-                        onSettingsClick = onSettingsClick
-                    )
+                        BottomNavCategory.COLLECT -> CollectCategoryScreen(
+                            onMovieClick = onMovieClick,
+                            onActressClick = onActressClick,
+                            onSearchClick = onSearchClick
+                        )
 
-                    BottomNavCategory.FORUM -> {
-                        SearchBar(
-                            onClick = { onSearchClick("") },
-                            modifier = Modifier.padding(
-                                start = 14.dp,
-                                top = 4.dp,
-                                end = 14.dp,
-                                bottom = 8.dp
+                        BottomNavCategory.FORUM -> {
+                            ForumBoardsScreen(
+                                onBoardClick = onForumBoardClick,
+                                onThreadClick = onForumThreadClick
                             )
-                        )
-                        ForumBoardsScreen(
-                            onBoardClick = onForumBoardClick,
-                            onThreadClick = onForumThreadClick
-                        )
+                        }
                     }
                 }
             }

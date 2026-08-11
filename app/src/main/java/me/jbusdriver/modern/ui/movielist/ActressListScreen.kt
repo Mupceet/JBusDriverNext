@@ -29,6 +29,7 @@ import me.jbusdriver.modern.domain.model.DataSourceType
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.ScrollableCenteredState
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 
 /**
@@ -96,7 +97,7 @@ fun ActressListScreen(
     ) {
         when {
             uiState.isLoading && uiState.actresses.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ScrollableCenteredState {
                     CircularProgressIndicator()
                 }
             }
