@@ -27,6 +27,19 @@ class LocalVideoRepositoryLogicTest {
     }
 
     @Test
+    fun groupLocalVideoEntities_unclassifiedFilesBecomeIndividualGroups() {
+        val groups = groupLocalVideoEntities(listOf(
+            e(1, ""),
+            e(2, ""),
+            e(3, "ABC"),
+        ))
+        assertEquals(3, groups.size)
+        val unclassified = groups.filter { it.code == "" }
+        assertEquals(2, unclassified.size)
+        assertTrue(unclassified.all { it.files.size == 1 })
+    }
+
+    @Test
     fun planDeletion_successAndNotFoundRemoved_failedKept() {
         val entities = listOf(e(1, "A"), e(2, "B"), e(3, "C"))
         val results = listOf(DeleteFileResult.SUCCESS, DeleteFileResult.FAILED, DeleteFileResult.NOT_FOUND)
@@ -65,5 +78,17 @@ class LocalVideoRepositoryLogicTest {
     fun preserveSnapshots_dropsSnapshotWhenCodeGone() {
         val existing = listOf(e(1, "ABC", title = "T"))
         assertTrue(preserveSnapshots(emptyList(), existing).isEmpty())
+    }
+
+    @Test
+    fun preserveSnapshots_ignoresBlankCodes() {
+        val existing = listOf(
+            e(1, "").copy(title = "SHOULD-NOT-CARRY"),
+        )
+        val scanned = listOf(
+            LocalVideoEntity(id = 0, code = "", name = "clip.mp4", uri = "u1", mime = null, size = 1, scannedAt = 10),
+        )
+        val result = preserveSnapshots(scanned, existing)
+        assertNull(result.single().title)
     }
 }

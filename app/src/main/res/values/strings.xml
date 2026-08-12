@@ -193,7 +193,7 @@
     <string name="local_video_folder">視頻文件夾</string>
     <string name="local_video_folder_not_set">未選擇</string>
     <string name="local_video_clear_folder">清除文件夾</string>
-    <string name="local_video_naming_hint">將影片依番號命名（如 ABC-123.mp4），或放進以番號命名的資料夾（如 ABC-123/），即自動關聯。</string>
+    <string name="local_video_naming_hint">將影片依番號命名（如 ABC-123.mp4），或放進以番號命名的資料夾（如 ABC-123/），即自動關聯；無法識別的影片也會收錄，可在收藏頁長按排除。</string>
     <string name="local_video_last_scan">上次掃描：%1$s</string>
     <plurals name="local_video_linked_count">
         <item quantity="other">已關聯 %1$d 個視頻</item>
@@ -203,6 +203,12 @@
     <string name="local_video_downloaded">已下載</string>
     <string name="local_video_not_downloaded">未下載</string>
     <string name="local_video_show_uncollected">顯示未收藏的本地視頻</string>
+    <string name="local_video_exclude">排除該視頻</string>
+    <string name="local_video_excluded_count">已排除的本地視頻（%1$d）</string>
+    <string name="local_video_manage_excluded">管理</string>
+    <string name="local_video_excluded_title">已排除的本地視頻</string>
+    <string name="local_video_restore">恢復</string>
+    <string name="local_video_restore_all">全部恢復</string>
     <plurals name="local_video_uncollected_section_count">
         <item quantity="other">未收藏的本地視頻（%1$d）</item>
     </plurals>

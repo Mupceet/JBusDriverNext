@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.documentfile.provider.DocumentFile
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,6 +24,7 @@ private val Context.localVideoDataStore by preferencesDataStore("local_video")
 
 /**
  * 本地视频文件夹偏好：保存 SAF tree URI、显示名、上次扫描时间，并管理其持久化读取权限。
+ * 同时保存用户主动排除的本地视频 URI 集合（长按未收藏卡片 → 排除，避免空白封面堆积）。
  */
 @Singleton
 class LocalVideoFolderStore @Inject constructor(
@@ -37,10 +39,13 @@ class LocalVideoFolderStore @Inject constructor(
     /** 是否在收藏页显示未收藏的本地视频（持久化设置）。 */
     val showUncollectedLocal: Flow<Boolean> = dataStore.data.map { it[KEY_SHOW_UNCOLLECTED] ?: false }
 
+    /** 用户排除（不在收藏页未收藏分区展示）的本地视频 URI 集合。 */
+    val excludedUris: Flow<Set<String>> = dataStore.data.map { it[KEY_EXCLUDED_URIS] ?: emptySet() }
+
     suspend fun currentFolderUri(): String? =
         dataStore.data.first()[KEY_FOLDER_URI]
 
-    /** 记录文件夹：申请持久化读权限，并写入 uri 与显示名。 */
+    /** 记录文件夹：申请持久读权限，并写入 uri 与显示名。 */
     suspend fun setFolder(uri: Uri) = withContext(Dispatchers.IO) {
         runCatching {
             context.contentResolver.takePersistableUriPermission(
@@ -63,7 +68,18 @@ class LocalVideoFolderStore @Inject constructor(
         dataStore.edit { it[KEY_SHOW_UNCOLLECTED] = value }
     }
 
-    /** 清除文件夹：释放权限并删除全部 key。 */
+    /** 把一批 URI 加入/移出排除集合。 */
+    suspend fun setExcludedUris(uris: Set<String>, excluded: Boolean) {
+        if (uris.isEmpty()) return
+        dataStore.edit { prefs ->
+            val current = prefs[KEY_EXCLUDED_URIS] ?: emptySet()
+            val next = if (excluded) current + uris else current - uris
+            if (next.isEmpty()) prefs.remove(KEY_EXCLUDED_URIS)
+            else prefs[KEY_EXCLUDED_URIS] = next
+        }
+    }
+
+    /** 清除文件夹：释放权限并删除全部相关 key（含排除集合）。 */
     suspend fun clearFolder() = withContext(Dispatchers.IO) {
         currentFolderUri()?.let { uriStr ->
             runCatching {
@@ -77,6 +93,7 @@ class LocalVideoFolderStore @Inject constructor(
             it.remove(KEY_FOLDER_URI)
             it.remove(KEY_FOLDER_NAME)
             it.remove(KEY_LAST_SCAN)
+            it.remove(KEY_EXCLUDED_URIS)
         }
     }
 
@@ -85,5 +102,6 @@ class LocalVideoFolderStore @Inject constructor(
         val KEY_FOLDER_NAME = stringPreferencesKey("folder_name")
         val KEY_LAST_SCAN = longPreferencesKey("last_scan")
         val KEY_SHOW_UNCOLLECTED = booleanPreferencesKey("show_uncollected_local")
+        val KEY_EXCLUDED_URIS = stringSetPreferencesKey("excluded_local_uris")
     }
 }

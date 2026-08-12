@@ -503,6 +503,117 @@ class CollectionListViewModelTest {
         assertFalse(viewModel.uiState.value.isLoading)
     }
 
+
+    @Test
+    fun excludeLocalVideo_hidesGroupFromUncollected() = runTest(testDispatcher) {
+        val excluded = MutableStateFlow<Set<String>>(emptySet())
+        val groupsFlow = MutableStateFlow<List<LocalVideoGroup>>(
+            listOf(
+                LocalVideoGroup(
+                    "DEF-002", "DEF Title", null, null, null,
+                    listOf(LocalVideo("DEF-002", "DEF-002.mp4", "uri-def", "video/mp4", 1L)),
+                ),
+                LocalVideoGroup(
+                    "GHI-003", "GHI Title", null, null, null,
+                    listOf(LocalVideo("GHI-003", "GHI-003.mp4", "uri-ghi", "video/mp4", 1L)),
+                ),
+            )
+        )
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = emptyList<Movie>()
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = emptyList()
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        val localRepo = object : LocalVideoRepository {
+            override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+            override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+            override fun observeSummary() = flowOf(LocalVideoSummary())
+            override fun hasFolder() = flowOf(true)
+            override suspend fun setFolder(uri: android.net.Uri) {}
+            override suspend fun clearFolder() {}
+            override suspend fun rescan() = 0
+            override fun observeAllGroupedByCode() = groupsFlow
+            override fun observeShowUncollectedLocal() = flowOf(true)
+            override suspend fun setShowUncollectedLocal(value: Boolean) {}
+            override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+            override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+            override fun observeExcludedUris() = excluded
+            override suspend fun setExcludedUris(uris: Set<String>, isExcluded: Boolean) {
+                excluded.value = if (isExcluded) excluded.value + uris else excluded.value - uris
+            }
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo, testDispatcher)
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.uncollectedVideos.size)
+
+        viewModel.excludeLocalVideo(listOf("uri-ghi"))
+        advanceUntilIdle()
+
+        val uncollected = viewModel.uiState.value.uncollectedVideos
+        assertEquals(1, uncollected.size)
+        assertEquals("DEF-002", uncollected.first().code)
+    }
+
+    @Test
+    fun unclassifiedLocalVideo_appearsWithBlankLinkAndLocalVideos() = runTest(testDispatcher) {
+        val groupsFlow = MutableStateFlow<List<LocalVideoGroup>>(
+            listOf(
+                LocalVideoGroup(
+                    "", null, null, null, null,
+                    listOf(LocalVideo("", "clip", "uri-clip", "video/mp4", 10L)),
+                ),
+            )
+        )
+        val collectRepo = object : CollectRepository {
+            override suspend fun isCollected(linkItem: LinkItem) = false
+            override suspend fun addCollect(linkItem: LinkItem) = true
+            override suspend fun removeCollect(linkItem: LinkItem) = true
+            override suspend fun isMovieCollected(movie: Movie) = false
+            override suspend fun toggleMovieCollect(movie: Movie, categoryId: Int?) = true
+            override suspend fun isActressCollected(actress: ActressInfo) = false
+            override suspend fun toggleActressCollect(actress: ActressInfo, categoryId: Int?) = true
+            override suspend fun getCollectedMovies() = emptyList<Movie>()
+            override suspend fun getCollectedActresses() = emptyList<ActressInfo>()
+            override suspend fun getCollectedLinkItems(dbType: Int): List<LinkItem> = emptyList()
+            override suspend fun exportCollectionsJson() = "{}"
+            override suspend fun importCollectionsFromJson(json: String) = 0 to 0
+        }
+        val localRepo = object : LocalVideoRepository {
+            override fun observeForCode(code: String) = flowOf(emptyList<LocalVideo>())
+            override fun observeDownloadedCodes() = flowOf(emptySet<String>())
+            override fun observeSummary() = flowOf(LocalVideoSummary())
+            override fun hasFolder() = flowOf(true)
+            override suspend fun setFolder(uri: android.net.Uri) {}
+            override suspend fun clearFolder() {}
+            override suspend fun rescan() = 0
+            override fun observeAllGroupedByCode() = groupsFlow
+            override fun observeShowUncollectedLocal() = flowOf(true)
+            override suspend fun setShowUncollectedLocal(value: Boolean) {}
+            override suspend fun deleteVideos(ids: List<Int>) = DeleteResult(0, 0)
+            override suspend fun snapshotMetadata(code: String, title: String, imageUrl: String, date: String, censorType: String?) {}
+        }
+        viewModel = CollectionListViewModel(collectRepo, FakeCollectionUiPrefs(), FakeSiteConfig(), localRepo, testDispatcher)
+        viewModel.loadCollection(MovieDBType)
+        advanceUntilIdle()
+
+        val uncollected = viewModel.uiState.value.uncollectedVideos
+        assertEquals(1, uncollected.size)
+        assertEquals("clip", uncollected.first().title)
+        assertEquals("", uncollected.first().link)
+        assertEquals("uri-clip", uncollected.first().localVideos.single().uri)
+    }
+
     private class FakeSiteConfig : SiteConfig {
         override var baseUrl: String = "https://www.javbus.com"
         override fun resolve(pathOrUrl: String): String = pathOrUrl

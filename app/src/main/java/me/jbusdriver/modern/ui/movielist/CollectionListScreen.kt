@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -19,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.db.ActressDBType
 import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.data.localvideo.launchLocalVideo
 import me.jbusdriver.modern.domain.model.MovieCategory
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 import me.jbusdriver.modern.ui.ActressUiModel
@@ -40,6 +42,7 @@ fun CollectionListScreen(
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
     val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
     val isGrid = uiPrefsState.isGrid
@@ -82,7 +85,13 @@ fun CollectionListScreen(
             } else {
                 MovieList(
                     movies = uiState.movies,
-                    onMovieClick = onMovieClick,
+                    onMovieClick = { movie, censor ->
+                        if (movie.link.isBlank() && movie.localVideos.isNotEmpty()) {
+                            launchLocalVideo(context, movie.localVideos.first())
+                        } else {
+                            onMovieClick(movie, censor)
+                        }
+                    },
                     isCollected = { true },
                     onToggleCollect = { viewModel.removeMovie(it) },
                     isDownloaded = { it.code.uppercase() in downloadedCodes },
@@ -125,6 +134,15 @@ fun CollectionListScreen(
                             text = { Text(stringResource(R.string.uncollect_action)) },
                             onClick = {
                                 viewModel.removeMovie(movie)
+                                close()
+                            }
+                        )
+                    },
+                    footerMovieLongPressMenu = { movie, close ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.local_video_exclude)) },
+                            onClick = {
+                                viewModel.excludeLocalVideo(movie.localVideos.map { it.uri })
                                 close()
                             }
                         )

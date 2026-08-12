@@ -93,6 +93,8 @@ class CollectionListViewModel @Inject constructor(
 
     /** 当前"显示未收藏本地视频"设置（来自 localVideoRepository 持久化设置）。 */
     private var currentShowUncollected: Boolean = false
+    /** 当前被用户排除（不展示）的本地视频 URI 集合。 */
+    private var currentExcludedUris: Set<String> = emptySet()
 
     /** 是否已配置本地视频文件夹（控制筛选弹窗显隐及本地视频筛选是否生效）。 */
     private var currentHasFolder: Boolean = false
@@ -139,6 +141,12 @@ class CollectionListViewModel @Inject constructor(
         viewModelScope.launch {
             localVideoRepository.hasFolder().collect { hasFolder ->
                 currentHasFolder = hasFolder
+                applyFilterAndSort()
+            }
+        }
+        viewModelScope.launch {
+            localVideoRepository.observeExcludedUris().collect { uris ->
+                currentExcludedUris = uris
                 applyFilterAndSort()
             }
         }
@@ -296,6 +304,12 @@ class CollectionListViewModel @Inject constructor(
         _uiState.update { it.copy(availableYears = AvailableYears(publishYears, collectYears)) }
     }
 
+    /** 长按未收藏本地视频卡片 → 排除（加入排除集合，从收藏页未收藏分区隐藏）。 */
+    fun excludeLocalVideo(uris: List<String>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch { localVideoRepository.setExcludedUris(uris.toSet(), excluded = true) }
+    }
+
     /** 对原始数据应用当前筛选和排序，更新 UI 状态（计算在 IO 调度器执行，避免主线程卡顿） */
     private fun applyFilterAndSort() {
         // 在 Main 线程快照输入（这些字段只被 Main 线程写入），把纯计算下推 ioDispatcher；
@@ -309,6 +323,7 @@ class CollectionListViewModel @Inject constructor(
         val hasFolder = currentHasFolder
         val downloaded = currentDownloadedCodes
         val showUncollected = currentShowUncollected
+        val excludedUris = currentExcludedUris
         computeGeneration += 1
         val generation = computeGeneration
         viewModelScope.launch(ioDispatcher) {
@@ -322,6 +337,7 @@ class CollectionListViewModel @Inject constructor(
                 hasFolder = hasFolder,
                 downloaded = downloaded,
                 showUncollected = showUncollected,
+                excludedUris = excludedUris,
                 baseUrl = siteConfig.baseUrl,
             )
             if (generation != computeGeneration) return@launch
@@ -365,6 +381,7 @@ class CollectionListViewModel @Inject constructor(
         hasFolder: Boolean,
         downloaded: Set<String>,
         showUncollected: Boolean,
+        excludedUris: Set<String>,
         baseUrl: String,
     ): CollectionComputedResult {
         // Compute available publish months for the selected year
@@ -418,15 +435,17 @@ class CollectionListViewModel @Inject constructor(
         val uncollectedVideos = if (showUncollectedSection) {
             groups
                 .filter { it.code.uppercase() !in collectedCodes }
+                .filter { g -> g.files.isEmpty() || g.files.any { it.uri !in excludedUris } }
                 .map { g ->
                     MovieUiModel(
                         title = g.title ?: g.files.firstOrNull()?.name ?: g.code,
                         // 与已收藏条目的封面保持一致：按当前站点 baseUrl 重新解析，
                         // 避免清缓存/切换镜像后存库时的旧绝对 URL 无法加载。
-                        imageUrl = g.imageUrl.orEmpty().stripToPath().wrapImage(baseUrl),
+                        imageUrl = g.imageUrl.orEmpty().takeIf { it.isNotBlank() }?.stripToPath()?.wrapImage(baseUrl).orEmpty(),
                         code = g.code,
+                        localVideos = g.files,
                         date = g.date.orEmpty(),
-                        link = "/${g.code}",
+                        link = if (g.code.isBlank()) "" else "/${g.code}",
                     )
                 }
         } else emptyList()

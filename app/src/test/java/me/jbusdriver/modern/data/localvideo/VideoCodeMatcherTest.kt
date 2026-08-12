@@ -56,7 +56,7 @@ class VideoCodeMatcherTest {
 
     @Test
     fun extractCode_supportsUnderscoreSeparator() {
-        // 下划线作为"前缀与序号"的分隔符（与 ABC-123 等价的另一写法）
+        // 下划线作为"前缀与序号"的分隔符（与 ABC-123 等价的另一种写法）
         assertEquals("ABC_123", VideoCodeMatcher.extractCode("ABC_123.mp4"))
     }
 
@@ -71,5 +71,36 @@ class VideoCodeMatcherTest {
         // 纯分辨率/画质词不是番号；带分辨率前缀时应取后面的真实番号
         assertNull(VideoCodeMatcher.extractCode("4K-trailer.mp4"))
         assertEquals("ABC-123", VideoCodeMatcher.extractCode("1080p_ABC-123.mp4"))
+    }
+
+    // ---- -/_ equivalence (favorite movie name matching) ----
+
+    @Test
+    fun normalizeSeparators_unifiesDashAndUnderscore_uppercases() {
+        assertEquals("ABC-123", VideoCodeMatcher.normalizeSeparators("ABC_123"))
+        assertEquals("ABC-123", VideoCodeMatcher.normalizeSeparators("abc-123"))
+        assertEquals("FC2-PPV-1234567", VideoCodeMatcher.normalizeSeparators("FC2_PPV_1234567"))
+    }
+
+    @Test
+    fun matchesMovieName_exactAfterNormalization() {
+        assertTrue(VideoCodeMatcher.matchesMovieName("ABC_123", "ABC-123"))
+        assertTrue(VideoCodeMatcher.matchesMovieName("abc-123", "ABC-123"))
+        assertTrue(VideoCodeMatcher.matchesMovieName("FC2-PPV-1234567", "FC2_PPV_1234567"))
+    }
+
+    @Test
+    fun matchesMovieName_allowsSuffixAfterSeparator() {
+        assertTrue(VideoCodeMatcher.matchesMovieName("ABC-123 (1080p)", "ABC-123"))
+        assertTrue(VideoCodeMatcher.matchesMovieName("ABC_123_4K", "ABC-123"))
+        assertTrue(VideoCodeMatcher.matchesMovieName("ABC-123-C", "ABC-123-C"))
+    }
+
+    @Test
+    fun matchesMovieName_rejectsDifferentCodeOrTrailingLetter() {
+        assertFalse(VideoCodeMatcher.matchesMovieName("ABCD-123", "ABC-123"))
+        assertFalse(VideoCodeMatcher.matchesMovieName("ABC-123D", "ABC-123"))
+        assertFalse(VideoCodeMatcher.matchesMovieName("clip", "ABC-123"))
+        assertFalse(VideoCodeMatcher.matchesMovieName("", "ABC-123"))
     }
 }
