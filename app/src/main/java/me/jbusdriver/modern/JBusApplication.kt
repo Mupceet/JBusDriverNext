@@ -15,7 +15,6 @@ import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
-import me.jbusdriver.modern.ui.debug.MovieCodeSampleCollector
 import okhttp3.Interceptor
 import javax.inject.Inject
 
@@ -36,14 +35,9 @@ class JBusApplication : Application(), ImageLoaderFactory {
     @Inject
     lateinit var siteConfig: SiteConfig
 
-    @Inject
-    lateinit var movieCodeSampleCollector: MovieCodeSampleCollector
-
     override fun onCreate() {
         super.onCreate()
         KLog.d("Hilt initialization complete", "JBusApplication")
-        // debug 构建启动时采集有码/无码番号样本，输出到 logcat tag `CodeCollector`
-        movieCodeSampleCollector.collectOnStart()
     }
 
     /**

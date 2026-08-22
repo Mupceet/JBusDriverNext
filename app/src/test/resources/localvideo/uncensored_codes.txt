@@ -1,4 +1,4 @@
-# 无码影片番号样本（JavBus 无码区前 18 页，去重），由 debug 构建 MovieCodeSampleCollector 于 2026-08-23 采集。
+# 无码影片番号样本（JavBus 无码区前 18 页，去重），2026-08-23 通过 app 从站点列表页采集。
 # 包含 HEYZO-1234、MMDDYY-001 / MMDDYY_001 日期型与 054k 数字+k 等无码常见格式。
 # 用途：VideoCodeMatcher 番号提取的合法用例，extractCode("<code>.mp4") 应等于该番号（大写归一化）。
 # 

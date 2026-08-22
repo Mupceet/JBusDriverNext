@@ -105,7 +105,7 @@ class VideoCodeMatcherTest {
 
     @Test
     fun extractCode_realSiteCodes_roundTrip() {
-        // 真实站点番号样本（debug 构建 MovieCodeSampleCollector 采集，见资源文件头注释）
+        // 真实站点番号样本（2026-08-23 通过 app 从站点前 18 页采集，见资源文件头注释）
         for (fileName in listOf("censored_codes.txt", "uncensored_codes.txt")) {
             val codes = javaClass.getResourceAsStream("/localvideo/$fileName")!!
                 .bufferedReader()
