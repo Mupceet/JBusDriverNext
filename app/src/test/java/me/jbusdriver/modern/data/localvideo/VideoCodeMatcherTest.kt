@@ -72,4 +72,51 @@ class VideoCodeMatcherTest {
         assertNull(VideoCodeMatcher.extractCode("4K-trailer.mp4"))
         assertEquals("ABC-123", VideoCodeMatcher.extractCode("1080p_ABC-123.mp4"))
     }
+
+    @Test
+    fun extractCode_supportsDigitPrefixedCode() {
+        // 素人系列数字前缀番号（真实站点数据采样）
+        assertEquals("259LUXU-1895", VideoCodeMatcher.extractCode("259LUXU-1895.mp4"))
+        assertEquals("390JAC-240", VideoCodeMatcher.extractCode("390JAC-240.mp4"))
+        assertEquals("300MIUM-1377", VideoCodeMatcher.extractCode("300MIUM-1377.mp4"))
+        assertEquals("3DSVR-2009", VideoCodeMatcher.extractCode("3DSVR-2009.mp4"))
+    }
+
+    @Test
+    fun extractCode_supportsDateStyleUncensoredCode() {
+        // 无码日期型番号：MMDDYY + 序号，- 与 _ 两种分隔符写法并存
+        assertEquals("060126-001", VideoCodeMatcher.extractCode("060126-001.mp4"))
+        assertEquals("080126_001", VideoCodeMatcher.extractCode("080126_001.mp4"))
+    }
+
+    @Test
+    fun extractCode_supportsSingleLetterPrefixCode() {
+        // 单字母前缀番号（真实站点数据采样）
+        assertEquals("C-1534", VideoCodeMatcher.extractCode("C-1534.mp4"))
+        assertEquals("P-2982", VideoCodeMatcher.extractCode("P-2982.mp4"))
+    }
+
+    @Test
+    fun extractCode_supportsDigitsPlusKCode() {
+        // 无码数字+k 番号：站点原样小写，提取后归一化为大写
+        assertEquals("054K", VideoCodeMatcher.extractCode("054k.mp4"))
+        assertEquals("031K", VideoCodeMatcher.extractCode("031K.mp4"))
+    }
+
+    @Test
+    fun extractCode_realSiteCodes_roundTrip() {
+        // 真实站点番号样本（debug 构建 MovieCodeSampleCollector 采集，见资源文件头注释）
+        for (fileName in listOf("censored_codes.txt", "uncensored_codes.txt")) {
+            val codes = javaClass.getResourceAsStream("/localvideo/$fileName")!!
+                .bufferedReader()
+                .readLines()
+                .filter { it.isNotBlank() && !it.startsWith("#") }
+            assertTrue("$fileName 样本应至少 500 个，实际 ${codes.size}", codes.size >= 500)
+            for (code in codes) {
+                // 提取结果归一化为大写（如 054k -> 054K），与番号大写比较
+                assertEquals("$fileName 提取失败: $code", code.uppercase(), VideoCodeMatcher.extractCode("$code.mp4"))
+                assertTrue("$fileName 匹配失败: $code", VideoCodeMatcher.matchesCode("$code.mp4", code))
+            }
+        }
+    }
 }
