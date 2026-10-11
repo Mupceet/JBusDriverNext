@@ -222,4 +222,19 @@
     <plurals name="local_video_delete_confirm_message">
         <item quantity="other">將刪除 %1$d 個文件，此操作不可撤銷。</item>
     </plurals>
+
+    <!-- App update -->
+    <string name="check_update">檢查更新</string>
+    <string name="update_available_title">發現新版本</string>
+    <string name="update_current_version">當前版本</string>
+    <string name="update_latest_version">最新版本</string>
+    <string name="update_apk_size">安裝包大小：%1$s</string>
+    <string name="update_notes_title">更新內容</string>
+    <string name="update_action">立即更新</string>
+    <string name="update_later">稍後</string>
+    <string name="update_up_to_date">已是最新版本</string>
+    <string name="update_check_failed">檢查更新失敗，請稍後重試</string>
+    <string name="update_download_started">已開始下載，完成後將提示安裝</string>
+    <string name="update_download_failed">下載失敗，請重試</string>
+    <string name="update_install_permission_hint">需要允許安裝未知應用後才能更新，請在系統設置中開啟</string>
 </resources>

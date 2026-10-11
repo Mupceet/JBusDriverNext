@@ -15,6 +15,7 @@ import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.HtmlClient
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.ui.settings.AppUpdateDownloader
 import okhttp3.Interceptor
 import javax.inject.Inject
 
@@ -35,9 +36,14 @@ class JBusApplication : Application(), ImageLoaderFactory {
     @Inject
     lateinit var siteConfig: SiteConfig
 
+    @Inject
+    lateinit var appUpdateDownloader: AppUpdateDownloader
+
     override fun onCreate() {
         super.onCreate()
         KLog.d("Hilt initialization complete", "JBusApplication")
+        // 进程重启后恢复进行中的更新下载监听（下载本身由系统 DownloadManager 持续）
+        appUpdateDownloader.resumePending()
     }
 
     /**

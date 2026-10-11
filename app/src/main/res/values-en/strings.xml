@@ -230,4 +230,19 @@
         <item quantity="one">Will delete %1$d file, This cannot be undone.</item>
         <item quantity="other">Will delete %1$d files, This cannot be undone.</item>
     </plurals>
+
+    <!-- App update -->
+    <string name="check_update">Check for updates</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_current_version">Current version</string>
+    <string name="update_latest_version">Latest version</string>
+    <string name="update_apk_size">APK size: %1$s</string>
+    <string name="update_notes_title">What\'s new</string>
+    <string name="update_action">Update now</string>
+    <string name="update_later">Later</string>
+    <string name="update_up_to_date">You\'re up to date</string>
+    <string name="update_check_failed">Failed to check for updates. Please try again later.</string>
+    <string name="update_download_started">Download started. You\'ll be prompted to install when it finishes.</string>
+    <string name="update_download_failed">Download failed. Please try again.</string>
+    <string name="update_install_permission_hint">Allow installing unknown apps to update. Enable it in system settings.</string>
 </resources>

@@ -14,11 +14,13 @@ import me.jbusdriver.modern.core.http.WebViewFactory
 import me.jbusdriver.modern.core.site.DefaultSiteConfig
 import me.jbusdriver.modern.core.site.SitePreferenceSource
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.repository.AppUpdateRepository
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.CollectTransactionRunner
 import me.jbusdriver.modern.data.settings.CollectionUiPrefs
 import me.jbusdriver.modern.data.gateway.AndroidCollectionDocumentGateway
 import me.jbusdriver.modern.data.gateway.CollectionDocumentGateway
+import me.jbusdriver.modern.data.repository.DefaultAppUpdateRepository
 import me.jbusdriver.modern.data.repository.DefaultCollectRepository
 import me.jbusdriver.modern.data.repository.DefaultForumRepository
 import me.jbusdriver.modern.data.repository.DefaultMagnetRepository
@@ -219,4 +221,9 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindLocalVideoFileDeleter(impl: DocumentFileVideoFileDeleter): LocalVideoFileDeleter
+
+    /** 绑定 [AppUpdateRepository] 到 [DefaultAppUpdateRepository]。 */
+    @Binds
+    @Singleton
+    abstract fun bindAppUpdateRepository(impl: DefaultAppUpdateRepository): AppUpdateRepository
 }

@@ -128,6 +128,26 @@ jobs:
           git tag --force "$TAG_NAME" "$GITHUB_SHA"
           git push origin "refs/tags/$TAG_NAME" --force
 
+      - name: Assemble Release notes from updateLog.md
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.apk.outputs.tag_name }}
+        run: |
+          update_log="app/src/main/assets/updateLog.md"
+
+          if [ ! -f "$update_log" ]; then
+            echo "::error title=Missing update log::$update_log not found; write the release notes there before publishing"
+            exit 1
+          fi
+
+          notes_file="$RUNNER_TEMP/release_notes.md"
+          {
+            echo "Release $TAG_NAME"
+            echo ""
+            cat "$update_log"
+          } > "$notes_file"
+          echo "NOTES_FILE=$notes_file" >> "$GITHUB_ENV"
+
       - name: Create or update GitHub Release
         shell: bash
         env:
@@ -135,11 +155,12 @@ jobs:
           TAG_NAME: ${{ steps.apk.outputs.tag_name }}
           APK_PATH: ${{ steps.apk.outputs.apk_path }}
           ASSET_NAME: ${{ steps.apk.outputs.asset_name }}
+          NOTES_FILE: ${{ env.NOTES_FILE }}
         run: |
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release edit "$TAG_NAME" --title "$TAG_NAME" --target "$GITHUB_SHA"
+            gh release edit "$TAG_NAME" --title "$TAG_NAME" --target "$GITHUB_SHA" --notes-file "$NOTES_FILE"
           else
-            gh release create "$TAG_NAME" --title "$TAG_NAME" --target "$GITHUB_SHA" --notes "Release $TAG_NAME"
+            gh release create "$TAG_NAME" --title "$TAG_NAME" --target "$GITHUB_SHA" --notes-file "$NOTES_FILE"
           fi
 
           if gh release view "$TAG_NAME" --json assets --jq '.assets[].name' | grep -Fxq "$ASSET_NAME"; then

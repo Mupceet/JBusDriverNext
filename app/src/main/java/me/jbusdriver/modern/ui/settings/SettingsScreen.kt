@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.settings
 
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -23,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.jbusdriver.BuildConfig
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.mirror.MirrorUrl
 import me.jbusdriver.modern.data.mirror.ScanPhase
@@ -81,6 +85,7 @@ fun SettingsScreen(
 ) {
     val store = viewModel.store
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // Appearance state
     val themeMode by store.themeMode.collectAsStateWithLifecycle()
@@ -100,6 +105,15 @@ fun SettingsScreen(
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
     val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
+
+    // App update state
+    val updateCheckState by viewModel.updateCheckState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { message ->
+            Toast.makeText(context, message.format(context), Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val pickFolderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -129,6 +143,27 @@ fun SettingsScreen(
                             painterResource(R.drawable.arrow_back_24px),
                             contentDescription = stringResource(R.string.back)
                         )
+                    }
+                },
+                actions = {
+                    // 仅正式包提供检查更新入口
+                    if (BuildConfig.UPDATE_CHECK_ENABLED) {
+                        IconButton(
+                            onClick = viewModel::checkForUpdate,
+                            enabled = !updateCheckState.checking
+                        ) {
+                            if (updateCheckState.checking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    painterResource(R.drawable.arrow_circle_up_24px),
+                                    contentDescription = stringResource(R.string.check_update)
+                                )
+                            }
+                        }
                     }
                 }
             )
@@ -190,6 +225,15 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    // 更新提示弹框；下载与安装引导由 ViewModel 驱动，结果经 messages 以 Toast 呈现
+    updateCheckState.availableUpdate?.let { update ->
+        AppUpdateDialog(
+            update = update,
+            onDismiss = viewModel::dismissUpdateDialog,
+            onConfirmDownload = { viewModel.startUpdateDownload(update) }
+        )
     }
 }
 

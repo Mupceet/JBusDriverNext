@@ -1,5 +1,6 @@
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -22,14 +23,25 @@ val cacheRefreshTestMode = providers.gradleProperty("cacheRefreshTestMode")
     ?.toBooleanStrictOrNull()
     ?: false
 
-val releaseStoreFile = providers.gradleProperty("RELEASE_STORE_FILE")
-    .map { it.unquotePropertyValue() }
-val releaseStorePassword = providers.gradleProperty("RELEASE_STORE_PASSWORD")
-    .map { it.unquotePropertyValue() }
-val releaseKeyAlias = providers.gradleProperty("RELEASE_KEY_ALIAS")
-    .map { it.unquotePropertyValue() }
-val releaseKeyPassword = providers.gradleProperty("RELEASE_KEY_PASSWORD")
-    .map { it.unquotePropertyValue() }
+// 本机签名属性优先取项目 local.properties（gitignore，各项目可用各自的密钥，
+// 避免被 GRADLE_USER_HOME 全局同名属性劫持），其次 gradle 属性
+// （CI 的 ORG_GRADLE_PROJECT_* 环境变量、-P、GRADLE_USER_HOME）。
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun signingProperty(name: String): Provider<String> = providers.provider {
+    (localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull)
+        ?.unquotePropertyValue()
+}
+
+val releaseStoreFile = signingProperty("RELEASE_STORE_FILE")
+val releaseStorePassword = signingProperty("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = signingProperty("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = signingProperty("RELEASE_KEY_PASSWORD")
 
 val hasReleaseSigning = listOf(
     releaseStoreFile,
@@ -58,8 +70,10 @@ android {
     defaultConfig {
         applicationId = "me.jbus"
         minSdk = 28
-        versionCode = 10000 + gitCommitCount
-        versionName = "1.${releaseTime()}"
+        // 本地验证更新流程可用 -PappVersionName=1.20260101 -PappVersionCode=10831 模拟旧版本
+        // （缺省为当天日期 + 提交数；覆盖安装校验的是 versionCode，模拟包需一并调低）
+        versionCode = (findProperty("appVersionCode") as String?)?.toInt() ?: 10000 + gitCommitCount
+        versionName = (findProperty("appVersionName") as String?) ?: "1.${releaseTime()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,6 +85,7 @@ android {
     buildTypes {
         release {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", "false")
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
             applicationIdSuffix = ".release"
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
@@ -86,6 +101,7 @@ android {
         }
         debug {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", cacheRefreshTestMode.toString())
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             enableUnitTestCoverage = true
