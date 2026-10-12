@@ -9,6 +9,7 @@ import me.jbusdriver.modern.domain.model.GenreGroup
 import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
+import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 
 /**
@@ -28,7 +29,9 @@ data class MovieUiModel(
     val link: String,
     val tags: List<String> = emptyList(),
     val createTime: Long = 0L,
-    val categoryId: Int = 1
+    val categoryId: Int = 1,
+    /** 未收藏本地视频卡片携带的本地视频（用于直接播放/长按排除）。 */
+    val localVideos: List<LocalVideo> = emptyList(),
 )
 
 /** 电影详情页的 UI 模型 */

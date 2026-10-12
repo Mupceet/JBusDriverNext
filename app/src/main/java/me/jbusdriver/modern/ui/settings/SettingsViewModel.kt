@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -26,6 +27,7 @@ import me.jbusdriver.modern.data.repository.AppUpdateInfo
 import me.jbusdriver.modern.data.repository.AppUpdateRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.settings.AppSettingsContract
+import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.ui.UserMessage
 import javax.inject.Inject
@@ -62,6 +64,24 @@ class SettingsViewModel @Inject constructor(
     val showUncollectedLocal: StateFlow<Boolean> =
         localVideoRepository.observeShowUncollectedLocal()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val excludedVideos: StateFlow<List<LocalVideo>> =
+        combine(
+            localVideoRepository.observeExcludedUris(),
+            localVideoRepository.observeAllLocalVideos(),
+        ) { excluded, all -> all.filter { it.uri in excluded } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun restoreExcludedVideos(uris: Set<String>) {
+        viewModelScope.launch { localVideoRepository.setExcludedUris(uris, excluded = false) }
+    }
+
+    fun restoreAllExcludedVideos() {
+        viewModelScope.launch {
+            val uris = localVideoRepository.observeExcludedUris().first()
+            if (uris.isNotEmpty()) localVideoRepository.setExcludedUris(uris, excluded = false)
+        }
+    }
 
     fun setLocalVideoFolder(uri: Uri) {
         viewModelScope.launch { localVideoRepository.setFolder(uri) }

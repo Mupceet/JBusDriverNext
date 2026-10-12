@@ -1,12 +1,15 @@
 package me.jbusdriver.modern.ui.settings
 
 import android.os.Build
+import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +77,7 @@ import me.jbusdriver.modern.data.settings.MovieLoadMode
 import me.jbusdriver.modern.data.settings.MovieListStyle
 import me.jbusdriver.modern.data.settings.ThemeMode
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
+import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import java.text.DateFormat
 import java.util.Date
@@ -105,6 +111,7 @@ fun SettingsScreen(
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
     val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
+    val excludedVideos by viewModel.excludedVideos.collectAsStateWithLifecycle()
 
     // App update state
     val updateCheckState by viewModel.updateCheckState.collectAsStateWithLifecycle()
@@ -218,6 +225,9 @@ fun SettingsScreen(
             LocalVideoCard(
                 summary = localVideoSummary,
                 showUncollectedLocal = showUncollectedLocal,
+                excludedVideos = excludedVideos,
+                onRestoreExcluded = { viewModel.restoreExcludedVideos(it) },
+                onRestoreAllExcluded = { viewModel.restoreAllExcludedVideos() },
                 onToggleShowUncollectedLocal = { viewModel.setShowUncollectedLocal(it) },
                 onPickFolder = { pickFolderLauncher.launch(null) },
                 onClearFolder = { viewModel.clearLocalVideoFolder() },
@@ -838,6 +848,9 @@ private fun LocalVideoCard(
     onToggleShowUncollectedLocal: (Boolean) -> Unit,
     onPickFolder: () -> Unit,
     onClearFolder: () -> Unit,
+    excludedVideos: List<LocalVideo>,
+    onRestoreExcluded: (Set<String>) -> Unit,
+    onRestoreAllExcluded: () -> Unit,
 ) {
     val context = LocalContext.current
     val linkedCountText = context.resources.getQuantityString(
@@ -845,6 +858,7 @@ private fun LocalVideoCard(
         summary.linkedCount,
         summary.linkedCount,
     )
+    var showExcludedDialog by remember { mutableStateOf(false) }
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -932,6 +946,70 @@ private fun LocalVideoCard(
                 showUncollectedLocal,
                 onToggleShowUncollectedLocal,
             )
+
+            // 已排除的本地视频（长按未收藏卡片 → 排除；此处可恢复）
+            if (excludedVideos.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.local_video_excluded_count, excludedVideos.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = { showExcludedDialog = true }) {
+                        Text(stringResource(R.string.local_video_manage_excluded))
+                    }
+                }
+                if (showExcludedDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showExcludedDialog = false },
+                        title = { Text(stringResource(R.string.local_video_excluded_title)) },
+                        text = {
+                            LazyColumn {
+                                items(excludedVideos, key = { it.uri }) { video ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                video.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            Text(
+                                                Formatter.formatShortFileSize(context, video.size),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        TextButton(onClick = { onRestoreExcluded(setOf(video.uri)) }) {
+                                            Text(stringResource(R.string.local_video_restore))
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                onRestoreAllExcluded()
+                                showExcludedDialog = false
+                            }) {
+                                Text(stringResource(R.string.local_video_restore_all))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showExcludedDialog = false }) {
+                                Text(stringResource(R.string.close))
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 }

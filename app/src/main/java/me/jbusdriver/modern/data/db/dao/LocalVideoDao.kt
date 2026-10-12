@@ -14,8 +14,8 @@ interface LocalVideoDao {
     @Query("SELECT * FROM t_local_video WHERE code = :code ORDER BY name ASC")
     fun observeForCode(code: String): Flow<List<LocalVideoEntity>>
 
-    @Query("SELECT COUNT(*) FROM t_local_video")
-    fun observeCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM t_local_video WHERE code != ''")
+    fun observeLinkedCount(): Flow<Int>
 
     @Query("SELECT DISTINCT code FROM t_local_video")
     fun observeAllCodes(): Flow<List<String>>

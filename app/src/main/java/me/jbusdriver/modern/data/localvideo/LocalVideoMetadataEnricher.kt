@@ -55,7 +55,7 @@ class LocalVideoMetadataEnricher @Inject constructor(
                     var retries = MAX_RETRIES
                     while (retries > 0) {
                         val pending =
-                            currentGroups.filter { it.title == null && it.code !in attempted }
+                            currentGroups.filter { it.code.isNotBlank() && it.title == null && it.code !in attempted }
                         if (pending.isEmpty()) return@collect
                         for (group in pending) {
                             // 串行抓取过程中若用户关闭了开关，则中断本次批次
@@ -66,7 +66,7 @@ class LocalVideoMetadataEnricher @Inject constructor(
                         }
                         currentGroups = localVideoRepository.observeAllGroupedByCode().first()
                         val stillPending =
-                            currentGroups.filter { it.title == null && it.code !in attempted }
+                            currentGroups.filter { it.code.isNotBlank() && it.title == null && it.code !in attempted }
                         if (stillPending.isEmpty()) return@collect
                         retries -= 1
                         if (retries > 0) delay(RETRY_DELAY_MILLIS)

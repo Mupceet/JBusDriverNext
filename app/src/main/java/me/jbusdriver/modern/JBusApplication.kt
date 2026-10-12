@@ -28,7 +28,7 @@ import javax.inject.Inject
  * 继承关系：JBusApplication → Application
  */
 @HiltAndroidApp
-class JBusApplication : Application(), ImageLoaderFactory {
+open class JBusApplication : Application(), ImageLoaderFactory {
 
     @Inject
     lateinit var htmlClient: HtmlClient
