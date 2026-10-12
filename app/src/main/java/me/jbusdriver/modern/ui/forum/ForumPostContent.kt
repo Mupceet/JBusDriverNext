@@ -60,6 +60,7 @@ import coil.compose.SubcomposeAsyncImage
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.modern.ui.components.dimColorFilter
+import me.jbusdriver.modern.ui.components.rememberSiteImageRequest
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumTextSize
 import me.jbusdriver.modern.domain.model.RichList
@@ -421,7 +422,7 @@ private fun RichListContent(list: RichList, depth: Int = 0) {
 internal fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
     if (block.isFullSize) {
         SubcomposeAsyncImage(
-            model = block.url,
+            model = rememberSiteImageRequest(block.url),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()

@@ -34,6 +34,16 @@ internal fun String.isGifUrl(): Boolean {
     return path.endsWith(".gif")
 }
 
+/**
+ * 去掉 URL 的 scheme 与 host，只保留 path（含 query）。
+ *
+ * 同一内容在各个镜像站下的 URL 仅 host 不同，去掉 host 后即得到镜像无关的标识：
+ * - 收藏入库时用它归一化存储（见 [me.jbusdriver.modern.data.db.LinkMappers]）；
+ * - Coil 图片请求用它作为内存/磁盘缓存键（见 ui/components/AppAsyncImage.kt），
+ *   避免切换镜像后缓存全部 miss 而重复下载。
+ *
+ * 非 http(s)/协议相对形式（相对路径、file:// 等）原样返回。
+ */
 fun String.stripToPath(): String = when {
     isBlank() -> ""
     startsWith("http") -> {

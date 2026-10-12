@@ -6,11 +6,8 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
 import coil.disk.DiskCache
-import coil.fetch.FetchResult
-import coil.fetch.Fetcher
-import coil.fetch.SourceResult
 import coil.request.ImageRequest
-import coil.request.Options
+import coil.request.SuccessResult
 import dagger.hilt.android.HiltAndroidApp
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.modern.core.http.HtmlClient
@@ -76,17 +73,13 @@ open class JBusApplication : Application(), ImageLoaderFactory {
             .respectCacheHeaders(false)
             .crossfade(true)
             .eventListenerFactory(if (BuildConfig.DEBUG) {
+                // 用 onSuccess 而非 fetchEnd：内存缓存命中不经过 fetcher（fetchEnd 不触发），
+                // 而 onSuccess 三种来源（MEMORY_CACHE/DISK/NETWORK）都会回调，便于核对缓存键效果
                 EventListener.Factory { request ->
                     object : EventListener {
-                        override fun fetchEnd(
-                            request: ImageRequest,
-                            fetcher: Fetcher,
-                            options: Options,
-                            result: FetchResult?
-                        ) {
-                            val dataSource = (result as? SourceResult)?.dataSource?.name
+                        override fun onSuccess(request: ImageRequest, result: SuccessResult) {
                             KLog.d(
-                                "fetch ${request.data} ds=$dataSource",
+                                "load ${request.data} ds=${result.dataSource.name}",
                                 "CoilCache",
                             )
                         }

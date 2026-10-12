@@ -61,6 +61,7 @@ import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.dimColorFilter
+import me.jbusdriver.modern.ui.components.rememberSiteImageRequest
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
@@ -131,7 +132,7 @@ fun ImageViewScreen(
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 ZoomableAsyncImage(
-                    model = images[page],
+                    model = rememberSiteImageRequest(images[page]),
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     colorFilter = dimColorFilter(),

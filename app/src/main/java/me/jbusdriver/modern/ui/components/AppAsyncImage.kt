@@ -6,8 +6,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import coil.request.ImageRequest
+import me.jbusdriver.modern.data.parser.stripToPath
 import me.jbusdriver.modern.ui.theme.LocalIsDarkTheme
 
 /**
@@ -46,6 +49,34 @@ fun dimColorFilter(enabled: Boolean = LocalIsDarkTheme.current): ColorFilter? =
     remember(enabled) { if (enabled) ColorFilter.colorMatrix(DarkDimMatrix) else null }
 
 /**
+ * 为图片 URL 构建镜像无关缓存键的 [ImageRequest]。
+ *
+ * 站内图片 URL 由解析器基于**当前镜像**的 baseUrl 拼出，Coil 默认以完整 URL 作
+ * 内存/磁盘缓存键，切换镜像后 host 变化会导致缓存全部 miss、图片整批重新下载。
+ * 这里把两级缓存键统一替换为去掉 host 的 path+query（[stripToPath]），
+ * 网络请求本身（[ImageRequest.data]、Referer 防盗链）不受影响。
+ *
+ * 非 String 模型原样返回；URL 退化到空 path 时不覆盖默认键。
+ * 供 [AppAsyncImage] 及无法走该包装器的调用点（论坛大图、全屏查看器）共用。
+ */
+@Composable
+fun rememberSiteImageRequest(model: Any?): Any? {
+    val context = LocalContext.current
+    return remember(context, model) {
+        if (model is String) {
+            val cacheKey = model.stripToPath()
+            val builder = ImageRequest.Builder(context).data(model)
+            if (cacheKey.isNotBlank()) {
+                builder.memoryCacheKey(cacheKey).diskCacheKey(cacheKey)
+            }
+            builder.build()
+        } else {
+            model
+        }
+    }
+}
+
+/**
  * 全站统一的图片组件。
  *
  * 相比直接使用 [AsyncImage]，唯一区别是**夜间主题下**自动压低亮度（通过 [dimColorFilter]），
@@ -71,7 +102,7 @@ fun AppAsyncImage(
     onState: ((AsyncImagePainter.State) -> Unit)? = null,
 ) {
     AsyncImage(
-        model = model,
+        model = rememberSiteImageRequest(model),
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = contentScale,
