@@ -405,13 +405,14 @@ class MovieDetailViewModelTest {
         title = "Title Two"
         viewModel.refresh()
         advanceUntilIdle()
-        assertEquals(2, gates.size) // 请求 B:Title Two,飞行中;策略已重置
+        assertEquals(2, gates.size) // 请求 B:Title Two,飞行中;策略已重置为 Loading
 
-        gates[1].complete(Unit) // 新请求先完成
+        // 区分性窗口:旧请求在新请求仍在 Loading 时完成 —— 身份守卫必须拒绝它
+        gates[0].complete(Unit)
         advanceUntilIdle()
-        assertEquals(TitleTranslationState.Translated("譯文:Title Two"), viewModel.uiState.value.titleTranslation)
+        assertEquals(TitleTranslationState.Loading, viewModel.uiState.value.titleTranslation)
 
-        gates[0].complete(Unit) // 旧请求后完成,必须被身份守卫拒绝
+        gates[1].complete(Unit) // 新请求完成,正常落地
         advanceUntilIdle()
         assertEquals(TitleTranslationState.Translated("譯文:Title Two"), viewModel.uiState.value.titleTranslation)
     }
