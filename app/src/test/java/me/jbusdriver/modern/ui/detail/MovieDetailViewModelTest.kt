@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.detail
 
 import android.net.Uri
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -374,6 +375,43 @@ class MovieDetailViewModelTest {
 
         title = "Title Two"
         viewModel.refresh()
+        advanceUntilIdle()
+        assertEquals(TitleTranslationState.Translated("譯文:Title Two"), viewModel.uiState.value.titleTranslation)
+    }
+
+    @Test
+    fun refresh_staleRequestDoesNotOverwriteNewerTitle() = runTest(testDispatcher) {
+        var title = "Title One"
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
+                testDetail.copy(title = title)
+        }
+        // 每次请求阻塞在自己的门上,手动放行以控制完成顺序
+        val gates = mutableListOf<CompletableDeferred<Unit>>()
+        val gatedRepo = object : TranslationRepository {
+            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> {
+                val gate = CompletableDeferred<Unit>()
+                gates.add(gate)
+                gate.await()
+                return Result.success("譯文:$text")
+            }
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, gatedRepo, defaultOnSettings())
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+        assertEquals(1, gates.size) // 请求 A:Title One,飞行中
+
+        title = "Title Two"
+        viewModel.refresh()
+        advanceUntilIdle()
+        assertEquals(2, gates.size) // 请求 B:Title Two,飞行中;策略已重置
+
+        gates[1].complete(Unit) // 新请求先完成
+        advanceUntilIdle()
+        assertEquals(TitleTranslationState.Translated("譯文:Title Two"), viewModel.uiState.value.titleTranslation)
+
+        gates[0].complete(Unit) // 旧请求后完成,必须被身份守卫拒绝
         advanceUntilIdle()
         assertEquals(TitleTranslationState.Translated("譯文:Title Two"), viewModel.uiState.value.titleTranslation)
     }

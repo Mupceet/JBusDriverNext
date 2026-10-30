@@ -230,18 +230,19 @@ class MovieDetailViewModel @Inject constructor(
         viewModelScope.launch {
             translationRepository.translate(title).fold(
                 onSuccess = { text ->
-                    // 仅当仍处于 Loading(未被 refresh 重置)时落地,避免覆盖刷新后的原文
+                    // 仅当仍在翻译当前标题(未被刷新取代)时落地,避免旧请求覆盖新标题的显示
                     _uiState.update { state ->
-                        if (state.titleTranslation == TitleTranslationState.Loading)
+                        if (state.titleTranslation == TitleTranslationState.Loading && state.movieDetail?.title == title)
                             state.copy(titleTranslation = TitleTranslationState.Translated(text)) else state
                     }
                 },
                 onFailure = { cause ->
                     if (cause is CancellationException) return@launch
-                    _uiState.update { state ->
-                        if (state.titleTranslation == TitleTranslationState.Loading)
-                            state.copy(titleTranslation = TitleTranslationState.Hidden) else state
+                    val stale = _uiState.value.let {
+                        it.titleTranslation != TitleTranslationState.Loading || it.movieDetail?.title != title
                     }
+                    if (stale) return@launch
+                    _uiState.update { it.copy(titleTranslation = TitleTranslationState.Hidden) }
                     val resId = if (cause is TranslationConfigException) {
                         R.string.translate_config_error
                     } else {
