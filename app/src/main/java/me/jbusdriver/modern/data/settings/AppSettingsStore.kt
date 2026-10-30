@@ -21,6 +21,8 @@ import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
 import me.jbusdriver.modern.data.mirror.MirrorScanner
 import me.jbusdriver.modern.data.mirror.ScanState
+import me.jbusdriver.modern.data.translation.TranslationProvider
+import me.jbusdriver.modern.data.translation.TranslatorConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,8 +47,15 @@ interface MovieListSettings {
     suspend fun setMovieLoadMode(mode: MovieLoadMode)
 }
 
+/** Narrow read interface for translation consumers (MovieDetailViewModel / DefaultTranslationRepository). */
+interface TranslationSettingsReader {
+    val translateByDefault: StateFlow<Boolean>
+    suspend fun currentTranslatorConfig(): TranslatorConfig
+}
+
 /** Full settings read/write contract for SettingsViewModel. */
-interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListSettings, SitePreferenceSource {
+interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListSettings,
+    SitePreferenceSource, TranslationSettingsReader {
     // Appearance
     val showMovieTab: StateFlow<Boolean>
     val showActressTab: StateFlow<Boolean>
@@ -56,6 +65,10 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     // Network
     val selectedBaseUrl: StateFlow<String>
     val cachedMirrorUrls: StateFlow<List<String>>
+    // Translation
+    val translationProvider: StateFlow<TranslationProvider>
+    val customTranslateUrlTemplate: StateFlow<String>
+    val customTranslateResponsePath: StateFlow<String>
 
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setDynamicColor(enabled: Boolean)
@@ -66,6 +79,10 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setForumFloorOrder(order: ForumFloorOrder)
     suspend fun setThreadSortOrder(order: ForumThreadOrder)
     suspend fun selectUrl(url: String)
+    suspend fun setTranslateByDefault(enabled: Boolean)
+    suspend fun setTranslationProvider(provider: TranslationProvider)
+    suspend fun setCustomTranslateUrlTemplate(template: String)
+    suspend fun setCustomTranslateResponsePath(path: String)
 
     suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String)
     suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>)
@@ -144,6 +161,26 @@ class AppSettingsStore @Inject constructor(
     }
     // endregion
 
+    // region Translation
+    override val translateByDefault: StateFlow<Boolean> = flowOf(KEY_TRANSLATE_BY_DEFAULT, false)
+    override val translationProvider: StateFlow<TranslationProvider> =
+        mapped(KEY_TRANSLATE_PROVIDER, TranslationProvider.GOOGLE) { TranslationProvider.fromId(it) }
+    override val customTranslateUrlTemplate: StateFlow<String> = flowOf(KEY_TRANSLATE_CUSTOM_URL_TEMPLATE, "")
+    override val customTranslateResponsePath: StateFlow<String> = flowOf(KEY_TRANSLATE_CUSTOM_RESPONSE_PATH, "")
+    override suspend fun currentTranslatorConfig(): TranslatorConfig {
+        val prefs = dataStore.data.first()
+        return TranslatorConfig(
+            provider = TranslationProvider.fromId(prefs[KEY_TRANSLATE_PROVIDER]),
+            customUrlTemplate = prefs[KEY_TRANSLATE_CUSTOM_URL_TEMPLATE].orEmpty(),
+            customResponsePath = prefs[KEY_TRANSLATE_CUSTOM_RESPONSE_PATH].orEmpty(),
+        )
+    }
+    override suspend fun setTranslateByDefault(enabled: Boolean) = put(KEY_TRANSLATE_BY_DEFAULT, enabled)
+    override suspend fun setTranslationProvider(provider: TranslationProvider) = put(KEY_TRANSLATE_PROVIDER, provider.id)
+    override suspend fun setCustomTranslateUrlTemplate(template: String) = put(KEY_TRANSLATE_CUSTOM_URL_TEMPLATE, template.trim())
+    override suspend fun setCustomTranslateResponsePath(path: String) = put(KEY_TRANSLATE_CUSTOM_RESPONSE_PATH, path.trim())
+    // endregion
+
     companion object {
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
@@ -157,6 +194,10 @@ class AppSettingsStore @Inject constructor(
         private val KEY_MOVIE_LOAD_MODE = stringPreferencesKey("movie_load_mode")
         private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")
         private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
+        private val KEY_TRANSLATE_BY_DEFAULT = booleanPreferencesKey("translate_by_default")
+        private val KEY_TRANSLATE_PROVIDER = stringPreferencesKey("translate_provider")
+        private val KEY_TRANSLATE_CUSTOM_URL_TEMPLATE = stringPreferencesKey("translate_custom_url_template")
+        private val KEY_TRANSLATE_CUSTOM_RESPONSE_PATH = stringPreferencesKey("translate_custom_response_path")
 
         private val PRESET_MIRROR_URLS = listOf(
             "https://www.javbus.com",
