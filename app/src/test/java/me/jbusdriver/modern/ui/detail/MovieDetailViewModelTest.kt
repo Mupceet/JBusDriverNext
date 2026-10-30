@@ -361,6 +361,53 @@ class MovieDetailViewModelTest {
     }
 
     @Test
+    fun toggleTitleTranslation_rateLimitedEmitsDedicatedMessage() = runTest(testDispatcher) {
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
+        }
+        val rateLimitedRepo = object : TranslationRepository {
+            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
+                Result.failure(me.jbusdriver.modern.data.translation.TranslationHttpException(429))
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, rateLimitedRepo, stubTranslationSettings)
+        val messages = mutableListOf<UserMessage>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testDispatcher.scheduler)) {
+            viewModel.messages.collect { messages.add(it) }
+        }
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+        viewModel.toggleTitleTranslation()
+        advanceUntilIdle()
+
+        assertEquals(TitleTranslationState.Hidden, viewModel.uiState.value.titleTranslation)
+        assertEquals(R.string.translate_rate_limited, messages.single().resId)
+    }
+
+    @Test
+    fun toggleTitleTranslation_otherHttpErrorEmitsGenericMessage() = runTest(testDispatcher) {
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
+        }
+        val httpErrorRepo = object : TranslationRepository {
+            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
+                Result.failure(me.jbusdriver.modern.data.translation.TranslationHttpException(500))
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, httpErrorRepo, stubTranslationSettings)
+        val messages = mutableListOf<UserMessage>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testDispatcher.scheduler)) {
+            viewModel.messages.collect { messages.add(it) }
+        }
+
+        viewModel.loadDetail("http://example.com/ABC-001")
+        advanceUntilIdle()
+        viewModel.toggleTitleTranslation()
+        advanceUntilIdle()
+
+        assertEquals(R.string.translate_failed, messages.single().resId)
+    }
+
+    @Test
     fun refresh_reappliesDefaultTranslationPolicyForNewTitle() = runTest(testDispatcher) {
         var title = "Title One"
         val detailRepo = object : MovieDetailRepository {

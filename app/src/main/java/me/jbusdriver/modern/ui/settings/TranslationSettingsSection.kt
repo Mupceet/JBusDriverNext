@@ -65,6 +65,14 @@ internal fun TranslationSettingsCard(
                 onCheckedChange = onTranslateByDefaultChange
             )
             TranslationProviderRow(provider = provider, onProviderChange = onProviderChange)
+            if (provider == TranslationProvider.GOOGLE) {
+                Text(
+                    stringResource(R.string.settings_translation_builtin_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp)
+                )
+            }
             if (provider == TranslationProvider.CUSTOM) {
                 CustomEndpointFields(
                     initialTemplate = customUrlTemplate,

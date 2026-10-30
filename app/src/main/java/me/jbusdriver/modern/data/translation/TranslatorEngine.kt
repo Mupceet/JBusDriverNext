@@ -60,9 +60,15 @@ class CustomUrlTranslator(private val config: TranslatorConfig) : TranslatorEngi
         }
 }
 
+/** 翻译请求以桌面浏览器 UA 发出:部分接口对 okhttp 默认 UA 按机器人分类,更易被限流/拒绝。 */
+private const val TRANSLATION_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+
 private fun execute(url: String): String {
-    TranslationHttp.client.newCall(Request.Builder().url(url).build()).execute().use { response ->
-        check(response.isSuccessful) { "http ${response.code}" }
+    TranslationHttp.client.newCall(
+        Request.Builder().url(url).header("User-Agent", TRANSLATION_USER_AGENT).build()
+    ).execute().use { response ->
+        if (!response.isSuccessful) throw TranslationHttpException(response.code)
         return response.body?.string() ?: error("empty body")
     }
 }

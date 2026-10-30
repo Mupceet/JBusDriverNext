@@ -142,6 +142,7 @@ sealed interface TitleTranslationState {
 - **Provider switch:** key includes provider id ⇒ separate cache namespace, no stale cross-provider results.
 - **Toggle spam:** `Loading` ignores taps; concurrent identical requests deduped in repository.
 - **Network/parse failure:** Snackbar message, title stays original, nothing cached — next tap retries.
+- **Rate limiting (HTTP 429):** the free endpoint enforces per-IP quotas (shared proxy/VPN exits exhaust them quickly). Requests carry a desktop-browser User-Agent; 429 maps to a dedicated "try again later" toast; the settings card hints at switching to a custom endpoint.
 - **Misconfigured custom endpoint:** blocked at save time in Settings; defensively, repository returns config failure with its own message if DataStore was edited externally.
 - **Refresh with changed title:** translation state resets and default policy re-applies.
 - **Same-movie reopen:** `loadDetail` early-return keeps existing translation state (ViewModel survives in back stack).

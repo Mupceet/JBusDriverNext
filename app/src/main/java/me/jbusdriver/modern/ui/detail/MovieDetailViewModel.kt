@@ -21,6 +21,7 @@ import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.settings.TranslationSettingsReader
 import me.jbusdriver.modern.data.translation.TranslationConfigException
+import me.jbusdriver.modern.data.translation.TranslationHttpException
 import me.jbusdriver.modern.data.translation.TranslationRepository
 import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
@@ -243,10 +244,10 @@ class MovieDetailViewModel @Inject constructor(
                     }
                     if (stale) return@launch
                     _uiState.update { it.copy(titleTranslation = TitleTranslationState.Hidden) }
-                    val resId = if (cause is TranslationConfigException) {
-                        R.string.translate_config_error
-                    } else {
-                        R.string.translate_failed
+                    val resId = when {
+                        cause is TranslationConfigException -> R.string.translate_config_error
+                        cause is TranslationHttpException && cause.code == 429 -> R.string.translate_rate_limited
+                        else -> R.string.translate_failed
                     }
                     _messages.emit(UserMessage(resId))
                 }

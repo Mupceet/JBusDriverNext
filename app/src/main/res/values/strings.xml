@@ -247,6 +247,7 @@
     <!-- Translation -->
     <string name="translate_failed">翻譯失敗</string>
     <string name="translate_config_error">翻譯接口未配置或無效</string>
+    <string name="translate_rate_limited">翻譯請求過於頻繁，請稍後再試</string>
     <string name="translate_action">翻譯</string>
     <string name="translate_show_original">顯示原文</string>
     <string name="translate_loading">翻譯中</string>
@@ -255,6 +256,7 @@
     <string name="settings_translation_provider">翻譯接口</string>
     <string name="settings_translation_provider_builtin">內建免費接口</string>
     <string name="settings_translation_provider_custom">自訂接口</string>
+    <string name="settings_translation_builtin_hint">免費接口按 IP 限流，被限流時可改用自訂接口</string>
     <string name="settings_translation_url_template">URL 模板</string>
     <string name="settings_translation_url_template_hint">https://lt.example/translate?q={text}&amp;source={source}&amp;target={target}</string>
     <string name="settings_translation_response_path">響應路徑</string>

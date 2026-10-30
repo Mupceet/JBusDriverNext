@@ -255,6 +255,7 @@
     <!-- Translation -->
     <string name="translate_failed">Translation failed</string>
     <string name="translate_config_error">Translation API not configured or invalid</string>
+    <string name="translate_rate_limited">Translation rate-limited — try again later</string>
     <string name="translate_action">Translate</string>
     <string name="translate_show_original">Show original</string>
     <string name="translate_loading">Translating</string>
@@ -263,6 +264,7 @@
     <string name="settings_translation_provider">Translation API</string>
     <string name="settings_translation_provider_builtin">Built-in free API</string>
     <string name="settings_translation_provider_custom">Custom API</string>
+    <string name="settings_translation_builtin_hint">The free API is rate-limited per IP; switch to a custom API if you hit limits</string>
     <string name="settings_translation_url_template">URL template</string>
     <string name="settings_translation_url_template_hint">https://lt.example/translate?q={text}&amp;source={source}&amp;target={target}</string>
     <string name="settings_translation_response_path">Response path</string>

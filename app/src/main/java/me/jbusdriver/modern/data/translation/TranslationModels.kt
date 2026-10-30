@@ -28,3 +28,6 @@ const val TRANSLATION_TEST_SAMPLE = "テスト"
 
 /** 自定义接口配置无效(模板缺失或不含 {text})。 */
 class TranslationConfigException(message: String) : Exception(message)
+
+/** 翻译接口返回非 2xx;429 表示按 IP 限流(免费接口共享出口常见)。 */
+class TranslationHttpException(val code: Int) : Exception("http $code")
