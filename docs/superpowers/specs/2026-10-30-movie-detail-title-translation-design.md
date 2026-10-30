@@ -169,3 +169,4 @@ Quality gates: `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleRelea
 - Forum post translation (`TextPart.text` granularity), synopsis rendering + translation, list-page titles — the `TranslatorEngine`/`TranslationRepository` boundary is content-agnostic and reusable.
 - POST / API-key providers (DeepL, OpenAI-style) — would extend `TranslatorConfig` + add an engine.
 - Configurable source/target languages.
+- Custom-provider cache keys do not hash the URL template/response path — after fixing a misconfigured custom endpoint, previously translated texts keep serving cached results until LRU eviction. Known limitation; fold a config hash into the cache key if custom endpoints gain traction.

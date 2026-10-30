@@ -249,6 +249,7 @@
     <string name="translate_config_error">翻譯接口未配置或無效</string>
     <string name="translate_action">翻譯</string>
     <string name="translate_show_original">顯示原文</string>
+    <string name="translate_loading">翻譯中</string>
     <string name="settings_translation_section">翻譯</string>
     <string name="settings_translation_default">進入詳情頁預設翻譯標題</string>
     <string name="settings_translation_provider">翻譯接口</string>
@@ -257,9 +258,9 @@
     <string name="settings_translation_url_template">URL 模板</string>
     <string name="settings_translation_url_template_hint">https://lt.example/translate?q={text}&amp;source={source}&amp;target={target}</string>
     <string name="settings_translation_response_path">響應路徑</string>
-    <string name="settings_translation_response_path_hint">留空=純文本;如 translatedText 或 data.0.0</string>
+    <string name="settings_translation_response_path_hint">留空=純文本；如 translatedText 或 data.0.0</string>
     <string name="settings_translation_test">測試翻譯</string>
     <string name="translate_template_invalid">URL 模板必須包含 {text}</string>
-    <string name="translate_test_success">翻譯成功:%1$s</string>
+    <string name="translate_test_success">翻譯成功：%1$s</string>
     <string name="translate_test_failed">測試失敗,請檢查接口配置</string>
 </resources>

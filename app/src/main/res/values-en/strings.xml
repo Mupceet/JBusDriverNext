@@ -257,6 +257,7 @@
     <string name="translate_config_error">Translation API not configured or invalid</string>
     <string name="translate_action">Translate</string>
     <string name="translate_show_original">Show original</string>
+    <string name="translate_loading">Translating</string>
     <string name="settings_translation_section">Translation</string>
     <string name="settings_translation_default">Auto-translate title on detail screen</string>
     <string name="settings_translation_provider">Translation API</string>

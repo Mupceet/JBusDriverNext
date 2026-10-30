@@ -57,6 +57,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -167,10 +169,20 @@ fun MovieDetailScreen(
                     if (detail != null) {
                         if (detail.title.isNotBlank()) {
                             when (uiState.titleTranslation) {
-                                TitleTranslationState.Loading -> CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
+                                TitleTranslationState.Loading -> {
+                                    val loadingDescription = stringResource(R.string.translate_loading)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .semantics { contentDescription = loadingDescription },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                }
                                 is TitleTranslationState.Translated -> IconButton(
                                     onClick = viewModel::toggleTitleTranslation
                                 ) {
