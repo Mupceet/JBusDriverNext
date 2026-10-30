@@ -114,7 +114,7 @@ sealed interface TitleTranslationState {
 
 ### `MovieDetailScreen.kt` — UI
 
-- Top bar gains one action icon (existing share/collect actions untouched), placed next to them:
+- Top bar gains one action icon (existing share/collect actions untouched), placed next to them. Icon resource follows the project's existing convention (vector drawable like `search_24px`, or a material icon already available in the dependency set — verified at implementation, per AGENTS.md no-guessing rule):
   - original shown → translate icon, contentDescription `翻译`, tap ⇒ `viewModel.toggleTitleTranslation()`
   - `Loading` → small `CircularProgressIndicator` (~20dp) in place of the icon (no tap target)
   - `Translated` → highlighted/filled icon, contentDescription `显示原文`, tap toggles back
@@ -128,7 +128,7 @@ sealed interface TitleTranslationState {
 - Switch: 进入详情页默认翻译标题 (`translateByDefault`)
 - Provider single-select: 内置免费接口 / 自定义接口
 - Custom selected ⇒ expands: URL 模板 text field (hint example `https://lingva.example/api/v1/{source}/{target}/{text}`), 响应路径 text field (blank = plain-text response), and a **测试** button that translates a fixed sample (`テスト`, ja→zh-TW) using the values currently entered in the fields and shows the result (or error) in a Snackbar.
-- Validation: switching to CUSTOM requires a template containing `{text}`; template edits missing `{text}` are rejected with a message and not persisted. Response path is free-form (validated implicitly by the test button).
+- Validation: switching to CUSTOM requires a template containing `{text}`; template edits missing `{text}` are rejected with a message and not persisted. Text fields persist on IME action / focus loss. Response path is free-form (validated implicitly by the test button).
 - `SettingsViewModel` exposes section state via StateFlow and calls the new setters; no callbacks.
 
 ### Strings & R8
