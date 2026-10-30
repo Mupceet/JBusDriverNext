@@ -77,8 +77,8 @@ class DefaultTranslationRepository @Inject constructor(
                     }
                     .onFailure { KLog.t(TAG).w("translate failed: ${it.message}") }
             }.also { newDeferred ->
-                newDeferred.invokeOnCompletion { inFlight.remove(key, newDeferred) }
                 inFlight[key] = newDeferred
+                newDeferred.invokeOnCompletion { inFlight.remove(key, newDeferred) }
             }
         }
         return deferred.await()
