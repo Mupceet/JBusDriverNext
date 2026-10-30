@@ -251,4 +251,8 @@
     <string name="update_download_started">Download started. You\'ll be prompted to install when it finishes.</string>
     <string name="update_download_failed">Download failed. Please try again.</string>
     <string name="update_install_permission_hint">Allow installing unknown apps to update. Enable it in system settings.</string>
+
+    <!-- Translation -->
+    <string name="translate_failed">Translation failed</string>
+    <string name="translate_config_error">Translation API not configured or invalid</string>
 </resources>

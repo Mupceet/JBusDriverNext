@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -18,6 +19,9 @@ import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
+import me.jbusdriver.modern.data.settings.TranslationSettingsReader
+import me.jbusdriver.modern.data.translation.TranslationConfigException
+import me.jbusdriver.modern.data.translation.TranslationRepository
 import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.Movie
@@ -28,10 +32,18 @@ import me.jbusdriver.modern.ui.UserMessage
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
+/** 详情页标题翻译显示状态:原文 / 请求中 / 已译(持有译文)。 */
+sealed interface TitleTranslationState {
+    data object Hidden : TitleTranslationState
+    data object Loading : TitleTranslationState
+    data class Translated(val text: String) : TitleTranslationState
+}
+
 data class MovieDetailUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val movieDetail: MovieDetailUiModel? = null,
+    val titleTranslation: TitleTranslationState = TitleTranslationState.Hidden,
     val error: Int? = null,
     val magnets: List<MagnetUiModel> = emptyList(),
     val isLoadingMagnets: Boolean = false,
@@ -48,6 +60,8 @@ class MovieDetailViewModel @Inject constructor(
     private val collectRepository: CollectRepository,
     private val magnetRepository: MagnetRepository,
     private val localVideoRepository: LocalVideoRepository,
+    private val translationRepository: TranslationRepository,
+    private val translationSettings: TranslationSettingsReader,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -77,6 +91,7 @@ class MovieDetailViewModel @Inject constructor(
                         uc = detail.uc
                     )
                 }
+                applyDefaultTranslationPolicy()
                 loadMagnets()
                 val movie = detail.toUiModel().toCollectionMovie(url)
                 val collected = collectRepository.isMovieCollected(movie)
@@ -110,6 +125,7 @@ class MovieDetailViewModel @Inject constructor(
             try {
                 val detail = repository.getMovieDetail(currentUrl, forceRefresh = true)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isRefreshing = false) }
+                applyDefaultTranslationPolicy()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -187,6 +203,53 @@ class MovieDetailViewModel @Inject constructor(
                 _messages.emit(UserMessage(R.plurals.local_video_deleted_count, listOf(result.deleted)))
             result.failed > 0 ->
                 _messages.emit(UserMessage(R.string.local_video_delete_all_failed))
+        }
+    }
+
+    /** 详情页顶栏翻译入口:原文→译文 / 译文→原文;请求中忽略重复点击。 */
+    fun toggleTitleTranslation() {
+        when (_uiState.value.titleTranslation) {
+            TitleTranslationState.Loading -> Unit
+            is TitleTranslationState.Translated ->
+                _uiState.update { it.copy(titleTranslation = TitleTranslationState.Hidden) }
+            TitleTranslationState.Hidden -> startTitleTranslation()
+        }
+    }
+
+    /** 详情(重新)加载后:重置翻译状态;按"默认翻译"设置决定是否自动翻译新标题。 */
+    private fun applyDefaultTranslationPolicy() {
+        _uiState.update { it.copy(titleTranslation = TitleTranslationState.Hidden) }
+        viewModelScope.launch {
+            if (translationSettings.translateByDefault.first()) startTitleTranslation()
+        }
+    }
+
+    private fun startTitleTranslation() {
+        val title = _uiState.value.movieDetail?.title?.takeIf { it.isNotBlank() } ?: return
+        _uiState.update { it.copy(titleTranslation = TitleTranslationState.Loading) }
+        viewModelScope.launch {
+            translationRepository.translate(title).fold(
+                onSuccess = { text ->
+                    // 仅当仍处于 Loading(未被 refresh 重置)时落地,避免覆盖刷新后的原文
+                    _uiState.update { state ->
+                        if (state.titleTranslation == TitleTranslationState.Loading)
+                            state.copy(titleTranslation = TitleTranslationState.Translated(text)) else state
+                    }
+                },
+                onFailure = { cause ->
+                    if (cause is CancellationException) return@launch
+                    _uiState.update { state ->
+                        if (state.titleTranslation == TitleTranslationState.Loading)
+                            state.copy(titleTranslation = TitleTranslationState.Hidden) else state
+                    }
+                    val resId = if (cause is TranslationConfigException) {
+                        R.string.translate_config_error
+                    } else {
+                        R.string.translate_failed
+                    }
+                    _messages.emit(UserMessage(resId))
+                }
+            )
         }
     }
 }
