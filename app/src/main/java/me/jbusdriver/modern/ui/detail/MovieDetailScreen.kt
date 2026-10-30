@@ -148,8 +148,9 @@ fun MovieDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
+                    val translatedTitle = (uiState.titleTranslation as? TitleTranslationState.Translated)?.text
                     Text(
-                        detail?.title ?: stringResource(R.string.loading),
+                        translatedTitle ?: detail?.title ?: stringResource(R.string.loading),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -164,6 +165,31 @@ fun MovieDetailScreen(
                 },
                 actions = {
                     if (detail != null) {
+                        if (detail.title.isNotBlank()) {
+                            when (uiState.titleTranslation) {
+                                TitleTranslationState.Loading -> CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                is TitleTranslationState.Translated -> IconButton(
+                                    onClick = viewModel::toggleTitleTranslation
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.translate_24px),
+                                        contentDescription = stringResource(R.string.translate_show_original),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                TitleTranslationState.Hidden -> IconButton(
+                                    onClick = viewModel::toggleTitleTranslation
+                                ) {
+                                    Icon(
+                                        painterResource(R.drawable.translate_24px),
+                                        contentDescription = stringResource(R.string.translate_action)
+                                    )
+                                }
+                            }
+                        }
                         val code = detail.headers.firstOrNull()?.value ?: ""
                         val shareText = buildString {
                             if (code.isNotBlank()) append(code).append("\n")
@@ -231,6 +257,7 @@ fun MovieDetailScreen(
                 detail != null -> {
                     DetailContent(
                         detail = detail,
+                        titleTranslation = uiState.titleTranslation,
                         padding = PaddingValues(),
                         onMovieClick = { movie -> onMovieClick(movie, censorType) },
                         onActressClick = { actress -> onActressClick(actress, censorType) },
@@ -304,6 +331,7 @@ fun MovieDetailScreen(
  * 使用场景：由 [MovieDetailScreen] 在数据加载成功后调用，作为详情页面的主体内容。
  *
  * @param detail 影片详情数据模型
+ * @param titleTranslation 标题翻译状态；为 [TitleTranslationState.Translated] 时页内标题显示译文
  * @param padding 外部传入的内边距，通常来自 Scaffold
  * @param onMovieClick 点击推荐影片时的回调
  * @param onActressClick 点击演员头像时的回调
@@ -315,6 +343,7 @@ fun MovieDetailScreen(
 @Composable
 internal fun DetailContent(
     detail: MovieDetailUiModel,
+    titleTranslation: TitleTranslationState = TitleTranslationState.Hidden,
     padding: PaddingValues,
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit,
@@ -409,16 +438,17 @@ internal fun DetailContent(
 
         // Title
         item(key = "title") {
+            val translatedTitle = (titleTranslation as? TitleTranslationState.Translated)?.text
+            val displayTitle = translatedTitle ?: detail.title
             Text(
-                text = detail.title,
+                text = displayTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier
                     .fillMaxWidth()
                     .combinedClickable(
                         onLongClick = {
-
-                            context.copy(detail.title)
+                            context.copy(displayTitle)
                             Toast.makeText(context, copiedTitleMessage, Toast.LENGTH_SHORT).show()
                         },
                         onClick = {}

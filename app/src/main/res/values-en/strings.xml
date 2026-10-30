@@ -255,4 +255,6 @@
     <!-- Translation -->
     <string name="translate_failed">Translation failed</string>
     <string name="translate_config_error">Translation API not configured or invalid</string>
+    <string name="translate_action">Translate</string>
+    <string name="translate_show_original">Show original</string>
 </resources>
