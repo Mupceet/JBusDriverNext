@@ -110,6 +110,13 @@ fun SettingsScreen(
     val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
+    // Translation state
+    val translateByDefault by store.translateByDefault.collectAsStateWithLifecycle()
+    val translationProvider by store.translationProvider.collectAsStateWithLifecycle()
+    val customTranslateUrlTemplate by store.customTranslateUrlTemplate.collectAsStateWithLifecycle()
+    val customTranslateResponsePath by store.customTranslateResponsePath.collectAsStateWithLifecycle()
+    val translationTestRunning by viewModel.translationTestRunning.collectAsStateWithLifecycle()
+
     val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
     val excludedVideos by viewModel.excludedVideos.collectAsStateWithLifecycle()
 
@@ -218,6 +225,20 @@ fun SettingsScreen(
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
                 onSelect = { viewModel.selectUrl(it) }
+            )
+
+            // === Translation Card ===
+            TranslationSettingsCard(
+                translateByDefault = translateByDefault,
+                provider = translationProvider,
+                customUrlTemplate = customTranslateUrlTemplate,
+                customResponsePath = customTranslateResponsePath,
+                testRunning = translationTestRunning,
+                onTranslateByDefaultChange = { viewModel.setTranslateByDefault(it) },
+                onProviderChange = { viewModel.setTranslationProvider(it) },
+                onCustomUrlTemplateChange = { viewModel.setCustomTranslateUrlTemplate(it) },
+                onCustomResponsePathChange = { viewModel.setCustomTranslateResponsePath(it) },
+                onTest = { template, path -> viewModel.testTranslation(template, path) }
             )
 
             // === Local Video Card ===
@@ -366,7 +387,7 @@ private fun AppearanceCard(
 }
 
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit

@@ -257,4 +257,17 @@
     <string name="translate_config_error">Translation API not configured or invalid</string>
     <string name="translate_action">Translate</string>
     <string name="translate_show_original">Show original</string>
+    <string name="settings_translation_section">Translation</string>
+    <string name="settings_translation_default">Auto-translate title on detail screen</string>
+    <string name="settings_translation_provider">Translation API</string>
+    <string name="settings_translation_provider_builtin">Built-in free API</string>
+    <string name="settings_translation_provider_custom">Custom API</string>
+    <string name="settings_translation_url_template">URL template</string>
+    <string name="settings_translation_url_template_hint">https://lt.example/translate?q={text}&amp;source={source}&amp;target={target}</string>
+    <string name="settings_translation_response_path">Response path</string>
+    <string name="settings_translation_response_path_hint">Blank = plain text; e.g. translatedText or data.0.0</string>
+    <string name="settings_translation_test">Test translation</string>
+    <string name="translate_template_invalid">URL template must contain {text}</string>
+    <string name="translate_test_success">Translation OK: %1$s</string>
+    <string name="translate_test_failed">Test failed — check the API configuration</string>
 </resources>

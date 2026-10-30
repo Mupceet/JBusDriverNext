@@ -128,7 +128,7 @@ sealed interface TitleTranslationState {
 - Switch: 进入详情页默认翻译标题 (`translateByDefault`)
 - Provider single-select: 内置免费接口 / 自定义接口
 - Custom selected ⇒ expands: URL 模板 text field (hint example `https://lingva.example/api/v1/{source}/{target}/{text}`), 响应路径 text field (blank = plain-text response), and a **测试** button that translates a fixed sample (`テスト`, ja→zh-TW) using the values currently entered in the fields and shows the result (or error) in a Snackbar.
-- Validation: switching to CUSTOM requires a template containing `{text}`; template edits missing `{text}` are rejected with a message and not persisted. Text fields persist on IME action / focus loss. Response path is free-form (validated implicitly by the test button).
+- Validation: the provider selection persists freely (selecting CUSTOM reveals the fields for configuration); template saves missing `{text}` are rejected with a message and not persisted. Text fields persist on focus loss. Response path is free-form (validated implicitly by the test button). The repository additionally fails fast with a config error when CUSTOM is active without a usable template.
 - `SettingsViewModel` exposes section state via StateFlow and calls the new setters; no callbacks.
 
 ### Strings & R8

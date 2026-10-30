@@ -27,6 +27,12 @@ import me.jbusdriver.modern.data.repository.AppUpdateInfo
 import me.jbusdriver.modern.data.repository.AppUpdateRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.settings.AppSettingsContract
+import me.jbusdriver.modern.data.translation.TRANSLATION_SOURCE_LANG
+import me.jbusdriver.modern.data.translation.TRANSLATION_TARGET_LANG
+import me.jbusdriver.modern.data.translation.TRANSLATION_TEST_SAMPLE
+import me.jbusdriver.modern.data.translation.TranslationProvider
+import me.jbusdriver.modern.data.translation.TranslatorConfig
+import me.jbusdriver.modern.data.translation.TranslatorEngineFactory
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.ui.UserMessage
@@ -45,6 +51,7 @@ class SettingsViewModel @Inject constructor(
     private val localVideoRepository: LocalVideoRepository,
     private val appUpdateRepository: AppUpdateRepository,
     private val appUpdateDownloader: AppUpdateDownloader,
+    private val translatorEngineFactory: TranslatorEngineFactory,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -151,6 +158,55 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) {
                 KLog.t(TAG).e("mirror scan failed", e)
                 _scanState.value = ScanState()
+            }
+        }
+    }
+    // endregion
+
+    // region Translation settings
+    private val _translationTestRunning = MutableStateFlow(false)
+    val translationTestRunning: StateFlow<Boolean> = _translationTestRunning.asStateFlow()
+
+    fun setTranslateByDefault(enabled: Boolean) {
+        viewModelScope.launch { store.setTranslateByDefault(enabled) }
+    }
+
+    fun setTranslationProvider(provider: TranslationProvider) {
+        viewModelScope.launch { store.setTranslationProvider(provider) }
+    }
+
+    /** 保存自定义模板;缺少 {text} 时提示且不落盘。 */
+    fun setCustomTranslateUrlTemplate(template: String) {
+        if (!template.contains("{text}")) {
+            viewModelScope.launch { _messages.emit(UserMessage(R.string.translate_template_invalid)) }
+            return
+        }
+        viewModelScope.launch { store.setCustomTranslateUrlTemplate(template) }
+    }
+
+    fun setCustomTranslateResponsePath(path: String) {
+        viewModelScope.launch { store.setCustomTranslateResponsePath(path) }
+    }
+
+    /** 用当前输入值(未保存)试译固定样例,结果经 messages Toast。 */
+    fun testTranslation(template: String, responsePath: String) {
+        if (_translationTestRunning.value) return
+        if (!template.contains("{text}")) {
+            viewModelScope.launch { _messages.emit(UserMessage(R.string.translate_template_invalid)) }
+            return
+        }
+        _translationTestRunning.value = true
+        viewModelScope.launch {
+            try {
+                val config = TranslatorConfig(TranslationProvider.CUSTOM, template.trim(), responsePath.trim())
+                translatorEngineFactory.create(config)
+                    .translate(TRANSLATION_TEST_SAMPLE, TRANSLATION_SOURCE_LANG, TRANSLATION_TARGET_LANG)
+                    .fold(
+                        onSuccess = { _messages.emit(UserMessage(R.string.translate_test_success, listOf(it))) },
+                        onFailure = { _messages.emit(UserMessage(R.string.translate_test_failed)) }
+                    )
+            } finally {
+                _translationTestRunning.value = false
             }
         }
     }
