@@ -56,7 +56,12 @@ import me.jbusdriver.modern.data.settings.SearchHistoryStore
 import me.jbusdriver.modern.data.settings.DefaultThemeRepository
 import me.jbusdriver.modern.data.settings.ThemeRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
+import me.jbusdriver.modern.data.settings.TranslationSettingsReader
 import me.jbusdriver.modern.data.settings.UiPrefsStore
+import me.jbusdriver.modern.data.translation.DefaultTranslationRepository
+import me.jbusdriver.modern.data.translation.DefaultTranslatorEngineFactory
+import me.jbusdriver.modern.data.translation.TranslationRepository
+import me.jbusdriver.modern.data.translation.TranslatorEngineFactory
 import javax.inject.Singleton
 
 /**
@@ -226,4 +231,16 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindAppUpdateRepository(impl: DefaultAppUpdateRepository): AppUpdateRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTranslationSettingsReader(impl: AppSettingsStore): TranslationSettingsReader
+
+    @Binds
+    @Singleton
+    abstract fun bindTranslatorEngineFactory(impl: DefaultTranslatorEngineFactory): TranslatorEngineFactory
+
+    @Binds
+    @Singleton
+    abstract fun bindTranslationRepository(impl: DefaultTranslationRepository): TranslationRepository
 }
