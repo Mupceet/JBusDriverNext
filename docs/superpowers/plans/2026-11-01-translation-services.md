@@ -13,6 +13,8 @@
 
 ## Global Constraints
 
+> **Errata (post-execution):** two embedded snippets drifted from the shipped code during review loops — (1) Task 3 Step 3's repository snippet shows `invokeOnCompletion` BEFORE the `inFlight[key]` publish; the shipped code publishes FIRST (preserves the 1d8cba5b race fix). (2) Task 1's `resolveDeviceLanguage` snippet lacks the exact `lang-REGION` match; the shipped code adds it (pt/BR → pt-BR). If re-executing this plan, trust the committed code, not these snippets.
+
 - Branch `feat/title-translation`; package `me.jbusdriver.modern`; no new dependencies.
 - BEFORE every gradle command: `export JAVA_HOME='/c/Users/laiguizhong/AppData/Local/Programs/Android Studio/jbr'`
 - Focused tests: `./gradlew testDebugUnitTest --tests "<class>"`. Full gates: `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleRelease`.
