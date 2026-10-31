@@ -8,8 +8,11 @@ import com.google.gson.JsonPrimitive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
+import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
@@ -68,6 +71,33 @@ private fun execute(url: String): String {
     TranslationHttp.client.newCall(
         Request.Builder().url(url).header("User-Agent", TRANSLATION_USER_AGENT).build()
     ).execute().use { response ->
+        if (!response.isSuccessful) throw TranslationHttpException(response.code)
+        return response.body?.string() ?: error("empty body")
+    }
+}
+
+/** 表单 POST(有道/Libre/DeepL);非 2xx 抛 [TranslationHttpException]。 */
+internal fun postForm(
+    url: String,
+    headers: Map<String, String> = emptyMap(),
+    form: FormBody.Builder.() -> Unit,
+): String {
+    val body = FormBody.Builder().apply(form).build()
+    val builder = Request.Builder().url(url).header("User-Agent", TRANSLATION_USER_AGENT).post(body)
+    headers.forEach { (name, value) -> builder.header(name, value) }
+    TranslationHttp.client.newCall(builder.build()).execute().use { response ->
+        if (!response.isSuccessful) throw TranslationHttpException(response.code)
+        return response.body?.string() ?: error("empty body")
+    }
+}
+
+/** JSON POST(微软);非 2xx 抛 [TranslationHttpException]。 */
+internal fun postJson(url: String, payload: String, headers: Map<String, String> = emptyMap()): String {
+    val builder = Request.Builder().url(url)
+        .header("User-Agent", TRANSLATION_USER_AGENT)
+        .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
+    headers.forEach { (name, value) -> builder.header(name, value) }
+    TranslationHttp.client.newCall(builder.build()).execute().use { response ->
         if (!response.isSuccessful) throw TranslationHttpException(response.code)
         return response.body?.string() ?: error("empty body")
     }
