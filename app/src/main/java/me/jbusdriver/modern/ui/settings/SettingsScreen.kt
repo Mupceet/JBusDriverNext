@@ -113,6 +113,16 @@ fun SettingsScreen(
     // Translation state
     val translateByDefault by store.translateByDefault.collectAsStateWithLifecycle()
     val translationProvider by store.translationProvider.collectAsStateWithLifecycle()
+    val translationTargetLang by store.translationTargetLang.collectAsStateWithLifecycle()
+    val effectiveTranslationTarget by store.effectiveTranslationTarget.collectAsStateWithLifecycle()
+    val youdaoAppKey by store.youdaoAppKey.collectAsStateWithLifecycle()
+    val youdaoAppSecret by store.youdaoAppSecret.collectAsStateWithLifecycle()
+    val libreBaseUrl by store.libreBaseUrl.collectAsStateWithLifecycle()
+    val libreApiKey by store.libreApiKey.collectAsStateWithLifecycle()
+    val deeplAuthKey by store.deeplAuthKey.collectAsStateWithLifecycle()
+    val microsoftKey by store.microsoftKey.collectAsStateWithLifecycle()
+    val microsoftRegion by store.microsoftRegion.collectAsStateWithLifecycle()
+    val translationTestRunning by viewModel.translationTestRunning.collectAsStateWithLifecycle()
 
     val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
     val excludedVideos by viewModel.excludedVideos.collectAsStateWithLifecycle()
@@ -228,8 +238,24 @@ fun SettingsScreen(
             TranslationSettingsCard(
                 translateByDefault = translateByDefault,
                 provider = translationProvider,
+                targetLang = translationTargetLang,
+                effectiveTargetLang = effectiveTranslationTarget,
+                youdaoAppKey = youdaoAppKey,
+                youdaoAppSecret = youdaoAppSecret,
+                libreBaseUrl = libreBaseUrl,
+                libreApiKey = libreApiKey,
+                deeplAuthKey = deeplAuthKey,
+                microsoftKey = microsoftKey,
+                microsoftRegion = microsoftRegion,
+                testRunning = translationTestRunning,
                 onTranslateByDefaultChange = { viewModel.setTranslateByDefault(it) },
-                onProviderChange = { viewModel.setTranslationProvider(it) }
+                onProviderChange = { viewModel.setTranslationProvider(it) },
+                onTargetLangChange = { viewModel.setTranslationTargetLang(it) },
+                onSaveYoudao = { k, s -> viewModel.setYoudaoCredentials(k, s) },
+                onSaveLibre = { u, k -> viewModel.setLibreCredentials(u, k) },
+                onSaveDeepl = { viewModel.setDeeplAuthKey(it) },
+                onSaveMicrosoft = { k, r -> viewModel.setMicrosoftCredentials(k, r) },
+                onTest = { viewModel.testTranslation(it) }
             )
 
             // === Local Video Card ===

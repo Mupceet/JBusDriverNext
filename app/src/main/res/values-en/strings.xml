@@ -267,14 +267,20 @@
     <string name="settings_translation_provider_libre">LibreTranslate</string>
     <string name="settings_translation_provider_deepl">DeepL</string>
     <string name="settings_translation_provider_microsoft">Microsoft Translator</string>
-    <string name="settings_translation_provider_custom">Custom API</string>
-    <string name="settings_translation_builtin_hint">The free API is rate-limited per IP; switch to a custom API if you hit limits</string>
-    <string name="settings_translation_url_template">URL template</string>
-    <string name="settings_translation_url_template_hint">https://lt.example/translate?q={text}&amp;source={source}&amp;target={target}</string>
-    <string name="settings_translation_response_path">Response path</string>
-    <string name="settings_translation_response_path_hint">Blank = plain text; e.g. translatedText or data.0.0</string>
+    <string name="settings_translation_save">Save</string>
+    <string name="settings_translation_builtin_hint">The free API is rate-limited per IP; switch to Youdao, LibreTranslate, or another provider if you hit limits</string>
     <string name="settings_translation_test">Test translation</string>
-    <string name="translate_template_invalid">URL template must contain {text}</string>
+    <string name="settings_translation_youdao_app_key">App Key</string>
+    <string name="settings_translation_youdao_app_secret">App Secret</string>
+    <string name="settings_translation_libre_base_url">Instance URL</string>
+    <string name="settings_translation_libre_api_key">API key (optional)</string>
+    <string name="settings_translation_deepl_auth_key">Auth Key</string>
+    <string name="settings_translation_deepl_get_key">Get a free key</string>
+    <string name="settings_translation_microsoft_key">Subscription key</string>
+    <string name="settings_translation_microsoft_region">Region</string>
+    <string name="settings_translation_microsoft_get_key">Get a key</string>
+    <string name="settings_translation_target">Target language</string>
+    <string name="settings_translation_target_follow_system">Follow system</string>
     <string name="translate_test_success">Translation OK: %1$s</string>
     <string name="translate_test_failed">Test failed — check the API configuration</string>
 </resources>

@@ -174,6 +174,26 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { store.setTranslationProvider(provider) }
     }
 
+    fun setTranslationTargetLang(code: String) {
+        viewModelScope.launch { store.setTranslationTargetLang(code) }
+    }
+
+    fun setYoudaoCredentials(appKey: String, appSecret: String) {
+        viewModelScope.launch { store.setYoudaoCredentials(appKey, appSecret) }
+    }
+
+    fun setLibreCredentials(baseUrl: String, apiKey: String) {
+        viewModelScope.launch { store.setLibreCredentials(baseUrl, apiKey) }
+    }
+
+    fun setDeeplAuthKey(key: String) {
+        viewModelScope.launch { store.setDeeplAuthKey(key) }
+    }
+
+    fun setMicrosoftCredentials(key: String, region: String) {
+        viewModelScope.launch { store.setMicrosoftCredentials(key, region) }
+    }
+
     /** 用表单当前值(未保存)试译固定样例;目标语言取当前生效值。结果经 messages Toast。 */
     fun testTranslation(config: TranslatorConfig) {
         if (_translationTestRunning.value) return

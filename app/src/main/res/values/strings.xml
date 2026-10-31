@@ -259,14 +259,20 @@
     <string name="settings_translation_provider_libre">LibreTranslate</string>
     <string name="settings_translation_provider_deepl">DeepL</string>
     <string name="settings_translation_provider_microsoft">微軟翻譯</string>
-    <string name="settings_translation_provider_custom">自訂接口</string>
-    <string name="settings_translation_builtin_hint">免費接口按 IP 限流，被限流時可改用自訂接口</string>
-    <string name="settings_translation_url_template">URL 模板</string>
-    <string name="settings_translation_url_template_hint">https://lt.example/translate?q={text}&amp;source={source}&amp;target={target}</string>
-    <string name="settings_translation_response_path">響應路徑</string>
-    <string name="settings_translation_response_path_hint">留空=純文本；如 translatedText 或 data.0.0</string>
+    <string name="settings_translation_save">儲存</string>
+    <string name="settings_translation_builtin_hint">免費接口按 IP 限流，被限流時可改用有道、LibreTranslate 等其他接口</string>
     <string name="settings_translation_test">測試翻譯</string>
-    <string name="translate_template_invalid">URL 模板必須包含 {text}</string>
+    <string name="settings_translation_youdao_app_key">App Key</string>
+    <string name="settings_translation_youdao_app_secret">App Secret</string>
+    <string name="settings_translation_libre_base_url">實例 URL</string>
+    <string name="settings_translation_libre_api_key">API 金鑰(選填)</string>
+    <string name="settings_translation_deepl_auth_key">Auth Key</string>
+    <string name="settings_translation_deepl_get_key">獲取免費密鑰</string>
+    <string name="settings_translation_microsoft_key">訂閱密鑰</string>
+    <string name="settings_translation_microsoft_region">區域</string>
+    <string name="settings_translation_microsoft_get_key">獲取密鑰</string>
+    <string name="settings_translation_target">目標語言</string>
+    <string name="settings_translation_target_follow_system">跟隨系統</string>
     <string name="translate_test_success">翻譯成功：%1$s</string>
     <string name="translate_test_failed">測試失敗,請檢查接口配置</string>
 </resources>
