@@ -21,6 +21,9 @@ import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
 import me.jbusdriver.modern.data.mirror.MirrorScanner
 import me.jbusdriver.modern.data.mirror.ScanState
+import me.jbusdriver.modern.data.translation.LanguageCatalog
+import me.jbusdriver.modern.data.translation.LIBRE_TRANSLATE_DEFAULT_URL
+import me.jbusdriver.modern.data.translation.TRANSLATION_DEFAULT_TARGET_LANG
 import me.jbusdriver.modern.data.translation.TranslationProvider
 import me.jbusdriver.modern.data.translation.TranslatorConfig
 import javax.inject.Inject
@@ -67,8 +70,15 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     val cachedMirrorUrls: StateFlow<List<String>>
     // Translation
     val translationProvider: StateFlow<TranslationProvider>
-    val customTranslateUrlTemplate: StateFlow<String>
-    val customTranslateResponsePath: StateFlow<String>
+    val translationTargetLang: StateFlow<String>       // 原始设置值;"" = 跟随系统
+    val effectiveTranslationTarget: StateFlow<String>   // 已解析(跟随系统时按设备 locale)
+    val youdaoAppKey: StateFlow<String>
+    val youdaoAppSecret: StateFlow<String>
+    val libreBaseUrl: StateFlow<String>
+    val libreApiKey: StateFlow<String>
+    val deeplAuthKey: StateFlow<String>
+    val microsoftKey: StateFlow<String>
+    val microsoftRegion: StateFlow<String>
 
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setDynamicColor(enabled: Boolean)
@@ -81,8 +91,11 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun selectUrl(url: String)
     suspend fun setTranslateByDefault(enabled: Boolean)
     suspend fun setTranslationProvider(provider: TranslationProvider)
-    suspend fun setCustomTranslateUrlTemplate(template: String)
-    suspend fun setCustomTranslateResponsePath(path: String)
+    suspend fun setTranslationTargetLang(code: String)
+    suspend fun setYoudaoCredentials(appKey: String, appSecret: String)
+    suspend fun setLibreCredentials(baseUrl: String, apiKey: String)
+    suspend fun setDeeplAuthKey(key: String)
+    suspend fun setMicrosoftCredentials(key: String, region: String)
 
     suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String)
     suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>)
@@ -165,20 +178,63 @@ class AppSettingsStore @Inject constructor(
     override val translateByDefault: StateFlow<Boolean> = flowOf(KEY_TRANSLATE_BY_DEFAULT, false)
     override val translationProvider: StateFlow<TranslationProvider> =
         mapped(KEY_TRANSLATE_PROVIDER, TranslationProvider.GOOGLE) { TranslationProvider.fromId(it) }
-    override val customTranslateUrlTemplate: StateFlow<String> = flowOf(KEY_TRANSLATE_CUSTOM_URL_TEMPLATE, "")
-    override val customTranslateResponsePath: StateFlow<String> = flowOf(KEY_TRANSLATE_CUSTOM_RESPONSE_PATH, "")
+    override val translationTargetLang: StateFlow<String> = flowOf(KEY_TRANSLATION_TARGET_LANG, "")
+    override val youdaoAppKey: StateFlow<String> = flowOf(KEY_YOUDAO_APP_KEY, "")
+    override val youdaoAppSecret: StateFlow<String> = flowOf(KEY_YOUDAO_APP_SECRET, "")
+    override val libreBaseUrl: StateFlow<String> = flowOf(KEY_LIBRE_BASE_URL, "")
+    override val libreApiKey: StateFlow<String> = flowOf(KEY_LIBRE_API_KEY, "")
+    override val deeplAuthKey: StateFlow<String> = flowOf(KEY_DEEPL_AUTH_KEY, "")
+    override val microsoftKey: StateFlow<String> = flowOf(KEY_MICROSOFT_KEY, "")
+    override val microsoftRegion: StateFlow<String> = flowOf(KEY_MICROSOFT_REGION, "")
+    override val effectiveTranslationTarget: StateFlow<String> = dataStore.data
+        .map { prefs -> resolveTargetLang(prefs[KEY_TRANSLATION_TARGET_LANG]) }
+        .stateIn(scope, SharingStarted.Eagerly, TRANSLATION_DEFAULT_TARGET_LANG)
     override suspend fun currentTranslatorConfig(): TranslatorConfig {
         val prefs = dataStore.data.first()
         return TranslatorConfig(
             provider = TranslationProvider.fromId(prefs[KEY_TRANSLATE_PROVIDER]),
-            customUrlTemplate = prefs[KEY_TRANSLATE_CUSTOM_URL_TEMPLATE].orEmpty(),
-            customResponsePath = prefs[KEY_TRANSLATE_CUSTOM_RESPONSE_PATH].orEmpty(),
+            targetLang = resolveTargetLang(prefs[KEY_TRANSLATION_TARGET_LANG]),
+            youdaoAppKey = prefs[KEY_YOUDAO_APP_KEY].orEmpty(),
+            youdaoAppSecret = prefs[KEY_YOUDAO_APP_SECRET].orEmpty(),
+            libreBaseUrl = prefs[KEY_LIBRE_BASE_URL].orEmpty().ifBlank { LIBRE_TRANSLATE_DEFAULT_URL },
+            libreApiKey = prefs[KEY_LIBRE_API_KEY].orEmpty(),
+            deeplAuthKey = prefs[KEY_DEEPL_AUTH_KEY].orEmpty(),
+            microsoftKey = prefs[KEY_MICROSOFT_KEY].orEmpty(),
+            microsoftRegion = prefs[KEY_MICROSOFT_REGION].orEmpty(),
         )
     }
+
+    /** "" → 跟随系统(设备 locale 推断);非法值回退默认繁体。 */
+    private fun resolveTargetLang(setting: String?): String {
+        if (setting.isNullOrBlank()) {
+            val locale = java.util.Locale.getDefault()
+            return LanguageCatalog.resolveDeviceLanguage(locale.language, locale.country)
+        }
+        return LanguageCatalog.findByCode(setting)?.code ?: TRANSLATION_DEFAULT_TARGET_LANG
+    }
+
     override suspend fun setTranslateByDefault(enabled: Boolean) = put(KEY_TRANSLATE_BY_DEFAULT, enabled)
     override suspend fun setTranslationProvider(provider: TranslationProvider) = put(KEY_TRANSLATE_PROVIDER, provider.id)
-    override suspend fun setCustomTranslateUrlTemplate(template: String) = put(KEY_TRANSLATE_CUSTOM_URL_TEMPLATE, template.trim())
-    override suspend fun setCustomTranslateResponsePath(path: String) = put(KEY_TRANSLATE_CUSTOM_RESPONSE_PATH, path.trim())
+    override suspend fun setTranslationTargetLang(code: String) = put(KEY_TRANSLATION_TARGET_LANG, code)
+    override suspend fun setYoudaoCredentials(appKey: String, appSecret: String) {
+        dataStore.edit {
+            it[KEY_YOUDAO_APP_KEY] = appKey.trim()
+            it[KEY_YOUDAO_APP_SECRET] = appSecret.trim()
+        }
+    }
+    override suspend fun setLibreCredentials(baseUrl: String, apiKey: String) {
+        dataStore.edit {
+            it[KEY_LIBRE_BASE_URL] = baseUrl.trim()
+            it[KEY_LIBRE_API_KEY] = apiKey.trim()
+        }
+    }
+    override suspend fun setDeeplAuthKey(key: String) = put(KEY_DEEPL_AUTH_KEY, key.trim())
+    override suspend fun setMicrosoftCredentials(key: String, region: String) {
+        dataStore.edit {
+            it[KEY_MICROSOFT_KEY] = key.trim()
+            it[KEY_MICROSOFT_REGION] = region.trim()
+        }
+    }
     // endregion
 
     companion object {
@@ -196,8 +252,14 @@ class AppSettingsStore @Inject constructor(
         private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
         private val KEY_TRANSLATE_BY_DEFAULT = booleanPreferencesKey("translate_by_default")
         private val KEY_TRANSLATE_PROVIDER = stringPreferencesKey("translate_provider")
-        private val KEY_TRANSLATE_CUSTOM_URL_TEMPLATE = stringPreferencesKey("translate_custom_url_template")
-        private val KEY_TRANSLATE_CUSTOM_RESPONSE_PATH = stringPreferencesKey("translate_custom_response_path")
+        private val KEY_TRANSLATION_TARGET_LANG = stringPreferencesKey("translation_target_lang")
+        private val KEY_YOUDAO_APP_KEY = stringPreferencesKey("youdao_app_key")
+        private val KEY_YOUDAO_APP_SECRET = stringPreferencesKey("youdao_app_secret")
+        private val KEY_LIBRE_BASE_URL = stringPreferencesKey("libre_base_url")
+        private val KEY_LIBRE_API_KEY = stringPreferencesKey("libre_api_key")
+        private val KEY_DEEPL_AUTH_KEY = stringPreferencesKey("deepl_auth_key")
+        private val KEY_MICROSOFT_KEY = stringPreferencesKey("microsoft_key")
+        private val KEY_MICROSOFT_REGION = stringPreferencesKey("microsoft_region")
 
         private val PRESET_MIRROR_URLS = listOf(
             "https://www.javbus.com",

@@ -1,10 +1,6 @@
 package me.jbusdriver.modern.data.translation
 
-import com.google.gson.JsonArray
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.google.gson.JsonPrimitive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
@@ -48,19 +44,6 @@ class GoogleFreeTranslator : TranslatorEngine {
     private companion object {
         const val TAG = "GoogleFreeTranslator"
     }
-}
-
-/** 用户自定义 GET 模板接口;{text} URL 编码后替换,{source}/{target} 原样替换。 */
-class CustomUrlTranslator(private val config: TranslatorConfig) : TranslatorEngine {
-    override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val url = buildCustomRequestUrl(config.customUrlTemplate, text, sourceLang, targetLang)
-                    ?: throw TranslationConfigException("custom url template missing {text}")
-                val body = execute(url)
-                extractCustomResponse(body, config.customResponsePath) ?: error("custom empty translation")
-            }
-        }
 }
 
 /** 翻译请求以桌面浏览器 UA 发出:部分接口对 okhttp 默认 UA 按机器人分类,更易被限流/拒绝。 */
@@ -110,31 +93,3 @@ internal fun parseGtxBody(body: String): String? = runCatching {
     val segments = JsonParser.parseString(body).asJsonArray.first().asJsonArray
     segments.mapNotNull { it.asJsonArray.firstOrNull()?.asString }.joinToString("").ifBlank { null }
 }.getOrNull()
-
-/** 模板空白或不含 {text} 返回 null;{source}/{target} 缺失时占位符原样保留。 */
-internal fun buildCustomRequestUrl(template: String, text: String, sourceLang: String, targetLang: String): String? {
-    if (template.isBlank() || !template.contains("{text}")) return null
-    return template
-        .replace("{text}", urlEncode(text))
-        .replace("{source}", sourceLang)
-        .replace("{target}", targetLang)
-}
-
-/** path 为空 → 响应体(去空白)即译文;否则按点分路径取值,数字段表数组下标;非原始类型叶子视为失败。 */
-internal fun extractCustomResponse(body: String, path: String): String? {
-    if (path.isBlank()) return body.trim().ifBlank { null }
-    return try {
-        var node: JsonElement? = JsonParser.parseString(body)
-        for (segment in path.trim().split('.')) {
-            val current = node ?: return null
-            node = when (current) {
-                is JsonObject -> current.get(segment)
-                is JsonArray -> segment.toIntOrNull()?.let { current.get(it) }
-                else -> null
-            } ?: return null
-        }
-        (node as? JsonPrimitive)?.takeIf { it.isString }?.asString?.trim()?.ifBlank { null }
-    } catch (e: Exception) {
-        null
-    }
-}

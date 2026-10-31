@@ -113,9 +113,6 @@ fun SettingsScreen(
     // Translation state
     val translateByDefault by store.translateByDefault.collectAsStateWithLifecycle()
     val translationProvider by store.translationProvider.collectAsStateWithLifecycle()
-    val customTranslateUrlTemplate by store.customTranslateUrlTemplate.collectAsStateWithLifecycle()
-    val customTranslateResponsePath by store.customTranslateResponsePath.collectAsStateWithLifecycle()
-    val translationTestRunning by viewModel.translationTestRunning.collectAsStateWithLifecycle()
 
     val localVideoSummary by viewModel.localVideoSummary.collectAsStateWithLifecycle()
     val excludedVideos by viewModel.excludedVideos.collectAsStateWithLifecycle()
@@ -231,14 +228,8 @@ fun SettingsScreen(
             TranslationSettingsCard(
                 translateByDefault = translateByDefault,
                 provider = translationProvider,
-                customUrlTemplate = customTranslateUrlTemplate,
-                customResponsePath = customTranslateResponsePath,
-                testRunning = translationTestRunning,
                 onTranslateByDefaultChange = { viewModel.setTranslateByDefault(it) },
-                onProviderChange = { viewModel.setTranslationProvider(it) },
-                onCustomUrlTemplateChange = { viewModel.setCustomTranslateUrlTemplate(it) },
-                onCustomResponsePathChange = { viewModel.setCustomTranslateResponsePath(it) },
-                onTest = { template, path -> viewModel.testTranslation(template, path) }
+                onProviderChange = { viewModel.setTranslationProvider(it) }
             )
 
             // === Local Video Card ===

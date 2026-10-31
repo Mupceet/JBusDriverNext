@@ -96,7 +96,7 @@ class MovieDetailViewModelTest {
 
     private val stubTranslationRepo = object : TranslationRepository {
         var calls = 0
-        override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> {
+        override suspend fun translate(text: String): Result<String> {
             calls++
             return Result.success("譯文:$text")
         }
@@ -319,7 +319,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
         val failingRepo = object : TranslationRepository {
-            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
+            override suspend fun translate(text: String): Result<String> =
                 Result.failure(RuntimeException("boom"))
         }
         val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, failingRepo, stubTranslationSettings)
@@ -343,7 +343,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
         val configErrorRepo = object : TranslationRepository {
-            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
+            override suspend fun translate(text: String): Result<String> =
                 Result.failure(me.jbusdriver.modern.data.translation.TranslationConfigException("bad"))
         }
         val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, configErrorRepo, stubTranslationSettings)
@@ -366,7 +366,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
         val rateLimitedRepo = object : TranslationRepository {
-            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
+            override suspend fun translate(text: String): Result<String> =
                 Result.failure(me.jbusdriver.modern.data.translation.TranslationHttpException(429))
         }
         val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, rateLimitedRepo, stubTranslationSettings)
@@ -390,7 +390,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
         val httpErrorRepo = object : TranslationRepository {
-            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> =
+            override suspend fun translate(text: String): Result<String> =
                 Result.failure(me.jbusdriver.modern.data.translation.TranslationHttpException(500))
         }
         val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, httpErrorRepo, stubTranslationSettings)
@@ -436,7 +436,7 @@ class MovieDetailViewModelTest {
         // 每次请求阻塞在自己的门上,手动放行以控制完成顺序
         val gates = mutableListOf<CompletableDeferred<Unit>>()
         val gatedRepo = object : TranslationRepository {
-            override suspend fun translate(text: String, sourceLang: String, targetLang: String): Result<String> {
+            override suspend fun translate(text: String): Result<String> {
                 val gate = CompletableDeferred<Unit>()
                 gates.add(gate)
                 gate.await()

@@ -28,7 +28,6 @@ import me.jbusdriver.modern.data.repository.AppUpdateRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.settings.AppSettingsContract
 import me.jbusdriver.modern.data.translation.TRANSLATION_SOURCE_LANG
-import me.jbusdriver.modern.data.translation.TRANSLATION_TARGET_LANG
 import me.jbusdriver.modern.data.translation.TRANSLATION_TEST_SAMPLE
 import me.jbusdriver.modern.data.translation.TranslationProvider
 import me.jbusdriver.modern.data.translation.TranslatorConfig
@@ -175,32 +174,24 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { store.setTranslationProvider(provider) }
     }
 
-    /** 保存自定义模板;缺少 {text} 时提示且不落盘。 */
-    fun setCustomTranslateUrlTemplate(template: String) {
-        if (!template.contains("{text}")) {
-            viewModelScope.launch { _messages.emit(UserMessage(R.string.translate_template_invalid)) }
-            return
-        }
-        viewModelScope.launch { store.setCustomTranslateUrlTemplate(template) }
-    }
-
-    fun setCustomTranslateResponsePath(path: String) {
-        viewModelScope.launch { store.setCustomTranslateResponsePath(path) }
-    }
-
-    /** 用当前输入值(未保存)试译固定样例,结果经 messages Toast。 */
-    fun testTranslation(template: String, responsePath: String) {
+    /** 用表单当前值(未保存)试译固定样例;目标语言取当前生效值。结果经 messages Toast。 */
+    fun testTranslation(config: TranslatorConfig) {
         if (_translationTestRunning.value) return
-        if (!template.contains("{text}")) {
-            viewModelScope.launch { _messages.emit(UserMessage(R.string.translate_template_invalid)) }
+        val invalid = when (config.provider) {
+            TranslationProvider.YOUDAO -> config.youdaoAppKey.isBlank() || config.youdaoAppSecret.isBlank()
+            TranslationProvider.DEEPL -> config.deeplAuthKey.isBlank()
+            TranslationProvider.MICROSOFT -> config.microsoftKey.isBlank()
+            TranslationProvider.GOOGLE, TranslationProvider.LIBRE -> false
+        }
+        if (invalid) {
+            viewModelScope.launch { _messages.emit(UserMessage(R.string.translate_config_error)) }
             return
         }
         _translationTestRunning.value = true
         viewModelScope.launch {
             try {
-                val config = TranslatorConfig(TranslationProvider.CUSTOM, template.trim(), responsePath.trim())
                 translatorEngineFactory.create(config)
-                    .translate(TRANSLATION_TEST_SAMPLE, TRANSLATION_SOURCE_LANG, TRANSLATION_TARGET_LANG)
+                    .translate(TRANSLATION_TEST_SAMPLE, TRANSLATION_SOURCE_LANG, config.targetLang)
                     .fold(
                         onSuccess = { _messages.emit(UserMessage(R.string.translate_test_success, listOf(it))) },
                         onFailure = { _messages.emit(UserMessage(R.string.translate_test_failed)) }

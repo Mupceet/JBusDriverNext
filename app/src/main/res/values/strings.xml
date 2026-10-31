@@ -255,6 +255,10 @@
     <string name="settings_translation_default">進入詳情頁預設翻譯標題</string>
     <string name="settings_translation_provider">翻譯接口</string>
     <string name="settings_translation_provider_builtin">內建免費接口</string>
+    <string name="settings_translation_provider_youdao">有道</string>
+    <string name="settings_translation_provider_libre">LibreTranslate</string>
+    <string name="settings_translation_provider_deepl">DeepL</string>
+    <string name="settings_translation_provider_microsoft">微軟翻譯</string>
     <string name="settings_translation_provider_custom">自訂接口</string>
     <string name="settings_translation_builtin_hint">免費接口按 IP 限流，被限流時可改用自訂接口</string>
     <string name="settings_translation_url_template">URL 模板</string>
