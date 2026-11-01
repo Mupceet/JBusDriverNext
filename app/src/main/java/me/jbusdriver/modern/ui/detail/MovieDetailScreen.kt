@@ -5,10 +5,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -54,14 +53,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImagePainter
@@ -318,39 +326,6 @@ fun MovieDetailScreen(
  * @param onImageClick 点击图片（封面或截图）时的回调
  * @param onMagnetClick 点击“查看磁力連結”按钮时的回调
  */
-/** 标题行尾的翻译角标:[翻譯] ⇄ [原文];请求中显示中性色状态文字且不可点。 */
-@Composable
-private fun TranslateBadge(
-    titleTranslation: TitleTranslationState,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    when (titleTranslation) {
-        TitleTranslationState.Hidden -> Text(
-            stringResource(R.string.translate_badge),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = modifier
-                .clickable(onClick = onToggle)
-                .padding(vertical = 2.dp)
-        )
-        TitleTranslationState.Loading -> Text(
-            stringResource(R.string.translate_loading),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(vertical = 2.dp)
-        )
-        is TitleTranslationState.Translated -> Text(
-            stringResource(R.string.translate_badge_original),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = modifier
-                .clickable(onClick = onToggle)
-                .padding(vertical = 2.dp)
-        )
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun DetailContent(
@@ -453,31 +428,62 @@ internal fun DetailContent(
         item(key = "title") {
             val translatedTitle = (titleTranslation as? TitleTranslationState.Translated)?.text
             val displayTitle = translatedTitle ?: detail.title
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = displayTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Normal,
-                    modifier = Modifier.combinedClickable(
-                        onLongClick = {
-                            context.copy(displayTitle)
-                            Toast.makeText(context, copiedTitleMessage, Toast.LENGTH_SHORT).show()
-                        },
-                        onClick = {}
-                    )
-                )
-                if (detail.title.isNotBlank()) {
-                    TranslateBadge(
-                        titleTranslation = titleTranslation,
-                        onToggle = onToggleTitleTranslation
-                    )
+            // 翻译角标内联到标题末尾(同一 AnnotatedString),随文字流动换行,不独占一行
+            val showBadge = detail.title.isNotBlank()
+            val badgeLabel = when (titleTranslation) {
+                TitleTranslationState.Hidden -> stringResource(R.string.translate_badge)
+                TitleTranslationState.Loading -> stringResource(R.string.translate_loading)
+                is TitleTranslationState.Translated -> stringResource(R.string.translate_badge_original)
+            }
+            val badgeColor = if (titleTranslation == TitleTranslationState.Loading) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
+            val badgeClickable = showBadge && titleTranslation != TitleTranslationState.Loading
+            val badgeStart = displayTitle.length + 1 // 标题后第一个空格的下一偏移
+            var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+            val annotated = buildAnnotatedString {
+                append(displayTitle)
+                if (showBadge) {
+                    append(" ")
+                    withStyle(SpanStyle(color = badgeColor, fontSize = 14.sp)) { append(badgeLabel) }
                 }
             }
+            Text(
+                text = annotated,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Normal,
+                onTextLayout = { layoutResult = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(badgeClickable) {
+                        detectTapGestures(
+                            onLongPress = {
+                                context.copy(displayTitle)
+                                Toast.makeText(context, copiedTitleMessage, Toast.LENGTH_SHORT).show()
+                            },
+                            onTap = { position ->
+                                if (!badgeClickable) return@detectTapGestures
+                                val layout = layoutResult ?: return@detectTapGestures
+                                if (layout.getOffsetForPosition(position) >= badgeStart) {
+                                    onToggleTitleTranslation()
+                                }
+                            }
+                        )
+                    }
+                    .semantics {
+                        if (badgeClickable) {
+                            customActions = listOf(
+                                CustomAccessibilityAction(badgeLabel) {
+                                    onToggleTitleTranslation()
+                                    true
+                                }
+                            )
+                        }
+                    }
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            )
         }
 
         // Headers info
