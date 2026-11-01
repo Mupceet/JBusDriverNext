@@ -7,14 +7,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,7 +31,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -40,7 +46,7 @@ import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 
 /**
  * 设置页"翻譯"分组:供应商选择 + 各家凭据表单(儲存/測試翻譯)、
- * 自动翻译开关、目标语言(跟隨系統 + 目录)。Adapted from komi-store (Apache-2.0).
+ * 自动翻译开关、目标语言(簡體/繁體/English)。Adapted from komi-store (Apache-2.0).
  */
 @Composable
 internal fun TranslationSettingsCard(
@@ -73,11 +79,24 @@ internal fun TranslationSettingsCard(
         )
     ) {
         Column {
-            Text(
-                stringResource(R.string.settings_translation_section),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 14.dp, top = 14.dp, end = 14.dp)
-            )
+            // Header — 与其他设置卡片一致:主色图标 + 半粗标题
+            Row(
+                modifier = Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painterResource(R.drawable.translate_24px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.settings_translation_section),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             SwitchRow(
                 label = stringResource(R.string.settings_translation_default),
                 checked = translateByDefault,

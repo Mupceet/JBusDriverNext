@@ -254,13 +254,13 @@
     <string name="settings_translation_section">翻譯</string>
     <string name="settings_translation_default">進入詳情頁預設翻譯標題</string>
     <string name="settings_translation_provider">翻譯接口</string>
-    <string name="settings_translation_provider_builtin">內建免費接口</string>
+    <string name="settings_translation_provider_builtin">Google翻譯</string>
     <string name="settings_translation_provider_youdao">有道</string>
     <string name="settings_translation_provider_libre">LibreTranslate</string>
     <string name="settings_translation_provider_deepl">DeepL</string>
     <string name="settings_translation_provider_microsoft">微軟翻譯</string>
     <string name="settings_translation_save">儲存</string>
-    <string name="settings_translation_builtin_hint">免費接口按 IP 限流，被限流時可改用有道、LibreTranslate 等其他接口</string>
+    <string name="settings_translation_builtin_hint">Google 免費接口按 IP 限流，被限流時可改用有道、LibreTranslate 等其他接口</string>
     <string name="settings_translation_test">測試翻譯</string>
     <string name="settings_translation_youdao_app_key">App Key</string>
     <string name="settings_translation_youdao_app_secret">App Secret</string>

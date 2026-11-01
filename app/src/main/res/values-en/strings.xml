@@ -262,13 +262,13 @@
     <string name="settings_translation_section">Translation</string>
     <string name="settings_translation_default">Auto-translate title on detail screen</string>
     <string name="settings_translation_provider">Translation API</string>
-    <string name="settings_translation_provider_builtin">Built-in free API</string>
+    <string name="settings_translation_provider_builtin">Google Translate</string>
     <string name="settings_translation_provider_youdao">Youdao</string>
     <string name="settings_translation_provider_libre">LibreTranslate</string>
     <string name="settings_translation_provider_deepl">DeepL</string>
     <string name="settings_translation_provider_microsoft">Microsoft Translator</string>
     <string name="settings_translation_save">Save</string>
-    <string name="settings_translation_builtin_hint">The free API is rate-limited per IP; switch to Youdao, LibreTranslate, or another provider if you hit limits</string>
+    <string name="settings_translation_builtin_hint">Google\'s free API is rate-limited per IP; switch to Youdao, LibreTranslate, or another provider if you hit limits</string>
     <string name="settings_translation_test">Test translation</string>
     <string name="settings_translation_youdao_app_key">App Key</string>
     <string name="settings_translation_youdao_app_secret">App Secret</string>
