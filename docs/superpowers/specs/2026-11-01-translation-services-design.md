@@ -14,7 +14,7 @@ The built-in Google free endpoint (translate_a/single?client=gtx) rate-limits by
 |---|---|
 | Providers | komi's five: **Google** (free, no config, default) / **有道 Youdao** (appKey+appSecret) / **LibreTranslate** (instance URL, default `https://translate.disroot.org`, optional API key) / **DeepL** (auth key, free/pro host auto by `:fx` suffix) / **Microsoft** (subscription key + region) |
 | Custom URL template | **Removed** (replaced by Libre's instance URL for self-hosted cases); unmerged branch ⇒ no migration |
-| Target language | Full picker: 跟隨系統 (default) + komi's 33-language list; effective target resolved from device locale when unset. Follow-system: `zh` + region TW/HK/MO → `zh-TW`, else `zh-CN`; other locales matched by language; fallback `zh-TW` |
+| Target language | Picker with exactly 3 options: 简体中文 `zh-CN` / 繁體中文 `zh-TW` (default) / `en` English; unset or invalid stored value falls back to `zh-TW`. (Amended 2026-11-01 after smoke: the komi 33-language list + follow-system resolution were cut) |
 | Source language | `auto` (each engine maps/omits it) |
 | Usage scope | Unchanged: movie detail title only; engine layer stays content-agnostic |
 | UI conventions | Settings card follows JBusDriver's existing rows/dropdowns (not komi's Komi* components); credential forms keep our extra "測試翻譯" button (komi has save only) |

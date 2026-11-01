@@ -280,7 +280,9 @@
     <string name="settings_translation_microsoft_region">Region</string>
     <string name="settings_translation_microsoft_get_key">Get a key</string>
     <string name="settings_translation_target">Target language</string>
-    <string name="settings_translation_target_follow_system">Follow system</string>
+    <string name="settings_translation_target_zh_cn">Chinese (Simplified)</string>
+    <string name="settings_translation_target_zh_tw">Chinese (Traditional)</string>
+    <string name="settings_translation_target_en">English</string>
     <string name="translate_test_success">Translation OK: %1$s</string>
     <string name="translate_test_failed">Test failed — check the API configuration</string>
 </resources>

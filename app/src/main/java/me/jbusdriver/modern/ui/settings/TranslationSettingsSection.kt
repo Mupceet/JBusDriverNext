@@ -261,6 +261,8 @@ private fun MicrosoftForm(
 @Composable
 private fun TargetLangRow(targetLang: String, onTargetLangChange: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    // 未设置(默认)按繁体显示与选中
+    val selected = LanguageCatalog.findByCode(targetLang)?.code ?: "zh-TW"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -271,30 +273,28 @@ private fun TargetLangRow(targetLang: String, onTargetLangChange: (String) -> Un
     ) {
         Text(stringResource(R.string.settings_translation_target), style = MaterialTheme.typography.bodyLarge)
         Box {
-            val label = if (targetLang.isBlank()) {
-                stringResource(R.string.settings_translation_target_follow_system)
-            } else {
-                LanguageCatalog.findByCode(targetLang)?.displayName ?: targetLang
-            }
             Text(
-                label,
+                targetLangLabel(selected),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                SelectableDropdownItem(
-                    label = stringResource(R.string.settings_translation_target_follow_system),
-                    selected = targetLang.isBlank(),
-                    onClick = { onTargetLangChange(""); expanded = false }
-                )
                 LanguageCatalog.all.forEach { lang ->
                     SelectableDropdownItem(
-                        label = lang.displayName,
-                        selected = lang.code == targetLang,
+                        label = targetLangLabel(lang.code),
+                        selected = lang.code == selected,
                         onClick = { onTargetLangChange(lang.code); expanded = false }
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun targetLangLabel(code: String): String = when (code) {
+    "zh-CN" -> stringResource(R.string.settings_translation_target_zh_cn)
+    "zh-TW" -> stringResource(R.string.settings_translation_target_zh_tw)
+    "en" -> stringResource(R.string.settings_translation_target_en)
+    else -> code
 }

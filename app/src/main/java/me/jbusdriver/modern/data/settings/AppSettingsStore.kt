@@ -204,14 +204,9 @@ class AppSettingsStore @Inject constructor(
         )
     }
 
-    /** "" → 跟随系统(设备 locale 推断);非法值回退默认繁体。 */
-    private fun resolveTargetLang(setting: String?): String {
-        if (setting.isNullOrBlank()) {
-            val locale = java.util.Locale.getDefault()
-            return LanguageCatalog.resolveDeviceLanguage(locale.language, locale.country)
-        }
-        return LanguageCatalog.findByCode(setting)?.code ?: TRANSLATION_DEFAULT_TARGET_LANG
-    }
+    /** 未设置(默认)或非法值统一回退繁体中文。 */
+    private fun resolveTargetLang(setting: String?): String =
+        LanguageCatalog.findByCode(setting)?.code ?: TRANSLATION_DEFAULT_TARGET_LANG
 
     override suspend fun setTranslateByDefault(enabled: Boolean) = put(KEY_TRANSLATE_BY_DEFAULT, enabled)
     override suspend fun setTranslationProvider(provider: TranslationProvider) = put(KEY_TRANSLATE_PROVIDER, provider.id)
