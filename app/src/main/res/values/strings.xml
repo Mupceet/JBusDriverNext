@@ -248,8 +248,8 @@
     <string name="translate_failed">翻譯失敗</string>
     <string name="translate_config_error">翻譯接口未配置或無效</string>
     <string name="translate_rate_limited">翻譯請求過於頻繁，請稍後再試</string>
-    <string name="translate_action">翻譯</string>
-    <string name="translate_show_original">顯示原文</string>
+    <string name="translate_badge">[翻譯]</string>
+    <string name="translate_badge_original">[原文]</string>
     <string name="translate_loading">翻譯中</string>
     <string name="settings_translation_section">翻譯</string>
     <string name="settings_translation_default">進入詳情頁預設翻譯標題</string>

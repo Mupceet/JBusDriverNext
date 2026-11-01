@@ -256,8 +256,8 @@
     <string name="translate_failed">Translation failed</string>
     <string name="translate_config_error">Translation API not configured or invalid</string>
     <string name="translate_rate_limited">Translation rate-limited — try again later</string>
-    <string name="translate_action">Translate</string>
-    <string name="translate_show_original">Show original</string>
+    <string name="translate_badge">[Translate]</string>
+    <string name="translate_badge_original">[Original]</string>
     <string name="translate_loading">Translating</string>
     <string name="settings_translation_section">Translation</string>
     <string name="settings_translation_default">Auto-translate title on detail screen</string>

@@ -5,8 +5,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -57,8 +59,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -167,41 +167,6 @@ fun MovieDetailScreen(
                 },
                 actions = {
                     if (detail != null) {
-                        if (detail.title.isNotBlank()) {
-                            when (uiState.titleTranslation) {
-                                TitleTranslationState.Loading -> {
-                                    val loadingDescription = stringResource(R.string.translate_loading)
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .semantics { contentDescription = loadingDescription },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    }
-                                }
-                                is TitleTranslationState.Translated -> IconButton(
-                                    onClick = viewModel::toggleTitleTranslation
-                                ) {
-                                    Icon(
-                                        painterResource(R.drawable.translate_24px),
-                                        contentDescription = stringResource(R.string.translate_show_original),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                TitleTranslationState.Hidden -> IconButton(
-                                    onClick = viewModel::toggleTitleTranslation
-                                ) {
-                                    Icon(
-                                        painterResource(R.drawable.translate_24px),
-                                        contentDescription = stringResource(R.string.translate_action)
-                                    )
-                                }
-                            }
-                        }
                         val code = detail.headers.firstOrNull()?.value ?: ""
                         val shareText = buildString {
                             if (code.isNotBlank()) append(code).append("\n")
@@ -270,6 +235,7 @@ fun MovieDetailScreen(
                     DetailContent(
                         detail = detail,
                         titleTranslation = uiState.titleTranslation,
+                        onToggleTitleTranslation = viewModel::toggleTitleTranslation,
                         padding = PaddingValues(),
                         onMovieClick = { movie -> onMovieClick(movie, censorType) },
                         onActressClick = { actress -> onActressClick(actress, censorType) },
@@ -344,6 +310,7 @@ fun MovieDetailScreen(
  *
  * @param detail 影片详情数据模型
  * @param titleTranslation 标题翻译状态；为 [TitleTranslationState.Translated] 时页内标题显示译文
+ * @param onToggleTitleTranslation 点击标题尾部的翻译角标时触发（翻译 ⇄ 显示原文）
  * @param padding 外部传入的内边距，通常来自 Scaffold
  * @param onMovieClick 点击推荐影片时的回调
  * @param onActressClick 点击演员头像时的回调
@@ -351,11 +318,45 @@ fun MovieDetailScreen(
  * @param onImageClick 点击图片（封面或截图）时的回调
  * @param onMagnetClick 点击“查看磁力連結”按钮时的回调
  */
+/** 标题行尾的翻译角标:[翻譯] ⇄ [原文];请求中显示中性色状态文字且不可点。 */
+@Composable
+private fun TranslateBadge(
+    titleTranslation: TitleTranslationState,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (titleTranslation) {
+        TitleTranslationState.Hidden -> Text(
+            stringResource(R.string.translate_badge),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+                .clickable(onClick = onToggle)
+                .padding(vertical = 2.dp)
+        )
+        TitleTranslationState.Loading -> Text(
+            stringResource(R.string.translate_loading),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier.padding(vertical = 2.dp)
+        )
+        is TitleTranslationState.Translated -> Text(
+            stringResource(R.string.translate_badge_original),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+                .clickable(onClick = onToggle)
+                .padding(vertical = 2.dp)
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun DetailContent(
     detail: MovieDetailUiModel,
     titleTranslation: TitleTranslationState = TitleTranslationState.Hidden,
+    onToggleTitleTranslation: () -> Unit = {},
     padding: PaddingValues,
     onMovieClick: (MovieUiModel) -> Unit,
     onActressClick: (ActressUiModel) -> Unit,
@@ -452,21 +453,31 @@ internal fun DetailContent(
         item(key = "title") {
             val translatedTitle = (titleTranslation as? TitleTranslationState.Translated)?.text
             val displayTitle = translatedTitle ?: detail.title
-            Text(
-                text = displayTitle,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Normal,
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .combinedClickable(
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = displayTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.combinedClickable(
                         onLongClick = {
                             context.copy(displayTitle)
                             Toast.makeText(context, copiedTitleMessage, Toast.LENGTH_SHORT).show()
                         },
                         onClick = {}
                     )
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            )
+                )
+                if (detail.title.isNotBlank()) {
+                    TranslateBadge(
+                        titleTranslation = titleTranslation,
+                        onToggle = onToggleTitleTranslation
+                    )
+                }
+            }
         }
 
         // Headers info
