@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +10,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation3.runtime.NavKey
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -34,11 +36,20 @@ class ModernMainActivity : ComponentActivity() {
     private val _deepLink = MutableStateFlow<NavKey?>(null)
     private val deepLink: StateFlow<NavKey?> = _deepLink
 
+    // 就绪窗口测量：对比 onCreate 与 Navigation.kt 中 NavDisplay ready 两行日志的时间差，
+    // 即为“侧滑返回会被系统直接退出”的窗口时长。
+    private val timingLog = KLog.t("BackReady")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        timingLog.d("onCreate recreate=${savedInstanceState != null} at=${SystemClock.elapsedRealtime()}ms")
         enableEdgeToEdge()
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
-        handleIntent(intent)
+        // 从 Recent/进程重建时系统会重投原始启动 Intent；此时 savedInstanceState 已恢复了
+        // 返回栈，不能再按新深链分发——RouteMain 类深链会清空恢复的栈，其他深链会重复压栈。
+        val fromHistory = savedInstanceState != null ||
+            (intent.flags and android.content.Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
+        handleIntent(intent, fromHistory)
         ProcessLifecycleOwner.get().lifecycle.addObserver(localVideoForegroundScanner)
         localVideoMetadataEnricher.start()
         setContent {
@@ -50,6 +61,10 @@ class ModernMainActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch {
+            // WebView 预热会在主线程创建 WebView 并初始化会话，会推迟首帧与 NavDisplay
+            // 返回回调的注册；让出前两帧，缩短重建/冷启后侧滑返回直接退出的就绪窗口。
+            awaitFrame()
+            awaitFrame()
             runCatching { browserSessionClient.warmUp() }
                 .onFailure { KLog.w("Browser session warm-up failed: ${it.message}") }
         }
@@ -66,10 +81,12 @@ class ModernMainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        handleIntent(intent)
+        // onNewIntent 只会由真实的新 Intent（浏览器深链/分享）触发，Recent 恢复不经过这里。
+        handleIntent(intent, fromHistory = false)
     }
 
-    private fun handleIntent(intent: android.content.Intent?) {
+    private fun handleIntent(intent: android.content.Intent?, fromHistory: Boolean) {
+        if (fromHistory) return
         // 深链解析失败（异常格式的分享文本等）不能拖垮启动流程，回退到主界面。
         _deepLink.value = runCatching { resolveDeepLink(intent) }.getOrNull()
     }

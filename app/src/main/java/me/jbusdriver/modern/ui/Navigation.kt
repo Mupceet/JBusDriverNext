@@ -1,5 +1,6 @@
 package me.jbusdriver.modern.ui
 
+import android.os.SystemClock
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -27,6 +28,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.StateFlow
+import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
@@ -47,6 +49,14 @@ fun JBusNavigation(
     val backStack = rememberNavBackStack(RouteMain)
     val deepLinkValue = deepLinkFlow?.collectAsState()?.value ?: deepLinkKey
     var suppressAnim by remember { mutableStateOf(false) }
+
+    // 就绪窗口测量：首次组合（含 NavDisplay 返回回调注册）完成后触发，与 ModernMainActivity
+    // 的 onCreate 日志对比即为窗口时长。KLog.d 仅 debug 构建输出。
+    LaunchedEffect(Unit) {
+        KLog.t("BackReady").d(
+            "NavDisplay ready backStack=${backStack.size} at=${SystemClock.elapsedRealtime()}ms"
+        )
+    }
 
     LaunchedEffect(deepLinkValue) {
         deepLinkValue?.let { key ->
