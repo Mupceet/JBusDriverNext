@@ -33,6 +33,9 @@ class ModernMainActivity : ComponentActivity() {
     @Inject
     lateinit var localVideoMetadataEnricher: LocalVideoMetadataEnricher
 
+    @Inject
+    lateinit var appUpdateAutoChecker: AppUpdateAutoChecker
+
     private val _deepLink = MutableStateFlow<NavKey?>(null)
     private val deepLink: StateFlow<NavKey?> = _deepLink
 
@@ -51,6 +54,7 @@ class ModernMainActivity : ComponentActivity() {
             (intent.flags and android.content.Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
         handleIntent(intent, fromHistory)
         ProcessLifecycleOwner.get().lifecycle.addObserver(localVideoForegroundScanner)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appUpdateAutoChecker)
         localVideoMetadataEnricher.start()
         setContent {
             JBusTheme {
@@ -58,6 +62,8 @@ class ModernMainActivity : ComponentActivity() {
                     deepLinkFlow = deepLink,
                     onDeepLinkConsumed = { _deepLink.value = null }
                 )
+                // 全局更新提示弹框：任意界面停留时自动检查到新版本都会弹出
+                AppUpdatePromptHost()
             }
         }
         lifecycleScope.launch {

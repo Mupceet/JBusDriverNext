@@ -34,6 +34,7 @@ import me.jbusdriver.modern.data.translation.TranslatorConfig
 import me.jbusdriver.modern.data.translation.TranslatorEngineFactory
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
+import me.jbusdriver.modern.ui.AppUpdateAutoChecker
 import me.jbusdriver.modern.ui.UserMessage
 import javax.inject.Inject
 
@@ -50,6 +51,7 @@ class SettingsViewModel @Inject constructor(
     private val localVideoRepository: LocalVideoRepository,
     private val appUpdateRepository: AppUpdateRepository,
     private val appUpdateDownloader: AppUpdateDownloader,
+    private val appUpdateAutoChecker: AppUpdateAutoChecker,
     private val translatorEngineFactory: TranslatorEngineFactory,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
@@ -111,6 +113,8 @@ class SettingsViewModel @Inject constructor(
                 if (update == null) {
                     _messages.emit(UserMessage(R.string.update_up_to_date))
                 } else {
+                    // 同一更新由设置页弹框展示，清掉可能挂着的全局自动提示，避免双弹框
+                    appUpdateAutoChecker.dismiss()
                     _updateCheckState.update { it.copy(availableUpdate = update) }
                 }
             } catch (e: CancellationException) {

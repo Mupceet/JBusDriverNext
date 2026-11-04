@@ -33,6 +33,8 @@ import me.jbusdriver.modern.core.http.BrowserSessionManager
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.AppSettingsContract
 import me.jbusdriver.modern.data.settings.AppSettingsStore
+import me.jbusdriver.modern.data.settings.AppUpdateCheckStore
+import me.jbusdriver.modern.data.settings.DefaultAppUpdateCheckStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
 import me.jbusdriver.modern.data.settings.LtxSettingsSource
 import me.jbusdriver.modern.data.settings.MovieListSettings
@@ -236,6 +238,11 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindAppUpdateRepository(impl: DefaultAppUpdateRepository): AppUpdateRepository
+
+    /** 绑定 [AppUpdateCheckStore] 到 [DefaultAppUpdateCheckStore]。 */
+    @Binds
+    @Singleton
+    abstract fun bindAppUpdateCheckStore(impl: DefaultAppUpdateCheckStore): AppUpdateCheckStore
 
     @Binds
     @Singleton
