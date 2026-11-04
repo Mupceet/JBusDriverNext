@@ -38,8 +38,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import android.text.format.Formatter
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
+import me.jbusdriver.modern.domain.model.LtxLinkType
+import me.jbusdriver.modern.ui.LtxLinkUiModel
 import me.jbusdriver.modern.ui.MagnetUiModel
 
 /**
@@ -80,6 +83,11 @@ internal fun MagnetBottomSheet(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // LTX 链接更新更及时，排在站内磁力之前；无独立分组头，靠首 tag「LTX」区分
+                items(uiState.ltxLinks, key = { "ltx-${it.link}" }) { link ->
+                    LtxLinkItem(link = link, context = context)
+                }
+
                 when {
                     uiState.isLoadingMagnets && uiState.magnets.isEmpty() -> {
                         item {
@@ -124,6 +132,145 @@ internal fun MagnetBottomSheet(
 }
 
 /**
+ * 单条 LTX 链接的可组合项。
+ *
+ * 与站内磁力混排，靠首 tag「LTX」区分来源；展示类型（ed2k/magnet）、
+ * 文件名与体积；待确认链接附加角标。
+ * 点击行为：magnet 走系统 chooser 打开，ed2k 直接复制（Android 少有 ed2k handler）。
+ */
+@Composable
+private fun LtxLinkItem(link: LtxLinkUiModel, context: Context) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable {
+                if (link.link.isBlank()) return@clickable
+                if (link.type == LtxLinkType.MAGNET) {
+                    openMagnetChooser(context, link.link)
+                } else {
+                    context.copy(link.link)
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.copied_link),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = link.name ?: link.type.name.lowercase(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 来源标识：LTX 作为首 tag
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(
+                            "LTX",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                    LtxTypeChip(label = link.type.name.lowercase())
+                    link.sizeBytes?.let { bytes ->
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                Formatter.formatFileSize(context, bytes),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    if (link.isPending) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                stringResource(R.string.ltx_pending),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+            IconButton(
+                onClick = {
+                    if (link.link.isNotBlank()) {
+                        context.copy(link.link)
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.copied_link),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            ) {
+                Icon(
+                    painterResource(R.drawable.content_copy_24px),
+                    contentDescription = stringResource(R.string.copy_link),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** LTX 链接类型小角标（ed2k / magnet，字面量无需翻译）。 */
+@Composable
+private fun LtxTypeChip(label: String) {
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** magnet 链接经系统 chooser 打开，无可处理应用时 Toast 提示。 */
+private fun openMagnetChooser(context: Context, magnetUri: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW, magnetUri.toUri())
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.select_download))
+        )
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, context.getString(R.string.no_handler), Toast.LENGTH_SHORT).show()
+    }
+}
+
+/**
  * 单条磁力链接的可组合项。
  *
  * 展示磁力链接的名称、大小和日期信息，提供「复制」和「打开」两个独立操作。
@@ -136,21 +283,7 @@ private fun MagnetItem(magnet: MagnetUiModel, context: Context) {
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 if (magnet.link.isNotBlank()) {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, magnet.link.toUri())
-                        context.startActivity(
-                            Intent.createChooser(
-                                intent,
-                                context.getString(R.string.select_download)
-                            )
-                        )
-                    } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.no_handler),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    openMagnetChooser(context, magnet.link)
                 }
             },
         shape = RoundedCornerShape(8.dp),

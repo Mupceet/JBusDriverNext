@@ -10,6 +10,9 @@ import me.jbusdriver.modern.domain.model.Magnet
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.MovieDetail
 import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.LtxEntry
+import me.jbusdriver.modern.domain.model.LtxLink
+import me.jbusdriver.modern.domain.model.LtxLinkType
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
 
 /**
@@ -118,6 +121,42 @@ fun MovieDetail.toUiModel(): MovieDetailUiModel {
 
 /** Magnet → UI model */
 fun Magnet.toUiModel() = MagnetUiModel(name, size, date, link)
+
+/** LTX 站点提供的一条下载链接的 UI 模型（详情页磁力弹窗 LTX 分组）。 */
+@Immutable
+data class LtxLinkUiModel(
+    val type: LtxLinkType,
+    /** 展示文件名；ed2k/magnet 未携带时为 null，UI 按类型回退展示。 */
+    val name: String? = null,
+    /** 体积（字节）；未知为 null，UI 端用 Formatter 格式化。 */
+    val sizeBytes: Long? = null,
+    /** 完整链接 uri（ed2k 或 magnet，含 tracker）。 */
+    val link: String,
+    /** 是否来自待确认列表。 */
+    val isPending: Boolean = false,
+)
+
+/**
+ * LtxEntry → 已确认链接 + 待确认链接的扁平 UI 列表（未收录返回空列表）。
+ *
+ * 按 URI 去重兜底：上游可能在 links 与 pending_links 中重复携带同一链接（且磁盘
+ * 缓存中存有修复前的旧数据），而磁力弹窗以 `"ltx-" + uri` 作为 LazyColumn key，
+ * 重复 key 会直接崩溃。distinctBy 保留首个（已确认优先）。
+ */
+fun LtxEntry?.toLtxLinkUiModels(): List<LtxLinkUiModel> = this?.let { entry ->
+    (entry.links.map { it.toLtxLinkUiModel(isPending = false) } +
+        entry.pendingLinks.map { it.toLtxLinkUiModel(isPending = true) })
+        .distinctBy { it.link }
+} ?: emptyList()
+
+private fun LtxLink.toLtxLinkUiModel(isPending: Boolean) =
+    LtxLinkUiModel(
+        type = type,
+        name = fileName,
+        sizeBytes = sizeBytes,
+        link = uri,
+        isPending = isPending
+    )
 
 /** ActressInfo → ActressUiModel */
 fun ActressInfo.toActressUiModel() = ActressUiModel(name, avatar, link)
