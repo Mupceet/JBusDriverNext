@@ -110,6 +110,10 @@ fun SettingsScreen(
     val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
+    // LTX state
+    val ltxEnabled by store.ltxEnabled.collectAsStateWithLifecycle()
+    val ltxBaseUrl by store.ltxBaseUrl.collectAsStateWithLifecycle()
+
     // Translation state
     val translateByDefault by store.translateByDefault.collectAsStateWithLifecycle()
     val translationProvider by store.translationProvider.collectAsStateWithLifecycle()
@@ -222,12 +226,16 @@ fun SettingsScreen(
                 onMovieLoadModeChange = { scope.launch { store.setMovieLoadMode(it) } }
             )
 
-            // === Network Card ===
+            // === Network Card（含 LTX 資料庫设置） ===
             NetworkCard(
                 selectedBaseUrl = selectedBaseUrl,
                 mirrorUrls = mirrorUrls,
                 scanState = scanState,
                 hasCachedUrls = hasCachedUrls,
+                ltxEnabled = ltxEnabled,
+                ltxBaseUrl = ltxBaseUrl,
+                onLtxEnabledChange = { viewModel.setLtxEnabled(it) },
+                onLtxBaseUrlSave = { viewModel.setLtxBaseUrl(it) },
                 onScan = { viewModel.startScan() },
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
@@ -682,19 +690,28 @@ private fun NetworkCard(
     mirrorUrls: List<MirrorUrl>,
     scanState: ScanState,
     hasCachedUrls: Boolean,
+    ltxEnabled: Boolean,
+    ltxBaseUrl: String,
+    onLtxEnabledChange: (Boolean) -> Unit,
+    onLtxBaseUrlSave: (String) -> Unit,
     onScan: () -> Unit,
     onCancel: () -> Unit,
     onVerify: () -> Unit,
     onSelect: (String) -> Unit
 ) {
+    var showLtxUrlDialog by remember { mutableStateOf(false) }
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        // 水平边距由各行自行设置，保证可点击行的涟漪铺满整行
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     painterResource(R.drawable.public_24px),
                     contentDescription = null,
@@ -714,6 +731,7 @@ private fun NetworkCard(
             // Dropdown spinner for URL selection
             var expanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
+                modifier = Modifier.padding(horizontal = 14.dp),
                 expanded = expanded && mirrorUrls.isNotEmpty(),
                 onExpandedChange = { if (mirrorUrls.isNotEmpty()) expanded = it }
             ) {
@@ -790,7 +808,9 @@ private fun NetworkCard(
 
             // Action buttons
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (scanState.isScanning) {
@@ -830,7 +850,9 @@ private fun NetworkCard(
             if (scanState.isScanning) {
                 Spacer(Modifier.height(12.dp))
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
                 )
                 Spacer(Modifier.height(4.dp))
                 val phaseText = when (scanState.phase) {
@@ -849,7 +871,8 @@ private fun NetworkCard(
                 Text(
                     phaseText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 14.dp)
                 )
                 if (scanState.currentUrl.isNotBlank()) {
                     Text(
@@ -857,7 +880,8 @@ private fun NetworkCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 14.dp)
                     )
                 }
             }
@@ -868,7 +892,65 @@ private fun NetworkCard(
                 Text(
                     stringResource(scanState.error),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 14.dp)
+                )
+            }
+
+            // === LTX 資料庫（并入網址设置；未启用时不显示網址行） ===
+            Spacer(Modifier.height(12.dp))
+            SwitchRow(
+                stringResource(R.string.ltx_enable),
+                ltxEnabled,
+                onLtxEnabledChange,
+            )
+            if (ltxEnabled) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = { showLtxUrlDialog = true })
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            stringResource(R.string.ltx_base_url),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            ltxBaseUrl,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            if (showLtxUrlDialog) {
+                var urlText by remember(ltxBaseUrl) { mutableStateOf(ltxBaseUrl) }
+                AlertDialog(
+                    onDismissRequest = { showLtxUrlDialog = false },
+                    title = { Text(stringResource(R.string.ltx_base_url)) },
+                    text = {
+                        OutlinedTextField(
+                            value = urlText,
+                            onValueChange = { urlText = it },
+                            singleLine = true,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            if (urlText.isNotBlank()) onLtxBaseUrlSave(urlText)
+                            showLtxUrlDialog = false
+                        }) {
+                            Text(stringResource(R.string.save))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showLtxUrlDialog = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    },
                 )
             }
         }
@@ -1055,5 +1137,6 @@ private fun LocalVideoCard(
 private fun formatTime(epochMs: Long): String =
     DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault())
         .format(Date(epochMs))
+
 
 //endregion
