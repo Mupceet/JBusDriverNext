@@ -57,11 +57,12 @@ fun CollectCategoryScreen(
     onSearchClick: (String) -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    val pagerState = rememberPagerState { 2 }
+    val pagerState = rememberPagerState { 3 }
 
-    // Sync pager → tab
-    LaunchedEffect(pagerState.currentPage) {
-        if (selectedTab != pagerState.currentPage) selectedTab = pagerState.currentPage
+    // Sync pager → tab：必须用 settledPage（动画结束后才更新）。currentPage 在
+    // 0→2 动画途经 1 时会瞬时变为 1，若据此回写 selectedTab 会把动画拉回第二页。
+    LaunchedEffect(pagerState.settledPage) {
+        if (selectedTab != pagerState.settledPage) selectedTab = pagerState.settledPage
     }
     // Sync tab → pager
     LaunchedEffect(selectedTab) {
@@ -70,17 +71,20 @@ fun CollectCategoryScreen(
 
     val movieVm: CollectionListViewModel = hiltViewModel(key = "collect_0")
     val actressVm: CollectionListViewModel = hiltViewModel(key = "collect_1")
+    val ltxVm: LtxListViewModel = hiltViewModel(key = "collect_2")
     val actionVm: CollectCategoryViewModel = hiltViewModel()
     val movieState by movieVm.uiState.collectAsStateWithLifecycle()
     val actressState by actressVm.uiState.collectAsStateWithLifecycle()
+    val ltxState by ltxVm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
     val exportSuccessMessage = stringResource(R.string.export_success)
     val cannotReadFileMessage = stringResource(R.string.cannot_read_file)
     var showMenu by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showLtxFilterSheet by remember { mutableStateOf(false) }
 
-    // Active tab's ViewModel and state for filter sheet
+    // Active tab's ViewModel and state for filter sheet (LTX 页有自己的内联筛选，不走收藏筛选弹窗)
     val activeVm = if (selectedTab == 0) movieVm else actressVm
     val activeFilterState by activeVm.uiState.collectAsStateWithLifecycle()
     val activeDbType = if (selectedTab == 0) MovieDBType else ActressDBType
@@ -137,12 +141,17 @@ fun CollectCategoryScreen(
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 数字仅在选中时显示，避免三个 chip + 筛选按钮一行放不下
             FilterChip(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
                 label = {
                     Text(
-                        stringResource(R.string.tab_movies_count, movieState.movies.size),
+                        if (selectedTab == 0) {
+                            stringResource(R.string.tab_movies_count, movieState.movies.size)
+                        } else {
+                            stringResource(R.string.nav_movies)
+                        },
                         fontSize = 12.sp
                     )
                 }
@@ -153,24 +162,52 @@ fun CollectCategoryScreen(
                 onClick = { selectedTab = 1 },
                 label = {
                     Text(
-                        stringResource(
-                            R.string.tab_actresses_count,
-                            actressState.actresses.size
-                        ), fontSize = 12.sp
+                        if (selectedTab == 1) {
+                            stringResource(
+                                R.string.tab_actresses_count,
+                                actressState.actresses.size
+                            )
+                        } else {
+                            stringResource(R.string.nav_actresses)
+                        },
+                        fontSize = 12.sp
+                    )
+                }
+            )
+            Spacer(Modifier.width(6.dp))
+            FilterChip(
+                selected = selectedTab == 2,
+                onClick = { selectedTab = 2 },
+                label = {
+                    Text(
+                        if (selectedTab == 2) {
+                            stringResource(R.string.tab_ltx_count, ltxState.totalCount)
+                        } else {
+                            "LTX"
+                        },
+                        fontSize = 12.sp
                     )
                 }
             )
             Spacer(Modifier.weight(1f))
+            // 筛选入口三个 tab 都有：影片/演员打开收藏筛选，LTX 打开 LTX 筛选
             FilterChip(
-                selected = activeFilterState.filterState.hasActiveFilters,
-                onClick = { showFilterSheet = true },
+                selected = if (selectedTab < 2) {
+                    activeFilterState.filterState.hasActiveFilters
+                } else {
+                    ltxState.hasActiveFilters
+                },
+                onClick = { if (selectedTab < 2) showFilterSheet = true else showLtxFilterSheet = true },
                 label = {
-                    if (activeFilterState.filterState.hasActiveFilters) {
+                    val activeCount = if (selectedTab < 2) {
+                        activeFilterState.filterState.activeFilterCount
+                    } else {
+                        ltxState.activeFilterCount
+                    }
+                    if (activeCount > 0) {
                         Text(
-                            stringResource(
-                                R.string.filter_count,
-                                activeFilterState.filterState.activeFilterCount
-                            ), fontSize = 12.sp
+                            stringResource(R.string.filter_count, activeCount),
+                            fontSize = 12.sp
                         )
                     } else {
                         Text(stringResource(R.string.filter), fontSize = 12.sp)
@@ -184,37 +221,40 @@ fun CollectCategoryScreen(
                     )
                 }
             )
-            Spacer(Modifier.width(8.dp))
-            Box {
-                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        painterResource(R.drawable.import_export_24px),
-                        contentDescription = stringResource(R.string.import_export),
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.export_collect)) },
-                        onClick = {
-                            showMenu = false
-                            val filename = "jbus_backup_${
-                                SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
-                            }.json"
-                            exportLauncher.launch(filename)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.import_collect)) },
-                        onClick = {
-                            showMenu = false
-                            importLauncher.launch(arrayOf("application/json"))
-                        }
-                    )
+            // 导入/导出仅作用于影片与演员收藏
+            if (selectedTab < 2) {
+                Spacer(Modifier.width(8.dp))
+                Box {
+                    IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            painterResource(R.drawable.import_export_24px),
+                            contentDescription = stringResource(R.string.import_export),
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.export_collect)) },
+                            onClick = {
+                                showMenu = false
+                                val filename = "jbus_backup_${
+                                    SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+                                }.json"
+                                exportLauncher.launch(filename)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.import_collect)) },
+                            onClick = {
+                                showMenu = false
+                                importLauncher.launch(arrayOf("application/json"))
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -226,15 +266,22 @@ fun CollectCategoryScreen(
                 .fillMaxWidth()
                 .weight(1f)
         ) { page ->
-            val dbType = if (page == 0) MovieDBType else ActressDBType
-            val vm: CollectionListViewModel = hiltViewModel(key = "collect_$page")
-            CollectionListScreen(
-                dbType = dbType,
-                active = true,
-                onMovieClick = onMovieClick,
-                onActressClick = onActressClick,
-                viewModel = vm
-            )
+            if (page == 2) {
+                LtxListScreen(
+                    active = pagerState.currentPage == 2,
+                    onMovieClick = onMovieClick,
+                )
+            } else {
+                val dbType = if (page == 0) MovieDBType else ActressDBType
+                val vm: CollectionListViewModel = hiltViewModel(key = "collect_$page")
+                CollectionListScreen(
+                    dbType = dbType,
+                    active = true,
+                    onMovieClick = onMovieClick,
+                    onActressClick = onActressClick,
+                    viewModel = vm
+                )
+            }
         }
     }
 
@@ -249,6 +296,21 @@ fun CollectCategoryScreen(
             availableCollectMonths = activeFilterState.availableCollectMonths,
             hasLocalVideoFolder = activeFilterState.hasLocalVideoFolder,
             onDismiss = { showFilterSheet = false }
+        )
+    }
+
+    // LTX Filter Bottom Sheet
+    if (showLtxFilterSheet) {
+        LtxFilterSheet(
+            sortOption = ltxState.sortOption,
+            statusFilter = ltxState.statusFilter,
+            resolveFilter = ltxState.resolveFilter,
+            hasActiveFilters = ltxState.hasActiveFilters,
+            onSortChange = ltxVm::updateSort,
+            onStatusFilterChange = ltxVm::updateStatusFilter,
+            onResolveFilterChange = ltxVm::updateResolveFilter,
+            onReset = ltxVm::resetFilters,
+            onDismiss = { showLtxFilterSheet = false }
         )
     }
 }

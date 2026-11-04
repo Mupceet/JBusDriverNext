@@ -110,6 +110,10 @@ fun SettingsScreen(
     val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
+    // LTX state
+    val ltxEnabled by store.ltxEnabled.collectAsStateWithLifecycle()
+    val ltxBaseUrl by store.ltxBaseUrl.collectAsStateWithLifecycle()
+
     // Translation state
     val translateByDefault by store.translateByDefault.collectAsStateWithLifecycle()
     val translationProvider by store.translationProvider.collectAsStateWithLifecycle()
@@ -232,6 +236,14 @@ fun SettingsScreen(
                 onCancel = { viewModel.cancelScan() },
                 onVerify = { viewModel.startVerify() },
                 onSelect = { viewModel.selectUrl(it) }
+            )
+
+            // === LTX Library Card ===
+            LtxSettingsCard(
+                enabled = ltxEnabled,
+                baseUrl = ltxBaseUrl,
+                onEnabledChange = { viewModel.setLtxEnabled(it) },
+                onBaseUrlSave = { viewModel.setLtxBaseUrl(it) },
             )
 
             // === Translation Card ===
@@ -1055,5 +1067,102 @@ private fun LocalVideoCard(
 private fun formatTime(epochMs: Long): String =
     DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault())
         .format(Date(epochMs))
+
+/** LTX 资料库设置卡片：功能开关 + 自定义站点地址（默认 workers.dev 部署）。 */
+@Composable
+private fun LtxSettingsCard(
+    enabled: Boolean,
+    baseUrl: String,
+    onEnabledChange: (Boolean) -> Unit,
+    onBaseUrlSave: (String) -> Unit,
+) {
+    var showUrlDialog by remember { mutableStateOf(false) }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painterResource(R.drawable.public_24px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.ltx_settings),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            SwitchRow(
+                stringResource(R.string.ltx_enable),
+                enabled,
+                onEnabledChange,
+            )
+
+            // 站点地址（点击弹出编辑对话框）
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = { showUrlDialog = true })
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        stringResource(R.string.ltx_base_url),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        baseUrl,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (showUrlDialog) {
+                var urlText by remember(baseUrl) { mutableStateOf(baseUrl) }
+                AlertDialog(
+                    onDismissRequest = { showUrlDialog = false },
+                    title = { Text(stringResource(R.string.ltx_base_url)) },
+                    text = {
+                        OutlinedTextField(
+                            value = urlText,
+                            onValueChange = { urlText = it },
+                            singleLine = true,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            if (urlText.isNotBlank()) onBaseUrlSave(urlText)
+                            showUrlDialog = false
+                        }) {
+                            Text(stringResource(R.string.save))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showUrlDialog = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
 
 //endregion

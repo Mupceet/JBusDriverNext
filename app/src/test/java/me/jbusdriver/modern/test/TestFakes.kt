@@ -24,10 +24,12 @@ open class StubCollectRepository : CollectRepository {
 
 class FakeCollectionUiPrefs(
     movieSort: String = "COLLECT_DESC",
-    actressSort: String = "COLLECT_DESC"
+    actressSort: String = "COLLECT_DESC",
+    ltxSort: String = "ADDED_DESC"
 ) : CollectionUiPrefs {
     override val movieSortOption = MutableStateFlow(movieSort)
     override val actressSortOption = MutableStateFlow(actressSort)
+    override val ltxSortOption = MutableStateFlow(ltxSort)
 
     override suspend fun setSortOption(dbType: Int, optionName: String) {
         if (dbType == 1) {
@@ -35,5 +37,9 @@ class FakeCollectionUiPrefs(
         } else {
             actressSortOption.value = optionName
         }
+    }
+
+    override suspend fun setLtxSortOption(optionName: String) {
+        ltxSortOption.value = optionName
     }
 }

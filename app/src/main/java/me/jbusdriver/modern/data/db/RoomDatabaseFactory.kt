@@ -17,6 +17,24 @@ internal val COLLECT_MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/** v3：新增 LTX 补全快照表（收藏 tab LTX 页的番号 → 站内影片快照缓存）。 */
+internal val COLLECT_MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `t_ltx_movie` (
+                `code` TEXT NOT NULL,
+                `resolveState` TEXT NOT NULL,
+                `movieUrlPath` TEXT NOT NULL,
+                `movieJson` TEXT NOT NULL,
+                `resolvedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`code`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
 internal val LOCAL_VIDEO_MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE t_local_video ADD COLUMN title TEXT")
@@ -42,7 +60,7 @@ fun buildCollectDatabase(context: Context): CollectDatabase =
         context,
         CollectDatabase::class.java,
         COLLECT_DB_NAME
-    ).addMigrations(COLLECT_MIGRATION_1_2).build()
+    ).addMigrations(COLLECT_MIGRATION_1_2, COLLECT_MIGRATION_2_3).build()
 
 fun buildLocalVideoDatabase(context: Context): LocalVideoDatabase =
     Room.databaseBuilder(

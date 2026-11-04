@@ -223,6 +223,17 @@ class SettingsViewModel @Inject constructor(
     }
     // endregion
 
+    // region LTX settings
+
+    fun setLtxEnabled(enabled: Boolean) {
+        viewModelScope.launch { store.setLtxEnabled(enabled) }
+    }
+
+    fun setLtxBaseUrl(baseUrl: String) {
+        viewModelScope.launch { store.setLtxBaseUrl(baseUrl) }
+    }
+    // endregion
+
     companion object {
         private const val TAG = "SettingsViewModel"
     }

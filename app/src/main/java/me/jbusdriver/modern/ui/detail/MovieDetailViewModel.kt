@@ -17,8 +17,10 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
+import me.jbusdriver.modern.data.repository.LtxRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
+import me.jbusdriver.modern.data.settings.LtxSettingsSource
 import me.jbusdriver.modern.data.settings.TranslationSettingsReader
 import me.jbusdriver.modern.data.translation.TranslationConfigException
 import me.jbusdriver.modern.data.translation.TranslationHttpException
@@ -27,9 +29,12 @@ import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
+import me.jbusdriver.modern.domain.model.normalizeLtxCode
+import me.jbusdriver.modern.ui.LtxLinkUiModel
 import me.jbusdriver.modern.ui.MagnetUiModel
 import me.jbusdriver.modern.ui.MovieDetailUiModel
 import me.jbusdriver.modern.ui.UserMessage
+import me.jbusdriver.modern.ui.toLtxLinkUiModels
 import me.jbusdriver.modern.ui.toUiModel
 import javax.inject.Inject
 
@@ -53,6 +58,8 @@ data class MovieDetailUiState(
     val gid: String? = null,
     val uc: String? = null,
     val localVideos: List<LocalVideo> = emptyList(),
+    /** LTX 库提供的下载链接（ed2k/magnet），按番号匹配；未收录为空列表。 */
+    val ltxLinks: List<LtxLinkUiModel> = emptyList(),
 )
 
 @HiltViewModel
@@ -63,6 +70,8 @@ class MovieDetailViewModel @Inject constructor(
     private val localVideoRepository: LocalVideoRepository,
     private val translationRepository: TranslationRepository,
     private val translationSettings: TranslationSettingsReader,
+    private val ltxRepository: LtxRepository,
+    private val ltxSettings: LtxSettingsSource,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -81,7 +90,7 @@ class MovieDetailViewModel @Inject constructor(
         currentUrl = url
         this.censorType = censorType
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, ltxLinks = emptyList()) }
             try {
                 val detail = repository.getMovieDetail(url)
                 _uiState.update {
@@ -99,6 +108,7 @@ class MovieDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(isCollected = collected) }
                 val code = detail.headers.firstOrNull()?.value.orEmpty()
                 loadLocalVideos(code)
+                loadLtxLinks(code)
                 // 看过即补全：把标题/封面/日期回填到本地视频表
                 viewModelScope.launch {
                     runCatching {
@@ -127,6 +137,7 @@ class MovieDetailViewModel @Inject constructor(
                 val detail = repository.getMovieDetail(currentUrl, forceRefresh = true)
                 _uiState.update { it.copy(movieDetail = detail.toUiModel(), isRefreshing = false) }
                 applyDefaultTranslationPolicy()
+                loadLtxLinks(detail.headers.firstOrNull()?.value.orEmpty())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -168,6 +179,31 @@ class MovieDetailViewModel @Inject constructor(
         localVideoJob = viewModelScope.launch {
             localVideoRepository.observeForCode(code).collect { videos ->
                 _uiState.update { it.copy(localVideos = videos) }
+            }
+        }
+    }
+
+    /**
+     * 异步查询 LTX 库中该番号的下载链接（ed2k/magnet）。
+     *
+     * 静默降级：功能关闭或库不可用时清空/保持空列表，绝不阻塞详情主流程；
+     * 落地前校验当前详情番号未变，防止旧查询覆盖新影片。
+     */
+    private fun loadLtxLinks(code: String) {
+        if (code.isBlank()) return
+        viewModelScope.launch {
+            val entry = if (ltxSettings.ltxEnabled.first()) {
+                ltxRepository.findByCode(code)
+            } else {
+                null
+            }
+            _uiState.update { state ->
+                val currentCode = state.movieDetail?.headers?.firstOrNull()?.value.orEmpty()
+                if (normalizeLtxCode(currentCode) != normalizeLtxCode(code)) {
+                    state
+                } else {
+                    state.copy(ltxLinks = entry.toLtxLinkUiModels())
+                }
             }
         }
     }

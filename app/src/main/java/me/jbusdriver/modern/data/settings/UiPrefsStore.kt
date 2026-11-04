@@ -20,7 +20,9 @@ private val Context.uiPrefsDataStore by preferencesDataStore("ui_prefs")
 interface CollectionUiPrefs {
     val movieSortOption: StateFlow<String>
     val actressSortOption: StateFlow<String>
+    val ltxSortOption: StateFlow<String>
     suspend fun setSortOption(dbType: Int, optionName: String)
+    suspend fun setLtxSortOption(optionName: String)
 }
 
 @Singleton
@@ -40,13 +42,23 @@ class UiPrefsStore @Inject constructor(
         .map { it[ACTRESS_SORT] ?: "COLLECT_DESC" }
         .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
 
+    /** Persisted sort option for LTX list (collect tab page 2) */
+    override val ltxSortOption: StateFlow<String> = dataStore.data
+        .map { it[LTX_SORT] ?: "ADDED_DESC" }
+        .stateIn(scope, SharingStarted.Eagerly, "ADDED_DESC")
+
     override suspend fun setSortOption(dbType: Int, optionName: String) {
         val key = if (dbType == 1) MOVIE_SORT else ACTRESS_SORT // 1 = MovieDBType
         dataStore.edit { it[key] = optionName }
     }
 
+    override suspend fun setLtxSortOption(optionName: String) {
+        dataStore.edit { it[LTX_SORT] = optionName }
+    }
+
     companion object {
         private val MOVIE_SORT = stringPreferencesKey("movie_sort_option")
         private val ACTRESS_SORT = stringPreferencesKey("actress_sort_option")
+        private val LTX_SORT = stringPreferencesKey("ltx_sort_option")
     }
 }
