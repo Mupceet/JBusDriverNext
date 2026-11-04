@@ -62,6 +62,24 @@
 -keep class me.jbusdriver.modern.domain.model.ActressDetail {
     !static !transient <fields>;
 }
+# LTX library snapshot is cached via GSON (CacheStore disk cache)
+-keep class me.jbusdriver.modern.domain.model.LtxLibrary {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.LtxEntry {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.LtxLink {
+    !static !transient <fields>;
+}
+# LtxLinkType constants are serialized by name() via GSON into the disk cache;
+# renaming them would poison the cache across releases.
+-keepnames enum me.jbusdriver.modern.domain.model.LtxLinkType
+-keepclassmembers enum me.jbusdriver.modern.domain.model.LtxLinkType {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+    <fields>;
+}
 -keep class me.jbusdriver.modern.domain.model.GenreGroup {
     !static !transient <fields>;
 }

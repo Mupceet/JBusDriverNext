@@ -34,6 +34,7 @@ import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.data.settings.AppSettingsContract
 import me.jbusdriver.modern.data.settings.AppSettingsStore
 import me.jbusdriver.modern.data.settings.ForumSettingsReader
+import me.jbusdriver.modern.data.settings.LtxSettingsSource
 import me.jbusdriver.modern.data.settings.MovieListSettings
 import me.jbusdriver.modern.data.settings.ThemeSettingsReader
 import me.jbusdriver.modern.data.session.CoilGifCacheReader
@@ -48,6 +49,10 @@ import me.jbusdriver.modern.data.localvideo.LocalVideoFileSource
 import me.jbusdriver.modern.data.session.LoadedGifTracker
 import me.jbusdriver.modern.data.repository.DefaultLocalVideoRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
+import me.jbusdriver.modern.data.repository.DefaultLtxRepository
+import me.jbusdriver.modern.data.repository.DefaultLtxMovieRepository
+import me.jbusdriver.modern.data.repository.LtxMovieRepository
+import me.jbusdriver.modern.data.repository.LtxRepository
 import me.jbusdriver.modern.data.repository.MagnetRepository
 import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
@@ -235,6 +240,20 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindTranslationSettingsReader(impl: AppSettingsStore): TranslationSettingsReader
+
+    /** 绑定 [LtxRepository] 到 [DefaultLtxRepository]。 */
+    @Binds
+    @Singleton
+    abstract fun bindLtxRepository(impl: DefaultLtxRepository): LtxRepository
+
+    /** 绑定 [LtxMovieRepository] 到 [DefaultLtxMovieRepository]。 */
+    @Binds
+    @Singleton
+    abstract fun bindLtxMovieRepository(impl: DefaultLtxMovieRepository): LtxMovieRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLtxSettingsSource(impl: AppSettingsStore): LtxSettingsSource
 
     @Binds
     @Singleton

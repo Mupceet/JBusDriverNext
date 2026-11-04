@@ -16,6 +16,7 @@ import me.jbusdriver.modern.data.db.dao.CategoryDao
 import me.jbusdriver.modern.data.db.dao.HistoryDao
 import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import me.jbusdriver.modern.data.db.dao.LocalVideoDao
+import me.jbusdriver.modern.data.db.dao.LtxMovieDao
 import javax.inject.Singleton
 
 @Module
@@ -39,6 +40,9 @@ object DatabaseModule {
 
     @Provides
     fun provideLinkItemDao(db: CollectDatabase): LinkItemDao = db.linkItemDao()
+
+    @Provides
+    fun provideLtxMovieDao(db: CollectDatabase): LtxMovieDao = db.ltxMovieDao()
 
     @Provides
     @Singleton

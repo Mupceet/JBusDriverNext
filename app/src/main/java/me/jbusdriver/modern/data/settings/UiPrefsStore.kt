@@ -20,7 +20,11 @@ private val Context.uiPrefsDataStore by preferencesDataStore("ui_prefs")
 interface CollectionUiPrefs {
     val movieSortOption: StateFlow<String>
     val actressSortOption: StateFlow<String>
+    val ltxSortField: StateFlow<String>
+    val ltxSortDirection: StateFlow<String>
     suspend fun setSortOption(dbType: Int, optionName: String)
+    suspend fun setLtxSortField(optionName: String)
+    suspend fun setLtxSortDirection(optionName: String)
 }
 
 @Singleton
@@ -40,13 +44,33 @@ class UiPrefsStore @Inject constructor(
         .map { it[ACTRESS_SORT] ?: "COLLECT_DESC" }
         .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
 
+    /** Persisted LTX sort field（入库时间/评分/大小/发行时间/番号） */
+    override val ltxSortField: StateFlow<String> = dataStore.data
+        .map { it[LTX_SORT_FIELD] ?: "ADDED" }
+        .stateIn(scope, SharingStarted.Eagerly, "ADDED")
+
+    /** Persisted LTX sort direction（DESC 倒序为默认） */
+    override val ltxSortDirection: StateFlow<String> = dataStore.data
+        .map { it[LTX_SORT_DIRECTION] ?: "DESC" }
+        .stateIn(scope, SharingStarted.Eagerly, "DESC")
+
     override suspend fun setSortOption(dbType: Int, optionName: String) {
         val key = if (dbType == 1) MOVIE_SORT else ACTRESS_SORT // 1 = MovieDBType
         dataStore.edit { it[key] = optionName }
     }
 
+    override suspend fun setLtxSortField(optionName: String) {
+        dataStore.edit { it[LTX_SORT_FIELD] = optionName }
+    }
+
+    override suspend fun setLtxSortDirection(optionName: String) {
+        dataStore.edit { it[LTX_SORT_DIRECTION] = optionName }
+    }
+
     companion object {
         private val MOVIE_SORT = stringPreferencesKey("movie_sort_option")
         private val ACTRESS_SORT = stringPreferencesKey("actress_sort_option")
+        private val LTX_SORT_FIELD = stringPreferencesKey("ltx_sort_field")
+        private val LTX_SORT_DIRECTION = stringPreferencesKey("ltx_sort_direction")
     }
 }

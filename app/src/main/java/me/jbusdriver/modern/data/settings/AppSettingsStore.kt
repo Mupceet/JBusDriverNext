@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
+import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.mirror.MirrorScanner
 import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.translation.LanguageCatalog
@@ -56,9 +57,15 @@ interface TranslationSettingsReader {
     suspend fun currentTranslatorConfig(): TranslatorConfig
 }
 
+/** Narrow read interface for LTX library consumers (DefaultLtxRepository / collect tab). */
+interface LtxSettingsSource {
+    val ltxEnabled: StateFlow<Boolean>
+    suspend fun currentLtxBaseUrl(): String
+}
+
 /** Full settings read/write contract for SettingsViewModel. */
 interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListSettings,
-    SitePreferenceSource, TranslationSettingsReader {
+    SitePreferenceSource, TranslationSettingsReader, LtxSettingsSource {
     // Appearance
     val showMovieTab: StateFlow<Boolean>
     val showActressTab: StateFlow<Boolean>
@@ -79,6 +86,8 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     val deeplAuthKey: StateFlow<String>
     val microsoftKey: StateFlow<String>
     val microsoftRegion: StateFlow<String>
+    // LTX
+    val ltxBaseUrl: StateFlow<String>
 
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setDynamicColor(enabled: Boolean)
@@ -96,6 +105,8 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setLibreCredentials(baseUrl: String, apiKey: String)
     suspend fun setDeeplAuthKey(key: String)
     suspend fun setMicrosoftCredentials(key: String, region: String)
+    suspend fun setLtxEnabled(enabled: Boolean)
+    suspend fun setLtxBaseUrl(baseUrl: String)
 
     suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String)
     suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>)
@@ -232,6 +243,15 @@ class AppSettingsStore @Inject constructor(
     }
     // endregion
 
+    // region LTX
+    override val ltxEnabled: StateFlow<Boolean> = flowOf(KEY_LTX_ENABLED, true)
+    override val ltxBaseUrl: StateFlow<String> = flowOf(KEY_LTX_BASE_URL, DEFAULT_LTX_BASE_URL)
+    override suspend fun currentLtxBaseUrl(): String =
+        dataStore.data.first()[KEY_LTX_BASE_URL]?.takeIf { it.isNotBlank() } ?: DEFAULT_LTX_BASE_URL
+    override suspend fun setLtxEnabled(enabled: Boolean) = put(KEY_LTX_ENABLED, enabled)
+    override suspend fun setLtxBaseUrl(baseUrl: String) = put(KEY_LTX_BASE_URL, baseUrl.trim().trimEnd('/'))
+    // endregion
+
     companion object {
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
@@ -255,6 +275,8 @@ class AppSettingsStore @Inject constructor(
         private val KEY_DEEPL_AUTH_KEY = stringPreferencesKey("deepl_auth_key")
         private val KEY_MICROSOFT_KEY = stringPreferencesKey("microsoft_key")
         private val KEY_MICROSOFT_REGION = stringPreferencesKey("microsoft_region")
+        private val KEY_LTX_ENABLED = booleanPreferencesKey("ltx_enabled")
+        private val KEY_LTX_BASE_URL = stringPreferencesKey("ltx_base_url")
 
         private val PRESET_MIRROR_URLS = listOf(
             "https://www.javbus.com",
