@@ -43,9 +43,9 @@ import javax.inject.Inject
  * 补全策略（条目量大，不做全量自动扫描），优先级从高到低：
  * - 用户点击占位卡按需补全并回填快照（插队到队首）；
  * - 滚动停留窗口内的未补全条目整体插队（UI 层滑动去抖后触发）；
+ * - 滑动途经窗口的未补全条目按经过顺序排队（UI 层滑动节流触发，边滑边补全）；
  * - 仅「已收藏 ∪ 已下载」的番号在全库加载后批量补全（队尾）。
- * 快速滑动途经但未停留的条目不入队。所有解析经单队列限流
- * （并发 [MAX_CONCURRENT_RESOLVES]），NOT_FOUND 终态不重试。
+ * 所有解析经单队列限流（并发 [MAX_CONCURRENT_RESOLVES]），NOT_FOUND 终态不重试。
  */
 @HiltViewModel
 class LtxListViewModel @Inject constructor(
@@ -76,8 +76,13 @@ class LtxListViewModel @Inject constructor(
     /** 补全快照投影（归一化番号 → 状态 + 已重建 URL 的影片快照）。 */
     private var currentSnapshots: Map<String, LtxSnapshotUi> = emptyMap()
 
-    /** 待解析队列 + 在途集合（Main 线程 confined）。 */
+    /**
+     * 待解析三段队列 + 在途集合（Main 线程 confined），优先级从高到低：
+     * [resolveQueue]（点击/停留插队）> [discoveryQueue]（滑动途经）> [batchQueue]（批量）。
+     */
     private val resolveQueue = ArrayDeque<String>()
+    private val discoveryQueue = ArrayDeque<String>()
+    private val batchQueue = ArrayDeque<String>()
     private val activeResolves = mutableSetOf<String>()
 
     /** 「已收藏∪已下载」自动补全只触发一次（每次 VM 生命周期）。 */
@@ -208,22 +213,35 @@ class LtxListViewModel @Inject constructor(
     }
 
     /**
+     * 滑动途经补全：滑动过程中（UI 层节流）把当前窗口 [index ± viewport/2] 内的
+     * 未补全番号按屏幕顺序追加到途经队列——先于批量任务、后于点击/停留插队。
+     * 不改变已有队列顺序（途经早的先处理）；已排队/在途/终态的跳过。
+     */
+    fun requestResolveVisible(index: Int, viewport: Int) {
+        enqueueDiscovery(unresolvedCodesInWindow(index, viewport))
+    }
+
+    /**
      * 滚动停留补全：滑动停止后（UI 层去抖）把停留窗口 [index ± viewport/2] 内的
-     * 未补全番号**整体插队**，优先于路过条目与批量任务；快速滑动途经但未停留的
-     * 条目不会入队。与用户点击同为队首优先级，按屏幕顺序执行。
+     * 未补全番号**整体插队**，优先于途经与批量任务。与用户点击同为队首优先级，
+     * 按屏幕顺序执行。
      */
     fun requestResolveSettled(index: Int, viewport: Int) {
+        enqueueHead(unresolvedCodesInWindow(index, viewport))
+    }
+
+    /** 窗口 [index ± viewport/2] 内未补全（UNRESOLVED）条目的番号，按屏幕顺序。 */
+    private fun unresolvedCodesInWindow(index: Int, viewport: Int): List<String> {
         val items = _uiState.value.items
-        if (items.isEmpty()) return
+        if (items.isEmpty()) return emptyList()
         val from = (index - viewport / 2).coerceAtLeast(0)
         val to = (index + viewport / 2).coerceAtMost(items.size - 1)
-        val codes = buildList {
+        return buildList {
             for (i in from..to) {
                 val item = items[i]
                 if (item.resolveState == LtxResolveState.UNRESOLVED) add(item.code)
             }
         }
-        enqueueHead(codes)
     }
 
     /** 长按复制：取该番号的全部下载链接（已确认在前、待确认在后）。 */
@@ -234,8 +252,8 @@ class LtxListViewModel @Inject constructor(
 
     /**
      * 把一批番号**插到队首**（保持给定顺序：调用方按屏幕顺序传入，这里逆序
-     * addFirst）。用户点击与停留窗口走此入口，始终先于批量任务执行；
-     * 已在途/终态的跳过，队列中已有的先移除再插到队首。
+     * addFirst）。用户点击与停留窗口走此入口，始终先于途经/批量任务执行；
+     * 已在途/终态的跳过，三段队列中已有的先移除再插到队首。
      */
     private fun enqueueHead(codes: List<String>) {
         var changed = false
@@ -246,6 +264,8 @@ class LtxListViewModel @Inject constructor(
             val snapshot = currentSnapshots[normalized]
             if (snapshot != null && snapshot.resolveState != LtxResolveState.UNRESOLVED) continue
             resolveQueue.remove(normalized)
+            discoveryQueue.remove(normalized)
+            batchQueue.remove(normalized)
             resolveQueue.addFirst(normalized)
             changed = true
         }
@@ -255,15 +275,34 @@ class LtxListViewModel @Inject constructor(
         }
     }
 
-    /** 批量任务入队（队尾）：重复入队自动跳过（队列中已有则保持原位）。 */
+    /** 途经发现入队（追加到途经队列尾）：已排队（任一段队列）/在途/终态的跳过。 */
+    private fun enqueueDiscovery(codes: List<String>) {
+        var changed = false
+        for (code in codes) {
+            val normalized = code.trim().uppercase()
+            if (normalized.isEmpty()) continue
+            if (normalized in activeResolves) continue
+            if (normalized in resolveQueue || normalized in discoveryQueue || normalized in batchQueue) continue
+            val snapshot = currentSnapshots[normalized]
+            if (snapshot != null && snapshot.resolveState != LtxResolveState.UNRESOLVED) continue
+            discoveryQueue.addLast(normalized)
+            changed = true
+        }
+        if (changed) {
+            publishResolvingState()
+            pumpWorkers()
+        }
+    }
+
+    /** 批量任务入队（最低优先级队尾）：任一段队列已有则保持原位。 */
     private fun enqueueResolve(code: String) {
         val normalized = code.trim().uppercase()
         if (normalized.isEmpty()) return
         if (normalized in activeResolves) return
+        if (normalized in resolveQueue || normalized in discoveryQueue || normalized in batchQueue) return
         val snapshot = currentSnapshots[normalized]
         if (snapshot != null && snapshot.resolveState != LtxResolveState.UNRESOLVED) return
-        if (resolveQueue.contains(normalized)) return
-        resolveQueue.addLast(normalized)
+        batchQueue.addLast(normalized)
         publishResolvingState()
         pumpWorkers()
     }
@@ -272,10 +311,13 @@ class LtxListViewModel @Inject constructor(
         codes.forEach { enqueueResolve(it) }
     }
 
-    /** 补足并发工位：每个工位循环取队首解析，直到队列为空。 */
+    /** 补足并发工位：每个工位按优先级取队首解析，直到队列为空。 */
     private fun pumpWorkers() {
-        while (activeResolves.size < MAX_CONCURRENT_RESOLVES && resolveQueue.isNotEmpty()) {
-            val code = resolveQueue.removeFirst()
+        while (activeResolves.size < MAX_CONCURRENT_RESOLVES) {
+            val code = resolveQueue.removeFirstOrNull()
+                ?: discoveryQueue.removeFirstOrNull()
+                ?: batchQueue.removeFirstOrNull()
+                ?: break
             activeResolves.add(code)
             publishResolvingState()
             viewModelScope.launch {
@@ -296,7 +338,7 @@ class LtxListViewModel @Inject constructor(
 
     private fun publishResolvingState() {
         _uiState.update {
-            it.copy(resolvingCodes = activeResolves + resolveQueue)
+            it.copy(resolvingCodes = activeResolves + resolveQueue + discoveryQueue + batchQueue)
         }
     }
 

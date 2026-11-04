@@ -349,6 +349,101 @@ class LtxListViewModelTest {
     }
 
     @Test
+    fun requestResolveVisibleQueuesInScreenOrderAheadOfBatchTail() = runTest(testDispatcher) {
+        // 库：3 个未补全途经条目（屏幕序 DISC-001..003）+ 5 个已下载批量条目
+        val bigLibrary = LtxLibrary(
+            updatedAtMillis = 42L,
+            entries = listOf(
+                LtxEntry(code = "DISC-001", isPending = false, addedAtMillis = 800L),
+                LtxEntry(code = "DISC-002", isPending = false, addedAtMillis = 700L),
+                LtxEntry(code = "DISC-003", isPending = false, addedAtMillis = 600L),
+                LtxEntry(code = "BATCH-001", isPending = false, addedAtMillis = 500L),
+                LtxEntry(code = "BATCH-002", isPending = false, addedAtMillis = 400L),
+                LtxEntry(code = "BATCH-003", isPending = false, addedAtMillis = 300L),
+                LtxEntry(code = "BATCH-004", isPending = false, addedAtMillis = 200L),
+                LtxEntry(code = "BATCH-005", isPending = false, addedAtMillis = 100L),
+            )
+        )
+        val pauseGate = CompletableDeferred<Unit>()
+        val movieRepo = FakeLtxMovieRepository().apply { gate = pauseGate }
+        val viewModel = createViewModel(
+            ltxRepo = FakeLtxRepository(bigLibrary),
+            movieRepo = movieRepo,
+            localVideoRepo = StubLocalVideoRepo(downloaded = (1..5).map { "BATCH-00$it" }.toSet()),
+        )
+        viewModel.start()
+        advanceUntilIdle()
+        // 3 个 worker 冻结在批量队首三项上，BATCH-004/005 仍在批量队列
+        assertEquals(emptyList<String>(), movieRepo.resolveCalls)
+
+        // 全库窗口途经一遍：途经条目按屏幕顺序入队，先于仍在排队的批量条目；
+        // 已排队（批量）/在途的条目不重复入队
+        viewModel.requestResolveVisible(0, 16)
+        pauseGate.complete(Unit)
+        advanceUntilIdle()
+
+        val calls = movieRepo.resolveCalls
+        assertEquals(8, calls.size)
+        assertTrue(
+            "discovery should keep screen order DISC-001<002<003, calls=$calls",
+            calls.indexOf("DISC-001") < calls.indexOf("DISC-002") &&
+                calls.indexOf("DISC-002") < calls.indexOf("DISC-003")
+        )
+        assertTrue(
+            "discovery DISC-003 should run ahead of queued batch BATCH-004, calls=$calls",
+            calls.indexOf("DISC-003") < calls.indexOf("BATCH-004")
+        )
+    }
+
+    @Test
+    fun requestResolveSettledJumpsAheadOfDiscoveryQueue() = runTest(testDispatcher) {
+        // 库：5 个未补全条目，无批量任务；gate 冻结全部 worker 制造途经队列积压
+        val bigLibrary = LtxLibrary(
+            updatedAtMillis = 42L,
+            entries = (1..5).map { i ->
+                LtxEntry(code = "SCREEN-00$i", isPending = false, addedAtMillis = (6 - i).toLong())
+            }
+        )
+        val pauseGate = CompletableDeferred<Unit>()
+        val movieRepo = FakeLtxMovieRepository().apply { gate = pauseGate }
+        val viewModel = createViewModel(ltxRepo = FakeLtxRepository(bigLibrary), movieRepo = movieRepo)
+        viewModel.start()
+        advanceUntilIdle()
+
+        // 全库窗口途经一遍：3 个 worker 冻结在 SCREEN-001..003 上，004/005 在途经队列
+        viewModel.requestResolveVisible(0, 16)
+        // 停留窗口只覆盖屏幕最后一项 SCREEN-005 → 应从途经队列提到队首
+        viewModel.requestResolveSettled(4, 1)
+        pauseGate.complete(Unit)
+        advanceUntilIdle()
+
+        val calls = movieRepo.resolveCalls
+        assertEquals(5, calls.size)
+        assertTrue(
+            "settled SCREEN-005 should jump ahead of discovery-queued SCREEN-004, calls=$calls",
+            calls.indexOf("SCREEN-005") < calls.indexOf("SCREEN-004")
+        )
+    }
+
+    @Test
+    fun requestResolveVisibleSkipsTerminalStatesAndDuplicates() = runTest(testDispatcher) {
+        val movieRepo = FakeLtxMovieRepository().apply {
+            // AAA-002 站内未收录（终态，途经入队应跳过）
+            rows.value = listOf(LtxMovie(code = "AAA-002", resolveState = LtxResolveState.NOT_FOUND))
+        }
+        val viewModel = createViewModel(movieRepo = movieRepo)
+        viewModel.start()
+        advanceUntilIdle()
+
+        viewModel.requestResolveVisible(0, 10)
+        viewModel.requestResolveVisible(0, 10) // 同窗口重复触发幂等
+        advanceUntilIdle()
+
+        assertEquals(listOf("AAA-001", "AAA-003"), movieRepo.resolveCalls.sorted())
+        assertTrue(viewModel.uiState.value.resolvingCodes.isEmpty())
+    }
+
+    @Test
     fun resolveFilterDefaultsToHidingNotFoundEntries() = runTest(testDispatcher) {
         val movieRepo = FakeLtxMovieRepository().apply {
             // AAA-002 站内未收录（终态）

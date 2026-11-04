@@ -31,6 +31,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.data.db.entity.LtxResolveState
@@ -39,6 +40,8 @@ import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.components.ScrollableCenteredState
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import java.text.DateFormat
 import java.util.Date
 
@@ -69,8 +72,11 @@ fun LtxListScreen(
         if (active) viewModel.start()
     }
 
-    // 滚动/内容驱动的停留补全：滑动停止（索引 400ms 无变化）后把停留窗口内的未补全
-    // 条目整体插队补全——快速滑动途中的条目不入队，停留界面始终优先于批量任务。
+    // 滚动驱动的补全分两层，兼顾「边滑边补全」与「停留优先」：
+    // 1) 途经发现：滑动过程中节流触发（150ms），把当前窗口内的未补全条目按屏幕
+    //    顺序排队补全——快速滑动途经的条目也会持续入队，接近其它页面边滑边加载的体验；
+    // 2) 停留插队：滑动停止（索引 400ms 无变化）后把停留窗口内的未补全条目整体
+    //    插到队首，保证停留界面始终优先于途经与批量任务完成。
     // key 用 items 列表本身（按内容判等）：筛选/排序切换会整体替换条目而尺寸未必变化，
     // 仅以 size 为 key 时新窗口的未补全条目不会触发补全，需要滑动一下才恢复。
     // snapshotFlow 订阅即发射当前值，页面激活/列表变化重启后都从当前位置出发。
@@ -81,9 +87,25 @@ fun LtxListScreen(
         } else {
             snapshotFlow { listState.firstVisibleItemIndex }
         }
-        scrollIndexFlow.collectLatest { index ->
-            delay(LTX_RESOLVE_SETTLE_DEBOUNCE_MS)
-            viewModel.requestResolveSettled(index, LTX_RESOLVE_VIEWPORT)
+        // MovieList 在 item 0 放页头，items 列表索引相对 lazy 索引整体偏移 1
+        fun toItemsIndex(lazyIndex: Int): Int = (lazyIndex - 1).coerceAtLeast(0)
+        launch {
+            var lastDiscoveryMark: TimeMark? = null
+            scrollIndexFlow.collect { lazyIndex ->
+                val mark = lastDiscoveryMark
+                if (mark == null ||
+                    mark.elapsedNow().inWholeMilliseconds >= LTX_RESOLVE_DISCOVERY_THROTTLE_MS
+                ) {
+                    lastDiscoveryMark = TimeSource.Monotonic.markNow()
+                    viewModel.requestResolveVisible(toItemsIndex(lazyIndex), LTX_RESOLVE_VIEWPORT)
+                }
+            }
+        }
+        launch {
+            scrollIndexFlow.collectLatest { lazyIndex ->
+                delay(LTX_RESOLVE_SETTLE_DEBOUNCE_MS)
+                viewModel.requestResolveSettled(toItemsIndex(lazyIndex), LTX_RESOLVE_VIEWPORT)
+            }
         }
     }
 
@@ -261,7 +283,10 @@ private fun LtxListHeader(
     }
 }
 
-/** 滑动去抖窗口：滚动索引停止变化该时长后视为停留，触发停留补全。 */
+/** 途经发现节流窗口：滑动过程中至多按该间隔入队一次当前窗口，避免逐帧触发。 */
+private const val LTX_RESOLVE_DISCOVERY_THROTTLE_MS = 150L
+
+/** 滑动去抖窗口：滚动索引停止变化该时长后视为停留，触发停留补全插队。 */
 private const val LTX_RESOLVE_SETTLE_DEBOUNCE_MS = 400L
 
 /** 停留补全窗口大小（条目数，以首个可见项为中心 ±viewport/2）。 */
