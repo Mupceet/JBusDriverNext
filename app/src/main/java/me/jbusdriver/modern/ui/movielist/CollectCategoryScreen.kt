@@ -59,9 +59,10 @@ fun CollectCategoryScreen(
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState { 2 }
 
-    // Sync pager → tab
-    LaunchedEffect(pagerState.currentPage) {
-        if (selectedTab != pagerState.currentPage) selectedTab = pagerState.currentPage
+    // Sync pager → tab：必须用 settledPage（动画结束后才更新）。currentPage 在
+    // 0→2 动画途经 1 时会瞬时变为 1，若据此回写 selectedTab 会把动画拉回第二页。
+    LaunchedEffect(pagerState.settledPage) {
+        if (selectedTab != pagerState.settledPage) selectedTab = pagerState.settledPage
     }
     // Sync tab → pager
     LaunchedEffect(selectedTab) {
@@ -137,12 +138,17 @@ fun CollectCategoryScreen(
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 数字仅在选中时显示，避免两个 chip + 筛选按钮一行放不下
             FilterChip(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
                 label = {
                     Text(
-                        stringResource(R.string.tab_movies_count, movieState.movies.size),
+                        if (selectedTab == 0) {
+                            stringResource(R.string.tab_movies_count, movieState.movies.size)
+                        } else {
+                            stringResource(R.string.nav_movies)
+                        },
                         fontSize = 12.sp
                     )
                 }
@@ -153,10 +159,15 @@ fun CollectCategoryScreen(
                 onClick = { selectedTab = 1 },
                 label = {
                     Text(
-                        stringResource(
-                            R.string.tab_actresses_count,
-                            actressState.actresses.size
-                        ), fontSize = 12.sp
+                        if (selectedTab == 1) {
+                            stringResource(
+                                R.string.tab_actresses_count,
+                                actressState.actresses.size
+                            )
+                        } else {
+                            stringResource(R.string.nav_actresses)
+                        },
+                        fontSize = 12.sp
                     )
                 }
             )
@@ -165,12 +176,11 @@ fun CollectCategoryScreen(
                 selected = activeFilterState.filterState.hasActiveFilters,
                 onClick = { showFilterSheet = true },
                 label = {
-                    if (activeFilterState.filterState.hasActiveFilters) {
+                    val activeCount = activeFilterState.filterState.activeFilterCount
+                    if (activeCount > 0) {
                         Text(
-                            stringResource(
-                                R.string.filter_count,
-                                activeFilterState.filterState.activeFilterCount
-                            ), fontSize = 12.sp
+                            stringResource(R.string.filter_count, activeCount),
+                            fontSize = 12.sp
                         )
                     } else {
                         Text(stringResource(R.string.filter), fontSize = 12.sp)

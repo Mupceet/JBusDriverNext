@@ -1,0 +1,300 @@
+package me.jbusdriver.modern.ui.movielist
+
+import android.widget.Toast
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import me.jbusdriver.R
+import me.jbusdriver.modern.core.copy
+import me.jbusdriver.modern.data.db.entity.LtxResolveState
+import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.components.ScrollableCenteredState
+import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
+import java.text.DateFormat
+import java.util.Date
+
+/**
+ * 影片 tab LTX 页：全库列表 + 状态筛选 + 排序 + 可见窗口驱动的站内补全。
+ *
+ * 展示契约：卡片信息来自站内补全快照（本地收藏同款逻辑），未补全条目
+ * 以番号占位卡展示；下载链接通过长按复制或详情页磁力弹窗 LTX 分组获取。
+ */
+@Composable
+fun LtxListScreen(
+    modifier: Modifier = Modifier,
+    active: Boolean = true,
+    onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
+    viewModel: LtxListViewModel = hiltViewModel(key = "movie_ltx"),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val ltxEnabled by viewModel.ltxEnabled.collectAsStateWithLifecycle()
+    val downloadedCodes by viewModel.downloadedCodes.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val uiPrefsState by hiltViewModel<UiPrefsViewModel>().uiState.collectAsStateWithLifecycle()
+    val isGrid = uiPrefsState.isGrid
+
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+
+    LaunchedEffect(active) {
+        if (active) viewModel.start()
+    }
+
+    // 滚动/内容驱动的停留补全：滑动停止（索引 400ms 无变化）后把停留窗口内的未补全
+    // 条目整体插队补全——快速滑动途中的条目不入队，停留界面始终优先于批量任务。
+    // key 用 items 列表本身（按内容判等）：筛选/排序切换会整体替换条目而尺寸未必变化，
+    // 仅以 size 为 key 时新窗口的未补全条目不会触发补全，需要滑动一下才恢复。
+    // snapshotFlow 订阅即发射当前值，页面激活/列表变化重启后都从当前位置出发。
+    LaunchedEffect(active, isGrid, uiState.items) {
+        if (!active || uiState.items.isEmpty()) return@LaunchedEffect
+        val scrollIndexFlow = if (isGrid) {
+            snapshotFlow { gridState.firstVisibleItemIndex }
+        } else {
+            snapshotFlow { listState.firstVisibleItemIndex }
+        }
+        scrollIndexFlow.collectLatest { index ->
+            delay(LTX_RESOLVE_SETTLE_DEBOUNCE_MS)
+            viewModel.requestResolveSettled(index, LTX_RESOLVE_VIEWPORT)
+        }
+    }
+
+    when {
+        !ltxEnabled -> {
+            ScrollableCenteredState(modifier = modifier) {
+                Text(
+                    stringResource(R.string.ltx_disabled),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        uiState.isLoading -> {
+            ScrollableCenteredState(modifier = modifier) {
+                CircularProgressIndicator()
+            }
+        }
+
+        uiState.error != null && uiState.items.isEmpty() -> {
+            ErrorView(
+                message = stringResource(uiState.error ?: R.string.load_failed),
+                onRetry = viewModel::start,
+                modifier = modifier
+            )
+        }
+
+        uiState.items.isEmpty() -> {
+            ScrollableCenteredState(modifier = modifier) {
+                Text(
+                    stringResource(R.string.ltx_empty),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        else -> {
+            val pendingLabel = stringResource(R.string.ltx_pending)
+            val resolvingLabel = stringResource(R.string.ltx_resolving)
+            val tapToResolveLabel = stringResource(R.string.ltx_tap_to_resolve)
+            val notFoundLabel = stringResource(R.string.ltx_not_found)
+            val noLinksMessage = stringResource(R.string.ltx_no_links)
+            val cards = remember(
+                uiState.items,
+                uiState.resolvingCodes,
+                pendingLabel,
+                resolvingLabel,
+                tapToResolveLabel,
+                notFoundLabel,
+            ) {
+                uiState.items.map {
+                    it.toCardModel(
+                        pendingLabel = pendingLabel,
+                        resolvingLabel = resolvingLabel,
+                        tapToResolveLabel = tapToResolveLabel,
+                        notFoundLabel = notFoundLabel,
+                        isResolving = it.code in uiState.resolvingCodes,
+                    )
+                }
+            }
+            val itemsByCode = remember(uiState.items) {
+                uiState.items.associateBy { it.code }
+            }
+
+            MovieList(
+                movies = cards,
+                onMovieClick = { movie, censor ->
+                    val item = itemsByCode[movie.code.uppercase()]
+                    when {
+                        // 已补全且持有站内链接 → 进入详情
+                        item?.movie != null && movie.link.isNotBlank() ->
+                            onMovieClick(movie, censor)
+
+                        // 未补全 → 点击按需补全并回填，完成后再次点击进入详情
+                        item != null && item.resolveState == LtxResolveState.UNRESOLVED ->
+                            viewModel.resolveNow(item.code)
+
+                        // NOT_FOUND 终态：无操作（角标已提示站内未收录）
+                        else -> Unit
+                    }
+                },
+                isDownloaded = { it.code.uppercase() in downloadedCodes },
+                isGrid = isGrid,
+                header = {
+                    LtxListHeader(
+                        uiState = uiState,
+                        onRefresh = viewModel::refresh,
+                    )
+                },
+                movieLongPressMenu = { movie, close ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ltx_copy_links)) },
+                        onClick = {
+                            val links = viewModel.linksFor(movie.code)
+                            val message = if (links.isNotEmpty()) {
+                                context.resources.getQuantityString(
+                                    R.plurals.ltx_links_copied, links.size, links.size
+                                )
+                            } else {
+                                noLinksMessage
+                            }
+                            if (links.isNotEmpty()) {
+                                context.copy(links.joinToString("\n") { it.uri })
+                            }
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            close()
+                        }
+                    )
+                },
+                modifier = modifier,
+                listState = listState,
+                gridState = gridState,
+            )
+        }
+    }
+}
+
+/** 精简头部：条目数 + 更新时间 + 补全进度 + 刷新。筛选/排序入口在影片 tab chip 行右侧。 */
+@Composable
+private fun LtxListHeader(
+    uiState: LtxListUiState,
+    onRefresh: () -> Unit,
+) {
+    val updatedText = remember(uiState.updatedAtMillis) {
+        if (uiState.updatedAtMillis > 0) {
+            DateFormat.getDateInstance(DateFormat.SHORT).format(Date(uiState.updatedAtMillis))
+        } else ""
+    }
+
+    // 列表容器自带 14dp contentPadding，此处不再叠加水平边距，保持与卡片对齐
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (uiState.totalCount > 0 || updatedText.isNotBlank()) {
+            Text(
+                if (updatedText.isBlank()) {
+                    stringResource(R.string.ltx_count_only, uiState.totalCount)
+                } else {
+                    stringResource(R.string.ltx_count_updated, uiState.totalCount, updatedText)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        if (uiState.resolvingCodes.isNotEmpty()) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+            )
+            Text(
+                pluralStringResource(
+                    R.plurals.ltx_resolving_count,
+                    uiState.resolvingCodes.size,
+                    uiState.resolvingCodes.size
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        // 纯文本刷新入口：TextButton 的 40dp 最小高度会把整行撑高
+        Text(
+            stringResource(R.string.refresh),
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable(onClick = onRefresh)
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+/** 滑动去抖窗口：滚动索引停止变化该时长后视为停留，触发停留补全。 */
+private const val LTX_RESOLVE_SETTLE_DEBOUNCE_MS = 400L
+
+/** 停留补全窗口大小（条目数，以首个可见项为中心 ±viewport/2）。 */
+private const val LTX_RESOLVE_VIEWPORT = 24
+
+/** LTX 条目 → MovieList 卡片模型：已补全展示快照，未补全以番号占位（提示点击补全）。 */
+private fun LtxItemUiModel.toCardModel(
+    pendingLabel: String,
+    resolvingLabel: String,
+    tapToResolveLabel: String,
+    notFoundLabel: String,
+    isResolving: Boolean,
+): MovieUiModel {
+    val tags = buildList {
+        add("LTX")
+        if (isPending) add(pendingLabel)
+        if (resolveState == LtxResolveState.NOT_FOUND) add(notFoundLabel)
+        if (resolveState == LtxResolveState.UNRESOLVED) {
+            add(if (isResolving) resolvingLabel else tapToResolveLabel)
+        }
+    }
+    val resolved = movie.takeIf { resolveState == LtxResolveState.RESOLVED }
+    return if (resolved != null) {
+        // 卡片日期取 LTX 库原始 date（item.date 已含快照回退），补全前后展示一致
+        resolved.copy(date = date, tags = tags)
+    } else {
+        MovieUiModel(
+            title = code,
+            imageUrl = "",
+            code = code,
+            date = date,
+            link = "",
+            tags = tags
+        )
+    }
+}
