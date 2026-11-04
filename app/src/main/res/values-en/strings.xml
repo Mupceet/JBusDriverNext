@@ -278,7 +278,6 @@
     <string name="update_current_version">Current version</string>
     <string name="update_latest_version">Latest version</string>
     <string name="update_apk_size">APK size: %1$s</string>
-    <string name="update_notes_title">What\'s new</string>
     <string name="update_action">Update now</string>
     <string name="update_later">Later</string>
     <string name="update_up_to_date">You\'re up to date</string>

@@ -41,52 +41,53 @@ class AppUpdateRepositoryTest {
 
     // endregion
 
-    // region releaseNotesToPlainText
+    // region releaseNotesMarkdown
 
     @Test
-    fun releaseNotesToPlainText_nullOrBlankIsEmpty() {
-        assertEquals("", releaseNotesToPlainText(null))
-        assertEquals("", releaseNotesToPlainText("   "))
+    fun releaseNotesMarkdown_nullOrBlankIsEmpty() {
+        assertEquals("", releaseNotesMarkdown(null))
+        assertEquals("", releaseNotesMarkdown("   "))
     }
 
     @Test
-    fun releaseNotesToPlainText_placeholderBodyIsEmpty() {
-        assertEquals("", releaseNotesToPlainText("Release v1.20260811"))
-        assertEquals("", releaseNotesToPlainText("release v1.20260811\n"))
+    fun releaseNotesMarkdown_placeholderBodyIsEmpty() {
+        assertEquals("", releaseNotesMarkdown("Release v1.20260811"))
+        assertEquals("", releaseNotesMarkdown("release v1.20260811\n"))
     }
 
     @Test
-    fun releaseNotesToPlainText_stripsMarkdownAndHeaderLine() {
+    fun releaseNotesMarkdown_stripsOnlyHeaderLineAndKeepsMarkdown() {
         val body = """
             Release v1.20261011
 
             ## 本次更新
 
-            ### 新增
-
             * **新功能**：支持 [更新链接](https://example.com)
             * 设置页新增检查更新入口
-
-            ### 修复
 
             - 修复列表刷新问题
             ----
         """.trimIndent()
 
         val expected = """
-            本次更新
+            ## 本次更新
 
-            新增
+            * **新功能**：支持 [更新链接](https://example.com)
+            * 设置页新增检查更新入口
 
-            新功能：支持 更新链接
-            设置页新增检查更新入口
-
-            修复
-
-            修复列表刷新问题
+            - 修复列表刷新问题
+            ----
         """.trimIndent()
 
-        assertEquals(expected, releaseNotesToPlainText(body))
+        assertEquals(expected, releaseNotesMarkdown(body))
+    }
+
+    @Test
+    fun releaseNotesMarkdown_squeezesConsecutiveBlankLines() {
+        assertEquals(
+            "# 更新日志\n\n老司机？快开车！",
+            releaseNotesMarkdown("Release v1.20261011\n\n\n# 更新日志\n\n\n\n老司机？快开车！\n\n\n")
+        )
     }
 
     // endregion

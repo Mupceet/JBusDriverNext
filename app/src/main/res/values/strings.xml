@@ -268,7 +268,6 @@
     <string name="update_current_version">當前版本</string>
     <string name="update_latest_version">最新版本</string>
     <string name="update_apk_size">安裝包大小：%1$s</string>
-    <string name="update_notes_title">更新內容</string>
     <string name="update_action">立即更新</string>
     <string name="update_later">稍後</string>
     <string name="update_up_to_date">已是最新版本</string>

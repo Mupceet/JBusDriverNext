@@ -20,7 +20,7 @@ import javax.inject.Singleton
 data class AppUpdateInfo(
     /** 远端版本名，如 `1.20261011`（已去掉 tag 的 `v` 前缀）。 */
     val versionName: String,
-    /** 更新说明纯文本；无有效内容时为空字符串，UI 应隐藏说明区块。 */
+    /** 更新说明 Markdown（已去掉注入的 `Release vX` 标题行）；无有效内容时为空字符串，UI 应隐藏说明区块。 */
     val releaseNotes: String,
     /** APK 下载地址（优先 gh-proxy 加速，探测不可达时为直连地址）。 */
     val downloadUrl: String,
@@ -63,9 +63,9 @@ class DefaultAppUpdateRepository @Inject constructor(
         val downloadUrl = requireNotNull(asset.browserDownloadUrl) {
             "Release asset without browser_download_url"
         }
-        AppUpdateInfo(
-            versionName = tagName.removePrefix("v").removePrefix("V"),
-            releaseNotes = releaseNotesToPlainText(release.body),
+            AppUpdateInfo(
+                versionName = tagName.removePrefix("v").removePrefix("V"),
+                releaseNotes = releaseNotesMarkdown(release.body),
             downloadUrl = resolveDownloadUrl(downloadUrl),
             fileName = asset.name,
             fileSizeBytes = asset.size ?: 0L,
@@ -189,41 +189,25 @@ internal fun compareVersionNames(remote: String, current: String): Int {
 }
 
 /**
- * Release 正文 → 更新弹框纯文本。
+ * Release 正文 → 更新弹框渲染用的 Markdown。
  *
- * 不引入 Markdown 渲染，只做最小语法剥离：发布流程注入的 `Release vX`
- * 标题行（版本号已在弹框头部展示）、标题 `#` 前缀、粗体 `**`、链接
- * `[文字](地址)` → 文字、列表行 `* `-`- `-`+ ` 前缀、`----` 分隔线 →
- * 空行；连续空行压成单个、首尾空白裁掉。占位正文（仅 `Release vX`
- * 一行）剥离后为空字符串。
+ * 发布流程（`.github/workflows/release.yml`）从 updateLog.md 组装正文，仅注入
+ * 一行 `Release vX` 标题（版本号已在弹框头部展示）；这里只移除该行，并压缩连续
+ * 空行、裁掉首尾空白，标题/列表/粗体/链接等 Markdown 语法原样保留，由
+ * `me.jbusdriver.modern.ui.settings.ReleaseNotesContent` 渲染。占位正文（仅
+ * `Release vX` 一行）剥离后为空字符串。
  */
-internal fun releaseNotesToPlainText(body: String?): String {
+internal fun releaseNotesMarkdown(body: String?): String {
     if (body.isNullOrBlank()) return ""
-    return body.lines()
-        .filterNot { it.trim().matches(releaseHeaderLine) }
-        .map(::plainNoteLine)
-        .map(String::trim)
-        .let(::squeezeBlankNoteLines)
+    return squeezeBlankNoteLines(
+        body.lines()
+            .filterNot { it.trim().matches(releaseHeaderLine) }
+            .map(String::trim)
+    )
 }
 
 /** 发布流程注入的固定标题行，如 `Release v1.20261011`。 */
 private val releaseHeaderLine = Regex("(?i)^release\\s+v[\\w.+-]*$")
-
-private val noteHeading = Regex("^#{1,6}\\s+")
-private val noteBullet = Regex("^[*_+\\-]\\s+")
-private val noteDivider = Regex("^[-*_]{3,}$")
-private val noteBold = Regex("\\*\\*(.+?)\\*\\*")
-private val noteLink = Regex("\\[([^]]+)]\\([^)]*\\)")
-
-private fun plainNoteLine(line: String): String {
-    var text = line.trim()
-    if (noteDivider.matches(text)) return ""
-    text = text.replaceFirst(noteHeading, "")
-    text = text.replaceFirst(noteBullet, "")
-    text = noteBold.replace(text, "$1")
-    text = noteLink.replace(text, "$1")
-    return text
-}
 
 private fun squeezeBlankNoteLines(lines: List<String>): String {
     val result = mutableListOf<String>()

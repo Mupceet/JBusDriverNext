@@ -35,6 +35,7 @@ Claude Code reads `CLAUDE.md`, which imports this file with `@AGENTS.md`.
 - Verify Compose API calls compile before finalizing; do not guess package paths for `inlineContent`, `SubcomposeAsyncImage`, or similar APIs.
 - When implementing caching or stale-while-revalidate behavior, test scroll position retention, duplicate key safety, and tab-switch refresh behavior.
 - ProGuard/R8 keep rules must cover all Gson model classes; add `@Keep` or rules proactively.
+- The update dialog renders `app/src/main/assets/updateLog.md` as a controlled Markdown subset only: H1-H6 headings, `*`/`-`/`+` bullets, `**bold**`, `[text](url)` links, `----` dividers. No nesting, no multi-line paragraph aggregation. Keep new updateLog entries within that subset; if a new syntax is needed, extend `ui/settings/ReleaseNotes.kt` first.
 
 ## Build Commands
 
