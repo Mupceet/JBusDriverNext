@@ -25,6 +25,7 @@
     <string name="empty_content">Content is empty</string>
     <string name="no_data">No data</string>
     <string name="load_failed">Failed to load, please retry</string>
+    <string name="movie_code_not_found">Movie "%1$s" not found. The code may be wrong or the movie does not exist.</string>
     <string name="refresh_failed">Refresh failed</string>
     <string name="no_more">No more items</string>
     <string name="pull_to_refresh">Pull to refresh</string>

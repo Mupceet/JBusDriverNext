@@ -293,6 +293,9 @@ fun JBusNavigation(
                     onImageClick = { images, startIndex ->
                         backStack.add(RouteImageViewer(images, startIndex))
                     },
+                    onOpenMovieDetail = { url ->
+                        backStack.add(RouteMovieDetail(movieUrl = url, censorType = null))
+                    },
                     onBack = { backStack.removeLastOrNull() }
                 )
             }

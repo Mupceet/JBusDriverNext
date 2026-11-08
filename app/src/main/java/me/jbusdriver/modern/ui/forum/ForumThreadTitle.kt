@@ -64,8 +64,11 @@ internal fun ForumThreadTitle(
     overflow: TextOverflow = TextOverflow.Clip,
     trailingLabels: List<ForumInlineLabel> = emptyList(),
     trailingIcons: List<ForumInlineIcon> = emptyList(),
-    badgeStyle: TextStyle = MaterialTheme.typography.bodySmall
+    badgeStyle: TextStyle = MaterialTheme.typography.bodySmall,
+    /** 点击标题中识别出的影片番号；null 表示不识别。 */
+    onMovieCodeClick: ((String) -> Unit)? = null
 ) {
+    val primary = MaterialTheme.colorScheme.primary
     val badges = remember(typeName, typeColor) {
         buildList {
             if (typeName.isNotEmpty()) {
@@ -80,14 +83,20 @@ internal fun ForumThreadTitle(
             }
         }
     }
-    val annotatedTitle = remember(title, style, badges, trailingLabels, trailingIcons) {
+    val annotatedTitle = remember(
+        title, style, badges, trailingLabels, trailingIcons, primary, onMovieCodeClick
+    ) {
         buildAnnotatedString {
             badges.forEach { badge ->
                 appendInlineContent(badge.id, badge.label)
                 append(" ")
             }
             withStyle(style.toSpanStyle()) {
-                append(title)
+                if (onMovieCodeClick != null) {
+                    appendMovieCodeSegments(title, primary, onMovieCodeClick)
+                } else {
+                    append(title)
+                }
             }
             trailingLabels.forEach { label ->
                 append(" ")

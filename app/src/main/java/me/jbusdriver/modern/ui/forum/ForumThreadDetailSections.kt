@@ -70,7 +70,8 @@ import me.jbusdriver.modern.domain.model.hasNext
 @Composable
 internal fun ThreadHeader(
     detail: ForumThreadDetail,
-    onTitleLongClick: () -> Unit = {}
+    onTitleLongClick: () -> Unit = {},
+    onMovieCodeClick: ((String) -> Unit)? = null
 ) {
     val haptics = LocalHapticFeedback.current
     Column {
@@ -80,6 +81,7 @@ internal fun ThreadHeader(
             typeColor = detail.typeColor,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             badgeStyle = MaterialTheme.typography.titleMedium,
+            onMovieCodeClick = onMovieCodeClick,
             modifier = Modifier
                 .padding(top = 4.dp)
                 .pointerInput(onTitleLongClick) {
@@ -320,6 +322,7 @@ internal fun ReplyItem(
     onLoadAllGifs: () -> Unit = {},
     onLongClick: () -> Unit = {},
     onQuoteClick: (Int) -> Unit = {},
+    onMovieCodeClick: ((String) -> Unit)? = null,
     onViewComments: (ForumReply) -> Unit = {}
 ) {
     Row(
@@ -373,7 +376,8 @@ internal fun ReplyItem(
                 onLoadGif = onLoadGif,
                 onLoadAllGifs = onLoadAllGifs,
                 onLongClick = onLongClick,
-                onQuoteClick = onQuoteClick
+                onQuoteClick = onQuoteClick,
+                onMovieCodeClick = onMovieCodeClick
             )
             PostCommentsPreview(
                 comments = reply.comments,

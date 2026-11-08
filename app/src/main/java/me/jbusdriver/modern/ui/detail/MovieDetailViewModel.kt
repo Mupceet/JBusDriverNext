@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.LtxRepository
@@ -29,6 +30,7 @@ import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.domain.model.UncensoredMovieCategory
+import me.jbusdriver.modern.domain.model.movieCodeFromUrl
 import me.jbusdriver.modern.domain.model.normalizeLtxCode
 import me.jbusdriver.modern.ui.LtxLinkUiModel
 import me.jbusdriver.modern.ui.MagnetUiModel
@@ -72,6 +74,7 @@ class MovieDetailViewModel @Inject constructor(
     private val translationSettings: TranslationSettingsReader,
     private val ltxRepository: LtxRepository,
     private val ltxSettings: LtxSettingsSource,
+    private val siteConfig: SiteConfig
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -92,7 +95,23 @@ class MovieDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, ltxLinks = emptyList()) }
             try {
-                val detail = repository.getMovieDetail(url)
+                // 番号型 URL（论坛跳转/分享）在有码路径加载失败时，回退再试一次无码路径
+                // （/uncensored/{番号}）；成功后按无码详情处理，收藏分类/刷新链接保持一致。
+                var effectiveUrl = url
+                var effectiveCensorType = censorType
+                val detail = try {
+                    repository.getMovieDetail(url)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    val code = movieCodeFromUrl(url)
+                    if (censorType != null || code == null || "/uncensored/" in url) throw e
+                    effectiveUrl = siteConfig.resolve("/uncensored/$code")
+                    effectiveCensorType = "UNCENSORED"
+                    currentUrl = effectiveUrl
+                    this@MovieDetailViewModel.censorType = effectiveCensorType
+                    repository.getMovieDetail(effectiveUrl)
+                }
                 _uiState.update {
                     it.copy(
                         movieDetail = detail.toUiModel(),
@@ -103,7 +122,7 @@ class MovieDetailViewModel @Inject constructor(
                 }
                 applyDefaultTranslationPolicy()
                 loadMagnets()
-                val movie = detail.toUiModel().toCollectionMovie(url)
+                val movie = detail.toUiModel().toCollectionMovie(effectiveUrl)
                 val collected = collectRepository.isMovieCollected(movie)
                 _uiState.update { it.copy(isCollected = collected) }
                 val code = detail.headers.firstOrNull()?.value.orEmpty()
@@ -117,7 +136,7 @@ class MovieDetailViewModel @Inject constructor(
                             title = movie.title,
                             imageUrl = movie.imageUrl,
                             date = movie.date,
-                            censorType = censorType,
+                            censorType = effectiveCensorType,
                         )
                     }
                 }

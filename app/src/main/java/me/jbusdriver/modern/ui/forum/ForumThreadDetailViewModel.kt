@@ -31,6 +31,7 @@ import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
+import me.jbusdriver.modern.domain.model.normalizeMovieCode
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.UserMessage
 
@@ -133,6 +134,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private val tid: Int = navKey.tid
     val shareThreadUrl: String
         get() = siteConfig.resolve("/forum/forum.php?mod=viewthread&tid=$tid")
+
+    /** 帖子中识别出的番号 → 影片详情页绝对 URL（`{baseUrl}/{番号}`，规范化补连字符/大写）。 */
+    fun movieUrlForCode(code: String): String =
+        siteConfig.resolve("/" + (normalizeMovieCode(code) ?: code.trim().uppercase()))
     private var currentPage = 1
     private var requestGeneration = 0L
     private var activeIdentity: DetailRequestIdentity? = null

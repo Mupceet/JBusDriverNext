@@ -67,6 +67,8 @@ import me.jbusdriver.modern.domain.model.RichList
 import me.jbusdriver.modern.domain.model.RichListItem
 import me.jbusdriver.modern.domain.model.RichParagraph
 import me.jbusdriver.modern.domain.model.TextPart
+import me.jbusdriver.modern.domain.model.findMovieCodeMatches
+import me.jbusdriver.modern.domain.model.normalizeMovieCode
 import me.jbusdriver.modern.ui.components.GifPlaceholder
 import kotlin.math.abs
 import kotlin.math.max
@@ -146,6 +148,8 @@ internal fun ForumPostContent(
     onLoadAllGifs: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     onQuoteClick: (Int) -> Unit = {},
+    /** 点击正文/引用块中识别出的影片番号；null 表示不做番号识别（如长按复制预览）。 */
+    onMovieCodeClick: ((String) -> Unit)? = null,
     showImages: Boolean = true
 ) {
     val viewableImageUrls = remember(blocks, loadedGifUrls, autoLoadGifs, showImages) {
@@ -178,10 +182,10 @@ internal fun ForumPostContent(
         blocks.forEach { block ->
             when (block) {
                 is ContentBlock.RichText -> block.paragraphs.forEach { paragraph ->
-                    StyledParagraph(paragraph)
+                    StyledParagraph(paragraph, onMovieCodeClick = onMovieCodeClick)
                 }
 
-                is ContentBlock.ListBlock -> RichListContent(block.list)
+                is ContentBlock.ListBlock -> RichListContent(block.list, onMovieCodeClick = onMovieCodeClick)
                 is ContentBlock.Image -> if (showImages) {
                     if (block.isGif && !autoLoadGifs && block.url !in loadedGifUrls) {
                         GifPlaceholder(
@@ -204,7 +208,7 @@ internal fun ForumPostContent(
                     }
                 }
 
-                is ContentBlock.Quote -> QuoteContent(block, onQuoteClick)
+                is ContentBlock.Quote -> QuoteContent(block, onQuoteClick, onMovieCodeClick)
                 is ContentBlock.RestrictedNotice -> RestrictedNotice(block.message)
             }
         }
@@ -212,12 +216,16 @@ internal fun ForumPostContent(
 }
 
 @Composable
-private fun StyledParagraph(paragraph: RichParagraph, modifier: Modifier = Modifier) {
+private fun StyledParagraph(
+    paragraph: RichParagraph,
+    modifier: Modifier = Modifier,
+    onMovieCodeClick: ((String) -> Unit)? = null
+) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     val surface = MaterialTheme.colorScheme.surface
     val primary = MaterialTheme.colorScheme.primary
-    val text = remember(paragraph, onSurface, surface, primary) {
-        paragraph.toAnnotatedString(onSurface, surface, primary)
+    val text = remember(paragraph, onSurface, surface, primary, onMovieCodeClick) {
+        paragraph.toAnnotatedString(onSurface, surface, primary, onMovieCodeClick)
     }
     val inlineContent = remember(paragraph) {
         paragraph.toInlineContent()
@@ -238,7 +246,8 @@ private fun StyledParagraph(paragraph: RichParagraph, modifier: Modifier = Modif
 private fun RichParagraph.toAnnotatedString(
     onSurface: Color,
     surface: Color,
-    primary: Color
+    primary: Color,
+    onMovieCodeClick: ((String) -> Unit)? = null
 ): AnnotatedString = buildAnnotatedString {
     parts.forEachIndexed { index, part ->
         if (part.inlineImageUrl.isNotEmpty()) {
@@ -249,6 +258,8 @@ private fun RichParagraph.toAnnotatedString(
                     withLink(LinkAnnotation.Url(part.linkUrl)) {
                         append(part.text)
                     }
+                } else if (onMovieCodeClick != null) {
+                    appendMovieCodeSegments(part.text, primary, onMovieCodeClick)
                 } else {
                     append(part.text)
                 }
@@ -256,6 +267,42 @@ private fun RichParagraph.toAnnotatedString(
         }
     }
 }
+
+/**
+ * 把纯文本按番号命中分段追加：普通片段原样继承外层样式，番号片段渲染为
+ * primary 色 + 下划线的可点击链接（[LinkAnnotation.Clickable]）。
+ * 仅供非链接、非内联表情的文本调用；长按复制预览等场景传 null 回调即不识别。
+ * 帖子正文/引用块与帖子标题（[ForumThreadTitle]）共用。
+ */
+internal fun AnnotatedString.Builder.appendMovieCodeSegments(
+    text: String,
+    primary: Color,
+    onMovieCodeClick: (String) -> Unit
+) {
+    var cursor = 0
+    findMovieCodeMatches(text).forEach { match ->
+        if (match.range.first > cursor) {
+            append(text.substring(cursor, match.range.first))
+        }
+        val code = normalizeMovieCode(match.value) ?: match.value
+        val linkStyle = SpanStyle(color = primary, textDecoration = TextDecoration.Underline)
+        withStyle(linkStyle) {
+            withLink(
+                LinkAnnotation.Clickable(tag = MOVIE_CODE_LINK_TAG) {
+                    onMovieCodeClick(code)
+                }
+            ) {
+                append(match.value)
+            }
+        }
+        cursor = match.range.last + 1
+    }
+    if (cursor < text.length) {
+        append(text.substring(cursor))
+    }
+}
+
+private const val MOVIE_CODE_LINK_TAG = "forum_movie_code"
 
 private fun RichParagraph.toInlineContent(): Map<String, InlineTextContent> =
     parts.mapIndexedNotNull { index, part ->
@@ -395,7 +442,11 @@ private fun Color.toHsl(): HslColor {
 }
 
 @Composable
-private fun RichListContent(list: RichList, depth: Int = 0) {
+private fun RichListContent(
+    list: RichList,
+    depth: Int = 0,
+    onMovieCodeClick: ((String) -> Unit)? = null
+) {
     Column(
         modifier = Modifier.padding(start = forumListIndentStep(depth).dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -408,11 +459,13 @@ private fun RichListContent(list: RichList, depth: Int = 0) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Column(modifier = Modifier.weight(1f)) {
-                    item.paragraphs.forEach { paragraph -> StyledParagraph(paragraph) }
+                    item.paragraphs.forEach { paragraph ->
+                        StyledParagraph(paragraph, onMovieCodeClick = onMovieCodeClick)
+                    }
                 }
             }
             item.children.forEach { child ->
-                RichListContent(child, depth + 1)
+                RichListContent(child, depth + 1, onMovieCodeClick)
             }
         }
     }
@@ -468,9 +521,20 @@ internal fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
 @Composable
 private fun QuoteContent(
     block: ContentBlock.Quote,
-    onQuoteClick: (Int) -> Unit
+    onQuoteClick: (Int) -> Unit,
+    onMovieCodeClick: ((String) -> Unit)? = null
 ) {
     val accentColor = MaterialTheme.colorScheme.primary
+    val quoteTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val contentText = remember(block.content, accentColor, onMovieCodeClick) {
+        if (onMovieCodeClick == null) {
+            AnnotatedString(block.content)
+        } else {
+            buildAnnotatedString {
+                appendMovieCodeSegments(block.content, accentColor, onMovieCodeClick)
+            }
+        }
+    }
     Card(
         shape = RoundedCornerShape(6.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -518,9 +582,9 @@ private fun QuoteContent(
                     )
                 }
                 Text(
-                    text = block.content,
+                    text = contentText,
                     style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = quoteTextColor
                 )
             }
         }

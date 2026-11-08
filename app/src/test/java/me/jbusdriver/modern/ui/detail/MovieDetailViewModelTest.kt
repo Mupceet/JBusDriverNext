@@ -29,6 +29,7 @@ import me.jbusdriver.modern.data.translation.TranslatorConfig
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CacheSource
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.domain.model.ActressInfo
 import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.Header
@@ -138,6 +139,16 @@ class MovieDetailViewModelTest {
         override suspend fun currentLtxBaseUrl() = "https://ltx.example.test"
     }
 
+    private val stubSiteConfig = object : SiteConfig {
+        override var baseUrl: String = "https://www.javbus.com"
+        override fun resolve(pathOrUrl: String): String =
+            if (pathOrUrl.startsWith("http")) {
+                pathOrUrl
+            } else {
+                baseUrl.trimEnd('/') + (if (pathOrUrl.startsWith("/")) "" else "/") + pathOrUrl
+            }
+    }
+
     private fun defaultOnSettings() = object : TranslationSettingsReader {
         override val translateByDefault = MutableStateFlow(true)
         override suspend fun currentTranslatorConfig() =
@@ -160,7 +171,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -177,7 +188,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 throw RuntimeException("Network error")
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -187,13 +198,70 @@ class MovieDetailViewModelTest {
     }
 
     @Test
+    fun loadDetail_censoredUrlFails_fallsBackToUncensored() = runTest(testDispatcher) {
+        val requestedUrls = mutableListOf<String>()
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
+                requestedUrls += url
+                if ("/uncensored/" !in url) throw RuntimeException("not found")
+                return testDetail
+            }
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
+
+        viewModel.loadDetail(stubSiteConfig.resolve("/ABC-001"))
+        advanceUntilIdle()
+
+        assertEquals(2, requestedUrls.size)
+        assertEquals(stubSiteConfig.resolve("/uncensored/ABC-001"), requestedUrls[1])
+        assertNotNull(viewModel.uiState.value.movieDetail)
+        assertNull(viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun loadDetail_uncensoredFallbackFails_showsError() = runTest(testDispatcher) {
+        val requestedUrls = mutableListOf<String>()
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
+                requestedUrls += url
+                throw RuntimeException("not found")
+            }
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
+
+        viewModel.loadDetail(stubSiteConfig.resolve("/ABC-001"))
+        advanceUntilIdle()
+
+        assertEquals(2, requestedUrls.size)
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun loadDetail_explicitCensorType_doesNotFallback() = runTest(testDispatcher) {
+        val requestedUrls = mutableListOf<String>()
+        val detailRepo = object : MovieDetailRepository {
+            override suspend fun getMovieDetail(url: String, forceRefresh: Boolean): MovieDetail {
+                requestedUrls += url
+                throw RuntimeException("not found")
+            }
+        }
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
+
+        viewModel.loadDetail(stubSiteConfig.resolve("/ABC-001"), censorType = "UNCENSORED")
+        advanceUntilIdle()
+
+        assertEquals(1, requestedUrls.size)
+        assertEquals(R.string.load_failed, viewModel.uiState.value.error)
+    }
+
+    @Test
     fun refresh_reloadsDetail() = runTest(testDispatcher) {
         var callCount = 0
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 testDetail.also { callCount++ }
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -224,7 +292,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, collectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, collectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -238,7 +306,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detailWithGid
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -252,7 +320,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -268,7 +336,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = detailNoCode
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/none")
         advanceUntilIdle()
@@ -287,7 +355,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, localRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, localRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -302,7 +370,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -315,7 +383,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, defaultOnSettings(), stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, defaultOnSettings(), stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -328,7 +396,7 @@ class MovieDetailViewModelTest {
         val detailRepo = object : MovieDetailRepository {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -352,7 +420,7 @@ class MovieDetailViewModelTest {
             override suspend fun translate(text: String): Result<String> =
                 Result.failure(RuntimeException("boom"))
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, failingRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, failingRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
         val messages = mutableListOf<UserMessage>()
         backgroundScope.launch(UnconfinedTestDispatcher(testDispatcher.scheduler)) {
             viewModel.messages.collect { messages.add(it) }
@@ -376,7 +444,7 @@ class MovieDetailViewModelTest {
             override suspend fun translate(text: String): Result<String> =
                 Result.failure(me.jbusdriver.modern.data.translation.TranslationConfigException("bad"))
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, configErrorRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, configErrorRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
         val messages = mutableListOf<UserMessage>()
         backgroundScope.launch(UnconfinedTestDispatcher(testDispatcher.scheduler)) {
             viewModel.messages.collect { messages.add(it) }
@@ -399,7 +467,7 @@ class MovieDetailViewModelTest {
             override suspend fun translate(text: String): Result<String> =
                 Result.failure(me.jbusdriver.modern.data.translation.TranslationHttpException(429))
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, rateLimitedRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, rateLimitedRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
         val messages = mutableListOf<UserMessage>()
         backgroundScope.launch(UnconfinedTestDispatcher(testDispatcher.scheduler)) {
             viewModel.messages.collect { messages.add(it) }
@@ -423,7 +491,7 @@ class MovieDetailViewModelTest {
             override suspend fun translate(text: String): Result<String> =
                 Result.failure(me.jbusdriver.modern.data.translation.TranslationHttpException(500))
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, httpErrorRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, httpErrorRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
         val messages = mutableListOf<UserMessage>()
         backgroundScope.launch(UnconfinedTestDispatcher(testDispatcher.scheduler)) {
             viewModel.messages.collect { messages.add(it) }
@@ -444,7 +512,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) =
                 testDetail.copy(title = title)
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, defaultOnSettings(), stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, defaultOnSettings(), stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -473,7 +541,7 @@ class MovieDetailViewModelTest {
                 return Result.success("譯文:$text")
             }
         }
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, gatedRepo, defaultOnSettings(), stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, gatedRepo, defaultOnSettings(), stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -508,7 +576,7 @@ class MovieDetailViewModelTest {
                 LtxLink(LtxLinkType.MAGNET, "magnet:?xt=urn:btih:x&dn=ABC-001", "ABC-001", null)
             ),
         )
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -533,7 +601,7 @@ class MovieDetailViewModelTest {
             links = listOf(duplicate),
             pendingLinks = listOf(duplicate),
         )
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()
@@ -549,7 +617,7 @@ class MovieDetailViewModelTest {
             override suspend fun getMovieDetail(url: String, forceRefresh: Boolean) = testDetail
         }
         stubLtxSettings.ltxEnabled.value = false
-        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings)
+        val viewModel = MovieDetailViewModel(detailRepo, stubCollectRepo, stubMagnetRepo, stubLocalVideoRepo, stubTranslationRepo, stubTranslationSettings, stubLtxRepo, stubLtxSettings, stubSiteConfig)
 
         viewModel.loadDetail("http://example.com/ABC-001")
         advanceUntilIdle()

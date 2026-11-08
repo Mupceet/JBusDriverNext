@@ -64,6 +64,8 @@ import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 fun ForumThreadDetailScreen(
     tid: Int,
     onImageClick: (List<String>, Int) -> Unit,
+    /** 点击帖子中识别出的番号后打开影片详情（参数为详情页绝对 URL）。 */
+    onOpenMovieDetail: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel =
@@ -85,6 +87,10 @@ fun ForumThreadDetailScreen(
     }
     val context = LocalContext.current
     val showScrollToTop = rememberScrollToTopVisibility(listState)
+
+    val openMovieByCode: (String) -> Unit = { code ->
+        onOpenMovieDetail(viewModel.movieUrlForCode(code))
+    }
 
     val nearEnd by remember {
         derivedStateOf {
@@ -216,6 +222,7 @@ fun ForumThreadDetailScreen(
                                 Box(modifier = Modifier.padding(bottom = 8.dp)) {
                                     ThreadHeader(
                                         detail = detail,
+                                        onMovieCodeClick = openMovieByCode,
                                         onTitleLongClick = {
                                             context.copy(detail.title)
                                             Toast.makeText(
@@ -242,6 +249,7 @@ fun ForumThreadDetailScreen(
                                             onLoadGif = { viewModel.onLoadGif(it) },
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                             onQuoteClick = jumpToFloor,
+                                            onMovieCodeClick = openMovieByCode,
                                             onLongClick = {
                                                 dialogContent =
                                                     ForumDialogContent.Blocks(detail.contentBlocks)
@@ -314,6 +322,7 @@ fun ForumThreadDetailScreen(
                                             onLoadGif = { viewModel.onLoadGif(it) },
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
                                             onQuoteClick = jumpToFloor,
+                                            onMovieCodeClick = openMovieByCode,
                                             onLongClick = {
                                                 dialogContent =
                                                     ForumDialogContent.Blocks(reply.contentBlocks)

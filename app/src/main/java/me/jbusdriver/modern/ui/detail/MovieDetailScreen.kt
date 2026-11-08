@@ -86,6 +86,7 @@ import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.data.localvideo.launchLocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideo
+import me.jbusdriver.modern.domain.model.movieCodeFromUrl
 import me.jbusdriver.modern.ui.localvideo.LocalVideoSheet
 import me.jbusdriver.modern.ui.localvideo.LocalVideoSheetMode
 import kotlin.math.abs
@@ -233,8 +234,14 @@ fun MovieDetailScreen(
                 }
 
                 uiState.error != null -> {
+                    // 番号型 URL（论坛跳转/分享）加载失败时，明确提示是番号查不到而非普通网络错误
+                    val code = remember(movieUrl) { movieCodeFromUrl(movieUrl) }
                     ErrorView(
-                        message = stringResource(uiState.error ?: R.string.load_failed),
+                        message = if (code != null) {
+                            stringResource(R.string.movie_code_not_found, code)
+                        } else {
+                            stringResource(uiState.error ?: R.string.load_failed)
+                        },
                         onRetry = { viewModel.loadDetail(movieUrl, censorType) }
                     )
                 }

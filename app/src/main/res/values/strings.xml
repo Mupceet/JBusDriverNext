@@ -25,6 +25,7 @@
     <string name="empty_content">內容為空</string>
     <string name="no_data">沒有數據</string>
     <string name="load_failed">載入失敗，請重試</string>
+    <string name="movie_code_not_found">未找到影片「%1$s」，番號可能有誤或該影片不存在</string>
     <string name="refresh_failed">刷新失敗</string>
     <string name="no_more">沒有更多了</string>
     <string name="pull_to_refresh">下拉刷新重試</string>
