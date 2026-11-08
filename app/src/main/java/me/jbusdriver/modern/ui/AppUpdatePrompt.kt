@@ -37,9 +37,10 @@ internal fun isAutoCheckDue(lastSuccessfulCheckAtMs: Long, nowMs: Long): Boolean
  * 应用回到前台时自动检查更新（注册到 [androidx.lifecycle.ProcessLifecycleOwner]，
  * 冷启动与后台回返各触发一次 ON_START）。
  *
- * 距上次成功检查不足 [AUTO_CHECK_INTERVAL_MS] 时直接跳过；检查成功（含已是最新）
- * 后记录时间；检查失败不记录，下次回前台自动重试。发现新版本时经 [pendingUpdate]
- * 通知全局弹框宿主 [AppUpdatePromptHost] 提示。
+ * 冷启动（进程内首个 ON_START）无视节流必查一次，保证每次打开应用都能拿到最新结果；
+ * 之后的后台回返距上次成功检查不足 [AUTO_CHECK_INTERVAL_MS] 时直接跳过。
+ * 检查成功（含已是最新）后记录时间；检查失败不记录，下次回前台自动重试。
+ * 发现新版本时经 [pendingUpdate] 通知全局弹框宿主 [AppUpdatePromptHost] 提示。
  */
 @Singleton
 class AppUpdateAutoChecker @Inject constructor(
@@ -55,12 +56,17 @@ class AppUpdateAutoChecker @Inject constructor(
 
     private val inFlight = AtomicBoolean()
 
+    /** 本进程是否已触发过 ON_START；首个即冷启动，之后都是后台回返。 */
+    private var hasStartedOnce = false
+
     // 测试注入点：时钟与检查协程的作用域（生产代码使用默认值）
     internal var nowMs: () -> Long = System::currentTimeMillis
     internal var checkScope: CoroutineScope = scope
 
     override fun onStart(owner: LifecycleOwner) {
-        if (!isAutoCheckDue(checkStore.lastSuccessfulCheckAt(), nowMs())) return
+        val isColdStart = !hasStartedOnce
+        hasStartedOnce = true
+        if (!isColdStart && !isAutoCheckDue(checkStore.lastSuccessfulCheckAt(), nowMs())) return
         // 回前台高频事件，检查进行中时忽略重复触发
         if (!inFlight.compareAndSet(false, true)) return
         checkScope.launch {

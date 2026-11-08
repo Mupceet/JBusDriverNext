@@ -65,29 +65,53 @@ class AppUpdateAutoCheckerTest {
     }
 
     @Test
-    fun `foreground within six hours of last success is skipped`() = runTest {
+    fun `cold start checks even within throttle window`() = runTest {
+        val repo = FakeUpdateRepository().apply { result = updateInfo() }
+        val store = FakeCheckStore().apply { lastSuccessAt = 1_000L }
+        val checker = createChecker(repo, store, clock = { 1_000L + AUTO_CHECK_INTERVAL_MS - 1 })
+
+        checker.onStart(lifecycleOwner) // 冷启动：节流窗口内也必查
+        advanceUntilIdle()
+
+        assertEquals(1, repo.callCount)
+        assertEquals(updateInfo(), checker.pendingUpdate.value)
+        assertEquals(1_000L + AUTO_CHECK_INTERVAL_MS - 1, store.lastSuccessAt)
+    }
+
+    @Test
+    fun `background return within six hours of last success is skipped`() = runTest {
         val repo = FakeUpdateRepository()
         val store = FakeCheckStore().apply { lastSuccessAt = 1_000L }
         val checker = createChecker(repo, store, clock = { 1_000L + AUTO_CHECK_INTERVAL_MS - 1 })
 
-        checker.onStart(lifecycleOwner)
+        checker.onStart(lifecycleOwner) // 冷启动必查并刷新成功时间
         advanceUntilIdle()
+        assertEquals(1, repo.callCount)
 
-        assertEquals(0, repo.callCount)
-        assertNull(checker.pendingUpdate.value)
-        assertEquals(1_000L, store.lastSuccessAt)
-    }
-
-    @Test
-    fun `foreground after six hours checks again and records up to date result`() = runTest {
-        val repo = FakeUpdateRepository() // result null = 已是最新
-        val store = FakeCheckStore().apply { lastSuccessAt = 1_000L }
-        val checker = createChecker(repo, store, clock = { 1_000L + AUTO_CHECK_INTERVAL_MS })
-
-        checker.onStart(lifecycleOwner)
+        checker.onStart(lifecycleOwner) // 后台回返：距刚记录的成功不足 6 小时，跳过
         advanceUntilIdle()
 
         assertEquals(1, repo.callCount)
+        assertNull(checker.pendingUpdate.value)
+        assertEquals(1_000L + AUTO_CHECK_INTERVAL_MS - 1, store.lastSuccessAt)
+    }
+
+    @Test
+    fun `background return after six hours checks again and records up to date result`() = runTest {
+        val repo = FakeUpdateRepository() // result null = 已是最新
+        val store = FakeCheckStore()
+        var now = 1_000L
+        val checker = createChecker(repo, store, clock = { now })
+
+        checker.onStart(lifecycleOwner) // 冷启动必查，记录成功时间 1_000
+        advanceUntilIdle()
+        assertEquals(1, repo.callCount)
+
+        now = 1_000L + AUTO_CHECK_INTERVAL_MS // 距成功检查已满 6 小时
+        checker.onStart(lifecycleOwner)
+        advanceUntilIdle()
+
+        assertEquals(2, repo.callCount)
         assertNull(checker.pendingUpdate.value)
         assertEquals(1_000L + AUTO_CHECK_INTERVAL_MS, store.lastSuccessAt)
     }
