@@ -242,7 +242,7 @@ Routes are `@Serializable NavKey` objects defined in `NavigationKeys.kt`.
 - **Min SDK**: 28 / **Target SDK**: not pinned (uses compileSdk)
 - **Java target**: 17
 - **ProGuard**: enabled for release (`isMinifyEnabled` + `isShrinkResources`)
-- **Versioning**: `versionCode = 10000 + gitCommitCount`, `versionName = 1.<yyyyMMdd>`
+- **Versioning**: `versionCode = 10000 + gitCommitCount`, `versionName = 1.<yyyyMMddHH>` (hourly, `HH` zero-padded, Asia/Shanghai; supports multiple releases per day. Do NOT publish a date-only `1.<yyyyMMdd>` name after an hourly name on the same day — segment-numeric comparison would rank it older)
 - **Build variants**: debug (`.debug` suffix) and release (`.release` suffix)
 - **Room schemas**: exported to `app/schemas/`
 - **APK naming**: `jbus_{buildType}_v{versionName}.apk`

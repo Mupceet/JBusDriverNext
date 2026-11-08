@@ -1,4 +1,5 @@
-import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Properties
 
@@ -50,7 +51,11 @@ val hasReleaseSigning = listOf(
     releaseKeyPassword
 ).all { !it.orNull.isNullOrBlank() }
 
-fun releaseTime(): String? = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+// 版本名日期段精确到小时（HH 补零），支持同日多次发布；固定北京时区，
+// 与发布者的「当天」一致（CI runner 为 UTC）。跨小时命名单调递增，
+// 旧版本（纯日期命名）的比较逻辑同样把小时命名判为更新，可直接过渡。
+fun releaseTime(): String? = LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+    .format(DateTimeFormatter.ofPattern("yyyyMMddHH"))
 
 android {
     namespace = "me.jbusdriver"
