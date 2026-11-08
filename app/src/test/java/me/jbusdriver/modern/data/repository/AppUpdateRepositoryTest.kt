@@ -41,6 +41,37 @@ class AppUpdateRepositoryTest {
 
     // endregion
 
+    // region 小时位命名（1.yyyyMMddHH，HH 补零）与日期位命名（1.yyyyMMdd）的过渡兼容
+    //
+    // 版本名后续将从「1.日期」切换为「1.日期+小时」（同日可多次发布）。
+    // 已装旧版（日期命名 + 旧比较代码）的应用升级到小时命名版本时走的是线上旧代码，
+    // 这里锁定分段数值比较对两种命名的过渡行为，切换命名后必须保持全部通过。
+
+    @Test
+    fun compareVersionNames_hourlyRemoteNewerThanDateOnlyCurrent() {
+        // 次日小时命名 > 今日日期命名
+        assertEquals(1, compareVersionNames("v1.2026110910", "1.20261108"))
+        // 切换日：同日先发纯日期版、再发小时命名版
+        assertEquals(1, compareVersionNames("v1.2026110918", "1.20261109"))
+        // 零点发布（HH 补零为 00）仍大于前一日的日期命名
+        assertEquals(1, compareVersionNames("v1.2026110900", "1.20261108"))
+    }
+
+    @Test
+    fun compareVersionNames_sameDayLaterHourNewer() {
+        assertEquals(1, compareVersionNames("v1.2026110916", "1.2026110910"))
+        assertEquals(-1, compareVersionNames("v1.2026110910", "v1.2026110916"))
+        assertEquals(0, compareVersionNames("v1.2026110916", "1.2026110916"))
+    }
+
+    @Test
+    fun compareVersionNames_dateOnlyRemoteNotNewerThanHourlyCurrentSameDay() {
+        // 已装小时命名版本后，同日的纯日期命名（更早的构建）不算更新
+        assertEquals(-1, compareVersionNames("v1.20261109", "1.2026110909"))
+    }
+
+    // endregion
+
     // region releaseNotesMarkdown
 
     @Test
