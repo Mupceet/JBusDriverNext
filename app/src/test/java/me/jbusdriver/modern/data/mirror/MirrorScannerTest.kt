@@ -5,16 +5,15 @@ import org.junit.Test
 
 class MirrorScannerTest {
     @Test
-    fun `sort mirror urls keeps default host first even when slower`() {
+    fun `sort mirror urls has no host preference and orders purely by latency`() {
         val sorted = sortMirrorUrls(
             listOf(
-                MirrorUrl("https://fast.example.test", isReachable = true, latencyMs = 10),
                 MirrorUrl("https://www.javbus.com", isReachable = true, latencyMs = 500),
+                MirrorUrl("https://fast.example.test", isReachable = true, latencyMs = 10),
                 MirrorUrl("https://slow.example.test", isReachable = true, latencyMs = 100)
             )
         )
-
-        assertEquals("https://www.javbus.com", sorted.first().url)
+        assertEquals("https://fast.example.test", sorted.first().url)
     }
 
     @Test

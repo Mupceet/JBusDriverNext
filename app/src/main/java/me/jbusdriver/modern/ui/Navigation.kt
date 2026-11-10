@@ -36,6 +36,7 @@ import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListRoute
 import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.settings.SettingsScreen
+import me.jbusdriver.modern.ui.sitemanager.SiteManagerScreen
 
 private const val ANIM_DURATION = 350
 private const val ANIM_DURATION_SEARCH = 400
@@ -333,7 +334,46 @@ fun JBusNavigation(
                     }
                 }
             ) {
-                SettingsScreen(onBack = { backStack.removeLastOrNull() })
+                SettingsScreen(
+                    onBack = { backStack.removeLastOrNull() },
+                    onOpenSiteManager = { backStack.add(RouteSiteManager) }
+                )
+            }
+            entry<RouteSiteManager>(
+                metadata = metadata {
+                    put(NavDisplay.TransitionKey) {
+                        (slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(ANIM_DURATION_SEARCH)
+                        ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
+                            (scaleOut(
+                                targetScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeOut(tween(ANIM_DURATION)))
+                    }
+                    put(NavDisplay.PopTransitionKey) {
+                        (scaleIn(
+                            initialScale = 0.9f,
+                            animationSpec = tween(ANIM_DURATION)
+                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                            (slideOutVertically(
+                                targetOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                    }
+                    put(NavDisplay.PredictivePopTransitionKey) {
+                        (scaleIn(
+                            initialScale = 0.9f,
+                            animationSpec = tween(ANIM_DURATION)
+                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                            (slideOutVertically(
+                                targetOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                    }
+                }
+            ) {
+                SiteManagerScreen(onBack = { backStack.removeLastOrNull() })
             }
         }
     )

@@ -46,3 +46,6 @@ data class RouteForumThreadDetail(
 
 @Serializable
 data object RouteSettings : NavKey
+
+@Serializable
+data object RouteSiteManager : NavKey

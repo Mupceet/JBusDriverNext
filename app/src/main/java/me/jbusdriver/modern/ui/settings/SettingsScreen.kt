@@ -3,10 +3,13 @@ package me.jbusdriver.modern.ui.settings
 import android.os.Build
 import android.text.format.Formatter
 import android.widget.Toast
+import me.jbusdriver.modern.core.copy
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,21 +26,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -68,9 +64,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.jbusdriver.BuildConfig
 import me.jbusdriver.R
-import me.jbusdriver.modern.data.mirror.MirrorUrl
-import me.jbusdriver.modern.data.mirror.ScanPhase
-import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.data.settings.MovieLoadMode
@@ -87,6 +80,7 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenSiteManager: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val store = viewModel.store
@@ -107,8 +101,6 @@ fun SettingsScreen(
 
     // Network state
     val selectedBaseUrl by store.selectedBaseUrl.collectAsStateWithLifecycle()
-    val cachedMirrorUrls by store.cachedMirrorUrls.collectAsStateWithLifecycle()
-    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
     // LTX state
     val ltxEnabled by store.ltxEnabled.collectAsStateWithLifecycle()
@@ -143,20 +135,6 @@ fun SettingsScreen(
     val pickFolderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri -> uri?.let { viewModel.setLocalVideoFolder(it) } }
-
-    // Mirror URL list for network card
-    val mirrorUrls = if (scanState.phase == ScanPhase.DONE) {
-        scanState.discoveredUrls
-    } else if (!scanState.isScanning && cachedMirrorUrls.isNotEmpty()) {
-        cachedMirrorUrls.map { MirrorUrl(it, true) }.sortedWith(
-            compareBy<MirrorUrl> { it.url.contains("www.javbus.com", ignoreCase = true).not() }
-                .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
-                .thenBy { it.url }
-        )
-    } else {
-        emptyList()
-    }
-    val hasCachedUrls = mirrorUrls.isNotEmpty() || cachedMirrorUrls.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -229,17 +207,11 @@ fun SettingsScreen(
             // === Network Card（含 LTX 資料庫设置） ===
             NetworkCard(
                 selectedBaseUrl = selectedBaseUrl,
-                mirrorUrls = mirrorUrls,
-                scanState = scanState,
-                hasCachedUrls = hasCachedUrls,
                 ltxEnabled = ltxEnabled,
                 ltxBaseUrl = ltxBaseUrl,
                 onLtxEnabledChange = { viewModel.setLtxEnabled(it) },
                 onLtxBaseUrlSave = { viewModel.setLtxBaseUrl(it) },
-                onScan = { viewModel.startScan() },
-                onCancel = { viewModel.cancelScan() },
-                onVerify = { viewModel.startVerify() },
-                onSelect = { viewModel.selectUrl(it) }
+                onOpenSiteManager = onOpenSiteManager
             )
 
             // === Translation Card ===
@@ -683,21 +655,15 @@ private fun movieLoadModeLabel(mode: MovieLoadMode) = when (mode) {
 
 //region Network Card
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NetworkCard(
     selectedBaseUrl: String,
-    mirrorUrls: List<MirrorUrl>,
-    scanState: ScanState,
-    hasCachedUrls: Boolean,
     ltxEnabled: Boolean,
     ltxBaseUrl: String,
     onLtxEnabledChange: (Boolean) -> Unit,
     onLtxBaseUrlSave: (String) -> Unit,
-    onScan: () -> Unit,
-    onCancel: () -> Unit,
-    onVerify: () -> Unit,
-    onSelect: (String) -> Unit
+    onOpenSiteManager: () -> Unit
 ) {
     var showLtxUrlDialog by remember { mutableStateOf(false) }
     Card(
@@ -728,173 +694,35 @@ private fun NetworkCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Dropdown spinner for URL selection
-            var expanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                modifier = Modifier.padding(horizontal = 14.dp),
-                expanded = expanded && mirrorUrls.isNotEmpty(),
-                onExpandedChange = { if (mirrorUrls.isNotEmpty()) expanded = it }
-            ) {
-                OutlinedTextField(
-                    value = selectedBaseUrl,
-                    onValueChange = {},
-                    readOnly = true,
-                    singleLine = true,
-                    trailingIcon = {
-                        if (mirrorUrls.isNotEmpty()) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
-                    },
-                    modifier = Modifier
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth(),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-
-                if (mirrorUrls.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        mirrorUrls.forEach { mirror ->
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            mirror.url,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .then(if (!mirror.isReachable) Modifier.alpha(0.4f) else Modifier),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        if (!mirror.isReachable) {
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(
-                                                stringResource(R.string.unreachable),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.error
-                                            )
-                                        } else if (mirror.latencyMs >= 0) {
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(
-                                                "${mirror.latencyMs} ms",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.outline
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    if (mirror.isReachable) {
-                                        onSelect(mirror.url)
-                                    }
-                                    expanded = false
-                                },
-                                enabled = mirror.isReachable
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // Action buttons
+            // 当前站点：点击进入站点管理页；长按复制网址
+            val context = LocalContext.current
+            val copiedText = stringResource(R.string.copied)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .combinedClickable(
+                        onClick = onOpenSiteManager,
+                        onLongClick = {
+                            context.copy(selectedBaseUrl)
+                            Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (scanState.isScanning) {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                } else {
-                    Button(
-                        onClick = onScan,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            if (scanState.phase == ScanPhase.DONE) stringResource(R.string.rescan)
-                            else stringResource(R.string.scan_url)
-                        )
-                    }
-                }
-
-                if (hasCachedUrls) {
-                    OutlinedButton(
-                        onClick = onVerify,
-                        modifier = Modifier.weight(1f),
-                        enabled = !scanState.isScanning
-                    ) {
-                        Text(stringResource(R.string.check_connectivity))
-                    }
-                }
-            }
-
-            // Progress
-            if (scanState.isScanning) {
-                Spacer(Modifier.height(12.dp))
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
-                )
-                Spacer(Modifier.height(4.dp))
-                val phaseText = when (scanState.phase) {
-                    ScanPhase.DISCOVERING -> stringResource(
-                        R.string.scanning,
-                        scanState.scannedCount,
-                        scanState.totalCount
-                    )
-                    ScanPhase.VERIFYING -> stringResource(
-                        R.string.verifying,
-                        scanState.scannedCount,
-                        scanState.totalCount
-                    )
-                    else -> ""
-                }
-                Text(
-                    phaseText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 14.dp)
-                )
-                if (scanState.currentUrl.isNotBlank()) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        scanState.currentUrl,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        stringResource(R.string.site_current_url),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        selectedBaseUrl,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 14.dp)
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-            }
-
-            // Error
-            if (scanState.error != null) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(scanState.error),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 14.dp)
-                )
             }
 
             // === LTX 資料庫（并入網址设置；未启用时不显示網址行） ===
@@ -908,7 +736,14 @@ private fun NetworkCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = { showLtxUrlDialog = true })
+                        .combinedClickable(
+                            onClick = { showLtxUrlDialog = true },
+                            // 长按复制 LTX 网址（与网址行一致）
+                            onLongClick = {
+                                context.copy(ltxBaseUrl)
+                                Toast.makeText(context, copiedText, Toast.LENGTH_SHORT).show()
+                            }
+                        )
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

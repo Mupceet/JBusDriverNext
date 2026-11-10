@@ -175,6 +175,7 @@ me.jbusdriver.modern/
     forum/                    - Forum boards/thread list/detail screens + ViewModels + StateReducers
                                 (ForumBoards, ForumThreadList, ForumThreadDetail) + ForumPostContent
     search/                   - Search screen + ViewModel
+    sitemanager/              - Site manager screen + ViewModel (preset/scanned/custom site groups)
     settings/                 - Settings screen + ViewModel (SettingsScreen, SettingsViewModel,
                                 ThemeViewModel, UiPrefsViewModel)
     debug/                    - Color scheme debug screen

@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,10 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
-import me.jbusdriver.modern.core.coroutine.IoDispatcher
-import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.KLog
-import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.repository.AppUpdateInfo
 import me.jbusdriver.modern.data.repository.AppUpdateRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
@@ -47,17 +43,12 @@ data class UpdateCheckState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     val store: AppSettingsContract,
-    private val siteConfig: SiteConfig,
     private val localVideoRepository: LocalVideoRepository,
     private val appUpdateRepository: AppUpdateRepository,
     private val appUpdateDownloader: AppUpdateDownloader,
     private val appUpdateAutoChecker: AppUpdateAutoChecker,
     private val translatorEngineFactory: TranslatorEngineFactory,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
-
-    private val _scanState = MutableStateFlow(ScanState())
-    val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
 
     private val _updateCheckState = MutableStateFlow(UpdateCheckState())
     val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
@@ -139,30 +130,6 @@ class SettingsViewModel @Inject constructor(
     fun startUpdateDownload(update: AppUpdateInfo) {
         dismissUpdateDialog()
         appUpdateDownloader.start(update)
-    }
-    // endregion
-
-    // region Network scan (delegates to store -> MirrorScanner)
-    fun startScan() = launchScan {
-        store.scanMirrorUrls(_scanState, store.selectedBaseUrl.first())
-    }
-    fun startVerify() = launchScan { store.verifyMirrorUrls(_scanState) }
-    fun cancelScan() { _scanState.value = ScanState() }
-    fun selectUrl(url: String) {
-        viewModelScope.launch { store.selectUrl(url); siteConfig.baseUrl = url }
-    }
-    private fun launchScan(block: suspend () -> Unit) {
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                _scanState.value = ScanState()
-                block()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                KLog.t(TAG).e("mirror scan failed", e)
-                _scanState.value = ScanState()
-            }
-        }
     }
     // endregion
 

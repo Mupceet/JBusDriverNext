@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
+import me.jbusdriver.modern.core.site.normalizeBaseUrl
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.mirror.MirrorScanner
 import me.jbusdriver.modern.data.mirror.ScanState
@@ -27,6 +28,7 @@ import me.jbusdriver.modern.data.translation.LIBRE_TRANSLATE_DEFAULT_URL
 import me.jbusdriver.modern.data.translation.TRANSLATION_DEFAULT_TARGET_LANG
 import me.jbusdriver.modern.data.translation.TranslationProvider
 import me.jbusdriver.modern.data.translation.TranslatorConfig
+import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -63,18 +65,65 @@ interface LtxSettingsSource {
     suspend fun currentLtxBaseUrl(): String
 }
 
+/** Narrow read/write interface for site selection consumers (SiteManagerViewModel). */
+interface SiteSettingsSource : SitePreferenceSource {
+    val selectedBaseUrl: StateFlow<String>
+    val cachedMirrorUrls: StateFlow<List<String>>
+    val customBaseUrls: StateFlow<List<String>>
+
+    suspend fun selectUrl(url: String)
+    /** 归一并校验后保存自定义网址；非法或跨组重复返回 false。 */
+    suspend fun addCustomUrl(url: String): Boolean
+    suspend fun removeCustomUrl(url: String)
+    suspend fun removeScannedUrl(url: String)
+
+    /** 种子 = 主站 + 当前选中 + 自定义 + 缓存，由实现方统一组装。 */
+    suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>)
+    /** 验证 preset + custom + cached 的并集。 */
+    suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>)
+}
+
+/** 校验并归一化用户输入的自定义网址；非法（空白/非 http(s)/无主机）返回 null。 */
+internal fun normalizeCustomUrlInput(rawUrl: String): String? {
+    val normalized = normalizeBaseUrl(rawUrl)
+    if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) return null
+    val host = runCatching { URI(normalized).host }.getOrNull() ?: return null
+    if (host.isBlank() || !host.contains('.')) return null
+    return normalized
+}
+
+/** 扫描种子 = 主站 + 当前选中 + 自定义 + 缓存（归一去重，保持首次出现顺序）。 */
+internal fun composeScanSeeds(
+    presetUrl: String,
+    selectedUrl: String,
+    customUrls: List<String>,
+    cachedUrls: List<String>
+): List<String> = (listOf(presetUrl, selectedUrl) + customUrls + cachedUrls)
+    .map { normalizeBaseUrl(it) }
+    .distinct()
+
+/** 扫描结果持久化前剔除官方/自定义 URL，缓存只存"扫描发现"。 */
+internal fun filterScannedForPersistence(
+    discovered: Set<String>,
+    presetUrl: String,
+    customUrls: List<String>
+): Set<String> {
+    val excluded = buildSet {
+        add(normalizeBaseUrl(presetUrl))
+        customUrls.forEach { add(normalizeBaseUrl(it)) }
+    }
+    return discovered.map { normalizeBaseUrl(it) }.filterNot { it in excluded }.toSet()
+}
+
 /** Full settings read/write contract for SettingsViewModel. */
 interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieListSettings,
-    SitePreferenceSource, TranslationSettingsReader, LtxSettingsSource {
+    SiteSettingsSource, TranslationSettingsReader, LtxSettingsSource {
     // Appearance
     val showMovieTab: StateFlow<Boolean>
     val showActressTab: StateFlow<Boolean>
     val showForumTab: StateFlow<Boolean>
     val forumFloorOrder: StateFlow<ForumFloorOrder>
     val threadSortOrder: StateFlow<ForumThreadOrder>
-    // Network
-    val selectedBaseUrl: StateFlow<String>
-    val cachedMirrorUrls: StateFlow<List<String>>
     // Translation
     val translationProvider: StateFlow<TranslationProvider>
     val translationTargetLang: StateFlow<String>       // 原始设置值;"" = 跟随系统
@@ -97,7 +146,6 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setAutoLoadGifs(enabled: Boolean)
     suspend fun setForumFloorOrder(order: ForumFloorOrder)
     suspend fun setThreadSortOrder(order: ForumThreadOrder)
-    suspend fun selectUrl(url: String)
     suspend fun setTranslateByDefault(enabled: Boolean)
     suspend fun setTranslationProvider(provider: TranslationProvider)
     suspend fun setTranslationTargetLang(code: String)
@@ -107,9 +155,6 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setMicrosoftCredentials(key: String, region: String)
     suspend fun setLtxEnabled(enabled: Boolean)
     suspend fun setLtxBaseUrl(baseUrl: String)
-
-    suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String)
-    suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>)
 }
 
 private val Context.appSettingsDataStore by preferencesDataStore("app_settings")
@@ -167,21 +212,58 @@ class AppSettingsStore @Inject constructor(
     override suspend fun setThreadSortOrder(order: ForumThreadOrder) = put(KEY_THREAD_SORT_ORDER, order.preferenceValue)
     // endregion
 
-    // region Network
+    // region Network (SiteSettingsSource)
     override val selectedBaseUrl: StateFlow<String> = flowOf(KEY_SELECTED_BASE_URL, DEFAULT_SITE_URL)
     override val cachedMirrorUrls: StateFlow<List<String>> = dataStore.data
-        .map { it[KEY_CACHED_MIRROR_URLS]?.toList() ?: PRESET_MIRROR_URLS }
-        .stateIn(scope, SharingStarted.Eagerly, PRESET_MIRROR_URLS)
+        .map { it[KEY_CACHED_MIRROR_URLS]?.toList() ?: emptyList() }
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
+    override val customBaseUrls: StateFlow<List<String>> = dataStore.data
+        .map { it[KEY_CUSTOM_BASE_URLS]?.toList()?.sorted() ?: emptyList() }
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
     override suspend fun currentSelectedBaseUrl(): String =
         dataStore.data.first()[KEY_SELECTED_BASE_URL] ?: DEFAULT_SITE_URL
     override suspend fun selectUrl(url: String) = put(KEY_SELECTED_BASE_URL, url.trimEnd('/'))
-    override suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>, seedUrl: String) {
-        val cached = cachedMirrorUrls.first()
-        val discovered = mirrorScanner.scanAndVerify(state, seedUrl, cached)
-        dataStore.edit { it[KEY_CACHED_MIRROR_URLS] = discovered }
+    override suspend fun addCustomUrl(url: String): Boolean {
+        val normalized = normalizeCustomUrlInput(url) ?: return false
+        val existing = buildList {
+            add(DEFAULT_SITE_URL)
+            addAll(cachedMirrorUrls.first())
+            addAll(customBaseUrls.first())
+        }
+        if (existing.any { normalizeBaseUrl(it) == normalized }) return false
+        dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_BASE_URLS] = (prefs[KEY_CUSTOM_BASE_URLS] ?: emptySet()) + normalized
+        }
+        return true
+    }
+    override suspend fun removeCustomUrl(url: String) {
+        dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_BASE_URLS] = (prefs[KEY_CUSTOM_BASE_URLS] ?: emptySet()) - url
+        }
+    }
+    override suspend fun removeScannedUrl(url: String) {
+        dataStore.edit { prefs ->
+            prefs[KEY_CACHED_MIRROR_URLS] = (prefs[KEY_CACHED_MIRROR_URLS] ?: emptySet()) - url
+        }
+    }
+    override suspend fun scanMirrorUrls(state: MutableStateFlow<ScanState>) {
+        val seeds = composeScanSeeds(
+            presetUrl = DEFAULT_SITE_URL,
+            selectedUrl = selectedBaseUrl.first(),
+            customUrls = customBaseUrls.first(),
+            cachedUrls = cachedMirrorUrls.first()
+        )
+        val discovered = mirrorScanner.scanAndVerify(state, seeds)
+        dataStore.edit {
+            it[KEY_CACHED_MIRROR_URLS] =
+                filterScannedForPersistence(discovered, DEFAULT_SITE_URL, customBaseUrls.first())
+        }
     }
     override suspend fun verifyMirrorUrls(state: MutableStateFlow<ScanState>) {
-        mirrorScanner.verifyOnly(state, cachedMirrorUrls.first())
+        val urls = (listOf(DEFAULT_SITE_URL) + customBaseUrls.first() + cachedMirrorUrls.first())
+            .map { normalizeBaseUrl(it) }
+            .distinct()
+        mirrorScanner.verifyOnly(state, urls)
     }
     // endregion
 
@@ -265,6 +347,7 @@ class AppSettingsStore @Inject constructor(
         private val KEY_MOVIE_LOAD_MODE = stringPreferencesKey("movie_load_mode")
         private val KEY_SELECTED_BASE_URL = stringPreferencesKey("selected_base_url")
         private val KEY_CACHED_MIRROR_URLS = stringSetPreferencesKey("cached_mirror_urls")
+        private val KEY_CUSTOM_BASE_URLS = stringSetPreferencesKey("custom_base_urls")
         private val KEY_TRANSLATE_BY_DEFAULT = booleanPreferencesKey("translate_by_default")
         private val KEY_TRANSLATE_PROVIDER = stringPreferencesKey("translate_provider")
         private val KEY_TRANSLATION_TARGET_LANG = stringPreferencesKey("translation_target_lang")
@@ -277,12 +360,5 @@ class AppSettingsStore @Inject constructor(
         private val KEY_MICROSOFT_REGION = stringPreferencesKey("microsoft_region")
         private val KEY_LTX_ENABLED = booleanPreferencesKey("ltx_enabled")
         private val KEY_LTX_BASE_URL = stringPreferencesKey("ltx_base_url")
-
-        private val PRESET_MIRROR_URLS = listOf(
-            "https://www.javbus.com",
-            "https://www.cdnbus.bond",
-            "https://www.cdnbus.cyou",
-            "https://www.seejav.cyou"
-        )
     }
 }

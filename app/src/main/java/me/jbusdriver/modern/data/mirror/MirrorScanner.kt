@@ -70,14 +70,9 @@ class MirrorScanner @Inject constructor(
 
     suspend fun scanAndVerify(
         state: MutableStateFlow<ScanState>,
-        seedUrl: String,
-        cachedUrls: List<String>
+        seeds: List<String>
     ): Set<String> {
-        val allSeeds = mutableSetOf<String>()
-        allSeeds.add(seedUrl.trimEnd('/'))
-        for (url in cachedUrls) {
-            allSeeds.add(url.trimEnd('/'))
-        }
+        val allSeeds = seeds.map { it.trimEnd('/') }.distinct()
 
         state.value = ScanState(isScanning = true, phase = ScanPhase.DISCOVERING)
 
@@ -197,11 +192,8 @@ class MirrorScanner @Inject constructor(
     }
 }
 
-internal fun sortMirrorUrls(urls: List<MirrorUrl>): List<MirrorUrl> {
-    val defaultHost = "www.javbus.com"
-    return urls.sortedWith(
-        compareBy<MirrorUrl> { it.url.contains(defaultHost, ignoreCase = true).not() }
-            .thenBy { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
+internal fun sortMirrorUrls(urls: List<MirrorUrl>): List<MirrorUrl> =
+    urls.sortedWith(
+        compareBy<MirrorUrl> { if (it.isReachable) it.latencyMs else Long.MAX_VALUE }
             .thenBy { it.url }
     )
-}

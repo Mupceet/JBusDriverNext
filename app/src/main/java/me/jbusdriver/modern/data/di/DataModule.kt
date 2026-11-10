@@ -60,6 +60,7 @@ import me.jbusdriver.modern.data.repository.MovieDetailRepository
 import me.jbusdriver.modern.data.repository.MovieRepository
 import me.jbusdriver.modern.data.repository.RoomCollectTransactionRunner
 import me.jbusdriver.modern.data.settings.SearchHistoryStore
+import me.jbusdriver.modern.data.settings.SiteSettingsSource
 import me.jbusdriver.modern.data.settings.DefaultThemeRepository
 import me.jbusdriver.modern.data.settings.ThemeRepository
 import me.jbusdriver.modern.data.repository.SearchRepository
@@ -92,6 +93,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindSitePreferenceSource(impl: AppSettingsStore): SitePreferenceSource
+
+    @Binds
+    @Singleton
+    abstract fun bindSiteSettingsSource(impl: AppSettingsStore): SiteSettingsSource
 
     @Binds
     @Singleton
