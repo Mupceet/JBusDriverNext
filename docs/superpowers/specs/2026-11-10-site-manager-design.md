@@ -92,7 +92,7 @@ Top bar: back, title 站點管理, actions: **全部測速** (verify all groups)
 - 🗑 (delete) on scanned and custom rows only; preset row has none.
 - 掃描 action sits in the 掃描發現 group header (relabel 重新掃描 after first scan), progress UI (linear indicator + phase text + current URL) as today.
 - Add dialog: single URL text field + save. Save-time validation is **format + duplicate only** (never reachability). Saving triggers an advisory HEAD check whose result (看起來可達 / 暫時不可達，仍已保存) is reported as a toast/snackbar hint after the entry is saved.
-- Empty 掃描發現/自定義 groups hide their headers (官方 always has exactly one row).
+- The 掃描發現 section header always renders (it hosts the 掃描 action; an empty group shows a hint row instead of hiding, otherwise the scan entry point would be unreachable). Empty 自定義 group hides its header (官方 always has exactly one row).
 
 ### ViewModel state (UDF per AGENTS.md)
 
