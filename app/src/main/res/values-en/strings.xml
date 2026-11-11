@@ -303,6 +303,10 @@
     <string name="update_download_failed">Download failed. Please try again.</string>
     <string name="update_install_permission_hint">Allow installing unknown apps to update. Enable it in system settings.</string>
 
+    <!-- Forum sensitive content (hidden toggle: long-press the forum tab switch in settings) -->
+    <string name="sensitive_forum_content_shown">Sensitive forum categories (性息) shown</string>
+    <string name="sensitive_forum_content_hidden">Sensitive forum categories (性息) hidden</string>
+
     <!-- Translation -->
     <string name="translate_failed">Translation failed</string>
     <string name="translate_config_error">Translation API not configured or invalid</string>

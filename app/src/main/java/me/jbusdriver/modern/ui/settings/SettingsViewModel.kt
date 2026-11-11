@@ -205,6 +205,23 @@ class SettingsViewModel @Inject constructor(
     }
     // endregion
 
+    // region Forum hidden settings
+
+    /** 隐藏开关：长按设置页「顯示論壇」行切换敏感分类（性息等）的显示，结果经 messages Toast。 */
+    fun toggleSensitiveForumContent() {
+        viewModelScope.launch {
+            val enabled = !store.showSensitiveForumContent.value
+            store.setShowSensitiveForumContent(enabled)
+            _messages.emit(
+                UserMessage(
+                    if (enabled) R.string.sensitive_forum_content_shown
+                    else R.string.sensitive_forum_content_hidden
+                )
+            )
+        }
+    }
+    // endregion
+
     companion object {
         private const val TAG = "SettingsViewModel"
     }

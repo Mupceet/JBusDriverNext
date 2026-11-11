@@ -9,14 +9,18 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.data.repository.ForumRepository
+import me.jbusdriver.modern.data.settings.ForumSettingsReader
 import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
+import me.jbusdriver.modern.domain.model.ForumHomeData
 import me.jbusdriver.modern.domain.model.ForumHomeSummary
 import me.jbusdriver.modern.ui.UserMessage
 import javax.inject.Inject
@@ -36,7 +40,8 @@ data class ForumBoardsUiState(
 
 @HiltViewModel
 class ForumBoardsViewModel @Inject constructor(
-    private val repository: ForumRepository
+    private val repository: ForumRepository,
+    private val forumSettingsReader: ForumSettingsReader
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ForumBoardsUiState())
     val uiState: StateFlow<ForumBoardsUiState> = _uiState.asStateFlow()
@@ -57,7 +62,16 @@ class ForumBoardsViewModel @Inject constructor(
     init {
         KLog.d("[Forum] ForumBoardsViewModel init", TAG)
         loadBoards()
+        // 设置页切换敏感内容显示后按新可见性重载（缓存优先，即时生效）
+        viewModelScope.launch {
+            forumSettingsReader.showSensitiveForumContent.drop(1).collect { loadBoards() }
+        }
     }
+
+    /** 敏感内容（性息等）默认隐藏：在数据进入 UiState 的边界过滤，仓库缓存保持原始数据。 */
+    private fun sanitizeEntry(entry: CacheEntry<ForumHomeData>): CacheEntry<ForumHomeData> =
+        if (forumSettingsReader.showSensitiveForumContent.value) entry
+        else entry.copy(value = entry.value.withoutSensitiveBoards())
 
     fun loadBoards() {
         if (_uiState.value.isLoading) return
@@ -78,11 +92,11 @@ class ForumBoardsViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            _uiState.update { it.applyBoardsCached(event.entry) }
+                            _uiState.update { it.applyBoardsCached(sanitizeEntry(event.entry)) }
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            _uiState.update { it.applyBoardsFresh(event.entry) }
+                            _uiState.update { it.applyBoardsFresh(sanitizeEntry(event.entry)) }
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -103,7 +117,7 @@ class ForumBoardsViewModel @Inject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
-                            _uiState.update { it.applyBoardsRefreshFresh(event.entry) }
+                            _uiState.update { it.applyBoardsRefreshFresh(sanitizeEntry(event.entry)) }
                         }
 
                         is CachedLoadEvent.Failure -> {

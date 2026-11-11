@@ -14,10 +14,12 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
 import me.jbusdriver.modern.core.cache.PagedSwrStateHolder
@@ -91,6 +93,26 @@ class ForumThreadListViewModel @AssistedInject constructor(
     private val initialTypeId: Int? = navKey.typeId
     /** 分页/顶部开关/请求代际的状态机 */
     private val swr = PagedSwrStateHolder<ThreadListIdentity>()
+    /** 被隐藏分类的 typeId，用于选中的 chip 被隐藏时回退「全部」。 */
+    private var sensitiveTypeIds: Set<Int> = emptySet()
+
+    /** 敏感内容（性息等）默认隐藏：数据进入 UiState 边界统一过滤，仓库缓存保持原始数据。 */
+    private fun sanitizeResult(result: ForumThreadPageResult): ForumThreadPageResult {
+        sensitiveTypeIds = result.sensitiveTypeIds()
+        return if (forumSettingsReader.showSensitiveForumContent.value) result
+        else result.withoutSensitiveThreads()
+    }
+
+    private fun sanitizeEntry(entry: CacheEntry<ForumThreadPageResult>): CacheEntry<ForumThreadPageResult> =
+        entry.copy(value = sanitizeResult(entry.value))
+
+    /** 当前选中的分类被隐藏时回退「全部」，避免停留在空列表。 */
+    private fun resetHiddenTypeFilterIfNeeded() {
+        val typeId = _uiState.value.currentTypeId ?: return
+        if (!forumSettingsReader.showSensitiveForumContent.value && typeId in sensitiveTypeIds) {
+            filterByType(null)
+        }
+    }
 
     private data class ThreadListIdentity(
         val fid: Int,
@@ -141,6 +163,18 @@ class ForumThreadListViewModel @AssistedInject constructor(
             }
             loadFirstPage()
         }
+        // 设置页切换敏感内容显示后按新可见性重载；若正停留在被隐藏的分类则回退「全部」
+        viewModelScope.launch {
+            forumSettingsReader.showSensitiveForumContent
+                .drop(1)
+                .collect { visible ->
+                    if (!visible && _uiState.value.currentTypeId in sensitiveTypeIds) {
+                        filterByType(null)
+                    } else {
+                        loadFirstPage()
+                    }
+                }
+        }
     }
 
     fun loadFirstPage() {
@@ -165,12 +199,14 @@ class ForumThreadListViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> {
                             hasContent = true
-                            _uiState.update { it.applyFirstPageCached(event.entry) }
+                            _uiState.update { it.applyFirstPageCached(sanitizeEntry(event.entry)) }
+                            resetHiddenTypeFilterIfNeeded()
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            val fresh = event.entry.value.copy(
-                                threads = event.entry.value.threads.simulateCacheRefreshChange()
+                            val sanitized = sanitizeResult(event.entry.value)
+                            val fresh = sanitized.copy(
+                                threads = sanitized.threads.simulateCacheRefreshChange()
                             )
                             val oldThreads = _uiState.value.threads
                             val oldFirstPage = oldThreads.take(fresh.threads.size)
@@ -180,6 +216,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                                 isAtTop = swr.atTop.isAtTop
                             )
                             _uiState.value = reduction.state
+                            resetHiddenTypeFilterIfNeeded()
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -203,8 +240,9 @@ class ForumThreadListViewModel @AssistedInject constructor(
                         }
 
                         is CachedLoadEvent.Fresh -> {
-                            val fresh = event.entry.value.copy(
-                                threads = event.entry.value.threads.simulateCacheRefreshChange()
+                            val sanitized = sanitizeResult(event.entry.value)
+                            val fresh = sanitized.copy(
+                                threads = sanitized.threads.simulateCacheRefreshChange()
                             )
                             val oldThreads = _uiState.value.threads
                             val oldFirstPage = oldThreads.take(fresh.threads.size)
@@ -220,6 +258,7 @@ class ForumThreadListViewModel @AssistedInject constructor(
                             if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
                                 _messages.emit(UserMessage(R.string.new_data_available))
                             }
+                            resetHiddenTypeFilterIfNeeded()
                         }
 
                         is CachedLoadEvent.Failure -> {
@@ -240,7 +279,9 @@ class ForumThreadListViewModel @AssistedInject constructor(
         _uiState.update { it.copy(isLoadingMore = true) }
         viewModelScope.launch {
             try {
-                val result = repository.loadThreads(fid, nextPage, state.currentTypeId, state.currentThreadOrder)
+                val result = sanitizeResult(
+                    repository.loadThreads(fid, nextPage, state.currentTypeId, state.currentThreadOrder)
+                )
                 _uiState.update {
                     it.copy(
                         threads = (it.threads + result.threads).distinctBy { it.tid },
@@ -275,16 +316,18 @@ class ForumThreadListViewModel @AssistedInject constructor(
                     when (event) {
                         is CachedLoadEvent.Cached -> Unit
                         is CachedLoadEvent.Fresh -> {
+                            val sanitized = sanitizeResult(event.entry.value)
                             swr.pages.startFirstPage()
                             _uiState.update {
                                 it.copy(
-                                    threads = event.entry.value.threads,
-                                    pageInfo = event.entry.value.pageInfo,
-                                    typeFilters = event.entry.value.typeFilters,
+                                    threads = sanitized.threads,
+                                    pageInfo = sanitized.pageInfo,
+                                    typeFilters = sanitized.typeFilters,
                                     isRefreshing = false,
                                     pendingFreshThreads = null
                                 )
                             }
+                            resetHiddenTypeFilterIfNeeded()
                         }
 
                         is CachedLoadEvent.Failure -> {

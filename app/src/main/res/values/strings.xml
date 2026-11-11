@@ -293,6 +293,10 @@
     <string name="update_download_failed">下載失敗，請重試</string>
     <string name="update_install_permission_hint">需要允許安裝未知應用後才能更新，請在系統設置中開啟</string>
 
+    <!-- Forum sensitive content (hidden toggle: long-press the forum tab switch in settings) -->
+    <string name="sensitive_forum_content_shown">已顯示敏感分類（性息）</string>
+    <string name="sensitive_forum_content_hidden">已隱藏敏感分類（性息）</string>
+
     <!-- Translation -->
     <string name="translate_failed">翻譯失敗</string>
     <string name="translate_config_error">翻譯接口未配置或無效</string>

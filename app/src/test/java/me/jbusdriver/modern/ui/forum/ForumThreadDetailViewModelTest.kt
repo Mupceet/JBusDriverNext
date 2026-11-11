@@ -388,6 +388,7 @@ class ForumThreadDetailViewModelTest {
 
     private class FakeForumSettingsReader : ForumSettingsReader {
         override val autoLoadGifs: StateFlow<Boolean> = MutableStateFlow(false)
+        override val showSensitiveForumContent: StateFlow<Boolean> = MutableStateFlow(false)
         override suspend fun currentForumFloorOrder(): ForumFloorOrder = ForumFloorOrder.REGULAR
         override suspend fun currentThreadSortOrder(): ForumThreadOrder = ForumThreadOrder.LASTPOST
     }

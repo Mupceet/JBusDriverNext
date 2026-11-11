@@ -197,6 +197,7 @@ fun SettingsScreen(
                 onShowMovieTabChange = { scope.launch { store.setShowMovieTab(it) } },
                 onShowActressTabChange = { scope.launch { store.setShowActressTab(it) } },
                 onShowForumTabChange = { scope.launch { store.setShowForumTab(it) } },
+                onShowForumTabLongClick = viewModel::toggleSensitiveForumContent,
                 onAutoLoadGifsChange = { scope.launch { store.setAutoLoadGifs(it) } },
                 onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } },
                 onThreadSortOrderChange = { scope.launch { store.setThreadSortOrder(it) } },
@@ -284,6 +285,7 @@ private fun AppearanceCard(
     onShowMovieTabChange: (Boolean) -> Unit,
     onShowActressTabChange: (Boolean) -> Unit,
     onShowForumTabChange: (Boolean) -> Unit,
+    onShowForumTabLongClick: () -> Unit,
     onAutoLoadGifsChange: (Boolean) -> Unit,
     onForumFloorOrderChange: (ForumFloorOrder) -> Unit,
     onThreadSortOrderChange: (ForumThreadOrder) -> Unit,
@@ -368,8 +370,8 @@ private fun AppearanceCard(
             // Actress tab
             SwitchRow("顯示演員", showActressTab, onShowActressTabChange)
 
-            // Forum tab
-            SwitchRow("顯示論壇", showForumTab, onShowForumTabChange)
+            // Forum tab — 长按为隐藏开关：切换敏感分类（性息等）的显示
+            SwitchRow("顯示論壇", showForumTab, onShowForumTabChange, onShowForumTabLongClick)
 
             // Forum sub-options — lightly indented under the forum toggle when enabled
             AnimatedVisibility(visible = showForumTab) {
@@ -383,16 +385,27 @@ private fun AppearanceCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SwitchRow(
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(
+                        onClick = { onCheckedChange(!checked) },
+                        onLongClick = onLongClick
+                    )
+                } else {
+                    Modifier.clickable { onCheckedChange(!checked) }
+                }
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(

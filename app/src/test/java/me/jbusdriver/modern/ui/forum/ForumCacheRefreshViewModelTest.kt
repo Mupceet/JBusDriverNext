@@ -129,7 +129,7 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Cached(CacheEntry(cached, 1_000L, CacheSource.Disk, false)))
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
-        val viewModel = ForumBoardsViewModel(repository)
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -145,7 +145,7 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Cached(CacheEntry(cached, 1_000L, CacheSource.Disk, true)))
             emit(CachedLoadEvent.Failure(IllegalStateException("offline"), hadCachedValue = true))
         }))
-        val viewModel = ForumBoardsViewModel(repository)
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -159,7 +159,7 @@ class ForumCacheRefreshViewModelTest {
         val repository = FakeHomeRepository(mutableListOf(flow {
             emit(CachedLoadEvent.Failure(IllegalStateException("offline"), hadCachedValue = false))
         }))
-        val viewModel = ForumBoardsViewModel(repository)
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -198,7 +198,7 @@ class ForumCacheRefreshViewModelTest {
                 )
             }
         ))
-        val viewModel = ForumBoardsViewModel(repository)
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
         advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.groups.size)
@@ -239,7 +239,7 @@ class ForumCacheRefreshViewModelTest {
                 }
             )
         )
-        val viewModel = ForumBoardsViewModel(repository)
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.groups.size)
 
@@ -320,8 +320,11 @@ class ForumCacheRefreshViewModelTest {
 
     }
 
-    private class FakeForumSettingsReader : ForumSettingsReader {
+    private class FakeForumSettingsReader(
+        val sensitiveContent: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    ) : ForumSettingsReader {
         override val autoLoadGifs: StateFlow<Boolean> = MutableStateFlow(false)
+        override val showSensitiveForumContent: StateFlow<Boolean> = sensitiveContent
         override suspend fun currentForumFloorOrder(): ForumFloorOrder = ForumFloorOrder.REGULAR
         override suspend fun currentThreadSortOrder(): ForumThreadOrder = ForumThreadOrder.LASTPOST
     }
@@ -469,5 +472,186 @@ class ForumCacheRefreshViewModelTest {
         assertEquals(3, viewModel.uiState.value.currentTypeId)
         assertEquals(2, viewModel.uiState.value.threads.size)
         assertFalse(viewModel.uiState.value.isRefreshing)
+    }
+
+    // --- Sensitive forum content filtering ---
+
+    private fun board(id: Int, name: String) = me.jbusdriver.modern.domain.model.ForumBoard(
+        id = id, name = name, description = "", todayPosts = 0,
+        totalThreads = "", totalPosts = "",
+        lastPost = me.jbusdriver.modern.domain.model.LastPost("", "", ""),
+        typeId = null
+    )
+
+    private fun homeDataWithBoards(vararg boardNames: String) = ForumHomeData(
+        banners = emptyList(),
+        summary = me.jbusdriver.modern.domain.model.ForumHomeSummary(),
+        boardGroups = listOf(
+            me.jbusdriver.modern.domain.model.ForumBoardGroup(
+                "福利討論",
+                boardNames.mapIndexed { idx, name -> board(idx + 1, name) }
+            )
+        )
+    )
+
+    private fun threadOfType(tid: Int, typeName: String) =
+        me.jbusdriver.modern.domain.model.ForumThread(
+            tid = tid, typeId = 0, typeName = typeName, typeColor = "",
+            title = "Thread $tid", author = "A", authorUid = 0, authorAvatar = "",
+            dateLine = "", viewCount = 0, replyCount = 0,
+            lastReplyAuthor = "", lastReplyTime = "",
+            images = emptyList(), isPinned = false, isDigest = false,
+            pages = 1, isLocked = false, isHot = false
+        )
+
+    private fun sensitiveThreadResult() = ForumThreadPageResult(
+        threads = listOf(
+            threadOfType(1, "討論"),
+            threadOfType(2, "性息"),
+            threadOfType(3, "討論")
+        ),
+        typeFilters = listOf(
+            me.jbusdriver.modern.domain.model.ForumTypeFilter(6, "討論", "", 2),
+            me.jbusdriver.modern.domain.model.ForumTypeFilter(5, "性息", "", 1)
+        ),
+        pageInfo = me.jbusdriver.modern.domain.model.PageInfo(1, 1, listOf(1))
+    )
+
+    @Test
+    fun `home hides boards whose name hits sensitive keyword by default`() = runTest(testDispatcher) {
+        val repository = FakeHomeRepository(mutableListOf(flow {
+            emit(
+                CachedLoadEvent.Fresh(
+                    CacheEntry(
+                        homeDataWithBoards("性息專區", "福利討論區"),
+                        1_000L,
+                        CacheSource.Network,
+                        false
+                    )
+                )
+            )
+        }))
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        advanceUntilIdle()
+
+        val boards = viewModel.uiState.value.groups.single().boards
+        assertEquals(listOf("福利討論區"), boards.map { it.name })
+    }
+
+    @Test
+    fun `home drops group emptied by sensitive board filtering`() = runTest(testDispatcher) {
+        val data = ForumHomeData(
+            banners = emptyList(),
+            summary = me.jbusdriver.modern.domain.model.ForumHomeSummary(),
+            boardGroups = listOf(
+                me.jbusdriver.modern.domain.model.ForumBoardGroup("敏感組", listOf(board(1, "性息"))),
+                me.jbusdriver.modern.domain.model.ForumBoardGroup("正常組", listOf(board(2, "討論區")))
+            )
+        )
+        val repository = FakeHomeRepository(mutableListOf(flow {
+            emit(CachedLoadEvent.Fresh(CacheEntry(data, 1_000L, CacheSource.Network, false)))
+        }))
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        advanceUntilIdle()
+
+        val groups = viewModel.uiState.value.groups
+        assertEquals(listOf("正常組"), groups.map { it.name })
+    }
+
+    @Test
+    fun `thread list hides sensitive threads and type chips by default`() = runTest(testDispatcher) {
+        val repository = FakeThreadListRepository(mutableListOf(flow {
+            emit(CachedLoadEvent.Fresh(CacheEntry(sensitiveThreadResult(), 1_000L, CacheSource.Network, false)))
+        }))
+        val viewModel = ForumThreadListViewModel(
+            repository, FakeForumSettingsReader(),
+            me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"), SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(1, 3), state.threads.map { it.tid })
+        assertEquals(listOf(6), state.typeFilters.map { it.typeId })
+    }
+
+    @Test
+    fun `thread list keeps sensitive content when setting enabled`() = runTest(testDispatcher) {
+        val repository = FakeThreadListRepository(mutableListOf(flow {
+            emit(CachedLoadEvent.Fresh(CacheEntry(sensitiveThreadResult(), 1_000L, CacheSource.Network, false)))
+        }))
+        val viewModel = ForumThreadListViewModel(
+            repository, FakeForumSettingsReader(MutableStateFlow(true)),
+            me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"), SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(1, 2, 3), state.threads.map { it.tid })
+        assertEquals(listOf(6, 5), state.typeFilters.map { it.typeId })
+    }
+
+    @Test
+    fun `toggling sensitive visibility reloads thread list`() = runTest(testDispatcher) {
+        val repository = FakeThreadListRepository(
+            mutableListOf(
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(sensitiveThreadResult(), 1_000L, CacheSource.Network, false)
+                        )
+                    )
+                },
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(sensitiveThreadResult(), 2_000L, CacheSource.Network, false)
+                        )
+                    )
+                }
+            )
+        )
+        val reader = FakeForumSettingsReader()
+        val viewModel = ForumThreadListViewModel(
+            repository, reader,
+            me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"), SavedStateHandle()
+        )
+        advanceUntilIdle()
+        assertEquals(listOf(1, 3), viewModel.uiState.value.threads.map { it.tid })
+
+        reader.sensitiveContent.value = true
+        advanceUntilIdle()
+
+        assertEquals(listOf(1, 2, 3), viewModel.uiState.value.threads.map { it.tid })
+    }
+
+    @Test
+    fun `selected sensitive type filter falls back to all when hidden`() = runTest(testDispatcher) {
+        val repository = FakeThreadListRepository(
+            mutableListOf(
+                flow {
+                    emit(
+                        CachedLoadEvent.Fresh(
+                            CacheEntry(sensitiveThreadResult(), 1_000L, CacheSource.Network, false)
+                        )
+                    )
+                }
+            )
+        )
+        val reader = FakeForumSettingsReader(MutableStateFlow(true))
+        val viewModel = ForumThreadListViewModel(
+            repository, reader,
+            me.jbusdriver.modern.ui.RouteForumThreadList(7, "Board"), SavedStateHandle()
+        )
+        advanceUntilIdle()
+        viewModel.filterByType(5)
+        advanceUntilIdle()
+        assertEquals(5, viewModel.uiState.value.currentTypeId)
+
+        reader.sensitiveContent.value = false
+        advanceUntilIdle()
+
+        // 隐藏后选中的敏感分类回退到「全部」并按新可见性重载
+        assertNull(viewModel.uiState.value.currentTypeId)
+        assertEquals(listOf(1, 3), viewModel.uiState.value.threads.map { it.tid })
     }
 }
