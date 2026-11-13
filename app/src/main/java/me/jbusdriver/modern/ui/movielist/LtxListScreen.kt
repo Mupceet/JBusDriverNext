@@ -1,32 +1,37 @@
 package me.jbusdriver.modern.ui.movielist
 
+import android.text.format.Formatter
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
@@ -37,6 +42,7 @@ import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.data.db.entity.LtxResolveState
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
+import me.jbusdriver.modern.data.repository.LTX_CACHE_TTL_MILLIS
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.components.ScrollableCenteredState
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
@@ -70,6 +76,51 @@ fun LtxListScreen(
 
     LaunchedEffect(active) {
         if (active) viewModel.start()
+    }
+
+    // 人机验证人工介入：仓库发射请求后弹可见验证窗口（弹窗开合是 UI 局部状态）
+    var showVerification by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        viewModel.verificationRequests.collect { showVerification = true }
+    }
+    if (showVerification) {
+        LtxVerificationDialog(viewModel = viewModel, onDismiss = { showVerification = false })
+    }
+
+    // 下拉刷新：缓存新鲜时强刷全库流量大，先弹窗确认（确认框同为 UI 局部状态）
+    var showRefreshConfirm by rememberSaveable { mutableStateOf(false) }
+    var cachedBytes by remember { mutableStateOf(0L) }
+    if (showRefreshConfirm) {
+        LaunchedEffect(Unit) { cachedBytes = viewModel.cachedPayloadBytes() }
+        AlertDialog(
+            onDismissRequest = { showRefreshConfirm = false },
+            title = { Text(stringResource(R.string.ltx_refresh_confirm_title)) },
+            text = {
+                Text(
+                    if (cachedBytes > 0L) {
+                        stringResource(
+                            R.string.ltx_refresh_confirm_hint_sized,
+                            Formatter.formatShortFileSize(context, cachedBytes)
+                        )
+                    } else {
+                        stringResource(R.string.ltx_refresh_confirm_hint)
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRefreshConfirm = false
+                    viewModel.refresh()
+                }) {
+                    Text(stringResource(R.string.refresh))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRefreshConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 
     // 滚动驱动的补全分两层，兼顾「边滑边补全」与「停留优先」：
@@ -109,125 +160,135 @@ fun LtxListScreen(
         }
     }
 
-    when {
-        !ltxEnabled -> {
-            ScrollableCenteredState(modifier = modifier) {
-                Text(
-                    stringResource(R.string.ltx_disabled),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        uiState.isLoading -> {
-            ScrollableCenteredState(modifier = modifier) {
-                CircularProgressIndicator()
-            }
-        }
-
-        uiState.error != null && uiState.items.isEmpty() -> {
-            ErrorView(
-                message = stringResource(uiState.error ?: R.string.load_failed),
-                onRetry = viewModel::start,
-                modifier = modifier
-            )
-        }
-
-        uiState.items.isEmpty() -> {
-            ScrollableCenteredState(modifier = modifier) {
-                Text(
-                    stringResource(R.string.ltx_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        else -> {
-            val pendingLabel = stringResource(R.string.ltx_pending)
-            val resolvingLabel = stringResource(R.string.ltx_resolving)
-            val tapToResolveLabel = stringResource(R.string.ltx_tap_to_resolve)
-            val notFoundLabel = stringResource(R.string.ltx_not_found)
-            val noLinksMessage = stringResource(R.string.ltx_no_links)
-            val cards = remember(
-                uiState.items,
-                uiState.resolvingCodes,
-                pendingLabel,
-                resolvingLabel,
-                tapToResolveLabel,
-                notFoundLabel,
-            ) {
-                uiState.items.map {
-                    it.toCardModel(
-                        pendingLabel = pendingLabel,
-                        resolvingLabel = resolvingLabel,
-                        tapToResolveLabel = tapToResolveLabel,
-                        notFoundLabel = notFoundLabel,
-                        isResolving = it.code in uiState.resolvingCodes,
+    PullToRefreshBox(
+        // 首次加载（状态未明）用全屏转圈，避免与下拉指示圈叠显；
+        // 状态明确后的加载一律由下拉指示圈表达
+        isRefreshing = uiState.isRefreshing && !uiState.isLoading,
+        onRefresh = {
+            if (!ltxEnabled) return@PullToRefreshBox
+            // 缓存新鲜时强刷全库流量大（单包快照），先弹窗确认再强刷
+            val stale = uiState.cacheStoredAtMillis <= 0L ||
+                System.currentTimeMillis() - uiState.cacheStoredAtMillis > LTX_CACHE_TTL_MILLIS
+            if (stale) viewModel.refresh() else showRefreshConfirm = true
+        },
+        modifier = modifier.fillMaxSize()
+    ) {
+        when {
+            !ltxEnabled -> {
+                ScrollableCenteredState(modifier = modifier) {
+                    Text(
+                        stringResource(R.string.ltx_disabled),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            val itemsByCode = remember(uiState.items) {
-                uiState.items.associateBy { it.code }
+
+            uiState.isLoading -> {
+                ScrollableCenteredState(modifier = modifier) {
+                    CircularProgressIndicator()
+                }
             }
 
-            MovieList(
-                movies = cards,
-                onMovieClick = { movie, censor ->
-                    val item = itemsByCode[movie.code.uppercase()]
-                    when {
-                        // 已补全且持有站内链接 → 进入详情
-                        item?.movie != null && movie.link.isNotBlank() ->
-                            onMovieClick(movie, censor)
+            uiState.error != null && uiState.items.isEmpty() -> {
+                ErrorView(
+                    message = stringResource(uiState.error ?: R.string.load_failed),
+                    onRetry = viewModel::retry,
+                    modifier = modifier
+                )
+            }
 
-                        // 未补全 → 点击按需补全并回填，完成后再次点击进入详情
-                        item != null && item.resolveState == LtxResolveState.UNRESOLVED ->
-                            viewModel.resolveNow(item.code)
+            uiState.items.isEmpty() -> {
+                ScrollableCenteredState(modifier = modifier) {
+                    Text(
+                        stringResource(R.string.ltx_empty),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
-                        // NOT_FOUND 终态：无操作（角标已提示站内未收录）
-                        else -> Unit
+            else -> {
+                val pendingLabel = stringResource(R.string.ltx_pending)
+                val resolvingLabel = stringResource(R.string.ltx_resolving)
+                val tapToResolveLabel = stringResource(R.string.ltx_tap_to_resolve)
+                val notFoundLabel = stringResource(R.string.ltx_not_found)
+                val noLinksMessage = stringResource(R.string.ltx_no_links)
+                val cards = remember(
+                    uiState.items,
+                    uiState.resolvingCodes,
+                    pendingLabel,
+                    resolvingLabel,
+                    tapToResolveLabel,
+                    notFoundLabel,
+                ) {
+                    uiState.items.map {
+                        it.toCardModel(
+                            pendingLabel = pendingLabel,
+                            resolvingLabel = resolvingLabel,
+                            tapToResolveLabel = tapToResolveLabel,
+                            notFoundLabel = notFoundLabel,
+                            isResolving = it.code in uiState.resolvingCodes,
+                        )
                     }
-                },
-                isDownloaded = { it.code.uppercase() in downloadedCodes },
-                isGrid = isGrid,
-                header = {
-                    LtxListHeader(
-                        uiState = uiState,
-                        onRefresh = viewModel::refresh,
-                    )
-                },
-                movieLongPressMenu = { movie, close ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.ltx_copy_links)) },
-                        onClick = {
-                            val links = viewModel.linksFor(movie.code)
-                            val message = if (links.isNotEmpty()) {
-                                context.resources.getQuantityString(
-                                    R.plurals.ltx_links_copied, links.size, links.size
-                                )
-                            } else {
-                                noLinksMessage
-                            }
-                            if (links.isNotEmpty()) {
-                                context.copy(links.joinToString("\n") { it.uri })
-                            }
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            close()
+                }
+                val itemsByCode = remember(uiState.items) {
+                    uiState.items.associateBy { it.code }
+                }
+
+                MovieList(
+                    movies = cards,
+                    onMovieClick = { movie, censor ->
+                        val item = itemsByCode[movie.code.uppercase()]
+                        when {
+                            // 已补全且持有站内链接 → 进入详情
+                            item?.movie != null && movie.link.isNotBlank() ->
+                                onMovieClick(movie, censor)
+
+                            // 未补全 → 点击按需补全并回填，完成后再次点击进入详情
+                            item != null && item.resolveState == LtxResolveState.UNRESOLVED ->
+                                viewModel.resolveNow(item.code)
+
+                            // NOT_FOUND 终态：无操作（角标已提示站内未收录）
+                            else -> Unit
                         }
-                    )
-                },
-                modifier = modifier,
-                listState = listState,
-                gridState = gridState,
-            )
+                    },
+                    isDownloaded = { it.code.uppercase() in downloadedCodes },
+                    isGrid = isGrid,
+                    header = {
+                        LtxListHeader(uiState = uiState)
+                    },
+                    movieLongPressMenu = { movie, close ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.ltx_copy_links)) },
+                            onClick = {
+                                val links = viewModel.linksFor(movie.code)
+                                val message = if (links.isNotEmpty()) {
+                                    context.resources.getQuantityString(
+                                        R.plurals.ltx_links_copied, links.size, links.size
+                                    )
+                                } else {
+                                    noLinksMessage
+                                }
+                                if (links.isNotEmpty()) {
+                                    context.copy(links.joinToString("\n") { it.uri })
+                                }
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                close()
+                            }
+                        )
+                    },
+                    modifier = modifier,
+                    listState = listState,
+                    gridState = gridState,
+                )
+            }
         }
     }
 }
 
-/** 精简头部：条目数 + 更新时间 + 补全进度 + 刷新。筛选/排序入口在影片 tab chip 行右侧。 */
+/** 精简头部：条目数 + 更新时间 + 补全进度。筛选/排序入口在影片 tab chip 行右侧，刷新走下拉。 */
 @Composable
 private fun LtxListHeader(
     uiState: LtxListUiState,
-    onRefresh: () -> Unit,
 ) {
     val updatedText = remember(uiState.updatedAtMillis) {
         if (uiState.updatedAtMillis > 0) {
@@ -270,16 +331,6 @@ private fun LtxListHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        // 纯文本刷新入口：TextButton 的 40dp 最小高度会把整行撑高
-        Text(
-            stringResource(R.string.refresh),
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .clip(MaterialTheme.shapes.small)
-                .clickable(onClick = onRefresh)
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-        )
     }
 }
 

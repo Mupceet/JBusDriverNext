@@ -128,6 +128,12 @@
     <string name="ltx_count_updated">%1$d titles · updated %2$s</string>
     <string name="ltx_enable">Enable LTX library</string>
     <string name="ltx_base_url">LTX base URL</string>
+    <string name="ltx_verify_title">LTX human verification required</string>
+    <string name="ltx_verify_hint">The site requires human verification. Complete it in the page below; the library will load automatically afterwards</string>
+    <string name="ltx_verify_close">Close</string>
+    <string name="ltx_refresh_confirm_title">Library data is still fresh</string>
+    <string name="ltx_refresh_confirm_hint">The library was updated less than 6 hours ago. Pulling the full snapshot again consumes considerable data. Force refresh anyway?</string>
+    <string name="ltx_refresh_confirm_hint_sized">The library was updated less than 6 hours ago. Pulling the full snapshot uses about %1$s of data. Force refresh anyway?</string>
     <plurals name="ltx_links_copied">
         <item quantity="one">%1$d link copied</item>
         <item quantity="other">%1$d links copied</item>

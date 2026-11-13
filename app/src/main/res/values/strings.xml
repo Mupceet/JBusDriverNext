@@ -125,6 +125,12 @@
     <string name="ltx_count_updated">%1$d 部 · 更新於 %2$s</string>
     <string name="ltx_enable">啟用 LTX 資料庫</string>
     <string name="ltx_base_url">LTX 網址</string>
+    <string name="ltx_verify_title">LTX 需要人機驗證</string>
+    <string name="ltx_verify_hint">站點開啟了人機驗證，請於下方頁面完成驗證；通過後會自動載入片庫</string>
+    <string name="ltx_verify_close">關閉</string>
+    <string name="ltx_refresh_confirm_title">片庫資料仍新鮮</string>
+    <string name="ltx_refresh_confirm_hint">距上次更新未超過 6 小時，重新拉取全庫會消耗較多流量，仍要強制刷新嗎？</string>
+    <string name="ltx_refresh_confirm_hint_sized">距上次更新未超過 6 小時，重新拉取全庫約消耗 %1$s 流量，仍要強制刷新嗎？</string>
     <plurals name="ltx_links_copied">
         <item quantity="other">已複製 %1$d 條連結</item>
     </plurals>

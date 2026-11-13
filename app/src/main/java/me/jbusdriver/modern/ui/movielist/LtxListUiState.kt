@@ -89,6 +89,8 @@ data class LtxListUiState(
     val totalCount: Int = 0,
     /** LTX 全库更新时间（毫秒）。 */
     val updatedAtMillis: Long = 0L,
+    /** 缓存写入时间（毫秒），下拉时据此判断「数据仍新鲜需确认强刷」。 */
+    val cacheStoredAtMillis: Long = 0L,
     val sortField: LtxSortField = LtxSortField.ADDED,
     val sortDirection: LtxSortDirection = LtxSortDirection.DESC,
     val statusFilter: LtxStatusFilter = LtxStatusFilter.ALL,

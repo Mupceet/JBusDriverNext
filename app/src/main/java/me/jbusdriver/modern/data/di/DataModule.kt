@@ -9,7 +9,9 @@ import me.jbusdriver.modern.core.cache.DefaultCacheStore
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.core.http.AndroidWebViewFactory
 import me.jbusdriver.modern.core.http.DefaultHtmlClient
+import me.jbusdriver.modern.core.http.DefaultLtxWebViewGateway
 import me.jbusdriver.modern.core.http.HtmlClient
+import me.jbusdriver.modern.core.http.LtxWebViewGateway
 import me.jbusdriver.modern.core.http.WebViewFactory
 import me.jbusdriver.modern.core.site.DefaultSiteConfig
 import me.jbusdriver.modern.core.site.SitePreferenceSource
@@ -266,6 +268,11 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindLtxSettingsSource(impl: AppSettingsStore): LtxSettingsSource
+
+    /** 绑定 [LtxWebViewGateway] 到 [DefaultLtxWebViewGateway]。 */
+    @Binds
+    @Singleton
+    abstract fun bindLtxWebViewGateway(impl: DefaultLtxWebViewGateway): LtxWebViewGateway
 
     @Binds
     @Singleton

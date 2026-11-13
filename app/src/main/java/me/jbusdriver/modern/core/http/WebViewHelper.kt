@@ -9,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import org.json.JSONObject
 import java.io.IOException
 import java.net.URI
 import kotlin.time.Duration.Companion.milliseconds
@@ -161,5 +162,42 @@ object WebViewHelper {
             }
         }
         return sb.toString()
+    }
+
+    /**
+     * 页面内同步 XHR 抓取 [url] 响应原文：与页面自身的 fetch 同源同权（浏览器自动
+     * 附加 Cookie 与 Sec-Fetch 特征），用于需要真实浏览器环境的人机验证场景。
+     * 同步模式使脚本可在 evaluateJavascript 中直接返回结果（参考 fetchAjaxDocument）。
+     * 仅在 HTTP 200 且响应非空时返回 body，其余情况返回 null。
+     */
+    suspend fun WebView.fetchPageTextAwait(url: String): String? {
+        val script = """
+            (function() {
+              try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', ${JSONObject.quote(url)}, false);
+                xhr.send(null);
+                return JSON.stringify({
+                  ok: true,
+                  status: xhr.status,
+                  text: xhr.responseText || ''
+                });
+              } catch (error) {
+                return JSON.stringify({ ok: false, error: String(error) });
+              }
+            })()
+        """.trimIndent()
+        val payload = runCatching { evaluateJs(script) }.getOrNull() ?: return null
+        val json = runCatching { JSONObject(unescapeJsString(payload)) }.getOrNull() ?: return null
+        if (!json.optBoolean("ok") || json.optInt("status") != 200) return null
+        val body = json.optString("text")
+        return body.takeIf { it.isNotEmpty() }
+    }
+
+    /** 导出当前 WebView 的会话凭证（Cookie + UA 成对使用）；无 Cookie 时返回 null。 */
+    fun WebView.currentWebSession(url: String): LtxWebSession? {
+        val cookies = CookieManager.getInstance().getCookie(url) ?: return null
+        if (cookies.isEmpty()) return null
+        return LtxWebSession(cookieHeader = cookies, userAgent = settings.userAgentString)
     }
 }

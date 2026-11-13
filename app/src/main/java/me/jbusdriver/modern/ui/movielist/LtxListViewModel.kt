@@ -7,6 +7,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -18,6 +19,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.coroutine.IoDispatcher
+import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.entity.LtxMovie
@@ -93,6 +95,9 @@ class LtxListViewModel @Inject constructor(
 
     private var started = false
 
+    /** 最近一次缓存写入时间，用于下拉时判断「数据仍新鲜需确认强刷」。 */
+    private var cacheStoredAtMillis = 0L
+
     /** 进入 LTX 页时调用（页面激活即加载，幂等）。 */
     fun start() {
         if (started) return
@@ -117,12 +122,27 @@ class LtxListViewModel @Inject constructor(
 
             siteConfig.awaitReady()
 
+            // 加载指示以仓库为准：缓存过期自检/验证自动尝试等非下拉触发的拉取也可见
+            launch {
+                ltxRepository.isFetching.collect { fetching ->
+                    _uiState.update { it.copy(isRefreshing = fetching) }
+                }
+            }
+
             // 全库 SWR：缓存先行（Cached），过期后台刷新（Fresh）
             launch {
                 ltxRepository.observeLibrary().collect { event ->
                     when (event) {
-                        is CachedLoadEvent.Cached -> applyLibrary(event.entry.value)
-                        is CachedLoadEvent.Fresh -> applyLibrary(event.entry.value)
+                        is CachedLoadEvent.Cached -> {
+                            cacheStoredAtMillis = event.entry.storedAtMillis
+                            _uiState.update { it.copy(cacheStoredAtMillis = cacheStoredAtMillis) }
+                            applyLibrary(event.entry.value)
+                        }
+                        is CachedLoadEvent.Fresh -> {
+                            cacheStoredAtMillis = event.entry.storedAtMillis
+                            _uiState.update { it.copy(cacheStoredAtMillis = cacheStoredAtMillis) }
+                            applyLibrary(event.entry.value)
+                        }
                         is CachedLoadEvent.Failure -> applyLibraryFailure(event.hadCachedValue)
                     }
                 }
@@ -139,12 +159,43 @@ class LtxListViewModel @Inject constructor(
         }
     }
 
+    /** 人机验证需人工介入事件（转发自仓库），UI 据此弹出可见验证窗口。 */
+    val verificationRequests: SharedFlow<Unit> = ltxRepository.verificationRequests
+
+    /** 人工验证窗口的加载目标（LTX 站点首页）。 */
+    suspend fun verificationOrigin(): String = ltxRepository.currentOrigin()
+
+    /** 最近缓存的全库载荷大小（字节），供刷新确认提示展示实际流量。 */
+    suspend fun cachedPayloadBytes(): Long = ltxRepository.cachedPayloadBytes()
+
+    /** 人工验证通过：注入会话使后续拉取走 OkHttp 快路径，并立即刷新。 */
+    fun onVerificationSuccess(session: LtxWebSession) {
+        viewModelScope.launch {
+            ltxRepository.adoptWebSession(session)
+            refresh()
+        }
+    }
+
+    /**
+     * 失败重试：清错误态并重新拉取。数据管道（SWR/补全收集）由 [start] 建立
+     * 且持续有效，重试只需再次拉取——不可走 [start]（幂等守卫会直接返回）。
+     */
+    fun retry() {
+        _uiState.update { it.copy(error = null) }
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             val library = ltxRepository.refresh()
             when {
-                library != null -> applyLibrary(library)
+                library != null -> {
+                    // 强刷刚写入新缓存：下拉判断直接视为新鲜
+                    cacheStoredAtMillis = System.currentTimeMillis()
+                    _uiState.update { it.copy(cacheStoredAtMillis = cacheStoredAtMillis) }
+                    applyLibrary(library)
+                }
                 // 无缓存且刷新失败才报错；有旧数据时静默保留
                 currentLibrary == null ->
                     _uiState.update { it.copy(isRefreshing = false, error = R.string.load_failed) }

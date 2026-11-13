@@ -5,7 +5,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -27,6 +30,7 @@ import me.jbusdriver.modern.data.settings.LtxSettingsSource
 import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideoGroup
+import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.LtxEntry
 import me.jbusdriver.modern.domain.model.LtxLibrary
@@ -76,6 +80,11 @@ class LtxListViewModelTest {
         override suspend fun currentLibrary(): LtxLibrary? = library
         override suspend fun findByCode(code: String): LtxEntry? = library.find(code)
         override suspend fun refresh(): LtxLibrary? = library
+        override val verificationRequests: SharedFlow<Unit> = MutableSharedFlow()
+        override val isFetching: StateFlow<Boolean> = MutableStateFlow(false)
+        override fun adoptWebSession(session: LtxWebSession) = Unit
+        override suspend fun currentOrigin(): String = "https://ltx.example.test"
+        override suspend fun cachedPayloadBytes(): Long = 0L
     }
 
     private class FakeLtxMovieRepository : LtxMovieRepository {
