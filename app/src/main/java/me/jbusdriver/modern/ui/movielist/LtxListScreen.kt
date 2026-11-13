@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -91,7 +93,6 @@ fun LtxListScreen(
     var showRefreshConfirm by rememberSaveable { mutableStateOf(false) }
     var cachedBytes by remember { mutableStateOf(0L) }
     if (showRefreshConfirm) {
-        LaunchedEffect(Unit) { cachedBytes = viewModel.cachedPayloadBytes() }
         AlertDialog(
             onDismissRequest = { showRefreshConfirm = false },
             title = { Text(stringResource(R.string.ltx_refresh_confirm_title)) },
@@ -160,16 +161,26 @@ fun LtxListScreen(
         }
     }
 
+    val scope = rememberCoroutineScope()
+
     PullToRefreshBox(
         // 首次加载（状态未明）用全屏转圈，避免与下拉指示圈叠显；
         // 状态明确后的加载一律由下拉指示圈表达
         isRefreshing = uiState.isRefreshing && !uiState.isLoading,
         onRefresh = {
             if (!ltxEnabled) return@PullToRefreshBox
-            // 缓存新鲜时强刷全库流量大（单包快照），先弹窗确认再强刷
-            val stale = uiState.cacheStoredAtMillis <= 0L ||
-                System.currentTimeMillis() - uiState.cacheStoredAtMillis > LTX_CACHE_TTL_MILLIS
-            if (stale) viewModel.refresh() else showRefreshConfirm = true
+            scope.launch {
+                val stale = uiState.cacheStoredAtMillis <= 0L ||
+                    System.currentTimeMillis() - uiState.cacheStoredAtMillis > LTX_CACHE_TTL_MILLIS
+                val lastBytes = if (stale) 0L else viewModel.cachedPayloadBytes()
+                // 缓存新鲜且上次快照超过确认阈值才提醒；小快照直接刷
+                if (!stale && lastBytes > LTX_REFRESH_CONFIRM_BYTES) {
+                    cachedBytes = lastBytes
+                    showRefreshConfirm = true
+                } else {
+                    viewModel.refresh()
+                }
+            }
         },
         modifier = modifier.fillMaxSize()
     ) {
@@ -336,6 +347,9 @@ private fun LtxListHeader(
 
 /** 途经发现节流窗口：滑动过程中至多按该间隔入队一次当前窗口，避免逐帧触发。 */
 private const val LTX_RESOLVE_DISCOVERY_THROTTLE_MS = 150L
+
+/** 下拉强刷确认阈值：缓存新鲜且上次快照超过该字节数才弹窗提醒，小快照直接刷。 */
+private const val LTX_REFRESH_CONFIRM_BYTES = 3L * 1024 * 1024
 
 /** 滑动去抖窗口：滚动索引停止变化该时长后视为停留，触发停留补全插队。 */
 private const val LTX_RESOLVE_SETTLE_DEBOUNCE_MS = 400L
