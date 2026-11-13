@@ -31,6 +31,8 @@ data class LtxEntry(
     val date: String? = null,
     /** 评分（源站数据，仅用于排序展示）。 */
     val score: Double? = null,
+    /** 评分数（源站数据，加权评分排序的先验强度）。 */
+    val votes: Int? = null,
 ) {
     val hasConfirmedLinks: Boolean get() = links.isNotEmpty()
 }

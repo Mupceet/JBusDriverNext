@@ -37,6 +37,8 @@ data class LtxItemDto(
     val date: String? = null,
     /** 评分（仅用于排序，2026-11-04 用户要求扩展进契约）。 */
     val score: Double? = null,
+    /** 评分数（加权评分排序的先验强度，2026-11-13 扩展进契约）。 */
+    val votes: Int? = null,
 )
 
 /**
@@ -67,6 +69,7 @@ internal fun parseLtxLibrary(json: String): LtxLibrary? {
                 addedAtMillis = dto.addedAt ?: 0L,
                 date = dto.date?.trim()?.takeIf { it.isNotEmpty() },
                 score = dto.score,
+                votes = dto.votes,
             )
         }
         .sortedByDescending { it.addedAtMillis }

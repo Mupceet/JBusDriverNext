@@ -140,6 +140,17 @@ class LtxPayloadTest {
     }
 
     @Test
+    fun `votes parsed for weighted score sort and defaults to null`() {
+        val json = """
+            {"items":[{"code":"TEST-010","score":4.65,"votes":8009}],"updated_at":1}
+        """.trimIndent()
+        val entry = parseLtxLibrary(json)!!.entries.single()
+        assertEquals(8009, entry.votes)
+        val missing = parseLtxLibrary("""{"items":[{"code":"TEST-011","score":4.1}]}""")!!
+        assertNull(missing.entries.single().votes)
+    }
+
+    @Test
     fun `malformed json returns null but valid empty payload yields empty library`() {
         // 非 JSON 载荷 → null（不可缓存）
         assertNull(parseLtxLibrary("not json"))

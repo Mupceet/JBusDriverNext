@@ -501,8 +501,10 @@ class LtxListViewModelTest {
 
         viewModel.updateSortField(LtxSortField.SCORE)
         advanceUntilIdle()
+        // 网站同款加权评分：票数先验把低票高分（AAA-001 pending 4.9）拉回均值，
+        // 与 AAA-003（4.1、无票）同分；AAA-001 pending 再扣 1 分排到 AAA-003 之后，
         // 无评分（AAA-002）稳定排尾部（默认倒序）
-        assertEquals(listOf("AAA-001", "AAA-003", "AAA-002"), viewModel.uiState.value.items.map { it.code })
+        assertEquals(listOf("AAA-003", "AAA-001", "AAA-002"), viewModel.uiState.value.items.map { it.code })
     }
 
     @Test
