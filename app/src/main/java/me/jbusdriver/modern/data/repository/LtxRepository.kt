@@ -22,13 +22,25 @@ import me.jbusdriver.modern.core.http.LtxWebFetch
 import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.core.http.LtxWebViewGateway
 import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.core.http.LtxWebViewSession
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.ltx.LTX_ITEMS_PATH
+import me.jbusdriver.modern.data.ltx.LTX_SESSION_PATH
 import me.jbusdriver.modern.data.ltx.LtxChallengeException
+import me.jbusdriver.modern.data.ltx.LtxCryptoSession
+import me.jbusdriver.modern.data.ltx.LtxEncryptedEnvelopeDto
 import me.jbusdriver.modern.data.ltx.LtxMigratedException
 import me.jbusdriver.modern.data.ltx.LtxProtocolException
+import me.jbusdriver.modern.data.ltx.LtxSessionHandshakeDto
+import me.jbusdriver.modern.data.ltx.LtxSessionRequestBodyDto
+import me.jbusdriver.modern.data.ltx.base64UrlDecode
+import me.jbusdriver.modern.data.ltx.decryptLtxEnvelope
+import me.jbusdriver.modern.data.ltx.establishLtxSession
 import me.jbusdriver.modern.data.ltx.isLtxCloudflareChallenge
 import me.jbusdriver.modern.data.ltx.isLtxCryptoSessionRequired
+import me.jbusdriver.modern.data.ltx.ltxPublicKeyRawBase64Url
+import me.jbusdriver.modern.data.ltx.newLtxClientKeyPair
+import me.jbusdriver.modern.data.ltx.newLtxRequestId
 import me.jbusdriver.modern.data.ltx.parseLtxLibrary
 import me.jbusdriver.modern.data.ltx.parseLtxMigratedBaseUrl
 import me.jbusdriver.modern.data.settings.LtxSettingsSource
@@ -37,8 +49,10 @@ import me.jbusdriver.modern.domain.model.LtxLibrary
 import me.jbusdriver.modern.domain.model.normalizeLtxCode
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -117,6 +131,10 @@ class DefaultLtxRepository @Inject constructor(
     /** WebView 过 Cloudflare 挑战后的会话；进程内复用，Cookie/UA 必须成对生效。 */
     @Volatile
     private var webSession: LtxWebSession? = null
+
+    /** 加密会话（迁移站协议）；进程内复用，密钥不落盘。 */
+    @Volatile
+    private var cryptoSession: LtxCryptoSession? = null
 
     private val _verificationRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     override val verificationRequests: SharedFlow<Unit> = _verificationRequests
@@ -207,36 +225,202 @@ class DefaultLtxRepository @Inject constructor(
         parseLtxLibrary(json) ?: throw IOException("Malformed LTX payload from $base$LTX_ITEMS_PATH")
     }
 
-    /** 对指定基址单次拉取全库 JSON 原文（人机验证门走 WebView 网关兜底）。 */
+    /**
+     * 对指定基址单次拉取全库 JSON 原文。
+     *
+     * 迁移站（默认域）走加密会话通道（[fetchViaCryptoSession]）；自定义镜像域
+     * 维持旧协议（明文 + Turnstile Cookie，WebView 抓取兜底）。
+     */
     private suspend fun fetchLibraryJsonOnce(base: String): String {
         val url = base + LTX_ITEMS_PATH
-        KLog.t(TAG).i("LTX fetch start: $url (session=${if (webSession != null) "reused" else "none"})")
-        return try {
-            executeJsonRequest(url)
-        } catch (e: LtxChallengeException) {
-            if (base == DEFAULT_LTX_BASE_URL) {
-                // 迁移站（2026-11-15 起）已知启用加密会话协议：即便先过了 CF 边缘/应用层
-                // 挑战，/api/items 仍会因缺会话头 428，验证网关与人工弹窗都无法产出数据
-                // （真机实测：网关 8s 超时后弹出的验证窗永远到不了成功条件）——按协议升级快速失败
-                KLog.t(TAG).w("LTX challenge on crypto-session site; treating as protocol upgrade: $url")
-                throw LtxProtocolException(url)
+        KLog.t(TAG).i(
+            "LTX fetch start: $url (mode=${if (base == DEFAULT_LTX_BASE_URL) "crypto" else "legacy"}, " +
+                    "web=${if (webSession != null) "reused" else "none"}, " +
+                    "session=${if (cryptoSession != null) "reused" else "none"})"
+        )
+        return if (base == DEFAULT_LTX_BASE_URL) fetchViaCryptoSession(url) else fetchViaLegacy(url)
+    }
+
+    /** 旧协议（自定义镜像域）：明文 GET + Turnstile 门禁走 WebView 页内抓取。 */
+    private suspend fun fetchViaLegacy(url: String): String = try {
+        executeJsonRequest(url)
+    } catch (e: LtxChallengeException) {
+        // 人机验证门：隐形 WebView 让 SPA 过 Turnstile 并在页面内直接抓取（无循环）
+        KLog.t(TAG).w("LTX verification required, fetching via WebView gateway: $url")
+        val fetched = webGateway.fetchViaWebView(url)
+            ?: run {
+                // 自动通过失败（如交互式 Turnstile）：请求人工介入
+                KLog.t(TAG).w("LTX auto verification failed; requesting manual verification")
+                _verificationRequests.tryEmit(Unit)
+                throw IOException("LTX human verification not passed for $url", e)
             }
-            // 人机验证门：隐形 WebView 让 SPA 过 Turnstile 并在页面内直接抓取（无循环）
-            KLog.t(TAG).w("LTX verification required, fetching via WebView gateway: $url")
-            val fetched = webGateway.fetchViaWebView(url)
-                ?: run {
-                    // 自动通过失败（如交互式 Turnstile）：请求人工介入
-                    KLog.t(TAG).w("LTX auto verification failed; requesting manual verification")
-                    _verificationRequests.tryEmit(Unit)
-                    throw IOException("LTX human verification not passed for $url", e)
+        webSession = fetched.session
+        fetched.body
+    }
+
+    /**
+     * 迁移站加密会话通道：会话就绪则直接请求；428（会话失效）或挑战（Cookie 失效）
+     * 时重建会话并重试，总尝试数受 [MAX_SESSION_ATTEMPTS] 约束。
+     */
+    private suspend fun fetchViaCryptoSession(url: String): String {
+        var session = cryptoSession?.takeIf { !it.isExpired() && webSession != null }
+            ?: establishCryptoSession(url, allowManualVerification = true)
+        var attempt = 0
+        while (true) {
+            attempt++
+            try {
+                val web = webSession ?: error("web session missing after establishment")
+                return executeCryptoRequest(url, session, web)
+            } catch (e: LtxSessionInvalidException) {
+                // 428：会话过期/服务端丢弃——重建一次
+                cryptoSession = null
+                if (attempt >= MAX_SESSION_ATTEMPTS) throw LtxProtocolException(url)
+                KLog.t(TAG).w("LTX crypto session invalid, re-establishing (attempt=$attempt)")
+                session = establishCryptoSession(url, allowManualVerification = false)
+            } catch (e: LtxChallengeException) {
+                // Cookie 失效（边缘质询/Turnstile）：全量重建（WebView 过门禁+握手）
+                cryptoSession = null
+                webSession = null
+                if (attempt >= MAX_SESSION_ATTEMPTS) throw LtxProtocolException(url)
+                KLog.t(TAG).w("LTX challenge during crypto request, re-establishing (attempt=$attempt)")
+                session = establishCryptoSession(url, allowManualVerification = false)
+            }
+        }
+    }
+
+    /**
+     * 建立加密会话：优先以现有 Cookie/UA 走 OkHttp 原生握手（ECDH+HKDF 全在
+     * 本进程完成）；无 Cookie 或被拒时由 WebView 网关过门禁并在页内握手。
+     * 两条路都不通且允许人工介入时发射验证请求（弹窗只负责过门禁拿 Cookie，
+     * 会话仍由本方法在下次拉取时原生建立）。
+     */
+    private suspend fun establishCryptoSession(
+        itemsUrl: String,
+        allowManualVerification: Boolean,
+    ): LtxCryptoSession {
+        val existing = webSession
+        if (existing != null) {
+            val negotiated = runCatching { negotiateSessionViaOkHttp(itemsUrl, existing) }.getOrNull()
+            if (negotiated != null) {
+                cryptoSession = negotiated
+                return negotiated
+            }
+            // 握手被拒（Cookie 过期）或握手响应非法：清空走 WebView 全流程
+            webSession = null
+        }
+        val fromWeb = webGateway.establishSessionViaWebView(itemsUrl)
+        if (fromWeb != null) {
+            val keyBytes = base64UrlDecode(fromWeb.aesKeyBase64Url)
+            if (keyBytes != null && keyBytes.size == 32) {
+                webSession = fromWeb.webSession
+                val session = LtxCryptoSession(
+                    sid = fromWeb.sid,
+                    aesKey = SecretKeySpec(keyBytes, "AES"),
+                    expiresAtMillis = fromWeb.expiresAtMillis,
+                )
+                cryptoSession = session
+                return session
+            }
+            KLog.t(TAG).w("LTX web handshake returned bad key material")
+        }
+        // 不可见 WebView 未通过（交互式 Turnstile 等）：请求人工介入
+        if (allowManualVerification) {
+            KLog.t(TAG).w("LTX auto session establishment failed; requesting manual verification")
+            _verificationRequests.tryEmit(Unit)
+        }
+        throw LtxProtocolException(itemsUrl)
+    }
+
+    /** OkHttp 原生会话握手；被门禁拒绝或响应非法返回 null。 */
+    private fun negotiateSessionViaOkHttp(itemsUrl: String, web: LtxWebSession): LtxCryptoSession? {
+        val base = itemsUrl.removeSuffix(LTX_ITEMS_PATH)
+        val url = base + LTX_SESSION_PATH
+        val keyPair = newLtxClientKeyPair()
+        val bodyJson = GSON.toJson(LtxSessionRequestBodyDto(publicKey = ltxPublicKeyRawBase64Url(keyPair)))
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "*/*")
+            .header("Content-Type", "application/json")
+            .header("User-Agent", web.userAgent)
+            .header("Cookie", web.cookieHeader)
+            .browserLikeHeaders(url)
+            .post(bodyJson.toRequestBody(null))
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            val challenged = isLtxCloudflareChallenge(body)
+            KLog.t(TAG).i(
+                "LTX session negotiate: http=${response.code} len=${body.length} " +
+                        "challenge=$challenged head=${body.take(80)}"
+            )
+            if (challenged || !response.isSuccessful) return null
+            val dto = runCatching { GSON.fromJson<LtxSessionHandshakeDto>(body) }.getOrNull() ?: return null
+            return runCatching { establishLtxSession(keyPair, dto) }.onFailure {
+                KLog.t(TAG).w("LTX session establish failed: ${it.message}")
+            }.getOrNull()
+        }
+    }
+
+    /**
+     * 加密通道数据请求：带 `X-LTX-Session`/`X-LTX-Request` 头 GET [url]，
+     * 响应按 v1 信封 AES-GCM 解密（AAD 绑定 method/path/status/encoding）。
+     * 非信封响应按明文载荷回退（协议回滚容错）。
+     */
+    private fun executeCryptoRequest(url: String, session: LtxCryptoSession, web: LtxWebSession): String {
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "*/*")
+            .header("User-Agent", web.userAgent)
+            .header("Cookie", web.cookieHeader)
+            .header(LTX_SESSION_HEADER, session.sid)
+            .header(LTX_REQUEST_HEADER, newLtxRequestId())
+            .browserLikeHeaders(url)
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            val challenged = isLtxCloudflareChallenge(body)
+            KLog.t(TAG).i(
+                "LTX crypto response: http=${response.code} type=${response.header("Content-Type")} " +
+                        "len=${body.length} challenge=$challenged head=${body.take(80)}"
+            )
+            if (challenged) throw LtxChallengeException(url)
+            if (response.code == 428 && isLtxCryptoSessionRequired(body)) throw LtxSessionInvalidException()
+            if (!response.isSuccessful) {
+                KLog.t(TAG).w("LTX crypto error body: ${body.take(300)}")
+                throw IOException("HTTP ${response.code} from $url")
+            }
+            if (body.isEmpty()) throw IOException("Empty body from $url")
+            val envelope = runCatching { GSON.fromJson<LtxEncryptedEnvelopeDto>(body) }.getOrNull()
+            if (envelope != null && envelope.looksLikeEnvelope()) {
+                return try {
+                    decryptLtxEnvelope(envelope, session, "GET", pathAndSearch(url), response.code)
+                } catch (e: Exception) {
+                    KLog.t(TAG).w("LTX envelope decrypt failed: ${e.message}")
+                    throw IOException("LTX envelope decrypt failed for $url", e)
                 }
-            webSession = fetched.session
-            fetched.body
-        } catch (e: LtxProtocolException) {
-            // 新站加密会话协议：页面注入 XHR 缺会话头必 428，WebView 通道同样不可用；
-            // 不再空转验证网关，也不弹无法解决该问题的人工验证弹窗——快速失败
-            KLog.t(TAG).w("LTX crypto-session protocol not supported by current client: $url")
-            throw e
+            }
+            // 明文回退：协议回滚/变体时直接作为载荷
+            KLog.t(TAG).i("LTX crypto response is plaintext, using as payload")
+            return body
+        }
+    }
+
+    /** URL 的 path+query（信封 AAD 绑定值；无 query 时仅 path）。 */
+    private fun pathAndSearch(url: String): String {
+        val uri = runCatching { java.net.URI(url) }.getOrNull() ?: return LTX_ITEMS_PATH
+        return uri.path.orEmpty().ifEmpty { LTX_ITEMS_PATH } +
+                (uri.rawQuery?.let { "?$it" } ?: "")
+    }
+
+    /** 模拟 SPA 同源 fetch 的请求形态（站点以此过滤自动化客户端）。 */
+    private fun Request.Builder.browserLikeHeaders(url: String): Request.Builder = apply {
+        runCatching {
+            val uri = java.net.URI(url)
+            val referer = "${uri.scheme}://${uri.host}/"
+            header("Referer", referer)
+            header("Sec-Fetch-Dest", "empty")
+            header("Sec-Fetch-Mode", "cors")
+            header("Sec-Fetch-Site", "same-origin")
         }
     }
 
@@ -247,18 +431,8 @@ class DefaultLtxRepository @Inject constructor(
             .header("Accept", "*/*")
             // 验证凭证与 UA/IP 绑定：带会话时必须沿用求解 WebView 的 UA
             .header("User-Agent", session?.userAgent ?: NetClient.USER_AGENT)
-            .apply {
-                // Worker 以浏览器特征过滤自动化客户端：模拟 SPA 同源 fetch 的请求形态
-                runCatching {
-                    val uri = java.net.URI(url)
-                    val referer = "${uri.scheme}://${uri.host}/"
-                    header("Referer", referer)
-                    header("Sec-Fetch-Dest", "empty")
-                    header("Sec-Fetch-Mode", "cors")
-                    header("Sec-Fetch-Site", "same-origin")
-                }
-                session?.let { header("Cookie", it.cookieHeader) }
-            }
+            .browserLikeHeaders(url)
+            .apply { session?.let { header("Cookie", it.cookieHeader) } }
             .build()
         httpClient.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
@@ -304,8 +478,16 @@ class DefaultLtxRepository @Inject constructor(
         private val TTL_MILLIS = LTX_CACHE_TTL_MILLIS
         private const val CONNECT_TIMEOUT_SECONDS = 10L
         private const val READ_TIMEOUT_SECONDS = 30L
+        private const val LTX_SESSION_HEADER = "X-LTX-Session"
+        private const val LTX_REQUEST_HEADER = "X-LTX-Request"
+
+        /** 加密会话通道总尝试数（首请求 + 会话失效/挑战后各一次重建）。 */
+        private const val MAX_SESSION_ATTEMPTS = 2
     }
 }
+
+/** 加密会话失效（428 cryptoSession）：由 [DefaultLtxRepository] 重建会话后重试。 */
+private class LtxSessionInvalidException : IOException("LTX crypto session invalid")
 
 /**
  * 全库拉取的迁移自愈编排：首拉命中旧域 410 迁移公告时，采纳公告新址写回

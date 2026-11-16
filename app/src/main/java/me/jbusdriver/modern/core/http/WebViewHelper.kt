@@ -200,4 +200,40 @@ object WebViewHelper {
         if (cookies.isEmpty()) return null
         return LtxWebSession(cookieHeader = cookies, userAgent = settings.userAgentString)
     }
+
+    /**
+     * 页面内同步 XHR 探测 [url]：任意状态码都返回（区别于 [fetchPageTextAwait]
+     * 只认 200），用于「items 428 = 门禁已过」这类状态探测。与页面自身 fetch
+     * 同源同权（自动带 Cookie 与 Sec-Fetch 特征）。
+     *
+     * @return 网络层失败（XHR 抛异常/页面不可用）返回 null。
+     */
+    suspend fun WebView.probeStatusAwait(url: String, headChars: Int = 160): LtxPageProbe? {
+        val script = """
+            (function() {
+              try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', ${JSONObject.quote(url)}, false);
+                xhr.send(null);
+                return JSON.stringify({
+                  ok: true,
+                  status: xhr.status,
+                  head: (xhr.responseText || '').slice(0, $headChars)
+                });
+              } catch (error) {
+                return JSON.stringify({ ok: false, error: String(error) });
+              }
+            })()
+        """.trimIndent()
+        val payload = runCatching { evaluateJs(script) }.getOrNull() ?: return null
+        val json = runCatching { JSONObject(unescapeJsString(payload)) }.getOrNull() ?: return null
+        if (!json.optBoolean("ok")) return null
+        return LtxPageProbe(status = json.optInt("status"), bodyHead = json.optString("head"))
+    }
 }
+
+/** 页面内探测结果：状态码 + 响应体前缀。 */
+data class LtxPageProbe(
+    val status: Int,
+    val bodyHead: String,
+)

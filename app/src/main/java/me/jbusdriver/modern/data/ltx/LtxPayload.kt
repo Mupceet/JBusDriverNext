@@ -18,6 +18,9 @@ val LEGACY_LTX_BASE_URLS = setOf("https://ltx.libray.workers.dev")
 /** LTX 全量数据端点路径（单包 JSON，无分页、无鉴权）。 */
 const val LTX_ITEMS_PATH = "/api/items"
 
+/** 加密会话协商端点路径（迁移站协议，2026-11-15 起）。 */
+const val LTX_SESSION_PATH = "/api/crypto/session"
+
 /**
  * 归一化 LTX 基址：去空白与尾斜杠；旧默认域迁移到当前默认，避免存量用户
  * 的已保存偏好锁死在已停用的 workers.dev 上。
