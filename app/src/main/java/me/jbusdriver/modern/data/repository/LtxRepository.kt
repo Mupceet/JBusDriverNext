@@ -25,6 +25,7 @@ import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.http.LtxWebViewSession
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.ltx.LTX_ITEMS_PATH
+import me.jbusdriver.modern.data.ltx.LTX_QUERY_PATH
 import me.jbusdriver.modern.data.ltx.LTX_SESSION_PATH
 import me.jbusdriver.modern.data.ltx.LtxChallengeException
 import me.jbusdriver.modern.data.ltx.LtxCryptoSession
@@ -33,6 +34,10 @@ import me.jbusdriver.modern.data.ltx.LtxMigratedException
 import me.jbusdriver.modern.data.ltx.LtxProtocolException
 import me.jbusdriver.modern.data.ltx.LtxSessionHandshakeDto
 import me.jbusdriver.modern.data.ltx.LtxSessionRequestBodyDto
+import me.jbusdriver.modern.data.ltx.LtxItemsPayloadDto
+import me.jbusdriver.modern.data.ltx.LtxSnapshotChangedException
+import me.jbusdriver.modern.data.ltx.buildLtxQueryBody
+import me.jbusdriver.modern.data.ltx.syncLtxLibraryPages
 import me.jbusdriver.modern.data.ltx.base64UrlDecode
 import me.jbusdriver.modern.data.ltx.decryptLtxEnvelope
 import me.jbusdriver.modern.data.ltx.establishLtxSession
@@ -59,20 +64,20 @@ import javax.inject.Singleton
 /**
  * LTX 库数据仓库接口。
  *
- * 数据源为 `GET {ltxBaseUrl}/api/items` 单包全量 JSON。所有方法为 main-safe 的
- * suspend/Flow，内部网络与解析在 IO 调度器执行；失败时静默降级返回空值，
- * 不影响调用方（详情页查询、收藏页列表）的主流程。
+ * 数据源为 LTX 站点全库快照。2026-11 起站点（`ltxlib.dpdns.org`）改为分页
+ * 协议：`GET /api/items` 只返回首页（快照 id + 全库总数），翻页与筛选迁移到
+ * `POST /api/items/query`（服务端页大小上限 100）。仓库在内部完成分页全量
+ * 同步并合并为单包载荷，下游解析/缓存/调用方形态不变（[LtxLibrary] 仍为全库）。
+ * 所有方法为 main-safe 的 suspend/Flow，内部网络与解析在 IO 调度器执行；失败
+ * 时静默降级返回空值，不影响调用方（详情页查询、收藏页列表）的主流程。
  *
  * 站点开启人机验证时（Worker 层 Turnstile 门禁，403 + `reason=verify`），纯
- * OkHttp 请求会被拒绝：此时改用隐形 WebView 加载站点让 SPA 自行完成验证并
- * 直接抓取数据（[LtxWebViewGateway]），同时导出 Cookie 与 UA 供后续 OkHttp
- * 快路径复用；Cookie 经系统 CookieManager 持久化，有效期内无需重复验证。
+ * OkHttp 请求会被拒绝：此时改用隐形 WebView 加载站点让 SPA 自行完成验证，
+ * 导出 Cookie 与 UA 供后续 OkHttp 快路径复用；Cookie 经系统 CookieManager
+ * 持久化，有效期内无需重复验证。
  *
- * 2026-11-15 起站点迁移至 `ltxlib.dpdns.org` 并升级为加密会话协议
- * （Turnstile 后还需 `POST /api/crypto/session` 做 ECDH+HKDF 握手，请求带
- * `X-LTX-*` 会话头、响应 AES-GCM 解密）：当前 OkHttp 与页面注入 XHR 通道均
- * 无法满足，命中 428 `cryptoSession` 时快速失败；旧域 410 迁移公告自动采纳
- * 新址并重试。通道重建（原生复刻握手或 SPA 代抓）另行适配。
+ * 加密会话协议：Turnstile 后还需 `POST /api/crypto/session` 做 ECDH+HKDF
+ * 握手，请求带 `X-LTX-*` 会话头、响应 AES-GCM 解密（含 POST query 翻页）。
  */
 interface LtxRepository {
     /**
@@ -228,8 +233,9 @@ class DefaultLtxRepository @Inject constructor(
     /**
      * 对指定基址单次拉取全库 JSON 原文。
      *
-     * 迁移站（默认域）走加密会话通道（[fetchViaCryptoSession]）；自定义镜像域
-     * 维持旧协议（明文 + Turnstile Cookie，WebView 抓取兜底）。
+     * 迁移站（默认域）走分页协议：加密会话通道首页 + query 翻页合并
+     * （[fetchFullLibraryViaCrypto]）；自定义镜像域维持旧协议（明文 +
+     * Turnstile Cookie，WebView 抓取兜底），返回原样单包载荷。
      */
     private suspend fun fetchLibraryJsonOnce(base: String): String {
         val url = base + LTX_ITEMS_PATH
@@ -238,7 +244,48 @@ class DefaultLtxRepository @Inject constructor(
                     "web=${if (webSession != null) "reused" else "none"}, " +
                     "session=${if (cryptoSession != null) "reused" else "none"})"
         )
-        return if (base == DEFAULT_LTX_BASE_URL) fetchViaCryptoSession(url) else fetchViaLegacy(url)
+        return if (base == DEFAULT_LTX_BASE_URL) fetchFullLibraryViaCrypto(url) else fetchViaLegacy(url)
+    }
+
+    /**
+     * 默认域（2026-11 分页协议）全库同步：`GET /api/items` 取首页（快照 + 总数 +
+     * 首页条目），`POST /api/items/query` 按 [LTX_PAGE_LIMIT] 并发翻页直至 total，
+     * 合并为单包载荷 JSON——下游解析与缓存形态不变（站点 2026-11-16 实测
+     * limit 上限 100）。快照漂移（同步期间站点更新）以新快照重启一次。
+     */
+    private suspend fun fetchFullLibraryViaCrypto(itemsUrl: String): String {
+        try {
+            return syncLtxPagesOnce(itemsUrl)
+        } catch (e: LtxSnapshotChangedException) {
+            KLog.t(TAG).w("LTX snapshot changed during paged sync, restarting once")
+            return syncLtxPagesOnce(itemsUrl)
+        }
+    }
+
+    /** 单轮分页同步；载荷无快照（旧协议变体）时按单包原样返回。 */
+    private suspend fun syncLtxPagesOnce(itemsUrl: String): String {
+        val bootstrapJson = fetchViaCryptoSession(method = "GET", url = itemsUrl)
+        val bootstrap = GSON.fromJson<LtxItemsPayloadDto>(bootstrapJson)
+            ?.takeIf { it.items != null }
+            ?: throw IOException("Malformed LTX bootstrap payload from $itemsUrl")
+        val snapshot = bootstrap.snapshot ?: return bootstrapJson
+        val base = itemsUrl.removeSuffix(LTX_ITEMS_PATH)
+        val merged = syncLtxLibraryPages(
+            bootstrap = bootstrap,
+            fetchPage = { snap, offset ->
+                val body = buildLtxQueryBody(snapshot = snap, offset = offset, metadata = false)
+                val json = fetchViaCryptoSession(
+                    method = "POST",
+                    url = base + LTX_QUERY_PATH,
+                    bodyJson = body,
+                    allowManualVerification = false,
+                )
+                GSON.fromJson<LtxItemsPayloadDto>(json)
+                    ?: throw IOException("Malformed LTX query page payload at offset=$offset")
+            },
+            concurrency = SYNC_PAGE_CONCURRENCY,
+        )
+        return GSON.toJson(merged)
     }
 
     /** 旧协议（自定义镜像域）：明文 GET + Turnstile 门禁走 WebView 页内抓取。 */
@@ -261,16 +308,23 @@ class DefaultLtxRepository @Inject constructor(
     /**
      * 迁移站加密会话通道：会话就绪则直接请求；428（会话失效）或挑战（Cookie 失效）
      * 时重建会话并重试，总尝试数受 [MAX_SESSION_ATTEMPTS] 约束。
+     * [allowManualVerification] 仅首页拉取置位：分页同步的后续页复用会话，
+     * 失败由首页入口统一请求人工验证，避免并发页重复弹窗。
      */
-    private suspend fun fetchViaCryptoSession(url: String): String {
+    private suspend fun fetchViaCryptoSession(
+        method: String,
+        url: String,
+        bodyJson: String? = null,
+        allowManualVerification: Boolean = true,
+    ): String {
         var session = cryptoSession?.takeIf { !it.isExpired() && webSession != null }
-            ?: establishCryptoSession(url, allowManualVerification = true)
+            ?: establishCryptoSession(url, allowManualVerification)
         var attempt = 0
         while (true) {
             attempt++
             try {
                 val web = webSession ?: error("web session missing after establishment")
-                return executeCryptoRequest(url, session, web)
+                return executeCryptoRequest(method, url, bodyJson, session, web)
             } catch (e: LtxSessionInvalidException) {
                 // 428：会话过期/服务端丢弃——重建一次
                 cryptoSession = null
@@ -362,11 +416,18 @@ class DefaultLtxRepository @Inject constructor(
     }
 
     /**
-     * 加密通道数据请求：带 `X-LTX-Session`/`X-LTX-Request` 头 GET [url]，
-     * 响应按 v1 信封 AES-GCM 解密（AAD 绑定 method/path/status/encoding）。
-     * 非信封响应按明文载荷回退（协议回滚容错）。
+     * 加密通道数据请求：带 `X-LTX-Session`/`X-LTX-Request` 头请求 [url]
+     * （GET/POST，[bodyJson] 仅 POST 携带），响应按 v1 信封 AES-GCM 解密
+     * （AAD 绑定 method/path/status/encoding）。非信封响应按明文载荷回退
+     * （协议回滚容错）。
      */
-    private fun executeCryptoRequest(url: String, session: LtxCryptoSession, web: LtxWebSession): String {
+    private fun executeCryptoRequest(
+        method: String,
+        url: String,
+        bodyJson: String?,
+        session: LtxCryptoSession,
+        web: LtxWebSession,
+    ): String {
         val request = Request.Builder()
             .url(url)
             .header("Accept", "*/*")
@@ -374,13 +435,15 @@ class DefaultLtxRepository @Inject constructor(
             .header("Cookie", web.cookieHeader)
             .header(LTX_SESSION_HEADER, session.sid)
             .header(LTX_REQUEST_HEADER, newLtxRequestId())
+            .apply { if (bodyJson != null) header("Content-Type", "application/json") }
+            .method(method, bodyJson?.toRequestBody(null))
             .browserLikeHeaders(url)
             .build()
         httpClient.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             val challenged = isLtxCloudflareChallenge(body)
             KLog.t(TAG).i(
-                "LTX crypto response: http=${response.code} type=${response.header("Content-Type")} " +
+                "LTX crypto response: method=$method http=${response.code} type=${response.header("Content-Type")} " +
                         "len=${body.length} challenge=$challenged head=${body.take(80)}"
             )
             if (challenged) throw LtxChallengeException(url)
@@ -393,7 +456,7 @@ class DefaultLtxRepository @Inject constructor(
             val envelope = runCatching { GSON.fromJson<LtxEncryptedEnvelopeDto>(body) }.getOrNull()
             if (envelope != null && envelope.looksLikeEnvelope()) {
                 return try {
-                    decryptLtxEnvelope(envelope, session, "GET", pathAndSearch(url), response.code)
+                    decryptLtxEnvelope(envelope, session, method, pathAndSearch(url), response.code)
                 } catch (e: Exception) {
                     KLog.t(TAG).w("LTX envelope decrypt failed: ${e.message}")
                     throw IOException("LTX envelope decrypt failed for $url", e)
@@ -483,6 +546,9 @@ class DefaultLtxRepository @Inject constructor(
 
         /** 加密会话通道总尝试数（首请求 + 会话失效/挑战后各一次重建）。 */
         private const val MAX_SESSION_ATTEMPTS = 2
+
+        /** 分页同步并发度：单会话多页并发拉取（页大小 100，全库约 35 页）。 */
+        private const val SYNC_PAGE_CONCURRENCY = 4
     }
 }
 

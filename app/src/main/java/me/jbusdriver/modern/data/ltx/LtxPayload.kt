@@ -48,11 +48,20 @@ fun parseLtxMigratedBaseUrl(body: String): String? {
 data class LtxItemsPayloadDto(
     val items: List<LtxItemDto>? = null,
     @SerializedName("updated_at") val updatedAt: Long? = null,
+    /** 全库条目总数（2026-11 分页协议起；旧镜像单包无此字段）。 */
+    val total: Int? = null,
+    /** 服务端快照 id（分页协议起）：翻页请求原样回传，保证翻页期间数据集一致。 */
+    val snapshot: String? = null,
 )
 
 @Keep
 data class LtxItemDto(
     val code: String? = null,
+    /** 单链接契约（2026-11 分页协议起）：ed2k 或 magnet 二选一。 */
+    val link: String? = null,
+    /** 单链接待确认标记：true 时 [link] 归入待确认链接。 */
+    val linkPending: Boolean? = null,
+    /** 旧单包契约的已确认链接数组（旧镜像兼容，分页协议下不再下发）。 */
     val links: List<String>? = null,
     @SerializedName("pending_links") val pendingLinks: List<String>? = null,
     val pending: Boolean? = null,
@@ -60,7 +69,9 @@ data class LtxItemDto(
     @SerializedName("added_at") val addedAt: Long? = null,
     /** 发行时间（库内原始值；排序/展示以此为准，站内快照日期仅作回退）。 */
     val date: String? = null,
-    /** 评分（仅用于排序，2026-11-04 用户要求扩展进契约）。 */
+    /** JavDB 原始分（2026-11 分页契约起；加权评分公式的输入）。 */
+    val rawScore: Double? = null,
+    /** 评分（旧契约 = 原始分；新契约 = 站点加权展示分，仅作 rawScore 缺省回退）。 */
     val score: Double? = null,
     /** 评分数（加权评分排序的先验强度，2026-11-13 扩展进契约）。 */
     val votes: Int? = null,
@@ -74,32 +85,49 @@ data class LtxItemDto(
  */
 internal fun parseLtxLibrary(json: String): LtxLibrary? {
     val payload = GSON.fromJson<LtxItemsPayloadDto>(json) ?: return null
+    return parseLtxItems(payload)
+}
+
+/** 载荷 DTO → 领域库；items 缺失返回 null（不可缓存）。 */
+internal fun parseLtxItems(payload: LtxItemsPayloadDto): LtxLibrary? {
     val items = payload.items ?: return null
     val entries = items.asSequence()
         .filter { !it.code.isNullOrBlank() }
-        .map { dto ->
-            // 同一 URI 可能同时出现在 links 与 pending_links（确认过渡期），
-            // 在解析边界去重：已确认优先，pending 剔除与已确认重复的项
-            val confirmed = dto.links.orEmpty().mapNotNull(::parseLtxLink).distinctBy { it.uri }
-            val confirmedUris = confirmed.asSequence().map { it.uri }.toSet()
-            val pending = dto.pendingLinks.orEmpty().mapNotNull(::parseLtxLink)
-                .distinctBy { it.uri }
-                .filter { it.uri !in confirmedUris }
-            LtxEntry(
-                code = dto.code.orEmpty().trim(),
-                links = confirmed,
-                pendingLinks = pending,
-                isPending = dto.pending ?: false,
-                isMissing = dto.missing ?: false,
-                addedAtMillis = dto.addedAt ?: 0L,
-                date = dto.date?.trim()?.takeIf { it.isNotEmpty() },
-                score = dto.score,
-                votes = dto.votes,
-            )
-        }
+        .map { it.toEntry() }
         .sortedByDescending { it.addedAtMillis }
         .toList()
     return LtxLibrary(updatedAtMillis = payload.updatedAt ?: 0L, entries = entries)
+}
+
+/** 条目 DTO → 领域条目（分页单链接契约与旧单包数组契约双形态兼容）。 */
+private fun LtxItemDto.toEntry(): LtxEntry {
+    // 旧契约：links 数组为已确认集合；同一 URI 可能同时出现在 links 与
+    // pending_links（确认过渡期），解析边界去重：已确认优先，pending 剔除重复项
+    val confirmed = links.orEmpty().mapNotNull(::parseLtxLink).distinctBy { it.uri }.toMutableList()
+    val confirmedUris = confirmed.asSequence().map { it.uri }.toSet()
+    val pendingParsed = pendingLinks.orEmpty().mapNotNull(::parseLtxLink)
+        .distinctBy { it.uri }
+        .filter { it.uri !in confirmedUris }
+        .toMutableList()
+    // 新契约：单 link + linkPending（无链接数组）。链接待确认时归入 pendingLinks，
+    // 与旧契约的「待确认链接」UI 语义对齐
+    if (confirmed.isEmpty() && pendingParsed.isEmpty() && !link.isNullOrBlank()) {
+        parseLtxLink(link)?.let { parsed ->
+            if (linkPending == true) pendingParsed += parsed else confirmed += parsed
+        }
+    }
+    return LtxEntry(
+        code = code.orEmpty().trim(),
+        links = confirmed,
+        pendingLinks = pendingParsed,
+        isPending = pending ?: false,
+        isMissing = missing ?: false,
+        addedAtMillis = addedAt ?: 0L,
+        date = date?.trim()?.takeIf { it.isNotEmpty() },
+        // 原始分为加权公式输入：分页契约取 rawScore，旧契约回退 score
+        score = rawScore ?: score,
+        votes = votes,
+    )
 }
 
 /** 解析单条下载链接；无法识别的 scheme 返回 null。 */

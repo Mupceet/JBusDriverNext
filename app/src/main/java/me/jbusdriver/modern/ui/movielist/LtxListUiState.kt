@@ -175,8 +175,9 @@ internal fun computeLtxListItems(
 
         // 评分排序：网站同款加权评分——贝叶斯加权（票数 25 分位为先验）+ 新入库
         // 指数衰减加成 − pending 扣减，无评分条目稳定排尾。评论活跃加成所需的
-        // people/likers 字段不在 /api/items 契约内，按无评论（0 加成）处理，故
-        // 极少数评论较多条目与站点显示值存在 ≤0.15 的偏差（次序偶有微调）
+        // people/likers 字段站点已下发但按模糊化契约不采集（转引元数据在解析
+        // 边界丢弃），按无评论（0 加成）处理，故极少数评论较多条目与站点显示
+        // 值存在 ≤0.15 的偏差（次序偶有微调）
         LtxSortField.SCORE -> {
             val stats = ltxScoreStats(library.entries)
             if (stats == null) {

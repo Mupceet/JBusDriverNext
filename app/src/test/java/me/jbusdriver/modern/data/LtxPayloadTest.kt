@@ -174,6 +174,104 @@ class LtxPayloadTest {
     }
 
     @Test
+    fun `paged payload parses snapshot and total and single link contract`() {
+        val confirmed = "ed2k://|file|PAGED-001.mp4|4096|00000000000000000000000000000001|/"
+        val pending = "ed2k://|file|PAGED-002_pending.mp4|1024|00000000000000000000000000000002|/"
+        val json = """
+            {
+              "items": [
+                {
+                  "code": "PAGED-001",
+                  "title": "dropped",
+                  "actors": ["dropped"],
+                  "maker": "dropped",
+                  "date": "2026-11-01",
+                  "link": "$confirmed",
+                  "linkPending": false,
+                  "linkType": "ed2k",
+                  "pending": false,
+                  "missing": false,
+                  "added_at": 3000,
+                  "rawScore": 4.65,
+                  "score": 5.0,
+                  "votes": 8009
+                },
+                {
+                  "code": "PAGED-002",
+                  "link": "$pending",
+                  "linkPending": true,
+                  "pending": true,
+                  "added_at": 2000
+                },
+                {
+                  "code": "PAGED-003",
+                  "link": "https://example.test/not-a-link",
+                  "added_at": 1000
+                }
+              ],
+              "total": 3,
+              "snapshot": "abc123",
+              "offset": 0,
+              "limit": 60,
+              "updated_at": 4000,
+              "actors": ["dropped"],
+              "genres": {"c1=1": ["x", "y", "z"]}
+            }
+        """.trimIndent()
+
+        val library = parseLtxLibrary(json)!!
+
+        // 分页协议字段进契约
+        assertEquals(4000L, library.updatedAtMillis)
+        assertEquals(listOf("PAGED-001", "PAGED-002", "PAGED-003"), library.entries.map { it.code })
+
+        // rawScore（JavDB 原始分）优先于 score（站点加权展示分）：加权公式输入不被污染
+        val first = library.entries[0]
+        assertEquals(4.65, first.score!!, 1e-9)
+        assertEquals(8009, first.votes)
+        // 单链接契约：linkPending=false → 已确认链接，pendingLinks 为空
+        assertEquals(listOf(confirmed), first.links.map { it.uri })
+        assertEquals(4096L, first.links[0].sizeBytes)
+        assertEquals(0, first.pendingLinks.size)
+
+        // linkPending=true → 归入待确认链接，与旧契约 UI 语义对齐
+        val second = library.entries[1]
+        assertEquals(0, second.links.size)
+        assertEquals(listOf(pending), second.pendingLinks.map { it.uri })
+
+        // 无法识别的 scheme 丢弃，条目保留（无链接）
+        val third = library.entries[2]
+        assertEquals(0, third.links.size)
+        assertEquals(0, third.pendingLinks.size)
+    }
+
+    @Test
+    fun `legacy array contract still parses for old mirrors and caches`() {
+        val json = """
+            {
+              "items": [
+                {
+                  "code": "OLD-001",
+                  "links": ["ed2k://|file|OLD-001.mp4|2048|00000000000000000000000000000009|/"],
+                  "pending_links": [],
+                  "pending": false,
+                  "added_at": 1,
+                  "score": 4.1,
+                  "votes": 100
+                }
+              ],
+              "updated_at": 2
+            }
+        """.trimIndent()
+        val library = parseLtxLibrary(json)!!
+        val entry = library.entries.single()
+        assertEquals(1, entry.links.size)
+        // 旧契约 score 即原始分：rawScore 缺省时回退
+        assertEquals(4.1, entry.score!!, 1e-9)
+        assertEquals(100, entry.votes)
+    }
+
+    @Test
     fun `default base url is the migrated domain`() {
         // 2026-11-15 起站点迁移至自有域名（旧 workers.dev 接口已 410 停用）
         assertEquals("https://ltxlib.dpdns.org", DEFAULT_LTX_BASE_URL)
