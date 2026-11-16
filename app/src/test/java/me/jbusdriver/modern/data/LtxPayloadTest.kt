@@ -270,6 +270,79 @@ class LtxPayloadTest {
     }
 
     @Test
+    fun `duplicate codes in payload merge into one entry with union links`() {
+        val ed2k = "ed2k://|file|DUP-100_ed2k.mp4|4096|00000000000000000000000000000001|/"
+        val magnet = "magnet:?xt=urn:btih:0000000000000000000000000000000000000001&dn=DUP-100"
+        val pendingEd2k = "ed2k://|file|DUP-100_pending.mp4|1024|00000000000000000000000000000002|/"
+        val json = """
+            {
+              "items": [
+                {
+                  "code": "DUP-100",
+                  "link": "$ed2k",
+                  "linkPending": false,
+                  "pending": false,
+                  "added_at": 5000,
+                  "date": "2026-11-01",
+                  "score": 4.5
+                },
+                {
+                  "code": "dup-100",
+                  "link": "$pendingEd2k",
+                  "linkPending": true,
+                  "pending": true,
+                  "added_at": 3000
+                },
+                {
+                  "code": "DUP-100",
+                  "link": "$magnet",
+                  "linkPending": false,
+                  "pending": false,
+                  "added_at": 4000
+                }
+              ],
+              "total": 3,
+              "updated_at": 6000
+            }
+        """.trimIndent()
+
+        val library = parseLtxLibrary(json)!!
+
+        // 三行同码（含大小写差异）聚合为一条目，排序取最新入库时间
+        val entry = library.entries.single()
+        assertEquals("DUP-100", entry.code)
+        assertEquals(5000L, entry.addedAtMillis)
+        // 已确认链接并集（ed2k + magnet），待确认剔除已确认后附属
+        assertEquals(listOf(ed2k, magnet), entry.links.map { it.uri })
+        assertEquals(listOf(pendingEd2k), entry.pendingLinks.map { it.uri })
+        // 任一行已确认即视为已确认；日期/评分取最新可用值
+        assertEquals(false, entry.isPending)
+        assertEquals("2026-11-01", entry.date)
+        assertEquals(4.5, entry.score!!, 1e-9)
+    }
+
+    @Test
+    fun `entry stays pending only when every duplicate row is pending`() {
+        val pending1 = "ed2k://|file|DUP-200_a.mp4|1024|00000000000000000000000000000003|/"
+        val pending2 = "ed2k://|file|DUP-200_b.mp4|1024|00000000000000000000000000000004|/"
+        val allPending = """
+            {"items":[
+              {"code":"DUP-200","link":"$pending1","linkPending":true,"pending":true,"added_at":10},
+              {"code":"DUP-200","link":"$pending2","linkPending":true,"pending":true,"added_at":5}
+            ]}
+        """.trimIndent()
+        val entry = parseLtxLibrary(allPending)!!.entries.single()
+        assertEquals(listOf(pending1, pending2), entry.pendingLinks.map { it.uri })
+        assertEquals(true, entry.isPending)
+
+        // 其余条目不受聚合影响
+        val single = parseLtxLibrary(
+            """{"items":[{"code":"SOLO-1","link":"$pending1","linkPending":true,"pending":true,"added_at":1}]}"""
+        )!!.entries.single()
+        assertEquals(true, single.isPending)
+    }
+
+    @Test
     fun `default base url is the migrated domain`() {
         // 2026-11-15 起站点迁移至自有域名（旧 workers.dev 接口已 410 停用）
         assertEquals("https://ltxlib.dpdns.org", DEFAULT_LTX_BASE_URL)

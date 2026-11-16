@@ -8,6 +8,7 @@ import me.jbusdriver.modern.domain.model.LtxEntry
 import me.jbusdriver.modern.domain.model.LtxLibrary
 import me.jbusdriver.modern.domain.model.LtxLink
 import me.jbusdriver.modern.domain.model.LtxLinkType
+import me.jbusdriver.modern.domain.model.normalizeLtxCode
 
 /** LTX 库默认地址（2026-11-13 起站点迁移至自有域名，Cloudflare 前置，可在设置中替换）。 */
 const val DEFAULT_LTX_BASE_URL = "https://ltxlib.dpdns.org"
@@ -85,15 +86,47 @@ internal fun parseLtxLibrary(json: String): LtxLibrary? {
     return parseLtxItems(payload)
 }
 
-/** 载荷 DTO → 领域库；items 缺失返回 null（不可缓存）。 */
+/**
+ * 载荷 DTO → 领域库；items 缺失返回 null（不可缓存）。
+ *
+ * 同码多行聚合为一：2026-11 分页快照实测存在同一番号两行（提交源不同——
+ * 站内提交 + nyaa 同步各一行，49/3393 码；站点 q 搜索按码去重故不可见），
+ * 恢复旧契约的「一码一条目」语义：链接取并集（已确认优先）、全部行 pending
+ * 才算 pending、入库时间取最新。
+ */
 internal fun parseLtxItems(payload: LtxItemsPayloadDto): LtxLibrary? {
     val items = payload.items ?: return null
     val entries = items.asSequence()
         .filter { !it.code.isNullOrBlank() }
         .map { it.toEntry() }
+        .groupBy { normalizeLtxCode(it.code) }
+        .map { (_, rows) -> rows.mergeByCode() }
         .sortedByDescending { it.addedAtMillis }
         .toList()
     return LtxLibrary(updatedAtMillis = payload.updatedAt ?: 0L, entries = entries)
+}
+
+/** 同番号多行合并为单条目：链接并集 + 状态收敛（见 [parseLtxItems]）。 */
+private fun List<LtxEntry>.mergeByCode(): LtxEntry {
+    if (size == 1) return single()
+    val sorted = sortedByDescending { it.addedAtMillis }
+    val confirmed = sorted.flatMap { it.links }.distinctBy { it.uri }
+    val confirmedUris = confirmed.mapTo(mutableSetOf()) { it.uri }
+    val pending = sorted.flatMap { it.pendingLinks }
+        .filter { it.uri !in confirmedUris }
+        .distinctBy { it.uri }
+    val first = sorted.first()
+    return LtxEntry(
+        code = first.code,
+        links = confirmed,
+        pendingLinks = pending,
+        // 任一行已确认（进入 Jasna 汇总表）即视为已确认
+        isPending = all { it.isPending },
+        isMissing = all { it.isMissing },
+        addedAtMillis = first.addedAtMillis,
+        date = sorted.firstOrNull { it.date != null }?.date,
+        score = sorted.firstOrNull { it.score != null }?.score,
+    )
 }
 
 /** 条目 DTO → 领域条目（分页单链接契约与旧单包数组契约双形态兼容）。 */
