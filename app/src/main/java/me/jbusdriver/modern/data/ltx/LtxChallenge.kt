@@ -10,6 +10,10 @@ import java.io.IOException
  *   或 text/plain "Automated clients are not allowed. 请用浏览器访问。"
  * - 云端挑战页：HTML（Just a moment / challenge-platform 等 Cloudflare 特征）
  *
+ * 注意区分两类**非**人机验证的新拦截形态（2026-11-15 起迁移站）：
+ * - 加密会话缺失：428 JSON `{"reason":"cryptoSession"}` → [isLtxCryptoSessionRequired]
+ * - 站点迁移公告：410 JSON `{"reason":"migrated"}` → [parseLtxMigratedBaseUrl]
+ *
  * 正常载荷是单包 JSON（`{` / `[` 开头），JSON 分支只在出现验证门特征字段时
  * 判真，避免链接文本误判——与主站 `isDriverVerifyPage` 同思路的纯函数，
  * 便于单元测试，[DefaultLtxRepository] 的重试策略依赖该判定。
@@ -46,3 +50,25 @@ private val LTX_CHALLENGE_MARKERS = listOf(
 /** LTX 拉取命中 Cloudflare 挑战；继承 IOException 以复用现有失败降级路径。 */
 internal class LtxChallengeException(val url: String) :
     IOException("Cloudflare challenge at $url")
+
+/**
+ * 判断 LTX 响应体是否为「加密会话未建立」拦截（新站 2026-11 起，
+ * 428 Precondition Required + JSON `{"reason":"cryptoSession"}`）。
+ *
+ * 新站要求先 `POST /api/crypto/session` 完成 ECDH+HKDF 握手派生 AES-GCM
+ * 密钥，随后请求携带会话头；纯 OkHttp 与页面注入 XHR 均无法满足，与
+ * 人机验证（Cookie 可解决）是两类问题。
+ */
+internal fun isLtxCryptoSessionRequired(body: String): Boolean {
+    val trimmed = body.trimStart('\uFEFF', ' ', '\r', '\n', '\t')
+    if (!trimmed.startsWith("{")) return false
+    return trimmed.contains("\"reason\"") && trimmed.contains("\"cryptoSession\"")
+}
+
+/** 新站加密会话协议当前客户端无法满足；继承 IOException 复用失败降级路径。 */
+internal class LtxProtocolException(val url: String) :
+    IOException("LTX crypto session required at $url")
+
+/** 旧域返回 410 迁移公告；[targetUrl] 为公告给出的新站点地址。 */
+internal class LtxMigratedException(val targetUrl: String) :
+    IOException("LTX site migrated to $targetUrl")

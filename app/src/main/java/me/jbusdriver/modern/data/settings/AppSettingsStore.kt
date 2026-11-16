@@ -21,6 +21,7 @@ import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
 import me.jbusdriver.modern.core.site.SitePreferenceSource
 import me.jbusdriver.modern.core.site.normalizeBaseUrl
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
+import me.jbusdriver.modern.data.ltx.normalizeLtxBaseUrl
 import me.jbusdriver.modern.data.mirror.MirrorScanner
 import me.jbusdriver.modern.data.mirror.ScanState
 import me.jbusdriver.modern.data.translation.LanguageCatalog
@@ -66,6 +67,9 @@ interface TranslationSettingsReader {
 interface LtxSettingsSource {
     val ltxEnabled: StateFlow<Boolean>
     suspend fun currentLtxBaseUrl(): String
+
+    /** 保存 LTX 基址（写入前归一化：旧默认域回退当前默认）。 */
+    suspend fun setLtxBaseUrl(baseUrl: String)
 }
 
 /** Narrow read/write interface for site selection consumers (SiteManagerViewModel). */
@@ -158,7 +162,7 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setDeeplAuthKey(key: String)
     suspend fun setMicrosoftCredentials(key: String, region: String)
     suspend fun setLtxEnabled(enabled: Boolean)
-    suspend fun setLtxBaseUrl(baseUrl: String)
+    // setLtxBaseUrl 继承自 LtxSettingsSource，此处不再重复声明
 }
 
 private val Context.appSettingsDataStore by preferencesDataStore("app_settings")
@@ -333,11 +337,15 @@ class AppSettingsStore @Inject constructor(
 
     // region LTX
     override val ltxEnabled: StateFlow<Boolean> = flowOf(KEY_LTX_ENABLED, true)
-    override val ltxBaseUrl: StateFlow<String> = flowOf(KEY_LTX_BASE_URL, DEFAULT_LTX_BASE_URL)
+
+    /** 已存值经归一化：旧默认域（workers.dev，接口已停用）回退当前默认域。 */
+    override val ltxBaseUrl: StateFlow<String> =
+        dataStore.data.map { normalizeLtxBaseUrl(it[KEY_LTX_BASE_URL] ?: DEFAULT_LTX_BASE_URL) }
+            .stateIn(scope, SharingStarted.Eagerly, DEFAULT_LTX_BASE_URL)
     override suspend fun currentLtxBaseUrl(): String =
-        dataStore.data.first()[KEY_LTX_BASE_URL]?.takeIf { it.isNotBlank() } ?: DEFAULT_LTX_BASE_URL
+        normalizeLtxBaseUrl(dataStore.data.first()[KEY_LTX_BASE_URL] ?: DEFAULT_LTX_BASE_URL)
     override suspend fun setLtxEnabled(enabled: Boolean) = put(KEY_LTX_ENABLED, enabled)
-    override suspend fun setLtxBaseUrl(baseUrl: String) = put(KEY_LTX_BASE_URL, baseUrl.trim().trimEnd('/'))
+    override suspend fun setLtxBaseUrl(baseUrl: String) = put(KEY_LTX_BASE_URL, normalizeLtxBaseUrl(baseUrl))
     // endregion
 
     companion object {

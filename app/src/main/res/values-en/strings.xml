@@ -122,6 +122,7 @@
     <string name="ltx_not_found">Not on site</string>
     <string name="ltx_empty">No LTX data yet</string>
     <string name="ltx_disabled">LTX is disabled in settings</string>
+    <string name="ltx_protocol_upgraded">The LTX site switched to an encrypted protocol; data fetching is temporarily unavailable</string>
     <string name="ltx_copy_links">Copy LTX links</string>
     <string name="ltx_no_links">No links to copy</string>
     <string name="ltx_count_only">%1$d titles</string>

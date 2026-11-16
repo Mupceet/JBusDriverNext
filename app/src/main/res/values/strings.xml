@@ -119,6 +119,7 @@
     <string name="ltx_not_found">站內未收錄</string>
     <string name="ltx_empty">暫無 LTX 資料</string>
     <string name="ltx_disabled">LTX 功能已於設定中關閉</string>
+    <string name="ltx_protocol_upgraded">LTX 站點已升級加密協議，暫時無法獲取資料</string>
     <string name="ltx_copy_links">複製 LTX 連結</string>
     <string name="ltx_no_links">無可複製的連結</string>
     <string name="ltx_count_only">%1$d 部</string>

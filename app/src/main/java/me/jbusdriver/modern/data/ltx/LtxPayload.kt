@@ -9,11 +9,33 @@ import me.jbusdriver.modern.domain.model.LtxLibrary
 import me.jbusdriver.modern.domain.model.LtxLink
 import me.jbusdriver.modern.domain.model.LtxLinkType
 
-/** LTX 库默认地址（Cloudflare Workers 部署，可在设置中替换）。 */
-const val DEFAULT_LTX_BASE_URL = "https://ltx.libray.workers.dev"
+/** LTX 库默认地址（2026-11-13 起站点迁移至自有域名，Cloudflare 前置，可在设置中替换）。 */
+const val DEFAULT_LTX_BASE_URL = "https://ltxlib.dpdns.org"
+
+/** 历史默认域名（旧接口已 410 停用）：归一化时视为未自定义，回退当前默认。 */
+val LEGACY_LTX_BASE_URLS = setOf("https://ltx.libray.workers.dev")
 
 /** LTX 全量数据端点路径（单包 JSON，无分页、无鉴权）。 */
 const val LTX_ITEMS_PATH = "/api/items"
+
+/**
+ * 归一化 LTX 基址：去空白与尾斜杠；旧默认域迁移到当前默认，避免存量用户
+ * 的已保存偏好锁死在已停用的 workers.dev 上。
+ */
+fun normalizeLtxBaseUrl(url: String): String {
+    val trimmed = url.trim().trimEnd('/')
+    return if (trimmed.isEmpty() || trimmed in LEGACY_LTX_BASE_URLS) DEFAULT_LTX_BASE_URL else trimmed
+}
+
+/**
+ * 解析旧域 410 迁移公告体 `{"error":..,"reason":"migrated","url":<新址>}` 中的
+ * 新站点地址（仅接受 https，去尾斜杠）；非迁移响应返回 null。
+ */
+fun parseLtxMigratedBaseUrl(body: String): String? {
+    if (!body.contains("\"migrated\"")) return null
+    val url = runCatching { GSON.fromJson<Map<String, String>>(body)?.get("url") }.getOrNull()
+    return url?.trim()?.trimEnd('/')?.takeIf { it.startsWith("https://") }
+}
 
 /*
  * 模糊化契约：DTO 只声明番号/链接/状态/时间字段。标题、演员、封面、评分等

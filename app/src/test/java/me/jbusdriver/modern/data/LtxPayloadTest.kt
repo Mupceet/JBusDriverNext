@@ -1,8 +1,10 @@
 package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
+import me.jbusdriver.modern.data.ltx.normalizeLtxBaseUrl
 import me.jbusdriver.modern.data.ltx.parseLtxLibrary
 import me.jbusdriver.modern.data.ltx.parseLtxLink
+import me.jbusdriver.modern.data.ltx.parseLtxMigratedBaseUrl
 import me.jbusdriver.modern.domain.model.LtxLinkType
 import me.jbusdriver.modern.domain.model.normalizeLtxCode
 import org.junit.Assert.assertEquals
@@ -172,7 +174,36 @@ class LtxPayloadTest {
     }
 
     @Test
-    fun `default base url is the workers deployment`() {
-        assertEquals("https://ltx.libray.workers.dev", DEFAULT_LTX_BASE_URL)
+    fun `default base url is the migrated domain`() {
+        // 2026-11-15 起站点迁移至自有域名（旧 workers.dev 接口已 410 停用）
+        assertEquals("https://ltxlib.dpdns.org", DEFAULT_LTX_BASE_URL)
+    }
+
+    @Test
+    fun `normalize maps legacy defaults to current default and trims input`() {
+        assertEquals(DEFAULT_LTX_BASE_URL, normalizeLtxBaseUrl("https://ltx.libray.workers.dev"))
+        assertEquals(DEFAULT_LTX_BASE_URL, normalizeLtxBaseUrl("https://ltx.libray.workers.dev/"))
+        assertEquals(DEFAULT_LTX_BASE_URL, normalizeLtxBaseUrl("  "))
+        assertEquals(DEFAULT_LTX_BASE_URL, normalizeLtxBaseUrl(DEFAULT_LTX_BASE_URL))
+        // 自定义地址保留，仅去空白与尾斜杠
+        assertEquals("https://mirror.example.test", normalizeLtxBaseUrl(" https://mirror.example.test/ "))
+    }
+
+    @Test
+    fun `parse migrated announcement extracts https target`() {
+        val body = """
+            {"error":"原站已迁移至 https://ltxlib.dpdns.org/，旧版接口已停用","reason":"migrated","url":"https://ltxlib.dpdns.org/"}
+        """.trimIndent()
+        assertEquals("https://ltxlib.dpdns.org", parseLtxMigratedBaseUrl(body))
+    }
+
+    @Test
+    fun `parse migrated announcement rejects other bodies`() {
+        // 人机验证门、缺 url、非 https、非 JSON 均不视为迁移公告
+        assertNull(parseLtxMigratedBaseUrl("""{"error":"请先完成人机验证","reason":"verify","sitekey":"0x4X"}"""))
+        assertNull(parseLtxMigratedBaseUrl("""{"reason":"migrated"}"""))
+        assertNull(parseLtxMigratedBaseUrl("""{"reason":"migrated","url":"http://insecure.example.test"}"""))
+        assertNull(parseLtxMigratedBaseUrl("<html>migrated</html>"))
+        assertNull(parseLtxMigratedBaseUrl(""))
     }
 }

@@ -108,6 +108,7 @@ class LtxListViewModelTest {
     private class FakeLtxSettings(enabled: Boolean = true) : LtxSettingsSource {
         override val ltxEnabled = MutableStateFlow(enabled)
         override suspend fun currentLtxBaseUrl() = "https://ltx.example.test"
+        override suspend fun setLtxBaseUrl(baseUrl: String) = Unit
     }
 
     private class FakeSiteConfig : SiteConfig {

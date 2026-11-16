@@ -22,10 +22,15 @@ import me.jbusdriver.modern.core.http.LtxWebFetch
 import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.core.http.LtxWebViewGateway
 import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.ltx.LTX_ITEMS_PATH
 import me.jbusdriver.modern.data.ltx.LtxChallengeException
+import me.jbusdriver.modern.data.ltx.LtxMigratedException
+import me.jbusdriver.modern.data.ltx.LtxProtocolException
 import me.jbusdriver.modern.data.ltx.isLtxCloudflareChallenge
+import me.jbusdriver.modern.data.ltx.isLtxCryptoSessionRequired
 import me.jbusdriver.modern.data.ltx.parseLtxLibrary
+import me.jbusdriver.modern.data.ltx.parseLtxMigratedBaseUrl
 import me.jbusdriver.modern.data.settings.LtxSettingsSource
 import me.jbusdriver.modern.domain.model.LtxEntry
 import me.jbusdriver.modern.domain.model.LtxLibrary
@@ -48,6 +53,12 @@ import javax.inject.Singleton
  * OkHttp 请求会被拒绝：此时改用隐形 WebView 加载站点让 SPA 自行完成验证并
  * 直接抓取数据（[LtxWebViewGateway]），同时导出 Cookie 与 UA 供后续 OkHttp
  * 快路径复用；Cookie 经系统 CookieManager 持久化，有效期内无需重复验证。
+ *
+ * 2026-11-15 起站点迁移至 `ltxlib.dpdns.org` 并升级为加密会话协议
+ * （Turnstile 后还需 `POST /api/crypto/session` 做 ECDH+HKDF 握手，请求带
+ * `X-LTX-*` 会话头、响应 AES-GCM 解密）：当前 OkHttp 与页面注入 XHR 通道均
+ * 无法满足，命中 428 `cryptoSession` 时快速失败；旧域 410 迁移公告自动采纳
+ * 新址并重试。通道重建（原生复刻握手或 SPA 代抓）另行适配。
  */
 interface LtxRepository {
     /**
@@ -188,11 +199,28 @@ class DefaultLtxRepository @Inject constructor(
 
     private suspend fun fetchLibraryInternal(): LtxLibrary = withContext(ioDispatcher) {
         val base = settings.currentLtxBaseUrl().trimEnd('/')
+        val json = fetchLtxLibraryWithMigration(
+            initialBase = base,
+            settings = settings,
+            fetchJson = { fetchLibraryJsonOnce(it) },
+        )
+        parseLtxLibrary(json) ?: throw IOException("Malformed LTX payload from $base$LTX_ITEMS_PATH")
+    }
+
+    /** 对指定基址单次拉取全库 JSON 原文（人机验证门走 WebView 网关兜底）。 */
+    private suspend fun fetchLibraryJsonOnce(base: String): String {
         val url = base + LTX_ITEMS_PATH
         KLog.t(TAG).i("LTX fetch start: $url (session=${if (webSession != null) "reused" else "none"})")
-        val json = try {
+        return try {
             executeJsonRequest(url)
         } catch (e: LtxChallengeException) {
+            if (base == DEFAULT_LTX_BASE_URL) {
+                // 迁移站（2026-11-15 起）已知启用加密会话协议：即便先过了 CF 边缘/应用层
+                // 挑战，/api/items 仍会因缺会话头 428，验证网关与人工弹窗都无法产出数据
+                // （真机实测：网关 8s 超时后弹出的验证窗永远到不了成功条件）——按协议升级快速失败
+                KLog.t(TAG).w("LTX challenge on crypto-session site; treating as protocol upgrade: $url")
+                throw LtxProtocolException(url)
+            }
             // 人机验证门：隐形 WebView 让 SPA 过 Turnstile 并在页面内直接抓取（无循环）
             KLog.t(TAG).w("LTX verification required, fetching via WebView gateway: $url")
             val fetched = webGateway.fetchViaWebView(url)
@@ -204,8 +232,12 @@ class DefaultLtxRepository @Inject constructor(
                 }
             webSession = fetched.session
             fetched.body
+        } catch (e: LtxProtocolException) {
+            // 新站加密会话协议：页面注入 XHR 缺会话头必 428，WebView 通道同样不可用；
+            // 不再空转验证网关，也不弹无法解决该问题的人工验证弹窗——快速失败
+            KLog.t(TAG).w("LTX crypto-session protocol not supported by current client: $url")
+            throw e
         }
-        parseLtxLibrary(json) ?: throw IOException("Malformed LTX payload from $url")
     }
 
     private fun executeJsonRequest(url: String): String {
@@ -231,11 +263,16 @@ class DefaultLtxRepository @Inject constructor(
         httpClient.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             val challenged = isLtxCloudflareChallenge(body)
+            // 410 迁移公告仅按状态码+公告体联合判定，普通响应里的特征词不触发
+            val migratedUrl = if (response.code == 410) parseLtxMigratedBaseUrl(body) else null
+            val cryptoSession = isLtxCryptoSessionRequired(body)
             KLog.t(TAG).i(
                 "LTX response: http=${response.code} type=${response.header("Content-Type")} " +
-                        "len=${body.length} challenge=$challenged"
+                        "len=${body.length} challenge=$challenged migrated=${migratedUrl != null} cryptoSession=$cryptoSession"
             )
+            migratedUrl?.let { throw LtxMigratedException(it) }
             if (challenged) throw LtxChallengeException(url)
+            if (cryptoSession) throw LtxProtocolException(url)
             if (!response.isSuccessful) {
                 // 鉴权/业务类失败：响应体（JSON 错误说明）是定位问题的关键证据
                 KLog.t(TAG).w("LTX error body: ${body.take(300)}")
@@ -267,5 +304,28 @@ class DefaultLtxRepository @Inject constructor(
         private val TTL_MILLIS = LTX_CACHE_TTL_MILLIS
         private const val CONNECT_TIMEOUT_SECONDS = 10L
         private const val READ_TIMEOUT_SECONDS = 30L
+    }
+}
+
+/**
+ * 全库拉取的迁移自愈编排：首拉命中旧域 410 迁移公告时，采纳公告新址写回
+ * 偏好并重试一次（避免存量配置锁死已停用的旧域）；其余异常原样传播。
+ * 公告新址与当前地址相同视为服务端公告异常，退化为普通失败。
+ */
+internal suspend fun fetchLtxLibraryWithMigration(
+    initialBase: String,
+    settings: LtxSettingsSource,
+    fetchJson: suspend (base: String) -> String,
+): String {
+    try {
+        return fetchJson(initialBase)
+    } catch (e: LtxMigratedException) {
+        val target = e.targetUrl
+        if (target == initialBase) {
+            throw IOException("LTX site announced migration to its own url: $initialBase", e)
+        }
+        KLog.t("LtxRepository").w("LTX site migrated: $initialBase -> $target (retrying once)")
+        settings.setLtxBaseUrl(target)
+        return fetchJson(target)
     }
 }

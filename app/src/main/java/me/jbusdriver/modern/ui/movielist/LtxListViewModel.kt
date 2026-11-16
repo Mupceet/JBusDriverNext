@@ -24,6 +24,7 @@ import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.entity.LtxMovie
 import me.jbusdriver.modern.data.db.entity.LtxResolveState
+import me.jbusdriver.modern.data.ltx.LtxProtocolException
 import me.jbusdriver.modern.data.parser.wrapImage
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
@@ -143,7 +144,7 @@ class LtxListViewModel @Inject constructor(
                             _uiState.update { it.copy(cacheStoredAtMillis = cacheStoredAtMillis) }
                             applyLibrary(event.entry.value)
                         }
-                        is CachedLoadEvent.Failure -> applyLibraryFailure(event.hadCachedValue)
+                        is CachedLoadEvent.Failure -> applyLibraryFailure(event.hadCachedValue, event.throwable)
                     }
                 }
             }
@@ -196,9 +197,10 @@ class LtxListViewModel @Inject constructor(
                     _uiState.update { it.copy(cacheStoredAtMillis = cacheStoredAtMillis) }
                     applyLibrary(library)
                 }
-                // 无缓存且刷新失败才报错；有旧数据时静默保留
+                // 无缓存且刷新失败才报错；有旧数据时静默保留。
+                // SWR 收集侧可能已按异常类型写入更具体的错误（如协议升级），不覆盖
                 currentLibrary == null ->
-                    _uiState.update { it.copy(isRefreshing = false, error = R.string.load_failed) }
+                    _uiState.update { it.copy(isRefreshing = false, error = it.error ?: R.string.load_failed) }
 
                 else -> _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -431,9 +433,15 @@ class LtxListViewModel @Inject constructor(
         enqueueKnownCodes()
     }
 
-    private fun applyLibraryFailure(hadCachedValue: Boolean) {
+    private fun applyLibraryFailure(hadCachedValue: Boolean, throwable: Throwable? = null) {
         if (!hadCachedValue && currentLibrary == null) {
-            _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = R.string.load_failed) }
+            // 协议升级（加密会话）与普通加载失败区分文案，前者重试也无济于事
+            val errorRes = if (throwable is LtxProtocolException) {
+                R.string.ltx_protocol_upgraded
+            } else {
+                R.string.load_failed
+            }
+            _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = errorRes) }
         } else {
             _uiState.update { it.copy(isRefreshing = false) }
         }

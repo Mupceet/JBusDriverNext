@@ -1,7 +1,7 @@
 package me.jbusdriver.modern.domain.model
 
 /**
- * LTX 库（ltx.libray.workers.dev）领域模型。
+ * LTX 库（ltxlib.dpdns.org）领域模型。
  *
  * 模糊化契约：仅保留番号 → 下载链接 + 状态标记 + 入库时间的最小数据；
  * 站点转引的标题/演员/封面/评分等元数据在解析边界即丢弃，

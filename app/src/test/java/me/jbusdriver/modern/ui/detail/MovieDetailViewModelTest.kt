@@ -146,6 +146,7 @@ class MovieDetailViewModelTest {
     private val stubLtxSettings = object : LtxSettingsSource {
         override val ltxEnabled = MutableStateFlow(true)
         override suspend fun currentLtxBaseUrl() = "https://ltx.example.test"
+        override suspend fun setLtxBaseUrl(baseUrl: String) = Unit
     }
 
     private val stubSiteConfig = object : SiteConfig {

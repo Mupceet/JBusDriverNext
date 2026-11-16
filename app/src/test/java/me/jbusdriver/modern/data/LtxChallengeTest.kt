@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.data.ltx.isLtxCloudflareChallenge
+import me.jbusdriver.modern.data.ltx.isLtxCryptoSessionRequired
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -95,5 +96,38 @@ class LtxChallengeTest {
     @Test
     fun `empty body is not a challenge`() {
         assertFalse(isLtxCloudflareChallenge(""))
+    }
+
+    // ---- 2026-11-15 迁移站新形态：非人机验证，走各自的独立通道 ----
+
+    @Test
+    fun `crypto session json is not a human verification challenge`() {
+        // 428 `{"reason":"cryptoSession"}` 是加密会话缺失，Turnstile cookie 解决不了
+        val json = """{"error":"请重新建立安全会话","reason":"cryptoSession"}"""
+        assertFalse(isLtxCloudflareChallenge(json))
+    }
+
+    @Test
+    fun `migrated json is not a human verification challenge`() {
+        // 旧域 410 迁移公告
+        val json = """{"error":"原站已迁移至 https://ltxlib.dpdns.org/，旧版接口已停用","reason":"migrated","url":"https://ltxlib.dpdns.org/"}"""
+        assertFalse(isLtxCloudflareChallenge(json))
+    }
+
+    @Test
+    fun `crypto session requirement json is detected`() {
+        val json = """{"error":"请重新建立安全会话","reason":"cryptoSession"}"""
+        assertTrue(isLtxCryptoSessionRequired(json))
+    }
+
+    @Test
+    fun `crypto session detector ignores other bodies`() {
+        // 正常载荷、人机验证门、缺单一标记的 JSON、HTML 均不判为加密会话缺失
+        assertFalse(isLtxCryptoSessionRequired("""{"items":[],"updated_at":1}"""))
+        assertFalse(isLtxCryptoSessionRequired("""{"error":"请先完成人机验证","reason":"verify","sitekey":"0x4X"}"""))
+        assertFalse(isLtxCryptoSessionRequired("""{"reason":"verify"}"""))
+        assertFalse(isLtxCryptoSessionRequired("""{"error":"needs crypto session"}"""))
+        assertFalse(isLtxCryptoSessionRequired("<html>cryptoSession reason</html>"))
+        assertFalse(isLtxCryptoSessionRequired(""))
     }
 }
