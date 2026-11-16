@@ -69,12 +69,9 @@ data class LtxItemDto(
     @SerializedName("added_at") val addedAt: Long? = null,
     /** 发行时间（库内原始值；排序/展示以此为准，站内快照日期仅作回退）。 */
     val date: String? = null,
-    /** JavDB 原始分（2026-11 分页契约起；加权评分公式的输入）。 */
-    val rawScore: Double? = null,
-    /** 评分（旧契约 = 原始分；新契约 = 站点加权展示分，仅作 rawScore 缺省回退）。 */
+    /** 评分：分页契约 = 站点加权展示分（含评论加成，排序直接采用）；
+     *  旧单包契约 = 原始分，仅作旧镜像/旧缓存回退。 */
     val score: Double? = null,
-    /** 评分数（加权评分排序的先验强度，2026-11-13 扩展进契约）。 */
-    val votes: Int? = null,
 )
 
 /**
@@ -124,9 +121,8 @@ private fun LtxItemDto.toEntry(): LtxEntry {
         isMissing = missing ?: false,
         addedAtMillis = addedAt ?: 0L,
         date = date?.trim()?.takeIf { it.isNotEmpty() },
-        // 原始分为加权公式输入：分页契约取 rawScore，旧契约回退 score
-        score = rawScore ?: score,
-        votes = votes,
+        // 分页契约：站点加权展示分（含评论加成）；旧契约回退为原始分
+        score = score,
     )
 }
 

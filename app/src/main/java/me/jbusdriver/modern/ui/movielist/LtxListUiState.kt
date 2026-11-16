@@ -9,7 +9,6 @@ import me.jbusdriver.modern.domain.model.LtxLink
 import me.jbusdriver.modern.domain.model.Movie
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.toUiModel
-import kotlin.math.pow
 
 /**
  * LTX 列表排序依据。
@@ -71,10 +70,8 @@ data class LtxItemUiModel(
     val isMissing: Boolean,
     val addedAtMillis: Long,
     val links: List<LtxLink>,
-    /** 评分（源站数据，用于排序；无评分为 null）。 */
+    /** 站点加权评分（排序用；无评分为 null，旧镜像载荷回退为原始分）。 */
     val score: Double? = null,
-    /** 评分数（加权评分排序的先验强度）。 */
-    val votes: Int? = null,
     /** 发行时间：LTX 库原始 date 优先，回退站内补全快照日期；均无为 ""。 */
     val date: String = "",
     /** 站内补全的影片快照（URL 已按当前 baseUrl 重建）；未补全为 null。 */
@@ -130,7 +127,6 @@ internal fun computeLtxListItems(
     sortDirection: LtxSortDirection,
     statusFilter: LtxStatusFilter,
     resolveFilter: Set<LtxResolveFilter>,
-    nowMillis: Long = System.currentTimeMillis(),
 ): List<LtxItemUiModel> {
     if (library == null) return emptyList()
     val filtered = library.entries.asSequence()
@@ -173,68 +169,20 @@ internal fun computeLtxListItems(
                     .thenByDescending { it.date }
             )
 
-        // 评分排序：网站同款加权评分——贝叶斯加权（票数 25 分位为先验）+ 新入库
-        // 指数衰减加成 − pending 扣减，无评分条目稳定排尾。评论活跃加成所需的
-        // people/likers 字段站点已下发但按模糊化契约不采集（转引元数据在解析
-        // 边界丢弃），按无评论（0 加成）处理，故极少数评论较多条目与站点显示
-        // 值存在 ≤0.15 的偏差（次序偶有微调）
-        LtxSortField.SCORE -> {
-            val stats = ltxScoreStats(library.entries)
-            if (stats == null) {
-                filtered
-            } else {
-                val (meanScore, voteQuartile) = stats
-                val weighted = filtered.associate { it.code to weightedLtxScore(it, meanScore, voteQuartile, nowMillis) }
-                if (ascending) filtered.sortedWith(
-                    compareByDescending<LtxItemUiModel> { weighted[it.code] != null }
-                        .thenBy { weighted[it.code] ?: 0.0 }
-                )
-                else filtered.sortedWith(
-                    compareByDescending<LtxItemUiModel> { weighted[it.code] != null }
-                        .thenByDescending { weighted[it.code] ?: 0.0 }
-                )
-            }
-        }
+        // 评分排序：直接采用站点加权展示分（含票数先验、新入库加成、pending 扣减
+        // 与评论加成，2026-11 分页契约起随条目下发），与站点名次逐位一致；
+        // 无评分条目稳定排尾（旧镜像载荷回退为原始分）
+        LtxSortField.SCORE ->
+            if (ascending) filtered.sortedWith(
+                compareByDescending<LtxItemUiModel> { it.score != null }
+                    .thenBy { it.score ?: 0.0 }
+            )
+            else filtered.sortedWith(
+                compareByDescending<LtxItemUiModel> { it.score != null }
+                    .thenByDescending { it.score ?: 0.0 }
+            )
     }.toList()
 }
-
-// region 加权评分（对齐站点 2026-11 前端算法，常量自其脚本逆向）
-
-private const val LTX_SCORE_RECENT_BONUS = 0.3
-private const val LTX_SCORE_RECENT_HALF_LIFE_DAYS = 14.0
-private const val LTX_SCORE_PENDING_PENALTY = 1.0
-private const val LTX_SCORE_CAP = 5.0
-private const val LTX_MILLIS_PER_DAY = 86_400_000.0
-
-/** 全库评分统计：原始分均值 + 票数 25 分位（贝叶斯先验）。无评分条目时返回 null。 */
-internal fun ltxScoreStats(entries: List<LtxEntry>): Pair<Double, Int>? {
-    val scored = entries.filter { it.score != null }
-    if (scored.isEmpty()) return null
-    val mean = scored.sumOf { it.score!! } / scored.size
-    val quartile = scored.map { it.votes ?: 0 }.sorted()[scored.size / 4].coerceAtLeast(1)
-    return mean to quartile
-}
-
-/**
- * 网站同款加权评分：`(票数×原始分 + 先验×均值) / (票数+先验)` + 新入库加成
- * `0.3 × 2^(−库龄天/14)`，封顶 5 分，pending 再扣 1 分。无评分返回 null。
- */
-internal fun weightedLtxScore(
-    model: LtxItemUiModel,
-    meanScore: Double,
-    voteQuartile: Int,
-    nowMillis: Long,
-): Double? {
-    val raw = model.score ?: return null
-    val votes = (model.votes ?: 0).coerceAtLeast(0)
-    val bayes = (votes * raw + voteQuartile * meanScore) / (votes + voteQuartile)
-    val ageDays = (nowMillis - model.addedAtMillis).coerceAtLeast(0L) / LTX_MILLIS_PER_DAY
-    val recentBonus = LTX_SCORE_RECENT_BONUS * 2.0.pow(-ageDays / LTX_SCORE_RECENT_HALF_LIFE_DAYS)
-    val capped = minOf(LTX_SCORE_CAP, bayes + recentBonus)
-    return if (model.isPending) capped - LTX_SCORE_PENDING_PENALTY else capped
-}
-
-// endregion
 
 /** LtxEntry + 可选补全快照 → UI 模型。 */
 private fun LtxEntry.toLtxItemUiModel(snapshot: LtxSnapshotUi?): LtxItemUiModel {
@@ -249,7 +197,6 @@ private fun LtxEntry.toLtxItemUiModel(snapshot: LtxSnapshotUi?): LtxItemUiModel 
         // 同一 URI 可能同时存在于 links 与 pending_links（旧磁盘缓存尤甚），复制前按 URI 去重
         links = (links + pendingLinks).distinctBy { it.uri },
         score = score,
-        votes = votes,
         movie = snapshotMovie,
         resolveState = snapshot?.resolveState ?: LtxResolveState.UNRESOLVED,
         // 發行時間以 LTX 库原始 date 为准，站内快照日期仅作回退——补全前后排序/展示不漂移

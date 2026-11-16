@@ -142,14 +142,14 @@ class LtxPayloadTest {
     }
 
     @Test
-    fun `votes parsed for weighted score sort and defaults to null`() {
+    fun `score parsed for sorting and defaults to null`() {
         val json = """
-            {"items":[{"code":"TEST-010","score":4.65,"votes":8009}],"updated_at":1}
+            {"items":[{"code":"TEST-010","score":4.65}],"updated_at":1}
         """.trimIndent()
         val entry = parseLtxLibrary(json)!!.entries.single()
-        assertEquals(8009, entry.votes)
-        val missing = parseLtxLibrary("""{"items":[{"code":"TEST-011","score":4.1}]}""")!!
-        assertNull(missing.entries.single().votes)
+        assertEquals(4.65, entry.score!!, 1e-9)
+        val missing = parseLtxLibrary("""{"items":[{"code":"TEST-011"}]}""")!!
+        assertNull(missing.entries.single().score)
     }
 
     @Test
@@ -225,10 +225,9 @@ class LtxPayloadTest {
         assertEquals(4000L, library.updatedAtMillis)
         assertEquals(listOf("PAGED-001", "PAGED-002", "PAGED-003"), library.entries.map { it.code })
 
-        // rawScore（JavDB 原始分）优先于 score（站点加权展示分）：加权公式输入不被污染
+        // score 直采站点加权展示分（rawScore/votes 不进契约，忽略）
         val first = library.entries[0]
-        assertEquals(4.65, first.score!!, 1e-9)
-        assertEquals(8009, first.votes)
+        assertEquals(5.0, first.score!!, 1e-9)
         // 单链接契约：linkPending=false → 已确认链接，pendingLinks 为空
         assertEquals(listOf(confirmed), first.links.map { it.uri })
         assertEquals(4096L, first.links[0].sizeBytes)
@@ -266,9 +265,8 @@ class LtxPayloadTest {
         val library = parseLtxLibrary(json)!!
         val entry = library.entries.single()
         assertEquals(1, entry.links.size)
-        // 旧契约 score 即原始分：rawScore 缺省时回退
+        // 旧契约 score 即原始分，直接透传（排序回退语义）
         assertEquals(4.1, entry.score!!, 1e-9)
-        assertEquals(100, entry.votes)
     }
 
     @Test
