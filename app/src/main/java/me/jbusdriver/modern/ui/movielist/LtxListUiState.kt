@@ -13,6 +13,7 @@ import me.jbusdriver.modern.ui.toUiModel
 
 /**
  * LTX 列表排序依据（服务端排序：切换即以新参数重查第 0 页，客户端不再排序）。
+ * 默认评分降序，与站点首页一致。
  *
  * 入庫時間 = LTX 库 added_at；評分 = 站点加权展示分；發行時間 = 库内 date。
  */
@@ -27,7 +28,7 @@ enum class LtxSortField(@StringRes val labelRes: Int) {
 
     companion object {
         fun fromName(name: String?): LtxSortField =
-            entries.firstOrNull { it.name == name } ?: ADDED
+            entries.firstOrNull { it.name == name } ?: SCORE
     }
 }
 
@@ -113,7 +114,7 @@ data class LtxListUiState(
     val totalCount: Int = 0,
     /** LTX 库更新时间（毫秒）。 */
     val updatedAtMillis: Long = 0L,
-    val sortField: LtxSortField = LtxSortField.ADDED,
+    val sortField: LtxSortField = LtxSortField.SCORE,
     val sortDirection: LtxSortDirection = LtxSortDirection.DESC,
     val statusFilter: LtxStatusFilter = LtxStatusFilter.ALL,
     /** 站内检测状态多选，默认隐藏站内未收錄，见 [LtxResolveFilter]。 */

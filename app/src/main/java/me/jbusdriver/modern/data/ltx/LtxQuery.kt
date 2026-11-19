@@ -26,17 +26,20 @@ const val LTX_PAGE_LIMIT = 100
 /** 查询排序参数：字段为站点枚举（score/date/added/size/code/comments）。 */
 data class LtxListSort(val field: String, val dir: String) {
     companion object {
-        /** 默认排序：入库时间倒序（与站点默认一致）。 */
+        /** 默认排序：评分降序（与站点首页默认一致）。 */
+        val SCORE_DESC = LtxListSort(field = "score", dir = "desc")
+
+        /** 入库时间倒序。 */
         val ADDED_DESC = LtxListSort(field = "added", dir = "desc")
     }
 }
 
 /**
- * 列表查询参数（排序 + 确认状态 + 可选搜索词）。
+ * 列表查询参数（排序 + 确认状态 + 可选搜索词）。默认评分降序（站点首页形态）。
  * 状态为站点枚举：`all`/`ok`（已确认）/`pending`（待确认）。
  */
 data class LtxListQuery(
-    val sort: LtxListSort = LtxListSort.ADDED_DESC,
+    val sort: LtxListSort = LtxListSort.SCORE_DESC,
     val status: String = "all",
     val q: String = "",
 )

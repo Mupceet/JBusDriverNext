@@ -39,8 +39,8 @@ class LtxQueryBodyTest {
         assertTrue(body.contains("\"offset\":0"))
         // 页大小默认 100（服务端实测上限，请求更大值会被压缩）
         assertTrue(body.contains("\"limit\":100"))
-        // 默认查询：入库倒序 + 全部状态
-        assertTrue(body.contains("\"sort\":{\"field\":\"added\",\"dir\":\"desc\"}"))
+        // 默认查询：评分降序（站点首页形态）+ 全部状态
+        assertTrue(body.contains("\"sort\":{\"field\":\"score\",\"dir\":\"desc\"}"))
         assertTrue(body.contains("\"status\":\"all\""))
     }
 

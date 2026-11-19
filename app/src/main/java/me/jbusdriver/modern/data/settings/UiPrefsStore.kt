@@ -44,10 +44,10 @@ class UiPrefsStore @Inject constructor(
         .map { it[ACTRESS_SORT] ?: "COLLECT_DESC" }
         .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
 
-    /** Persisted LTX sort field（入库时间/评分/大小/发行时间/番号） */
+    /** Persisted LTX sort field（评分/入库时间/发行时间/番号；默认评分=站点首页形态） */
     override val ltxSortField: StateFlow<String> = dataStore.data
-        .map { it[LTX_SORT_FIELD] ?: "ADDED" }
-        .stateIn(scope, SharingStarted.Eagerly, "ADDED")
+        .map { it[LTX_SORT_FIELD] ?: "SCORE" }
+        .stateIn(scope, SharingStarted.Eagerly, "SCORE")
 
     /** Persisted LTX sort direction（DESC 倒序为默认） */
     override val ltxSortDirection: StateFlow<String> = dataStore.data
