@@ -13,7 +13,7 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * [fetchLtxLibraryWithMigration] 迁移自愈编排：旧域 410 公告采纳新址写回偏好
+ * [fetchLtxWithMigration] 迁移自愈编排：旧域 410 公告采纳新址写回偏好
  * 并重试一次；其余异常原样传播。fixture 为合成地址。
  */
 class LtxLibraryMigrationTest {
@@ -31,7 +31,7 @@ class LtxLibraryMigrationTest {
     fun `first fetch success does not touch settings`() = runTest {
         val settings = RecordingSettings()
         val calls = mutableListOf<String>()
-        val json = fetchLtxLibraryWithMigration("https://old.example.test", settings) {
+        val json = fetchLtxWithMigration("https://old.example.test", settings) {
             calls.add(it); """{"items":[]}"""
         }
         assertEquals("""{"items":[]}""", json)
@@ -43,7 +43,7 @@ class LtxLibraryMigrationTest {
     fun `migration announcement adopts target url and retries once`() = runTest {
         val settings = RecordingSettings()
         val calls = mutableListOf<String>()
-        val json = fetchLtxLibraryWithMigration("https://old.example.test", settings) { base ->
+        val json = fetchLtxWithMigration("https://old.example.test", settings) { base ->
             calls.add(base)
             if (base == "https://old.example.test") throw LtxMigratedException("https://new.example.test")
             """{"items":[],"migrated_from":"$base"}"""
@@ -58,7 +58,7 @@ class LtxLibraryMigrationTest {
         val settings = RecordingSettings()
         val calls = mutableListOf<String>()
         try {
-            fetchLtxLibraryWithMigration("https://old.example.test", settings) {
+            fetchLtxWithMigration("https://old.example.test", settings) {
                 calls.add(it)
                 throw LtxMigratedException("https://old.example.test")
             }
@@ -75,7 +75,7 @@ class LtxLibraryMigrationTest {
         val settings = RecordingSettings()
         val calls = mutableListOf<String>()
         try {
-            fetchLtxLibraryWithMigration("https://old.example.test", settings) {
+            fetchLtxWithMigration("https://old.example.test", settings) {
                 calls.add(it)
                 throw LtxProtocolException("https://old.example.test/api/items")
             }

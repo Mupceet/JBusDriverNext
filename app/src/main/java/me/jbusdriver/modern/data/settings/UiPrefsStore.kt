@@ -44,10 +44,10 @@ class UiPrefsStore @Inject constructor(
         .map { it[ACTRESS_SORT] ?: "COLLECT_DESC" }
         .stateIn(scope, SharingStarted.Eagerly, "COLLECT_DESC")
 
-    /** Persisted LTX sort field（入库时间/评分/大小/发行时间/番号） */
+    /** Persisted LTX sort field（评分/入库时间/发行时间/番号；默认评分=站点首页形态） */
     override val ltxSortField: StateFlow<String> = dataStore.data
-        .map { it[LTX_SORT_FIELD] ?: "ADDED" }
-        .stateIn(scope, SharingStarted.Eagerly, "ADDED")
+        .map { it[LTX_SORT_FIELD_V2] ?: "SCORE" }
+        .stateIn(scope, SharingStarted.Eagerly, "SCORE")
 
     /** Persisted LTX sort direction（DESC 倒序为默认） */
     override val ltxSortDirection: StateFlow<String> = dataStore.data
@@ -60,7 +60,7 @@ class UiPrefsStore @Inject constructor(
     }
 
     override suspend fun setLtxSortField(optionName: String) {
-        dataStore.edit { it[LTX_SORT_FIELD] = optionName }
+        dataStore.edit { it[LTX_SORT_FIELD_V2] = optionName }
     }
 
     override suspend fun setLtxSortDirection(optionName: String) {
@@ -70,7 +70,9 @@ class UiPrefsStore @Inject constructor(
     companion object {
         private val MOVIE_SORT = stringPreferencesKey("movie_sort_option")
         private val ACTRESS_SORT = stringPreferencesKey("actress_sort_option")
-        private val LTX_SORT_FIELD = stringPreferencesKey("ltx_sort_field")
+        // v2：默认由入库时间改为评分（站点首页形态）时升版一次，
+        // 存量显式选择作废、新默认生效，之后用户显式修改照常持久化
+        private val LTX_SORT_FIELD_V2 = stringPreferencesKey("ltx_sort_field_v2")
         private val LTX_SORT_DIRECTION = stringPreferencesKey("ltx_sort_direction")
     }
 }

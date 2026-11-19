@@ -343,6 +343,46 @@ class LtxPayloadTest {
     }
 
     @Test
+    fun `page preserves server order regardless of added_at`() {
+        // 分页协议下排序（评分/入库/日期/番号）由服务端执行：解析层不得按
+        // added_at 重排（遗留重排曾把评分倒序页改写成入库倒序，列表与站点对不上）
+        val json = """
+            {
+              "items": [
+                {"code": "S-001", "link": "ed2k://|file|s1.mp4|1024|00000000000000000000000000000001|/", "added_at": 500},
+                {"code": "S-002", "link": "ed2k://|file|s2.mp4|1024|00000000000000000000000000000002|/", "added_at": 900},
+                {"code": "S-003", "link": "ed2k://|file|s3.mp4|1024|00000000000000000000000000000003|/", "added_at": 100}
+              ],
+              "total": 3
+            }
+        """.trimIndent()
+
+        val library = parseLtxLibrary(json)!!
+        // added_at 非单调，但服务端顺序（评分倒序页原样）必须原样保留
+        assertEquals(listOf("S-001", "S-002", "S-003"), library.entries.map { it.code })
+    }
+
+    @Test
+    fun `duplicate codes keep first occurrence position after merge`() {
+        val json = """
+            {
+              "items": [
+                {"code": "S-001", "link": "ed2k://|file|s1a.mp4|1024|00000000000000000000000000000001|/", "added_at": 100},
+                {"code": "S-002", "link": "ed2k://|file|s2.mp4|1024|00000000000000000000000000000002|/", "added_at": 900},
+                {"code": "S-001", "link": "ed2k://|file|s1b.mp4|1024|00000000000000000000000000000005|/", "added_at": 800}
+              ],
+              "total": 3
+            }
+        """.trimIndent()
+
+        val library = parseLtxLibrary(json)!!
+
+        // 同码两行聚合为一条目，位置取首次出现处（S-001 在前不因新行 added_at 更大而挪位）
+        assertEquals(listOf("S-001", "S-002"), library.entries.map { it.code })
+        assertEquals(2, library.entries[0].links.size)
+    }
+
+    @Test
     fun `default base url is the migrated domain`() {
         // 2026-11-15 起站点迁移至自有域名（旧 workers.dev 接口已 410 停用）
         assertEquals("https://ltxlib.dpdns.org", DEFAULT_LTX_BASE_URL)

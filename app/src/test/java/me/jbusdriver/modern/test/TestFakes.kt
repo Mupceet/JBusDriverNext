@@ -25,7 +25,7 @@ open class StubCollectRepository : CollectRepository {
 class FakeCollectionUiPrefs(
     movieSort: String = "COLLECT_DESC",
     actressSort: String = "COLLECT_DESC",
-    ltxSortField: String = "ADDED",
+    ltxSortField: String = "SCORE",
     ltxSortDirection: String = "DESC"
 ) : CollectionUiPrefs {
     override val movieSortOption = MutableStateFlow(movieSort)
