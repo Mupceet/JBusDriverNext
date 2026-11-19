@@ -46,7 +46,7 @@ class UiPrefsStore @Inject constructor(
 
     /** Persisted LTX sort field（评分/入库时间/发行时间/番号；默认评分=站点首页形态） */
     override val ltxSortField: StateFlow<String> = dataStore.data
-        .map { it[LTX_SORT_FIELD] ?: "SCORE" }
+        .map { it[LTX_SORT_FIELD_V2] ?: "SCORE" }
         .stateIn(scope, SharingStarted.Eagerly, "SCORE")
 
     /** Persisted LTX sort direction（DESC 倒序为默认） */
