@@ -129,6 +129,7 @@ class LtxListViewModel @Inject constructor(
                 ltxMovieRepository.observeAll().collect { rows ->
                     val baseUrl = siteConfig.baseUrl
                     currentSnapshots = withContext(ioDispatcher) { rows.toSnapshotUis(baseUrl) }
+                    snapshotsReady = true
                     recompute()
                 }
             }
@@ -417,6 +418,8 @@ class LtxListViewModel @Inject constructor(
      * 两段队列中已有的先移除再插到队首。
      */
     private fun enqueueHead(codes: List<String>) {
+        // 补全快照未首次加载前不入队：此时无法区分终态，会把已补全条目重复排队
+        if (!snapshotsReady) return
         var changed = false
         for (code in codes.asReversed()) {
             val normalized = code.trim().uppercase()
@@ -437,6 +440,7 @@ class LtxListViewModel @Inject constructor(
 
     /** 途经发现入队（追加到途经队列尾）：已排队/在途/终态的跳过。 */
     private fun enqueueDiscovery(codes: List<String>) {
+        if (!snapshotsReady) return
         var changed = false
         for (code in codes) {
             val normalized = code.trim().uppercase()
@@ -502,6 +506,9 @@ class LtxListViewModel @Inject constructor(
 
     /** 补全快照投影（归一化番号 → 状态 + 已重建 URL 的影片快照）。 */
     private var currentSnapshots: Map<String, LtxSnapshotUi> = emptyMap()
+
+    /** 补全快照已首次加载；加载前不受理补全入队（避免把已补全条目重复排队）。 */
+    private var snapshotsReady = false
 
     /** 补全队列 + 在途集合与任务（Main 线程 confined）：点击/停留 > 途经。 */
     private val resolveQueue = ArrayDeque<String>()

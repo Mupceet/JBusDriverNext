@@ -7,6 +7,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
@@ -88,6 +90,9 @@ class LtxListViewModelTest {
 
         /** 非空时冻结所有 resolve（用于构造队列积压场景），完成后记录调用。 */
         var gate: CompletableDeferred<Unit>? = null
+
+        /** 非空时冻结补全快照首次发射（模拟 Room 首查竞态）。 */
+        var snapshotsGate: CompletableDeferred<Unit>? = null
         val rows = MutableStateFlow<List<LtxMovie>>(emptyList())
 
         override suspend fun resolve(code: String): String {
@@ -96,7 +101,10 @@ class LtxListViewModelTest {
             return resolveResult
         }
 
-        override fun observeAll(): Flow<List<LtxMovie>> = rows
+        override fun observeAll(): Flow<List<LtxMovie>> = flow {
+            snapshotsGate?.await()
+            emitAll(rows)
+        }
         override suspend fun findResolvedMovie(code: String, baseUrl: String): Movie? = null
     }
 
@@ -457,6 +465,36 @@ class LtxListViewModelTest {
         // （fake 的 resolve 过 gate 后才记录，取消发生在 await 处）
         assertTrue(viewModel.uiState.value.resolvingCodes.isEmpty())
         assertEquals(emptyList<String>(), movieRepo.resolveCalls)
+    }
+
+    @Test
+    fun enqueueBeforeSnapshotsLoadedIsDroppedAndAcceptedAfter() = runTest(testDispatcher) {
+        // 竞态回归：冷启动缓存首页发布可能早于补全快照（Room）首查完成。
+        // 快照未就绪时入队一律丢弃（无法区分终态，会把已补全条目重复排队）；
+        // 就绪后 recompute 刷新条目状态，停留窗口重新入队只收未补全条目。
+        val repo = FakeLtxRepository().apply {
+            pageFactory = { _, _, _ ->
+                page(entries = listOf(entry("AAA-003"), entry("AAA-002"), entry("AAA-001")), snapshot = "s0")
+            }
+        }
+        val movieRepo = FakeLtxMovieRepository().apply {
+            rows.value = listOf(LtxMovie(code = "AAA-002", resolveState = LtxResolveState.NOT_FOUND))
+            snapshotsGate = CompletableDeferred()
+        }
+        val viewModel = createViewModel(ltxRepo = repo, movieRepo = movieRepo)
+        viewModel.start()
+        advanceUntilIdle()
+
+        // 快照未就绪：入队丢弃，无补全任务
+        viewModel.requestResolveVisible(0, 16)
+        assertTrue(viewModel.uiState.value.resolvingCodes.isEmpty())
+
+        // 快照就绪（AAA-002 = NOT_FOUND）：重新入队只收未补全条目
+        movieRepo.snapshotsGate?.complete(Unit)
+        advanceUntilIdle()
+        viewModel.requestResolveSettled(0, 16)
+        advanceUntilIdle()
+        assertEquals(listOf("AAA-001", "AAA-003"), movieRepo.resolveCalls.sorted())
     }
 
     @Test

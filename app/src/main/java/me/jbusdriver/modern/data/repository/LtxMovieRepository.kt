@@ -33,6 +33,7 @@ interface LtxMovieRepository {
      *
      * 先按有码搜索精确匹配，未命中再按无码搜索；两轮成功但均无精确匹配记为
      * NOT_FOUND（终态）。搜索网络失败时不写终态并返回 UNRESOLVED，交由调用方重试。
+     * 已有终态（RESOLVED/NOT_FOUND）的番号直接短路返回，不重复搜索。
      *
      * @return 解析结果状态（[LtxResolveState] 之一）。
      */
@@ -62,6 +63,14 @@ class DefaultLtxMovieRepository @Inject constructor(
     override suspend fun resolve(code: String): String = withContext(ioDispatcher) {
         val normalized = normalizeLtxCode(code)
         if (normalized.isEmpty()) return@withContext LtxResolveState.NOT_FOUND
+
+        // 终态短路：已收錄/未收錄均为确定性结果，重复触发（入队竞态、翻页后
+        // 同码再现）直接复用落库状态，不再对站内发起搜索
+        ltxMovieDao.findByCode(normalized)?.let { row ->
+            if (row.resolveState == LtxResolveState.RESOLVED || row.resolveState == LtxResolveState.NOT_FOUND) {
+                return@withContext row.resolveState
+            }
+        }
 
         when (val outcome = searchExactMatch(normalized)) {
             is MatchOutcome.Match -> {
