@@ -255,7 +255,9 @@ private fun LtxListHeader(
 ) {
     val updatedText = remember(uiState.updatedAtMillis) {
         if (uiState.updatedAtMillis > 0) {
-            DateFormat.getDateInstance(DateFormat.SHORT).format(Date(uiState.updatedAtMillis))
+            // 与站点一致：日期 + 时分（站点头部为「更新于 M/d HH:mm」形态）
+            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                .format(Date(uiState.updatedAtMillis))
         } else ""
     }
 
