@@ -287,8 +287,12 @@ class DefaultLtxWebViewGateway @Inject constructor(
         const val FETCH_TIMEOUT_MILLIS = 30_000L
         const val VERIFY_WAIT_MILLIS = 8_000L
         const val SESSION_TIMEOUT_MILLIS = 40_000L
-        const val SESSION_WAIT_MILLIS = 16_000L
-        const val POLL_INTERVAL_MILLIS = 2_000L
+
+        // 自动通过窗口：非交互式托管质询通常数秒内自过；过不了的基本是交互式，
+        // 应尽早升级到人工验证页（等待全烧在这个窗口里）。轮询 1s 保证门禁一过
+        // 立刻被检测到，不额外增加延迟。
+        const val SESSION_WAIT_MILLIS = 10_000L
+        const val POLL_INTERVAL_MILLIS = 1_000L
         const val STATUS_PRECONDITION_REQUIRED = 428
     }
 }
