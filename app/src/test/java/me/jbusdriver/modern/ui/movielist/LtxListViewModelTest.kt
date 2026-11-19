@@ -427,8 +427,35 @@ class LtxListViewModelTest {
     }
 
     @Test
-    fun requestResolveSettledEnqueuesVisibleUnresolvedEntries() = runTest(testDispatcher) {
-        val movieRepo = FakeLtxMovieRepository().apply {
+    fun sortSwitchCancelsPendingResolveWork() = runTest(testDispatcher) {
+        // 切排序 = 整表替换：旧列表的在途/排队补全任务应全部作废，
+        // 新列表的补全由 UI 层停留窗口重新入队（单元测试不模拟 UI 层）
+        val repo = FakeLtxRepository().apply {
+            pageFactory = { _, _, _ -> page(entries = (1..5).map { entry("SCREEN-00$it") }, snapshot = "s0") }
+        }
+        val pauseGate = CompletableDeferred<Unit>()
+        val movieRepo = FakeLtxMovieRepository().apply { gate = pauseGate }
+        val viewModel = createViewModel(ltxRepo = repo, movieRepo = movieRepo)
+        viewModel.start()
+        advanceUntilIdle()
+
+        // 途经全量入队：3 个在途（冻结在 gate 上）、2 个排队
+        viewModel.requestResolveVisible(0, 16)
+        assertEquals(5, viewModel.uiState.value.resolvingCodes.size)
+
+        viewModel.updateSortField(LtxSortField.CODE)
+        advanceUntilIdle()
+        pauseGate.complete(Unit)
+        advanceUntilIdle()
+
+        // 在途被取消、排队被清空：补全指示清空，且不产生任何解析调用
+        // （fake 的 resolve 过 gate 后才记录，取消发生在 await 处）
+        assertTrue(viewModel.uiState.value.resolvingCodes.isEmpty())
+        assertEquals(emptyList<String>(), movieRepo.resolveCalls)
+    }
+
+    @Test
+    fun requestResolveSettledEnqueuesVisibleUnresolvedEntries() = runTest(testDispatcher) {        val movieRepo = FakeLtxMovieRepository().apply {
             // AAA-002 站内未收录（终态，停留补全应跳过）
             rows.value = listOf(LtxMovie(code = "AAA-002", resolveState = LtxResolveState.NOT_FOUND))
         }

@@ -300,6 +300,9 @@ class LtxListViewModel @Inject constructor(
     /** 页结果落地：[replace]=true 整体替换（重查），false 追加并跨页同码去重。 */
     private fun publishPage(page: LtxPage, replace: Boolean) {
         if (replace) {
+            // 整表替换 = 列表内容大面积不同：作废旧列表的补全任务（新列表的
+            // 补全由 UI 层停留窗口在条目发布后重新入队）
+            cancelResolveWork()
             loadedEntries = page.entries
             loadedRowCount = page.entries.size
         } else {
@@ -405,7 +408,7 @@ class LtxListViewModel @Inject constructor(
     /**
      * 把一批番号**插到队首**（保持给定顺序：调用方按屏幕顺序传入，这里逆序
      * addFirst）。用户点击与停留窗口走此入口；已在途/终态的跳过，
-     * 三段队列中已有的先移除再插到队首。
+     * 两段队列中已有的先移除再插到队首。
      */
     private fun enqueueHead(codes: List<String>) {
         var changed = false
@@ -417,7 +420,6 @@ class LtxListViewModel @Inject constructor(
             if (snapshot != null && snapshot.resolveState != LtxResolveState.UNRESOLVED) continue
             resolveQueue.remove(normalized)
             discoveryQueue.remove(normalized)
-            batchQueue.remove(normalized)
             resolveQueue.addFirst(normalized)
             changed = true
         }
@@ -427,14 +429,14 @@ class LtxListViewModel @Inject constructor(
         }
     }
 
-    /** 途经发现入队（追加到途经队列尾）：已排队（任一段队列）/在途/终态的跳过。 */
+    /** 途经发现入队（追加到途经队列尾）：已排队/在途/终态的跳过。 */
     private fun enqueueDiscovery(codes: List<String>) {
         var changed = false
         for (code in codes) {
             val normalized = code.trim().uppercase()
             if (normalized.isEmpty()) continue
             if (normalized in activeResolves) continue
-            if (normalized in resolveQueue || normalized in discoveryQueue || normalized in batchQueue) continue
+            if (normalized in resolveQueue || normalized in discoveryQueue) continue
             val snapshot = currentSnapshots[normalized]
             if (snapshot != null && snapshot.resolveState != LtxResolveState.UNRESOLVED) continue
             discoveryQueue.addLast(normalized)
@@ -446,29 +448,15 @@ class LtxListViewModel @Inject constructor(
         }
     }
 
-    /** 批量任务入队（最低优先级队尾）：任一段队列已有则保持原位。 */
-    private fun enqueueResolve(code: String) {
-        val normalized = code.trim().uppercase()
-        if (normalized.isEmpty()) return
-        if (normalized in activeResolves) return
-        if (normalized in resolveQueue || normalized in discoveryQueue || normalized in batchQueue) return
-        val snapshot = currentSnapshots[normalized]
-        if (snapshot != null && snapshot.resolveState != LtxResolveState.UNRESOLVED) return
-        batchQueue.addLast(normalized)
-        publishResolvingState()
-        pumpWorkers()
-    }
-
     /** 补足并发工位：每个工位按优先级取队首解析，直到队列为空。 */
     private fun pumpWorkers() {
         while (activeResolves.size < MAX_CONCURRENT_RESOLVES) {
             val code = resolveQueue.removeFirstOrNull()
                 ?: discoveryQueue.removeFirstOrNull()
-                ?: batchQueue.removeFirstOrNull()
                 ?: break
             activeResolves.add(code)
             publishResolvingState()
-            viewModelScope.launch {
+            activeJobs[code] = viewModelScope.launch {
                 try {
                     ltxMovieRepository.resolve(code)
                 } catch (e: CancellationException) {
@@ -476,6 +464,7 @@ class LtxListViewModel @Inject constructor(
                 } catch (_: Throwable) {
                     // resolve 内部已把网络失败归为 UNRESOLVED，这里兜底静默
                 } finally {
+                    activeJobs.remove(code)
                     activeResolves.remove(code)
                     publishResolvingState()
                     pumpWorkers()
@@ -484,9 +473,22 @@ class LtxListViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 整表替换（切排序/确认状态、刷新、快照重建）时作废旧列表的补全任务：
+     * 取消在途请求、清空排队任务——新列表内容大面积不同，旧任务失去意义且
+     * 占用工位；新列表的补全由 UI 层停留窗口在条目发布后重新入队。已落库的
+     * 补全结果按码有效，不受影响。
+     */
+    private fun cancelResolveWork() {
+        resolveQueue.clear()
+        discoveryQueue.clear()
+        activeJobs.values.forEach { it.cancel() }
+        publishResolvingState()
+    }
+
     private fun publishResolvingState() {
         _uiState.update {
-            it.copy(resolvingCodes = activeResolves + resolveQueue + discoveryQueue + batchQueue)
+            it.copy(resolvingCodes = activeResolves + resolveQueue + discoveryQueue)
         }
     }
 
@@ -495,11 +497,11 @@ class LtxListViewModel @Inject constructor(
     /** 补全快照投影（归一化番号 → 状态 + 已重建 URL 的影片快照）。 */
     private var currentSnapshots: Map<String, LtxSnapshotUi> = emptyMap()
 
-    /** 补全三段队列 + 在途集合（Main 线程 confined）：点击/停留 > 途经 > 批量。 */
+    /** 补全队列 + 在途集合与任务（Main 线程 confined）：点击/停留 > 途经。 */
     private val resolveQueue = ArrayDeque<String>()
     private val discoveryQueue = ArrayDeque<String>()
-    private val batchQueue = ArrayDeque<String>()
     private val activeResolves = mutableSetOf<String>()
+    private val activeJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
 
     private companion object {
         private const val TAG = "LtxListViewModel"
