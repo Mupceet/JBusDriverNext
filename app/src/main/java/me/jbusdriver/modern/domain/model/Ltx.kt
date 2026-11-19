@@ -35,7 +35,7 @@ data class LtxEntry(
     val hasConfirmedLinks: Boolean get() = links.isNotEmpty()
 }
 
-/** LTX 全库快照，entries 默认按入库时间倒序。 */
+/** LTX 全库快照，entries 保持服务端给定顺序（排序由服务端负责）。 */
 data class LtxLibrary(
     val updatedAtMillis: Long = 0L,
     val entries: List<LtxEntry> = emptyList(),

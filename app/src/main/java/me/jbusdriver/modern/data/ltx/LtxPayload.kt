@@ -79,7 +79,7 @@ data class LtxItemDto(
  * 解析 `GET {base}/api/items` 响应为 [LtxLibrary]。
  *
  * 载荷非法或缺少 items 时返回 null（调用方据此判定不可缓存）。
- * entries 按入库时间倒序，保证默认展示顺序稳定。
+ * entries 保持服务端给定顺序（排序由服务端负责）。
  */
 internal fun parseLtxLibrary(json: String): LtxLibrary? {
     val payload = GSON.fromJson<LtxItemsPayloadDto>(json) ?: return null
@@ -89,10 +89,13 @@ internal fun parseLtxLibrary(json: String): LtxLibrary? {
 /**
  * 载荷 DTO → 领域库；items 缺失返回 null（不可缓存）。
  *
+ * **条目顺序保持服务端给定顺序**：分页协议下排序（评分/入库/日期/番号）由
+ * 服务端执行，解析层不得重排（重排会破坏跨页一致性与列表对站点的对应关系）。
+ *
  * 同码多行聚合为一：2026-11 分页快照实测存在同一番号两行（提交源不同——
  * 站内提交 + nyaa 同步各一行，49/3393 码；站点 q 搜索按码去重故不可见），
  * 恢复旧契约的「一码一条目」语义：链接取并集（已确认优先）、全部行 pending
- * 才算 pending、入库时间取最新。
+ * 才算 pending、入库时间取最新。聚合条目位置取该码首次出现的行位。
  */
 internal fun parseLtxItems(payload: LtxItemsPayloadDto): LtxLibrary? {
     val items = payload.items ?: return null
@@ -101,7 +104,6 @@ internal fun parseLtxItems(payload: LtxItemsPayloadDto): LtxLibrary? {
         .map { it.toEntry() }
         .groupBy { normalizeLtxCode(it.code) }
         .map { (_, rows) -> rows.mergeByCode() }
-        .sortedByDescending { it.addedAtMillis }
         .toList()
     return LtxLibrary(updatedAtMillis = payload.updatedAt ?: 0L, entries = entries)
 }
