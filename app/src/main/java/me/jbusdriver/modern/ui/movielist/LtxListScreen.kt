@@ -1,6 +1,5 @@
 package me.jbusdriver.modern.ui.movielist
 
-import android.text.format.Formatter
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -11,19 +10,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -36,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -44,7 +39,6 @@ import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.data.db.entity.LtxResolveState
 import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ErrorView
-import me.jbusdriver.modern.data.repository.LTX_CACHE_TTL_MILLIS
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.components.ScrollableCenteredState
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
@@ -89,46 +83,12 @@ fun LtxListScreen(
         LtxVerificationDialog(viewModel = viewModel, onDismiss = { showVerification = false })
     }
 
-    // 下拉刷新：缓存新鲜时强刷全库流量大，先弹窗确认（确认框同为 UI 局部状态）
-    var showRefreshConfirm by rememberSaveable { mutableStateOf(false) }
-    var cachedBytes by remember { mutableStateOf(0L) }
-    if (showRefreshConfirm) {
-        AlertDialog(
-            onDismissRequest = { showRefreshConfirm = false },
-            title = { Text(stringResource(R.string.ltx_refresh_confirm_title)) },
-            text = {
-                Text(
-                    if (cachedBytes > 0L) {
-                        stringResource(
-                            R.string.ltx_refresh_confirm_hint_sized,
-                            Formatter.formatShortFileSize(context, cachedBytes)
-                        )
-                    } else {
-                        stringResource(R.string.ltx_refresh_confirm_hint)
-                    }
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showRefreshConfirm = false
-                    viewModel.refresh()
-                }) {
-                    Text(stringResource(R.string.refresh))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRefreshConfirm = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-
     // 滚动驱动的补全分两层，兼顾「边滑边补全」与「停留优先」：
     // 1) 途经发现：滑动过程中节流触发（150ms），把当前窗口内的未补全条目按屏幕
     //    顺序排队补全——快速滑动途经的条目也会持续入队，接近其它页面边滑边加载的体验；
     // 2) 停留插队：滑动停止（索引 400ms 无变化）后把停留窗口内的未补全条目整体
-    //    插到队首，保证停留界面始终优先于途经与批量任务完成。
+    //    插到队首，保证停留界面始终优先于途经任务完成。
+    // 3) 加载下一页：可见项接近已加载末尾时自动追加（分页目录，服务端出序）。
     // key 用 items 列表本身（按内容判等）：筛选/排序切换会整体替换条目而尺寸未必变化，
     // 仅以 size 为 key 时新窗口的未补全条目不会触发补全，需要滑动一下才恢复。
     // snapshotFlow 订阅即发射当前值，页面激活/列表变化重启后都从当前位置出发。
@@ -144,12 +104,17 @@ fun LtxListScreen(
         launch {
             var lastDiscoveryMark: TimeMark? = null
             scrollIndexFlow.collect { lazyIndex ->
+                val itemsIndex = toItemsIndex(lazyIndex)
+                // 近末端自动加载下一页（提前半屏余量，滚动不停顿）
+                if (itemsIndex >= uiState.items.size - LTX_LOAD_MORE_PREFETCH) {
+                    viewModel.loadMore()
+                }
                 val mark = lastDiscoveryMark
                 if (mark == null ||
                     mark.elapsedNow().inWholeMilliseconds >= LTX_RESOLVE_DISCOVERY_THROTTLE_MS
                 ) {
                     lastDiscoveryMark = TimeSource.Monotonic.markNow()
-                    viewModel.requestResolveVisible(toItemsIndex(lazyIndex), LTX_RESOLVE_VIEWPORT)
+                    viewModel.requestResolveVisible(itemsIndex, LTX_RESOLVE_VIEWPORT)
                 }
             }
         }
@@ -161,26 +126,13 @@ fun LtxListScreen(
         }
     }
 
-    val scope = rememberCoroutineScope()
-
+    // 下拉刷新：分页模型下单次刷新流量小（一页），直接刷
     PullToRefreshBox(
         // 首次加载（状态未明）用全屏转圈，避免与下拉指示圈叠显；
         // 状态明确后的加载一律由下拉指示圈表达
         isRefreshing = uiState.isRefreshing && !uiState.isLoading,
         onRefresh = {
-            if (!ltxEnabled) return@PullToRefreshBox
-            scope.launch {
-                val stale = uiState.cacheStoredAtMillis <= 0L ||
-                    System.currentTimeMillis() - uiState.cacheStoredAtMillis > LTX_CACHE_TTL_MILLIS
-                val lastBytes = if (stale) 0L else viewModel.cachedPayloadBytes()
-                // 缓存新鲜且上次快照超过确认阈值才提醒；小快照直接刷
-                if (!stale && lastBytes > LTX_REFRESH_CONFIRM_BYTES) {
-                    cachedBytes = lastBytes
-                    showRefreshConfirm = true
-                } else {
-                    viewModel.refresh()
-                }
-            }
+            if (ltxEnabled) viewModel.refresh()
         },
         modifier = modifier.fillMaxSize()
     ) {
@@ -348,8 +300,8 @@ private fun LtxListHeader(
 /** 途经发现节流窗口：滑动过程中至多按该间隔入队一次当前窗口，避免逐帧触发。 */
 private const val LTX_RESOLVE_DISCOVERY_THROTTLE_MS = 150L
 
-/** 下拉强刷确认阈值：缓存新鲜且上次快照超过该字节数才弹窗提醒，小快照直接刷。 */
-private const val LTX_REFRESH_CONFIRM_BYTES = 3L * 1024 * 1024
+/** 加载下一页的预取余量：可见项距已加载末尾不足该条数即触发追加。 */
+private const val LTX_LOAD_MORE_PREFETCH = 12
 
 /** 滑动去抖窗口：滚动索引停止变化该时长后视为停留，触发停留补全插队。 */
 private const val LTX_RESOLVE_SETTLE_DEBOUNCE_MS = 400L

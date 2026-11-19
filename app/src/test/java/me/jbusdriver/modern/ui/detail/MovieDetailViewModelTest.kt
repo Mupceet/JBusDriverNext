@@ -127,20 +127,19 @@ class MovieDetailViewModelTest {
     private var stubLtxLookupCalls = 0
 
     private val stubLtxRepo = object : LtxRepository {
-        override fun observeLibrary(forceRefresh: Boolean) = flowOf(
-            CachedLoadEvent.Fresh(CacheEntry(LtxLibrary(), 0L, CacheSource.Network, false))
-        )
-        override suspend fun currentLibrary(): LtxLibrary? = null
+        override suspend fun loadPage(
+            query: me.jbusdriver.modern.data.ltx.LtxListQuery,
+            snapshot: String?,
+            offset: Int,
+        ): me.jbusdriver.modern.data.repository.LtxPage =
+            me.jbusdriver.modern.data.repository.LtxPage(entries = emptyList(), total = 0, snapshot = null, updatedAtMillis = 0L, offset = offset)
         override suspend fun findByCode(code: String): LtxEntry? {
             stubLtxLookupCalls++
             return stubLtxEntry
         }
-        override suspend fun refresh(): LtxLibrary? = null
         override val verificationRequests: SharedFlow<Unit> = MutableSharedFlow()
-        override val isFetching: StateFlow<Boolean> = MutableStateFlow(false)
         override fun adoptWebSession(session: LtxWebSession) = Unit
         override suspend fun currentOrigin(): String = "https://ltx.example.test"
-        override suspend fun cachedPayloadBytes(): Long = 0L
     }
 
     private val stubLtxSettings = object : LtxSettingsSource {

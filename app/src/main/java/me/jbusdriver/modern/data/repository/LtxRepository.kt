@@ -2,27 +2,16 @@ package me.jbusdriver.modern.data.repository
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
-import me.jbusdriver.modern.core.cache.CacheEnvelope
-import me.jbusdriver.modern.core.cache.CacheStore
-import me.jbusdriver.modern.core.cache.CachedLoadEvent
-import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.coroutine.IoDispatcher
-import me.jbusdriver.modern.core.http.LtxWebFetch
 import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.core.http.LtxWebViewGateway
 import me.jbusdriver.modern.core.http.NetClient
-import me.jbusdriver.modern.core.http.LtxWebViewSession
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.ltx.LTX_ITEMS_PATH
 import me.jbusdriver.modern.data.ltx.LTX_QUERY_PATH
@@ -30,15 +19,15 @@ import me.jbusdriver.modern.data.ltx.LTX_SESSION_PATH
 import me.jbusdriver.modern.data.ltx.LtxChallengeException
 import me.jbusdriver.modern.data.ltx.LtxCryptoSession
 import me.jbusdriver.modern.data.ltx.LtxEncryptedEnvelopeDto
+import me.jbusdriver.modern.data.ltx.LtxListQuery
 import me.jbusdriver.modern.data.ltx.LtxMigratedException
 import me.jbusdriver.modern.data.ltx.LtxProtocolException
 import me.jbusdriver.modern.data.ltx.LtxSessionHandshakeDto
 import me.jbusdriver.modern.data.ltx.LtxSessionRequestBodyDto
 import me.jbusdriver.modern.data.ltx.LtxItemsPayloadDto
-import me.jbusdriver.modern.data.ltx.LtxSnapshotChangedException
-import me.jbusdriver.modern.data.ltx.buildLtxQueryBody
-import me.jbusdriver.modern.data.ltx.syncLtxLibraryPages
+import me.jbusdriver.modern.data.ltx.LtxSnapshotExpiredException
 import me.jbusdriver.modern.data.ltx.base64UrlDecode
+import me.jbusdriver.modern.data.ltx.buildLtxQueryBody
 import me.jbusdriver.modern.data.ltx.decryptLtxEnvelope
 import me.jbusdriver.modern.data.ltx.establishLtxSession
 import me.jbusdriver.modern.data.ltx.isLtxCloudflareChallenge
@@ -46,63 +35,56 @@ import me.jbusdriver.modern.data.ltx.isLtxCryptoSessionRequired
 import me.jbusdriver.modern.data.ltx.ltxPublicKeyRawBase64Url
 import me.jbusdriver.modern.data.ltx.newLtxClientKeyPair
 import me.jbusdriver.modern.data.ltx.newLtxRequestId
-import me.jbusdriver.modern.data.ltx.parseLtxLibrary
+import me.jbusdriver.modern.data.ltx.parseLtxItems
 import me.jbusdriver.modern.data.ltx.parseLtxMigratedBaseUrl
 import me.jbusdriver.modern.data.settings.LtxSettingsSource
 import me.jbusdriver.modern.domain.model.LtxEntry
-import me.jbusdriver.modern.domain.model.LtxLibrary
 import me.jbusdriver.modern.domain.model.normalizeLtxCode
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * LTX 库数据仓库接口。
+ * LTX 分页目录数据仓库接口。
  *
- * 数据源为 LTX 站点全库快照。2026-11 起站点（`ltxlib.dpdns.org`）改为分页
- * 协议：`GET /api/items` 只返回首页（快照 id + 全库总数），翻页与筛选迁移到
- * `POST /api/items/query`（服务端页大小上限 100）。仓库在内部完成分页全量
- * 同步并合并为单包载荷，下游解析/缓存/调用方形态不变（[LtxLibrary] 仍为全库）。
- * 所有方法为 main-safe 的 suspend/Flow，内部网络与解析在 IO 调度器执行；失败
- * 时静默降级返回空值，不影响调用方（详情页查询、收藏页列表）的主流程。
+ * 2026-11 起站点（`ltxlib.dpdns.org`）为分页协议：列表数据经
+ * `POST /api/items/query` 按页获取（服务端承担排序/状态筛选，页大小上限
+ * 100），仓库按页转发、不做全量同步；详情页按番号即时查询（`q` 搜索）。
+ * 所有方法为 main-safe 的 suspend，内部网络与解析在 IO 调度器执行。
  *
- * 站点开启人机验证时（Worker 层 Turnstile 门禁，403 + `reason=verify`），纯
- * OkHttp 请求会被拒绝：此时改用隐形 WebView 加载站点让 SPA 自行完成验证，
- * 导出 Cookie 与 UA 供后续 OkHttp 快路径复用；Cookie 经系统 CookieManager
- * 持久化，有效期内无需重复验证。
+ * 会话一致性：[loadPage] 的 [LtxPage.snapshot] 由调用方保存并在后续翻页/
+ * 换排序请求中回传，保证同一浏览会话内数据集一致；快照过期（站点报
+ * `snapshotExpired`）抛 [LtxSnapshotExpiredException]，调用方丢弃快照从第
+ * 0 页重查即可。首查传 `snapshot=null` 由服务端新建快照。
  *
- * 加密会话协议：Turnstile 后还需 `POST /api/crypto/session` 做 ECDH+HKDF
- * 握手，请求带 `X-LTX-*` 会话头、响应 AES-GCM 解密（含 POST query 翻页）。
+ * 站点开启人机验证时（Turnstile 门禁，403 + `reason=verify`），改用隐形
+ * WebView 加载站点让 SPA 自行完成验证，导出 Cookie 与 UA 供后续 OkHttp 快
+ * 路径复用；Cookie 经系统 CookieManager 持久化，有效期内无需重复验证。
+ * 加密会话协议：`POST /api/crypto/session` ECDH+HKDF 握手，请求带
+ * `X-LTX-*` 会话头、响应 AES-GCM 解密（错误响应同为加密信封，按 reason 分型）。
  */
 interface LtxRepository {
     /**
-     * 观察 LTX 全库（stale-while-revalidate）。
-     *
-     * 先发射磁盘/内存缓存（[CachedLoadEvent.Cached]），缓存过期（TTL 6 小时）
-     * 时后台拉取新数据并发射 [CachedLoadEvent.Fresh]。
+     * 拉取一页目录。[snapshot] 为 null 时服务端新建快照（首查），否则在既有
+     * 快照内取 [offset] 起的一页。快照过期抛 [LtxSnapshotExpiredException]。
      */
-    fun observeLibrary(forceRefresh: Boolean = false): Flow<CachedLoadEvent<LtxLibrary>>
+    suspend fun loadPage(query: LtxListQuery, snapshot: String?, offset: Int): LtxPage
 
-    /** 获取当前可用的全库快照；无缓存且网络失败时返回 null。 */
-    suspend fun currentLibrary(): LtxLibrary?
-
-    /** 按番号归一化查找条目；库不可用或未收录时返回 null。 */
+    /**
+     * 按番号查找条目：优先命中本会话已加载过的条目，未命中走站点 `q` 搜索
+     * （单请求即时查询，供详情页磁力弹窗）。失败静默返回 null，不打断详情主流程。
+     */
     suspend fun findByCode(code: String): LtxEntry?
-
-    /** 强制刷新全库；失败时返回 null（调用方据此提示刷新失败）。 */
-    suspend fun refresh(): LtxLibrary?
-
-    /** 任意全库拉取进行中（缓存过期自检、下拉强刷、验证自动尝试均涵盖）；界面据此显示加载指示。 */
-    val isFetching: StateFlow<Boolean>
 
     /**
      * 人机验证需人工介入时发射（隐形 WebView 自动通过失败后）。
-     * 调用方据此弹出可见验证界面；完成验证后调 [adoptWebSession] 并刷新。
+     * 调用方据此弹出可见验证界面；完成验证后调 [adoptWebSession] 并重试。
      */
     val verificationRequests: SharedFlow<Unit>
 
@@ -111,27 +93,30 @@ interface LtxRepository {
 
     /** 当前 LTX 站点首页地址（人工验证 WebView 的加载目标）。 */
     suspend fun currentOrigin(): String
-
-    /** 最近缓存的全库载荷大小（字节，取自序列化 JSON）；无缓存返回 0。用于刷新确认提示。 */
-    suspend fun cachedPayloadBytes(): Long
 }
 
-/** 全库缓存新鲜度阈值：下拉刷新据此决定直接强刷还是先询问确认。 */
-internal const val LTX_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L
+/** 一页目录：条目（同码多行已聚合）+ 当前查询总数 + 会话快照 + 库更新时间。 */
+data class LtxPage(
+    val entries: List<LtxEntry>,
+    /** 当前查询（排序/状态筛选后）的服务端总数。 */
+    val total: Int,
+    /** 会话快照 id；旧协议镜像无快照为 null（整库单页，无翻页）。 */
+    val snapshot: String?,
+    /** 库更新时间（毫秒）；载荷缺失为 0。 */
+    val updatedAtMillis: Long,
+    /** 本页起始偏移（服务端回显）。 */
+    val offset: Int,
+)
 
 @Singleton
 class DefaultLtxRepository @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    private val cacheStore: CacheStore,
     private val settings: LtxSettingsSource,
     private val webGateway: LtxWebViewGateway,
 ) : LtxRepository {
 
-    /** 最近一次成功加载的全库快照，供 findByCode 免重复读缓存。 */
-    private val libraryState = MutableStateFlow<LtxLibrary?>(null)
-
-    private val _isFetching = MutableStateFlow(false)
-    override val isFetching: StateFlow<Boolean> = _isFetching
+    /** 本会话已加载过的条目（番号 → 条目），供 findByCode 免重复网络查询。 */
+    private val seenEntries = ConcurrentHashMap<String, LtxEntry>()
 
     /** WebView 过 Cloudflare 挑战后的会话；进程内复用，Cookie/UA 必须成对生效。 */
     @Volatile
@@ -144,56 +129,83 @@ class DefaultLtxRepository @Inject constructor(
     private val _verificationRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     override val verificationRequests: SharedFlow<Unit> = _verificationRequests
 
-    override fun observeLibrary(forceRefresh: Boolean): Flow<CachedLoadEvent<LtxLibrary>> =
-        cacheStore.observeCached(
-            key = CACHE_KEY,
-            ttlMillis = TTL_MILLIS,
-            disk = true,
-            forceRefresh = forceRefresh,
-            revalidate = false,
-            isCacheable = { it.entries.isNotEmpty() },
-            fetch = { fetchLibrary() },
-        ).onEach { event ->
-            when (event) {
-                is CachedLoadEvent.Cached -> libraryState.value = event.entry.value
-                is CachedLoadEvent.Fresh -> libraryState.value = event.entry.value
-                is CachedLoadEvent.Failure -> KLog.t(TAG).w(
-                    "LTX fetch failed (hadCached=${event.hadCachedValue}): ${event.throwable.message}"
-                )
+    override suspend fun loadPage(query: LtxListQuery, snapshot: String?, offset: Int): LtxPage =
+        withContext(ioDispatcher) {
+            val initialBase = settings.currentLtxBaseUrl().trimEnd('/')
+            var base = initialBase
+            val json = fetchLtxWithMigration(initialBase, settings) { adopted ->
+                base = adopted
+                if (adopted == DEFAULT_LTX_BASE_URL) {
+                    fetchViaCryptoSession(
+                        method = "POST",
+                        url = adopted + LTX_QUERY_PATH,
+                        bodyJson = buildLtxQueryBody(query = query, snapshot = snapshot, offset = offset),
+                        // 首查/重查允许请求人工验证；翻页失败由首页入口统一处理，避免重复弹窗
+                        allowManualVerification = offset == 0,
+                    )
+                } else {
+                    // 旧协议镜像：单包全量载荷降级为「一大页」（无快照、无翻页）
+                    fetchViaLegacy(adopted + LTX_ITEMS_PATH)
+                }
             }
+            parsePage(json, base, offset)
         }
 
-    override suspend fun currentLibrary(): LtxLibrary? {
-        libraryState.value?.let { return it }
-        return try {
-            observeLibrary().first()
-            libraryState.value
+    /** 载荷 JSON → [LtxPage]；分页载荷与旧单包载荷共用（total/snapshot 缺省即无翻页）。 */
+    private fun parsePage(json: String, base: String, requestedOffset: Int): LtxPage {
+        val payload = GSON.fromJson<LtxItemsPayloadDto>(json)
+            ?.takeIf { it.items != null }
+            ?: throw IOException("Malformed LTX page payload from $base (offset=$requestedOffset)")
+        val entries = parseLtxItems(payload)?.entries.orEmpty()
+        entries.forEach(::rememberEntry)
+        return LtxPage(
+            entries = entries,
+            total = payload.total ?: entries.size,
+            snapshot = payload.snapshot,
+            updatedAtMillis = payload.updatedAt ?: 0L,
+            offset = requestedOffset,
+        )
+    }
+
+    private fun rememberEntry(entry: LtxEntry) {
+        seenEntries[normalizeLtxCode(entry.code)] = entry
+    }
+
+    override suspend fun findByCode(code: String): LtxEntry? = withContext(ioDispatcher) {
+        val normalized = normalizeLtxCode(code)
+        if (normalized.isEmpty()) return@withContext null
+        seenEntries[normalized]?.let { return@withContext it }
+        try {
+            val initialBase = settings.currentLtxBaseUrl().trimEnd('/')
+            if (initialBase != DEFAULT_LTX_BASE_URL) {
+                // 旧协议镜像无按码查询：整库拉一次在本地找
+                val json = fetchLtxWithMigration(initialBase, settings) { b ->
+                    fetchViaLegacy(b + LTX_ITEMS_PATH)
+                }
+                return@withContext parsePage(json, initialBase, 0).entries
+                    .firstOrNull { normalizeLtxCode(it.code) == normalized }
+            }
+            val body = buildLtxQueryBody(
+                query = LtxListQuery(q = code.trim()),
+                snapshot = null,
+                offset = 0,
+                limit = FIND_BY_CODE_LIMIT,
+            )
+            val json = fetchViaCryptoSession(
+                method = "POST",
+                url = initialBase + LTX_QUERY_PATH,
+                bodyJson = body,
+                allowManualVerification = true,
+            )
+            val entries = parsePage(json, initialBase, 0).entries
+            entries.firstOrNull { normalizeLtxCode(it.code) == normalized }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Throwable) {
-            KLog.t(TAG).e("LTX library load failed", e)
+        } catch (e: Exception) {
+            // 详情页磁力查询失败静默降级（LTX 分组缺省），不打断详情主流程
+            KLog.t(TAG).w("LTX findByCode failed for $normalized: ${e.message}")
             null
         }
-    }
-
-    override suspend fun findByCode(code: String): LtxEntry? {
-        val normalized = normalizeLtxCode(code)
-        if (normalized.isEmpty()) return null
-        return currentLibrary()?.find(normalized)
-    }
-
-    override suspend fun refresh(): LtxLibrary? = try {
-        when (val event = observeLibrary(forceRefresh = true).first()) {
-            is CachedLoadEvent.Fresh -> event.entry.value
-            // forceRefresh 下不会出现 Cached；网络失败时回退内存中最近快照
-            is CachedLoadEvent.Cached -> event.entry.value
-            is CachedLoadEvent.Failure -> libraryState.value
-        }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Throwable) {
-        KLog.t(TAG).e("LTX library refresh failed", e)
-        null
     }
 
     // region network
@@ -208,84 +220,6 @@ class DefaultLtxRepository @Inject constructor(
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
-    }
-
-    /** 拉取全程（含验证自动尝试）置位 [isFetching]，供界面显示加载指示。 */
-    private suspend fun fetchLibrary(): LtxLibrary {
-        _isFetching.value = true
-        try {
-            return fetchLibraryInternal()
-        } finally {
-            _isFetching.value = false
-        }
-    }
-
-    private suspend fun fetchLibraryInternal(): LtxLibrary = withContext(ioDispatcher) {
-        val base = settings.currentLtxBaseUrl().trimEnd('/')
-        val json = fetchLtxLibraryWithMigration(
-            initialBase = base,
-            settings = settings,
-            fetchJson = { fetchLibraryJsonOnce(it) },
-        )
-        parseLtxLibrary(json) ?: throw IOException("Malformed LTX payload from $base$LTX_ITEMS_PATH")
-    }
-
-    /**
-     * 对指定基址单次拉取全库 JSON 原文。
-     *
-     * 迁移站（默认域）走分页协议：加密会话通道首页 + query 翻页合并
-     * （[fetchFullLibraryViaCrypto]）；自定义镜像域维持旧协议（明文 +
-     * Turnstile Cookie，WebView 抓取兜底），返回原样单包载荷。
-     */
-    private suspend fun fetchLibraryJsonOnce(base: String): String {
-        val url = base + LTX_ITEMS_PATH
-        KLog.t(TAG).i(
-            "LTX fetch start: $url (mode=${if (base == DEFAULT_LTX_BASE_URL) "crypto" else "legacy"}, " +
-                    "web=${if (webSession != null) "reused" else "none"}, " +
-                    "session=${if (cryptoSession != null) "reused" else "none"})"
-        )
-        return if (base == DEFAULT_LTX_BASE_URL) fetchFullLibraryViaCrypto(url) else fetchViaLegacy(url)
-    }
-
-    /**
-     * 默认域（2026-11 分页协议）全库同步：`GET /api/items` 取首页（快照 + 总数 +
-     * 首页条目），`POST /api/items/query` 按 [LTX_PAGE_LIMIT] 并发翻页直至 total，
-     * 合并为单包载荷 JSON——下游解析与缓存形态不变（站点 2026-11-16 实测
-     * limit 上限 100）。快照漂移（同步期间站点更新）以新快照重启一次。
-     */
-    private suspend fun fetchFullLibraryViaCrypto(itemsUrl: String): String {
-        try {
-            return syncLtxPagesOnce(itemsUrl)
-        } catch (e: LtxSnapshotChangedException) {
-            KLog.t(TAG).w("LTX snapshot changed during paged sync, restarting once")
-            return syncLtxPagesOnce(itemsUrl)
-        }
-    }
-
-    /** 单轮分页同步；载荷无快照（旧协议变体）时按单包原样返回。 */
-    private suspend fun syncLtxPagesOnce(itemsUrl: String): String {
-        val bootstrapJson = fetchViaCryptoSession(method = "GET", url = itemsUrl)
-        val bootstrap = GSON.fromJson<LtxItemsPayloadDto>(bootstrapJson)
-            ?.takeIf { it.items != null }
-            ?: throw IOException("Malformed LTX bootstrap payload from $itemsUrl")
-        val snapshot = bootstrap.snapshot ?: return bootstrapJson
-        val base = itemsUrl.removeSuffix(LTX_ITEMS_PATH)
-        val merged = syncLtxLibraryPages(
-            bootstrap = bootstrap,
-            fetchPage = { snap, offset ->
-                val body = buildLtxQueryBody(snapshot = snap, offset = offset, metadata = false)
-                val json = fetchViaCryptoSession(
-                    method = "POST",
-                    url = base + LTX_QUERY_PATH,
-                    bodyJson = body,
-                    allowManualVerification = false,
-                )
-                GSON.fromJson<LtxItemsPayloadDto>(json)
-                    ?: throw IOException("Malformed LTX query page payload at offset=$offset")
-            },
-            concurrency = SYNC_PAGE_CONCURRENCY,
-        )
-        return GSON.toJson(merged)
     }
 
     /** 旧协议（自定义镜像域）：明文 GET + Turnstile 门禁走 WebView 页内抓取。 */
@@ -308,8 +242,8 @@ class DefaultLtxRepository @Inject constructor(
     /**
      * 迁移站加密会话通道：会话就绪则直接请求；428（会话失效）或挑战（Cookie 失效）
      * 时重建会话并重试，总尝试数受 [MAX_SESSION_ATTEMPTS] 约束。
-     * [allowManualVerification] 仅首页拉取置位：分页同步的后续页复用会话，
-     * 失败由首页入口统一请求人工验证，避免并发页重复弹窗。
+     * [allowManualVerification] 仅首查/重查置位：翻页复用会话，失败由首页
+     * 入口统一请求人工验证，避免重复弹窗。
      */
     private suspend fun fetchViaCryptoSession(
         method: String,
@@ -449,8 +383,7 @@ class DefaultLtxRepository @Inject constructor(
             if (challenged) throw LtxChallengeException(url)
             if (response.code == 428 && isLtxCryptoSessionRequired(body)) throw LtxSessionInvalidException()
             if (!response.isSuccessful) {
-                KLog.t(TAG).w("LTX crypto error body: ${body.take(300)}")
-                throw IOException("HTTP ${response.code} from $url")
+                throw cryptoRequestError(method, url, body, session, response.code)
             }
             if (body.isEmpty()) throw IOException("Empty body from $url")
             val envelope = runCatching { GSON.fromJson<LtxEncryptedEnvelopeDto>(body) }.getOrNull()
@@ -465,6 +398,35 @@ class DefaultLtxRepository @Inject constructor(
             // 明文回退：协议回滚/变体时直接作为载荷
             KLog.t(TAG).i("LTX crypto response is plaintext, using as payload")
             return body
+        }
+    }
+
+    /**
+     * 业务错误分型：错误响应同为加密信封（解密后读 `reason`），明文 JSON 直接
+     * 读。`verify` → 挑战（会话全量重建）；`snapshotExpired` → 快照失效（调用
+     * 方丢快照重查）；其余按 HTTP 状态失败。
+     */
+    private fun cryptoRequestError(
+        method: String,
+        url: String,
+        body: String,
+        session: LtxCryptoSession,
+        httpStatus: Int,
+    ): Exception {
+        val reason = runCatching {
+            val envelope = GSON.fromJson<LtxEncryptedEnvelopeDto>(body)
+            if (envelope != null && envelope.looksLikeEnvelope()) {
+                decryptLtxEnvelope(envelope, session, method, pathAndSearch(url), httpStatus)
+            } else {
+                body
+            }
+        }.getOrNull()
+            ?.let { json -> runCatching { GSON.fromJson<Map<String, String>>(json) }.getOrNull()?.get("reason") }
+        KLog.t(TAG).w("LTX crypto error: http=$httpStatus reason=$reason body=${body.take(200)}")
+        return when (reason) {
+            "verify" -> LtxChallengeException(url)
+            "snapshotExpired" -> LtxSnapshotExpiredException()
+            else -> IOException("HTTP $httpStatus from $url (reason=$reason)")
         }
     }
 
@@ -526,19 +488,10 @@ class DefaultLtxRepository @Inject constructor(
 
     override suspend fun currentOrigin(): String = settings.currentLtxBaseUrl().trimEnd('/')
 
-    override suspend fun cachedPayloadBytes(): Long {
-        val json = cacheStore.readMemory(CACHE_KEY) ?: cacheStore.readDisk(CACHE_KEY) ?: return 0L
-        // 缓存外壳为 CacheEnvelope(payloadJson=全库 JSON)，内层载荷字节数 ≈ 实际拉取流量
-        val envelope = runCatching { GSON.fromJson<CacheEnvelope>(json) }.getOrNull() ?: return 0L
-        return envelope.payloadJson.toByteArray(Charsets.UTF_8).size.toLong()
-    }
-
     // endregion
 
     companion object {
         private const val TAG = "LtxRepository"
-        private const val CACHE_KEY = "ltx-library-v1"
-        private val TTL_MILLIS = LTX_CACHE_TTL_MILLIS
         private const val CONNECT_TIMEOUT_SECONDS = 10L
         private const val READ_TIMEOUT_SECONDS = 30L
         private const val LTX_SESSION_HEADER = "X-LTX-Session"
@@ -547,8 +500,8 @@ class DefaultLtxRepository @Inject constructor(
         /** 加密会话通道总尝试数（首请求 + 会话失效/挑战后各一次重建）。 */
         private const val MAX_SESSION_ATTEMPTS = 2
 
-        /** 分页同步并发度：单会话多页并发拉取（页大小 100，全库约 35 页）。 */
-        private const val SYNC_PAGE_CONCURRENCY = 4
+        /** 详情页按码查询返回上限（番号查询实测至多命中数条，取整页足够）。 */
+        private const val FIND_BY_CODE_LIMIT = 20
     }
 }
 
@@ -556,11 +509,11 @@ class DefaultLtxRepository @Inject constructor(
 private class LtxSessionInvalidException : IOException("LTX crypto session invalid")
 
 /**
- * 全库拉取的迁移自愈编排：首拉命中旧域 410 迁移公告时，采纳公告新址写回
- * 偏好并重试一次（避免存量配置锁死已停用的旧域）；其余异常原样传播。
- * 公告新址与当前地址相同视为服务端公告异常，退化为普通失败。
+ * 拉取的迁移自愈编排：请求命中旧域 410 迁移公告时，采纳公告新址写回偏好并
+ * 重试一次（避免存量配置锁死已停用的旧域）；其余异常原样传播。公告新址与
+ * 当前地址相同视为服务端公告异常，退化为普通失败。
  */
-internal suspend fun fetchLtxLibraryWithMigration(
+internal suspend fun fetchLtxWithMigration(
     initialBase: String,
     settings: LtxSettingsSource,
     fetchJson: suspend (base: String) -> String,
