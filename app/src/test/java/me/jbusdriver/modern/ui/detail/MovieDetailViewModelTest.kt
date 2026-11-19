@@ -133,6 +133,7 @@ class MovieDetailViewModelTest {
             offset: Int,
         ): me.jbusdriver.modern.data.repository.LtxPage =
             me.jbusdriver.modern.data.repository.LtxPage(entries = emptyList(), total = 0, snapshot = null, updatedAtMillis = 0L, offset = offset)
+        override suspend fun peekCachedPage(query: me.jbusdriver.modern.data.ltx.LtxListQuery): me.jbusdriver.modern.data.repository.LtxCatalogCache? = null
         override suspend fun findByCode(code: String): LtxEntry? {
             stubLtxLookupCalls++
             return stubLtxEntry

@@ -22,6 +22,7 @@ import me.jbusdriver.modern.data.db.entity.LtxResolveState
 import me.jbusdriver.modern.data.ltx.LtxListQuery
 import me.jbusdriver.modern.data.ltx.LtxSnapshotExpiredException
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
+import me.jbusdriver.modern.data.repository.LtxCatalogCache
 import me.jbusdriver.modern.data.repository.LtxMovieRepository
 import me.jbusdriver.modern.data.repository.LtxPage
 import me.jbusdriver.modern.data.repository.LtxRepository
@@ -63,6 +64,9 @@ class LtxListViewModelTest {
         /** 一次性异常：下一次 loadPage 抛出后清空。 */
         var nextError: Exception? = null
 
+        /** 目录首页缓存（SWR stale 侧）；null = 无缓存。 */
+        var cachedCatalog: LtxCatalogCache? = null
+
         override suspend fun loadPage(query: LtxListQuery, snapshot: String?, offset: Int): LtxPage {
             calls += PageCall(query, snapshot, offset)
             nextError?.let { nextError = null; throw it }
@@ -71,6 +75,7 @@ class LtxListViewModelTest {
             return page
         }
 
+        override suspend fun peekCachedPage(query: LtxListQuery): LtxCatalogCache? = cachedCatalog
         override suspend fun findByCode(code: String): LtxEntry? = null
         override val verificationRequests: MutableSharedFlow<Unit> = MutableSharedFlow()
         override fun adoptWebSession(session: LtxWebSession) = Unit
@@ -771,6 +776,62 @@ class LtxListViewModelTest {
         assertEquals(listOf(0, 40, 80, 120, 160, 200), offsets)
         // 仍在能力范围内继续滚动可再触发
         assertTrue(viewModel.uiState.value.canLoadMore)
+    }
+
+    @Test
+    fun freshCatalogCacheShowsInstantlyAndSkipsRevalidate() = runTest(testDispatcher) {
+        val repo = FakeLtxRepository().apply {
+            cachedCatalog = LtxCatalogCache(
+                page = page(
+                    entries = listOf(entry("CACHE-001"), entry("CACHE-002")),
+                    total = 150,
+                    snapshot = null,
+                    updatedAt = 42L,
+                ),
+                storedAtMillis = System.currentTimeMillis(),
+            )
+            pageFactory = { _, _, offset ->
+                // 翻页走网络（缓存页快照为 null → 服务端新建快照）
+                page(entries = listOf(entry("ROW-$offset")), total = 150, snapshot = "fresh", offset = offset)
+            }
+        }
+        val viewModel = createViewModel(ltxRepo = repo)
+        viewModel.start()
+        advanceUntilIdle()
+
+        // 缓存新鲜（<5min）：即时展示缓存首页，不做整页网络重查；
+        // 可见条目不足触发的自动补页快照为 null（服务端新建）
+        assertEquals("CACHE-001", viewModel.uiState.value.items.firstOrNull()?.code)
+        assertEquals("CACHE-002", viewModel.uiState.value.items.getOrNull(1)?.code)
+        assertEquals(150, viewModel.uiState.value.totalCount)
+        assertEquals(42L, viewModel.uiState.value.updatedAtMillis)
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.canLoadMore)
+        assertTrue(repo.calls.isNotEmpty())
+        assertEquals(2, repo.calls[0].offset)
+        assertNull(repo.calls[0].snapshot)
+    }
+
+    @Test
+    fun staleCatalogCacheShowsFirstThenRevalidateReplaces() = runTest(testDispatcher) {
+        val repo = FakeLtxRepository().apply {
+            cachedCatalog = LtxCatalogCache(
+                page = page(entries = listOf(entry("CACHE-OLD")), total = 2, updatedAt = 1L),
+                storedAtMillis = System.currentTimeMillis() - LTX_CATALOG_CACHE_FRESH_MILLIS - 1,
+            )
+            pageFactory = { _, _, _ ->
+                page(entries = listOf(entry("NET-001"), entry("NET-002")), total = 2, snapshot = "s9", updatedAt = 99L)
+            }
+        }
+        val viewModel = createViewModel(ltxRepo = repo)
+        viewModel.start()
+        advanceUntilIdle()
+
+        // 过期缓存先展示（无加载转圈），随后网络重查整体替换
+        assertEquals(1, repo.calls.size)
+        assertEquals(listOf("NET-001", "NET-002"), viewModel.uiState.value.items.map { it.code })
+        assertEquals(99L, viewModel.uiState.value.updatedAtMillis)
+        assertFalse(viewModel.uiState.value.isRefreshing)
     }
 
     @Test

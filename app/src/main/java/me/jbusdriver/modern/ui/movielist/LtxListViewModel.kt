@@ -133,7 +133,13 @@ class LtxListViewModel @Inject constructor(
                 }
             }
 
-            requestFirstPage(resetSnapshot = false)
+            // 目录首页缓存先行（SWR）：冷启动即时出内容；超过新鲜期才网络重查
+            val query = _uiState.value.toListQuery()
+            val cached = ltxRepository.peekCachedPage(query)
+            if (cached != null) publishPage(cached.page, replace = true)
+            val cacheFresh = cached != null &&
+                System.currentTimeMillis() - cached.storedAtMillis < LTX_CATALOG_CACHE_FRESH_MILLIS
+            if (!cacheFresh) requestFirstPage(resetSnapshot = false)
         }
     }
 
@@ -528,3 +534,6 @@ private fun List<LtxMovie>.toSnapshotUis(baseUrl: String): Map<String, LtxSnapsh
             }
         row.code to LtxSnapshotUi(resolveState = row.resolveState, movie = movie)
     }
+
+/** 目录首页缓存视为新鲜的时长（与站点 SPA 的查询内存缓存一致）；过期即重查。 */
+internal const val LTX_CATALOG_CACHE_FRESH_MILLIS = 5 * 60 * 1000L

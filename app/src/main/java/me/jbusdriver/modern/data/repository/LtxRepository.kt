@@ -1,5 +1,7 @@
 package me.jbusdriver.modern.data.repository
 
+import androidx.annotation.Keep
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -7,6 +9,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
+import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.core.http.LtxWebSession
@@ -77,6 +80,12 @@ interface LtxRepository {
     suspend fun loadPage(query: LtxListQuery, snapshot: String?, offset: Int): LtxPage
 
     /**
+     * 读取某查询的目录首页缓存（SWR 的 stale 侧）：进程冷启动时先展示缓存首屏，
+     * 随后由调用方决定是否网络重查。无缓存返回 null。
+     */
+    suspend fun peekCachedPage(query: LtxListQuery): LtxCatalogCache?
+
+    /**
      * 按番号查找条目：优先命中本会话已加载过的条目，未命中走站点 `q` 搜索
      * （单请求即时查询，供详情页磁力弹窗）。失败静默返回 null，不打断详情主流程。
      */
@@ -108,9 +117,22 @@ data class LtxPage(
     val offset: Int,
 )
 
+/** 目录首页缓存命中：页内容（快照不缓存，不作翻页基准）+ 写入时间（新鲜度判断）。 */
+data class LtxCatalogCache(val page: LtxPage, val storedAtMillis: Long)
+
+/** 目录首页磁盘缓存载体（Gson；@Keep 供 R8 保留字段）。 */
+@Keep
+data class LtxCatalogCacheDto(
+    val entries: List<LtxEntry> = emptyList(),
+    val total: Int = 0,
+    @SerializedName("updated_at") val updatedAtMillis: Long = 0L,
+    val storedAtMillis: Long = 0L,
+)
+
 @Singleton
 class DefaultLtxRepository @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val cacheStore: CacheStore,
     private val settings: LtxSettingsSource,
     private val webGateway: LtxWebViewGateway,
 ) : LtxRepository {
@@ -148,8 +170,49 @@ class DefaultLtxRepository @Inject constructor(
                     fetchViaLegacy(adopted + LTX_ITEMS_PATH)
                 }
             }
-            parsePage(json, base, offset)
+            parsePage(json, base, offset).also { page ->
+                // 首页写穿缓存：冷启动 SWR 的 fresh 侧
+                if (offset == 0) writeCatalogCache(base, query, page)
+            }
         }
+
+    override suspend fun peekCachedPage(query: LtxListQuery): LtxCatalogCache? =
+        withContext(ioDispatcher) {
+            val base = settings.currentLtxBaseUrl().trimEnd('/')
+            val key = catalogCacheKey(base, query)
+            val json = cacheStore.readMemory(key) ?: cacheStore.readDisk(key)
+                ?: return@withContext null
+            val dto = GSON.fromJson<LtxCatalogCacheDto>(json) ?: return@withContext null
+            if (dto.entries.isEmpty()) return@withContext null
+            LtxCatalogCache(
+                page = LtxPage(
+                    entries = dto.entries,
+                    total = dto.total,
+                    // 缓存的快照不作翻页基准（过期风险），置 null：续页由服务端新建快照
+                    snapshot = null,
+                    updatedAtMillis = dto.updatedAtMillis,
+                    offset = 0,
+                ),
+                storedAtMillis = dto.storedAtMillis,
+            )
+        }
+
+    private suspend fun writeCatalogCache(base: String, query: LtxListQuery, page: LtxPage) {
+        val dto = LtxCatalogCacheDto(
+            entries = page.entries,
+            total = page.total,
+            updatedAtMillis = page.updatedAtMillis,
+            storedAtMillis = System.currentTimeMillis(),
+        )
+        val json = GSON.toJson(dto)
+        val key = catalogCacheKey(base, query)
+        cacheStore.writeMemory(key, json)
+        cacheStore.writeDisk(key, json)
+    }
+
+    /** 目录首页缓存键：按站点 + 排序/状态/搜索词维度区分（排序切换各有缓存）。 */
+    private fun catalogCacheKey(base: String, query: LtxListQuery): String =
+        "ltx-catalog|$base|${query.sort.field}|${query.sort.dir}|${query.status}|${query.q}"
 
     /** 载荷 JSON → [LtxPage]；分页载荷与旧单包载荷共用（total/snapshot 缺省即无翻页）。 */
     private fun parsePage(json: String, base: String, requestedOffset: Int): LtxPage {
