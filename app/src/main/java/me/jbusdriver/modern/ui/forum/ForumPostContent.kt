@@ -247,8 +247,7 @@ private fun StyledParagraph(
             inlineContent = inlineContent,
             modifier = modifier,
             style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
+                lineHeight = 22.sp,
                 color = onSurface
             )
         )
@@ -365,9 +364,9 @@ private fun TextPart.toSpanStyle(onSurface: Color, surface: Color, primary: Colo
         fontWeight = if (bold) FontWeight.Bold else null,
         fontStyle = if (italic) FontStyle.Italic else null,
         fontSize = when (size) {
-            ForumTextSize.BODY -> 16.sp
-            ForumTextSize.EMPHASIS -> 19.sp
-            ForumTextSize.HEADING -> 22.sp
+            ForumTextSize.BODY -> 14.sp
+            ForumTextSize.EMPHASIS -> 17.sp
+            ForumTextSize.HEADING -> 20.sp
         },
         textDecoration = when (decorations.size) {
             0 -> null
