@@ -237,7 +237,8 @@ fun CollectCategoryScreen(
             }
         }
     }
-    LaunchedEffect(Unit) { onChipsAvailable(tabChips) }
+    // 组合期内上报（切换当帧即渲染）；捕获均为跨重组稳定的状态对象，remember 无需键
+    onChipsAvailable(remember { tabChips })
 
     HorizontalPager(
         state = pagerState,

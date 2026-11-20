@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -125,16 +124,12 @@ fun MainScreen(
         with(density) { (statusTopInset + searchVisibleHeightPx + chipsRowHeightPx).toDp() }
 
     // tab 通过延迟槽位上报自己的 chips 行（闭包读 tab 本地状态，避免把 pager/VM 上提）。
-    // 切 tab 时清空：旧 tab 释放后其闭包失效，新 tab 首帧重新上报。
+    // 上报发生在组合期内且 tab 分支先于下方玻璃头组合，切换当帧即渲染、无空档闪现。
+    // 槽位不清空：非当前 tab 的槽位不会被调用；tab 重进时必然重新组合并先重新上报，
+    // 旧闭包无渲染机会。chipsRowHeightPx 同样保持上次实测值，列表顶 padding 不动。
     var movieChipsSlot by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
     var actressChipsSlot by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
     var collectChipsSlot by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
-    LaunchedEffect(selectedCategory) {
-        movieChipsSlot = null
-        actressChipsSlot = null
-        collectChipsSlot = null
-        chipsRowHeightPx = 0
-    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -243,6 +238,7 @@ fun MainScreen(
                         BottomNavCategory.MOVIE -> movieChipsSlot?.invoke()
                         BottomNavCategory.ACTRESS -> actressChipsSlot?.invoke()
                         BottomNavCategory.COLLECT -> collectChipsSlot?.invoke()
+                        // 论坛首页无筛选 chips，玻璃头只含状态栏 + 搜索栏
                         BottomNavCategory.FORUM -> Unit
                     }
                 }

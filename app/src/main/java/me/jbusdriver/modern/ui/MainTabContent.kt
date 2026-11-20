@@ -224,8 +224,11 @@ internal fun MovieTabContent(
         }
     }
 
-    // 首帧上报一次即可：闭包捕获的状态对象（pagerState / VM 流）跨重组稳定，玻璃头始终读到最新值
-    LaunchedEffect(Unit) { onChipsAvailable(tabChips) }
+    // 组合期内上报（tab 分支先于主壳玻璃头组合，切换当帧即渲染、无空档闪现）。
+    // remember 稳住闭包实例，重复上报为同引用写入、不触发额外重组；键取值捕获
+    // （isGrid/toggleGrid），其余捕获（pagerState / VM 流 / 开关状态）跨重组稳定，
+    // 玻璃头始终读到最新值
+    onChipsAvailable(remember(isGrid, toggleGrid) { tabChips })
 
     HorizontalPager(
         state = moviePagerState,
@@ -393,7 +396,8 @@ internal fun ActressTabContent(
             }
         }
     }
-    LaunchedEffect(Unit) { onChipsAvailable(tabChips) }
+    // 组合期内上报（切换当帧即渲染）；捕获均为跨重组稳定的状态对象，remember 无需键
+    onChipsAvailable(remember { tabChips })
 
     HorizontalPager(
         state = actressPagerState,
