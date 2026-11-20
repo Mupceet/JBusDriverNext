@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,7 +48,11 @@ fun ActressListScreen(
     active: Boolean = true,
     onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     header: (@Composable () -> Unit)? = null,
-    viewModel: ActressListViewModel = hiltViewModel()
+    viewModel: ActressListViewModel = hiltViewModel(),
+    /** 毛玻璃顶栏高度，转交网格 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交网格 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -118,7 +124,9 @@ fun ActressListScreen(
                         onLoadMore = { viewModel.loadMore() },
                         onActressClick = onActressClick,
                         header = header,
-                        gridState = gridState
+                        gridState = gridState,
+                        contentPaddingTop = contentPaddingTop,
+                        contentPaddingBottom = contentPaddingBottom
                     )
 
                     if (uiState.isRevalidating && uiState.actresses.isNotEmpty()) {

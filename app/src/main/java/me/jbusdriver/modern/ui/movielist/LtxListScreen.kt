@@ -2,6 +2,7 @@ package me.jbusdriver.modern.ui.movielist
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,6 +61,10 @@ fun LtxListScreen(
     active: Boolean = true,
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     viewModel: LtxListViewModel = hiltViewModel(key = "movie_ltx"),
+    /** 毛玻璃顶栏高度，转交列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ltxEnabled by viewModel.ltxEnabled.collectAsStateWithLifecycle()
@@ -242,6 +248,8 @@ fun LtxListScreen(
                     modifier = modifier,
                     listState = listState,
                     gridState = gridState,
+                    contentPaddingTop = contentPaddingTop,
+                    contentPaddingBottom = contentPaddingBottom
                 )
             }
         }

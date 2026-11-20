@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -70,7 +71,11 @@ private val TabLabels =
 @Composable
 fun ForumBoardsScreen(
     onBoardClick: (ForumBoard) -> Unit,
-    onThreadClick: (Int) -> Unit
+    onThreadClick: (Int) -> Unit,
+    /** 毛玻璃顶栏高度，转交列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val viewModel: ForumBoardsViewModel = hiltViewModel()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -100,7 +105,9 @@ fun ForumBoardsScreen(
             ForumHomeContent(
                 state = state,
                 onBoardClick = onBoardClick,
-                onThreadClick = onThreadClick
+                onThreadClick = onThreadClick,
+                contentPaddingTop = contentPaddingTop,
+                contentPaddingBottom = contentPaddingBottom
             )
         } else {
             if (state.isLoading) {
@@ -127,10 +134,17 @@ fun ForumBoardsScreen(
 private fun ForumHomeContent(
     state: ForumBoardsUiState,
     onBoardClick: (ForumBoard) -> Unit,
-    onThreadClick: (Int) -> Unit
+    onThreadClick: (Int) -> Unit,
+    contentPaddingTop: Dp = 0.dp,
+    contentPaddingBottom: Dp = 0.dp
 ) {
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(
+            start = 14.dp,
+            end = 14.dp,
+            top = 8.dp + contentPaddingTop,
+            bottom = 8.dp + contentPaddingBottom
+        ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Carousel

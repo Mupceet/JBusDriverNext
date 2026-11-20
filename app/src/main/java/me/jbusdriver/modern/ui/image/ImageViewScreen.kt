@@ -61,6 +61,9 @@ import me.jbusdriver.modern.ui.components.AppAsyncImage
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.dimColorFilter
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.ui.components.rememberSiteImageRequest
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.coil.ZoomableAsyncImage
@@ -118,6 +121,8 @@ fun ImageViewScreen(
         }
     }
 
+    val hazeState = rememberAppHazeState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -125,7 +130,9 @@ fun ImageViewScreen(
     ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSourceContent(hazeState)
         ) { page ->
             val zoomableImageState = rememberZoomableImageState(
                 rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = 3f))
@@ -162,7 +169,7 @@ fun ImageViewScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.5f))
+                    .hazeTopBar(hazeState, dark = true)
                     .statusBarsPadding()
             ) {
                 TopAppBar(

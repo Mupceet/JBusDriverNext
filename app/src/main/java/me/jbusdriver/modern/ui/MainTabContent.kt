@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -62,7 +63,13 @@ internal fun MovieTabContent(
     isGrid: Boolean,
     toggleGrid: () -> Unit,
     onSearchClick: (String) -> Unit,
-    onMovieClick: (MovieUiModel, String?) -> Unit
+    onMovieClick: (MovieUiModel, String?) -> Unit,
+    /** 毛玻璃顶栏高度，转交各页列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交各页列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp,
+    /** 把 chips 行上报给主壳的持久玻璃头（chips 常驻不随列表滚动）。 */
+    onChipsAvailable: (@Composable () -> Unit) -> Unit = {}
 ) {
     val movieTabViewModel: MovieTabViewModel = hiltViewModel()
     val tabState by movieTabViewModel.uiState.collectAsStateWithLifecycle()
@@ -144,75 +151,81 @@ internal fun MovieTabContent(
         }
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CensorFilter.entries.forEach { filter ->
-            FilterChip(
-                selected = moviePagerState.currentPage == filter.ordinal,
-                onClick = { scope.launch { moviePagerState.animateScrollToPage(filter.ordinal) } },
-                label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
-            )
-            Spacer(Modifier.width(6.dp))
-        }
-        // LTX 页作为可选第三页（条目数在列表头部展示，chip 保持简短）
-        if (ltxEnabled) {
-            FilterChip(
-                selected = moviePagerState.currentPage == 2,
-                onClick = { scope.launch { moviePagerState.animateScrollToPage(2) } },
-                label = { Text("LTX", fontSize = 12.sp) }
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        if (moviePagerState.currentPage < 2) {
-            val allGenresForChip = genreState.genreCategories.flatMap { it.genres.orEmpty() }
-            val selectedGenresForChip =
-                allGenresForChip.filter { it.link in tabState.selectedGenreLinks }.toSet()
-            FilterChip(
-                selected = tabState.selectedGenreLinks.isNotEmpty(),
-                onClick = {
-                    // 分类数据延迟加载：打开弹窗时才拉取/切换数据源
-                    genreViewModel.setDataSourceType(desiredGenreType)
-                    showCategorySheet = true
-                },
-                label = {
-                    Text(
-                        if (tabState.selectedGenreLinks.isEmpty()) stringResource(R.string.genre)
-                        else selectedGenresForChip.joinToString("+") { it.name },
-                        fontSize = 12.sp,
-                        maxLines = 1
-                    )
-                },
-                trailingIcon = {
-                    Icon(
-                        painterResource(R.drawable.filter_alt_24px),
-                        null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            )
-        } else {
-            // LTX 页的分类筛选不适用，替换为 LTX 自身的筛选入口
-            LtxFilterChipButton(ltxVm = ltxVm, onClick = { showLtxFilterSheet = true })
-        }
-        Spacer(Modifier.width(8.dp))
-        IconButton(
-            onClick = { toggleGrid() },
-            modifier = Modifier.size(32.dp)
+    // 影片 tab chips 行：上报给主壳持久玻璃头，常驻屏幕、不随列表滚动
+    val tabChips: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(if (isGrid) R.drawable.list_view_24px else R.drawable.grid_view_24px),
-                contentDescription = if (isGrid) stringResource(R.string.list_view) else stringResource(
-                    R.string.grid
-                ),
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            CensorFilter.entries.forEach { filter ->
+                FilterChip(
+                    selected = moviePagerState.currentPage == filter.ordinal,
+                    onClick = { scope.launch { moviePagerState.animateScrollToPage(filter.ordinal) } },
+                    label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+            // LTX 页作为可选第三页（条目数在列表头部展示，chip 保持简短）
+            if (ltxEnabled) {
+                FilterChip(
+                    selected = moviePagerState.currentPage == 2,
+                    onClick = { scope.launch { moviePagerState.animateScrollToPage(2) } },
+                    label = { Text("LTX", fontSize = 12.sp) }
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            if (moviePagerState.currentPage < 2) {
+                val allGenresForChip = genreState.genreCategories.flatMap { it.genres.orEmpty() }
+                val selectedGenresForChip =
+                    allGenresForChip.filter { it.link in tabState.selectedGenreLinks }.toSet()
+                FilterChip(
+                    selected = tabState.selectedGenreLinks.isNotEmpty(),
+                    onClick = {
+                        // 分类数据延迟加载：打开弹窗时才拉取/切换数据源
+                        genreViewModel.setDataSourceType(desiredGenreType)
+                        showCategorySheet = true
+                    },
+                    label = {
+                        Text(
+                            if (tabState.selectedGenreLinks.isEmpty()) stringResource(R.string.genre)
+                            else selectedGenresForChip.joinToString("+") { it.name },
+                            fontSize = 12.sp,
+                            maxLines = 1
+                        )
+                    },
+                    trailingIcon = {
+                        Icon(
+                            painterResource(R.drawable.filter_alt_24px),
+                            null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                )
+            } else {
+                // LTX 页的分类筛选不适用，替换为 LTX 自身的筛选入口
+                LtxFilterChipButton(ltxVm = ltxVm, onClick = { showLtxFilterSheet = true })
+            }
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+                onClick = { toggleGrid() },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    painterResource(if (isGrid) R.drawable.list_view_24px else R.drawable.grid_view_24px),
+                    contentDescription = if (isGrid) stringResource(R.string.list_view) else stringResource(
+                        R.string.grid
+                    ),
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
+
+    // 首帧上报一次即可：闭包捕获的状态对象（pagerState / VM 流）跨重组稳定，玻璃头始终读到最新值
+    LaunchedEffect(Unit) { onChipsAvailable(tabChips) }
 
     HorizontalPager(
         state = moviePagerState,
@@ -227,6 +240,8 @@ internal fun MovieTabContent(
                     { movie: MovieUiModel, censor: String? -> onMovieClickState.value(movie, censor) }
                 },
                 viewModel = ltxVm,
+                contentPaddingTop = contentPaddingTop,
+                contentPaddingBottom = contentPaddingBottom
             )
         } else {
             val filter = CensorFilter.entries[page]
@@ -263,7 +278,9 @@ internal fun MovieTabContent(
                     dataSourceType = null,
                     onMovieClick = pageOnMovieClick,
                     modifier = Modifier.fillMaxSize(),
-                    viewModel = genreVm
+                    viewModel = genreVm,
+                    contentPaddingTop = contentPaddingTop,
+                    contentPaddingBottom = contentPaddingBottom
                 )
             } else {
                 val vm: MovieListViewModel = hiltViewModel(key = "pager_$filter")
@@ -274,7 +291,9 @@ internal fun MovieTabContent(
                     },
                     onMovieClick = pageOnMovieClick,
                     modifier = Modifier.fillMaxSize(),
-                    viewModel = vm
+                    viewModel = vm,
+                    contentPaddingTop = contentPaddingTop,
+                    contentPaddingBottom = contentPaddingBottom
                 )
             }
         }
@@ -335,7 +354,13 @@ private fun LtxFilterSheetContent(ltxVm: LtxListViewModel, onDismiss: () -> Unit
 @Composable
 internal fun ActressTabContent(
     onSearchClick: (String) -> Unit,
-    onActressClick: (ActressUiModel, String?) -> Unit
+    onActressClick: (ActressUiModel, String?) -> Unit,
+    /** 毛玻璃顶栏高度，转交各页网格 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交各页网格 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp,
+    /** 把 chips 行上报给主壳的持久玻璃头（chips 常驻不随列表滚动）。 */
+    onChipsAvailable: (@Composable () -> Unit) -> Unit = {}
 ) {
     var censorFilter by rememberSaveable { mutableStateOf(CensorFilter.CENSORED) }
     val actressPagerState = rememberPagerState { CensorFilter.entries.size }
@@ -350,21 +375,25 @@ internal fun ActressTabContent(
         }
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CensorFilter.entries.forEach { filter ->
-            FilterChip(
-                selected = censorFilter == filter,
-                onClick = { censorFilter = filter },
-                label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
-            )
-            Spacer(Modifier.width(6.dp))
+    // 演员 tab chips 行：上报给主壳持久玻璃头，常驻屏幕、不随列表滚动
+    val tabChips: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CensorFilter.entries.forEach { filter ->
+                FilterChip(
+                    selected = censorFilter == filter,
+                    onClick = { censorFilter = filter },
+                    label = { Text(stringResource(filter.labelRes), fontSize = 12.sp) }
+                )
+                Spacer(Modifier.width(6.dp))
+            }
         }
     }
+    LaunchedEffect(Unit) { onChipsAvailable(tabChips) }
 
     HorizontalPager(
         state = actressPagerState,
@@ -386,7 +415,9 @@ internal fun ActressTabContent(
             active = page == actressPagerState.settledPage,
             onActressClick = { actress, _ -> onActressClick(actress, actressCensorType) },
             modifier = Modifier.fillMaxSize(),
-            viewModel = vm
+            viewModel = vm,
+            contentPaddingTop = contentPaddingTop,
+            contentPaddingBottom = contentPaddingBottom
         )
     }
 }

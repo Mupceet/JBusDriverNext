@@ -2,6 +2,8 @@ package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +51,9 @@ import me.jbusdriver.modern.ui.components.MovieFilterBar
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
 /**
@@ -187,12 +195,19 @@ fun LinkMovieListScreen(
         }
     }
 
+    val hazeState = rememberAppHazeState()
+
     Scaffold(
         snackbarHost = {
             ThemedSnackbarHost(hostState = snackbarHostState)
         },
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.hazeTopBar(hazeState),
                 title = {
                     Text(
                         displayTitle,
@@ -230,9 +245,15 @@ fun LinkMovieListScreen(
         PullToRefreshBox(
             isRefreshing = state.isRefreshing || state.isFilterSwitching,
             onRefresh = onRefresh,
+            // 内容穿透毛玻璃顶栏：不吃顶部 padding，顶高转交列表 contentPadding
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .hazeSourceContent(hazeState)
+                .padding(
+                    start = padding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = padding.calculateEndPadding(LocalLayoutDirection.current),
+                    bottom = padding.calculateBottomPadding()
+                )
         ) {
             when {
                 state.isLoading && state.movies.isEmpty() -> {
@@ -306,13 +327,15 @@ fun LinkMovieListScreen(
                             modifier = Modifier.fillMaxSize(),
                             header = header,
                             gridState = gridState,
-                            listState = listState
+                            listState = listState,
+                            contentPaddingTop = padding.calculateTopPadding()
                         )
 
                         if (state.isRevalidating && state.movies.isNotEmpty()) {
                             LinearProgressIndicator(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(top = padding.calculateTopPadding())
                                     .align(Alignment.TopCenter)
                             )
                         }

@@ -84,6 +84,9 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.data.localvideo.launchLocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.movieCodeFromUrl
@@ -154,10 +157,17 @@ fun MovieDetailScreen(
     val detail = uiState.movieDetail
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
+    val hazeState = rememberAppHazeState()
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.hazeTopBar(hazeState),
                 title = {
                     val translatedTitle = (uiState.titleTranslation as? TitleTranslationState.Translated)?.text
                     Text(
@@ -222,9 +232,10 @@ fun MovieDetailScreen(
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
+            // 内容穿透毛玻璃顶栏：不吃 padding，顶高转交 DetailContent 的 contentPadding
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .hazeSourceContent(hazeState)
         ) {
             when {
                 uiState.isLoading -> {
@@ -251,7 +262,7 @@ fun MovieDetailScreen(
                         detail = detail,
                         titleTranslation = uiState.titleTranslation,
                         onToggleTitleTranslation = viewModel::toggleTitleTranslation,
-                        padding = PaddingValues(),
+                        padding = padding,
                         onMovieClick = { movie -> onMovieClick(movie, censorType) },
                         onActressClick = { actress -> onActressClick(actress, censorType) },
                         onGenreClick = { genre -> onGenreClick(genre, censorType) },
@@ -365,9 +376,8 @@ internal fun DetailContent(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = padding
     ) {
         // Cover image
         item(key = "cover") {
