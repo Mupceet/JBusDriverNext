@@ -494,6 +494,32 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `reply post time prefers visible relative text over title attribute`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <div class="nthread_postbox">
+                    <div class="pi">
+                      <a id="postnum4158040"><em>3</em><sup>#</sup></a>
+                      <div class="authi">
+                        <a class="xw1" href="home.php?mod=space&amp;uid=620785">Bob</a>
+                        <em id="authorposton4158040">發表於<span title="2026-11-18 09:12">前天 09:12</span></em>
+                      </div>
+                    </div>
+                    <td class="t_f">reply</td>
+                  </div>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=154969"
+        )
+
+        val reply = parseForumThreadDetail(doc, "https://www.javbus.com").replies.single()
+
+        // 与列表 dateline/lastReplyTime 同口径：取可见相对时间而非 title 绝对日期
+        assertEquals("前天 09:12", reply.postTime)
+    }
+
+    @Test
     fun `first-post comment pagination does not shadow reply next page`() {
         // 首楼留言分页会注入一条 href="javascript:;" 的 .nxt（真实 page 在 onclick 的
         // ajaxget 里），它出现在回复楼层分页之前。必须跳过它，取真正携带 page= 的回复分页链接。

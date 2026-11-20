@@ -199,7 +199,9 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
                 authorAvatar = replyAvatar,
                 authorGroup = postBox.select(".pls em a").text().trim(),
                 contentBlocks = parseReplyContent(postBox, baseUrl),
-                postTime = postBox.select("em[id^=authorposton] span[title]").attr("title")
+                // 与列表 dateline/lastReplyTime 同口径：取可见相对时间（"3 天前"/"昨天 22:41"）
+                // 而非 title 属性里的绝对日期；旧格式叶子 em 文本兜底并去掉"發表於"前缀。
+                postTime = postBox.select("em[id^=authorposton] span[title]").text().trim()
                     .ifBlank { postBox.select("em[id^=authorposton]").text().trim() }
                     .cleanForumPostTime(),
                 isPinned = floor.isPinned,
