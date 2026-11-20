@@ -83,10 +83,26 @@ data class ForumThreadDetailUiState(
     val pendingFreshDetail: ForumThreadDetail? = null,
     val error: Int? = null,
     val isLoadingMore: Boolean = false,
+    /** 引用楼层定位中（findpost 拉取目标页并合并）。 */
+    val isLocatingFloor: Boolean = false,
+    /** 正在补齐的楼层断层的下沿楼层号（断档分隔行点击后循环加载中）。 */
+    val gapLoadingBelowFloor: Int? = null,
     val isChangingFloorOrder: Boolean = false,
     val isChangingAuthorFilter: Boolean = false,
     val commentSheet: FloorCommentSheetState? = null
 )
+
+/** [ForumThreadDetailViewModel.locateQuotedFloor] 的结果。 */
+enum class FloorLocateResult {
+    /** 目标已在列表中（含本次合并后命中），可定位滚动。 */
+    Located,
+
+    /** 无法定位（接口失败/落地页无目标/只看楼主过滤中），调用方回退浏览器。 */
+    NotFound,
+
+    /** 已有定位在途或期间状态被替换，静默放弃。 */
+    Superseded
+}
 
 private data class DetailRequestIdentity(
     val tid: Int,
@@ -465,10 +481,20 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     }
 
     fun loadMoreReplies() {
-        val detail = _uiState.value.detail ?: return
-        if (_uiState.value.isLoadingMore) return
+        if (_uiState.value.detail == null || _uiState.value.isLoadingMore) return
+        viewModelScope.launch { loadNextRepliesPage() }
+    }
+
+    /**
+     * 拉取线性翻页链的下一页并合并。在 update 内读取当前 detail 合并（与引用定位合并并发安全），
+     * 按 floor 去重 + 按当前楼层顺序全局排序（保持列表整体有序，断层派生才成立）。
+     * 返回 false：无更多页/已有加载在途/加载失败；被更新的请求接管时返回 true 由新请求维护链条。
+     */
+    private suspend fun loadNextRepliesPage(): Boolean {
+        val detail = _uiState.value.detail ?: return false
+        if (_uiState.value.isLoadingMore) return false
         val nextPage = detail.pageInfo.nextPage
-        if (nextPage <= currentPage) return
+        if (nextPage <= currentPage) return false
 
         currentPage = nextPage
         val floorOrder = _uiState.value.floorOrder
@@ -476,37 +502,113 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
         val identity = DetailRequestIdentity(tid, nextPage, floorOrder, authorUid)
         val generation = beginRequest(identity)
         _uiState.update { it.copy(isLoadingMore = true) }
-        viewModelScope.launch {
-            try {
-                val nextDetail = repository.loadThreadDetail(
-                    tid,
-                    nextPage,
-                    floorOrder,
-                    authorUid = authorUid
-                )
-                if (!isCurrent(generation, identity)) return@launch
-                // 置顶/广播楼层会在每一页重复出现，直接拼接会产生重复 floor，
-                // 导致 LazyColumn 的 key 冲突崩溃。按 floor 去重，保留已展示的首现版本。
-                val existingFloors = detail.replies.mapTo(HashSet()) { it.floor }
-                val mergedReplies =
-                    detail.replies + nextDetail.replies.filter { it.floor !in existingFloors }
-                _uiState.update {
-                    it.copy(
-                        detail = detail.copy(
-                            replies = mergedReplies,
+        return try {
+            val nextDetail = repository.loadThreadDetail(
+                tid,
+                nextPage,
+                floorOrder,
+                authorUid = authorUid
+            )
+            if (!isCurrent(generation, identity)) return true
+            _uiState.update { state ->
+                val current = state.detail
+                if (current == null) {
+                    state.copy(isLoadingMore = false)
+                } else {
+                    state.copy(
+                        detail = current.copy(
+                            replies = mergeReplyPages(current.replies, nextDetail.replies, floorOrder),
                             pageInfo = nextDetail.pageInfo
                         ),
                         isLoadingMore = false
                     )
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                if (!isCurrent(generation, identity)) return@launch
+            }
+            true
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            if (isCurrent(generation, identity)) {
                 currentPage = detail.pageInfo.activePage
                 _uiState.update { it.copy(isLoadingMore = false) }
             }
+            false
         }
     }
+
+    /**
+     * 引用楼层点击定位：目标不在已加载楼层时，经 findpost 重定向拉取目标楼层所在页并合并
+     * （不改 [me.jbusdriver.modern.domain.model.PageInfo]，线性翻页链保持完整，
+     * 后续翻页撞到已加载楼层由去重兜底）。调用方随后重新定位滚动。
+     */
+    suspend fun locateQuotedFloor(pid: Int): FloorLocateResult {
+        if (pid <= 0) return FloorLocateResult.NotFound
+        val state = _uiState.value
+        val detail = state.detail ?: return FloorLocateResult.Superseded
+        if (pid == detail.pid || detail.replies.any { it.pid == pid }) return FloorLocateResult.Located
+        // 只看楼主：目标页为未过滤数据，合并会破坏过滤语义，交由调用方回退浏览器。
+        if (state.showAuthorOnly) return FloorLocateResult.NotFound
+        if (state.isLocatingFloor) return FloorLocateResult.Superseded
+
+        _uiState.update { it.copy(isLocatingFloor = true) }
+        return try {
+            val jumpPage = repository.loadFloorJumpPage(tid, pid, state.floorOrder)
+            // 契约上落地页必含目标 pid；防御兜底避免合并无关楼层
+            if (jumpPage == null || (jumpPage.pid != pid && jumpPage.replies.none { it.pid == pid })) {
+                return FloorLocateResult.NotFound
+            }
+            var applied = false
+            _uiState.update { s ->
+                val current = s.detail
+                if (current == null || s.showAuthorOnly) {
+                    s // 期间被刷新清空/切换过滤，放弃合并
+                } else {
+                    applied = true
+                    s.copy(
+                        detail = current.copy(
+                            replies = mergeReplyPages(current.replies, jumpPage.replies, s.floorOrder)
+                        )
+                    )
+                }
+            }
+            if (applied) FloorLocateResult.Located else FloorLocateResult.Superseded
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            KLog.e("[Forum] locateQuotedFloor failed: tid=$tid, pid=$pid, error=${e.message}", TAG)
+            FloorLocateResult.NotFound
+        } finally {
+            _uiState.update { it.copy(isLocatingFloor = false) }
+        }
+    }
+
+    /**
+     * 补齐楼层断层：循环加载线性翻页链下一页，直到 [belowFloor] 断层闭合、
+     * 无更多页（剩余断档视为已删楼层）或加载失败（保留分隔行供再次点击）。
+     * 同一时刻仅一个补齐任务。
+     */
+    fun loadGapFloors(belowFloor: Int) {
+        if (_uiState.value.detail == null) return
+        if (_uiState.value.gapLoadingBelowFloor != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(gapLoadingBelowFloor = belowFloor) }
+            try {
+                while (true) {
+                    val state = _uiState.value
+                    val current = state.detail ?: break
+                    val gapClosed = floorGaps(current.replies, state.floorOrder)
+                        .none { it.belowFloor == belowFloor }
+                    if (gapClosed) break
+                    if (!current.pageInfo.hasNext) break
+                    if (!loadNextRepliesPage()) break
+                }
+            } finally {
+                _uiState.update { it.copy(gapLoadingBelowFloor = null) }
+            }
+        }
+    }
+
+    /** findpost 重定向绝对链接（引用定位失败时的浏览器回退目标）。 */
+    fun findPostUrl(pid: Int): String =
+        siteConfig.resolve("/forum/forum.php?mod=redirect&goto=findpost&pid=$pid&ptid=$tid")
 
     fun openFirstPostCommentsSheet() {
         val detail = _uiState.value.detail ?: return

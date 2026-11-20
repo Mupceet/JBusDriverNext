@@ -2,6 +2,7 @@ package me.jbusdriver.modern.data
 
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.ForumThreadOrder
+import me.jbusdriver.modern.data.settings.buildForumFindPostUrl
 import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
 import me.jbusdriver.modern.data.settings.buildForumThreadListUrl
 import me.jbusdriver.modern.data.settings.forumThreadDetailCacheKey
@@ -45,6 +46,32 @@ class ForumThreadOrderTest {
         assertEquals(
             "forum_detail_v2_168357_1_reverse",
             forumThreadDetailCacheKey(168357, 1, ForumFloorOrder.REVERSE)
+        )
+    }
+
+    @Test
+    fun `findpost url keeps regular order without ordertype`() {
+        assertEquals(
+            "https://www.javbus.com/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=168357",
+            buildForumFindPostUrl(
+                baseUrl = "https://www.javbus.com",
+                tid = 168357,
+                pid = 4773820,
+                floorOrder = ForumFloorOrder.REGULAR
+            )
+        )
+    }
+
+    @Test
+    fun `findpost url appends ordertype for reverse order`() {
+        assertEquals(
+            "https://www.javbus.com/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=168357&ordertype=1",
+            buildForumFindPostUrl(
+                baseUrl = "https://www.javbus.com",
+                tid = 168357,
+                pid = 4773820,
+                floorOrder = ForumFloorOrder.REVERSE
+            )
         )
     }
 

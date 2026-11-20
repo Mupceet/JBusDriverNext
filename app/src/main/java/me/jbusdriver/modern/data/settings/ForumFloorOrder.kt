@@ -33,3 +33,17 @@ fun forumThreadDetailCacheKey(
     page: Int,
     floorOrder: ForumFloorOrder
 ): String = "forum_detail_v2_${tid}_${page}_${floorOrder.cacheValue}"
+
+/**
+ * 构建 findpost 重定向链接（引用楼层的原始跳转目标）。
+ * 服务端会 302 到目标楼层所在分页；REVERSE 附带 ordertype 让落地页与显示顺序一致。
+ */
+fun buildForumFindPostUrl(
+    baseUrl: String,
+    tid: Int,
+    pid: Int,
+    floorOrder: ForumFloorOrder
+): String {
+    val url = "$baseUrl/forum/forum.php?mod=redirect&goto=findpost&pid=$pid&ptid=$tid"
+    return if (floorOrder == ForumFloorOrder.REVERSE) "$url&ordertype=1" else url
+}

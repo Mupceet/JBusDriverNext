@@ -3,6 +3,7 @@ package me.jbusdriver.modern.ui.forum
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -289,12 +290,293 @@ class ForumThreadDetailViewModelTest {
         assertEquals(false, sheet?.isLoadingMore)
     }
 
+    @Test
+    fun `locateQuotedFloor merges jump page sorted descending without touching page info`() =
+        runTest(testDispatcher) {
+            val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+                initialReplies = listOf(floorReply(100, 100100), floorReply(99, 100099))
+                initialNextPage = 1
+                floorJumpResult = detail(
+                    "Jump",
+                    ForumFloorOrder.REVERSE,
+                    replies = listOf(floorReply(12, 100012), floorReply(11, 100011))
+                )
+            }
+            val viewModel = ForumThreadDetailViewModel(
+                repository = repository,
+                forumSettingsReader = FakeForumSettingsReader(),
+                loadedGifTracker = FakeLoadedGifTracker(),
+                gifCacheReader = FakeGifCacheReader(),
+                siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+                navKey = RouteForumThreadDetail(42),
+                savedStateHandle = SavedStateHandle()
+            )
+            advanceUntilIdle()
+            viewModel.setFloorOrder(ForumFloorOrder.REVERSE)
+            advanceUntilIdle()
+
+            val result = viewModel.locateQuotedFloor(100012)
+
+            assertEquals(FloorLocateResult.Located, result)
+            assertEquals(listOf(100, 99, 12, 11), viewModel.uiState.value.detail?.replies?.map { it.floor })
+            // 线性翻页链不被跳转合并改动
+            assertEquals(PageInfo(activePage = 1, nextPage = 1, referPages = listOf(1)),
+                viewModel.uiState.value.detail?.pageInfo)
+            assertEquals(listOf(100012), repository.floorJumpRequests)
+            assertFalse(viewModel.uiState.value.isLocatingFloor)
+        }
+
+    @Test
+    fun `locateQuotedFloor toggles locating flag around repository call`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            deferredFloorJumpResult = CompletableDeferred()
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        val result = async { viewModel.locateQuotedFloor(100999) }
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isLocatingFloor)
+
+        repository.deferredFloorJumpResult?.complete(
+            detail("Jump", ForumFloorOrder.REGULAR, replies = listOf(floorReply(3, 100999)))
+        )
+        assertEquals(FloorLocateResult.Located, result.await())
+        assertFalse(viewModel.uiState.value.isLocatingFloor)
+        assertEquals(listOf(2, 3), viewModel.uiState.value.detail?.replies?.map { it.floor })
+    }
+
+    @Test
+    fun `locateQuotedFloor returns not found when jump page misses target`() =
+        runTest(testDispatcher) {
+            val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+                floorJumpResult = detail("Jump", ForumFloorOrder.REGULAR, replies = emptyList())
+            }
+            val viewModel = ForumThreadDetailViewModel(
+                repository = repository,
+                forumSettingsReader = FakeForumSettingsReader(),
+                loadedGifTracker = FakeLoadedGifTracker(),
+                gifCacheReader = FakeGifCacheReader(),
+                siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+                navKey = RouteForumThreadDetail(42),
+                savedStateHandle = SavedStateHandle()
+            )
+            advanceUntilIdle()
+
+            assertEquals(FloorLocateResult.NotFound, viewModel.locateQuotedFloor(100999))
+            assertEquals(listOf(2), viewModel.uiState.value.detail?.replies?.map { it.floor })
+            assertFalse(viewModel.uiState.value.isLocatingFloor)
+        }
+
+    @Test
+    fun `locateQuotedFloor returns not found when repository fails`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            floorJumpFailure = IllegalStateException("session blocked")
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        assertEquals(FloorLocateResult.NotFound, viewModel.locateQuotedFloor(100999))
+        assertFalse(viewModel.uiState.value.isLocatingFloor)
+    }
+
+    @Test
+    fun `locateQuotedFloor skips repository under author filter`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            floorJumpResult = detail("Jump", ForumFloorOrder.REGULAR, replies = listOf(floorReply(3, 100999)))
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+        viewModel.setAuthorFilter(true)
+        advanceUntilIdle()
+
+        assertEquals(FloorLocateResult.NotFound, viewModel.locateQuotedFloor(100999))
+        assertEquals(emptyList<Int>(), repository.floorJumpRequests)
+    }
+
+    @Test
+    fun `locateQuotedFloor returns located immediately when pid already loaded`() =
+        runTest(testDispatcher) {
+            val repository = FakeForumDetailRepository(CompletableDeferred())
+            val viewModel = ForumThreadDetailViewModel(
+                repository = repository,
+                forumSettingsReader = FakeForumSettingsReader(),
+                loadedGifTracker = FakeLoadedGifTracker(),
+                gifCacheReader = FakeGifCacheReader(),
+                siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+                navKey = RouteForumThreadDetail(42),
+                savedStateHandle = SavedStateHandle()
+            )
+            advanceUntilIdle()
+
+            assertEquals(FloorLocateResult.Located, viewModel.locateQuotedFloor(4773820))
+            assertEquals(emptyList<Int>(), repository.floorJumpRequests)
+        }
+
+    @Test
+    fun `loadGapFloors loads pages until gap closes`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            initialReplies = listOf(
+                floorReply(100, 100100),
+                floorReply(99, 100099),
+                floorReply(12, 100012),
+                floorReply(11, 100011)
+            )
+            initialNextPage = 2
+            scriptedDetailPages += detail(
+                "Page 2",
+                ForumFloorOrder.REVERSE,
+                page = 2,
+                nextPage = 3,
+                uid = 337947,
+                replies = (90..98).map { floorReply(it, 100_000 + it) }
+            )
+            scriptedDetailPages += detail(
+                "Page 3",
+                ForumFloorOrder.REVERSE,
+                page = 3,
+                nextPage = 3,
+                uid = 337947,
+                replies = (13..89).map { floorReply(it, 100_000 + it) }
+            )
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+        viewModel.setFloorOrder(ForumFloorOrder.REVERSE)
+        advanceUntilIdle()
+
+        viewModel.loadGapFloors(belowFloor = 12)
+        advanceUntilIdle()
+
+        assertEquals((100 downTo 11).toList(), viewModel.uiState.value.detail?.replies?.map { it.floor })
+        assertEquals(listOf(2, 3), repository.detailPageRequests)
+        assertEquals(null, viewModel.uiState.value.gapLoadingBelowFloor)
+    }
+
+    @Test
+    fun `loadGapFloors stops without loading when no more pages remain`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            initialReplies = listOf(
+                floorReply(100, 100100),
+                floorReply(99, 100099),
+                floorReply(12, 100012),
+                floorReply(11, 100011)
+            )
+            initialNextPage = 1
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+        viewModel.setFloorOrder(ForumFloorOrder.REVERSE)
+        advanceUntilIdle()
+
+        viewModel.loadGapFloors(belowFloor = 12)
+        advanceUntilIdle()
+
+        assertEquals(emptyList<Int>(), repository.detailPageRequests)
+        assertEquals(listOf(100, 99, 12, 11), viewModel.uiState.value.detail?.replies?.map { it.floor })
+        assertEquals(null, viewModel.uiState.value.gapLoadingBelowFloor)
+    }
+
+    @Test
+    fun `loadGapFloors stops on page failure and keeps gap`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            initialReplies = listOf(
+                floorReply(100, 100100),
+                floorReply(99, 100099),
+                floorReply(12, 100012),
+                floorReply(11, 100011)
+            )
+            initialNextPage = 2
+            detailLoadFailure = IllegalStateException("network down")
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+        viewModel.setFloorOrder(ForumFloorOrder.REVERSE)
+        advanceUntilIdle()
+
+        viewModel.loadGapFloors(belowFloor = 12)
+        advanceUntilIdle()
+
+        assertEquals(listOf(2), repository.detailPageRequests)
+        assertEquals(listOf(100, 99, 12, 11), viewModel.uiState.value.detail?.replies?.map { it.floor })
+        assertEquals(null, viewModel.uiState.value.gapLoadingBelowFloor)
+        assertFalse(viewModel.uiState.value.isLoadingMore)
+    }
+
+    @Test
+    fun `findPostUrl resolves absolute redirect url against site config`() = runTest(testDispatcher) {
+        val viewModel = ForumThreadDetailViewModel(
+            repository = FakeForumDetailRepository(CompletableDeferred()),
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root/"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+
+        assertEquals(
+            "https://forum.example.test/root/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=42",
+            viewModel.findPostUrl(4773820)
+        )
+    }
+
     private class FakeForumDetailRepository(
         private val staleRefresh: CompletableDeferred<ForumThreadDetail>
     ) : ForumRepository {
         /** 楼主 uid，用于模拟 authorid 过滤；与 [detail] 辅助函数的默认作者一致。 */
         private val threadAuthorUid: Int = 337947
         val detailRequests = mutableListOf<Int?>()
+        var initialReplies: List<ForumReply> = listOf(defaultReply())
+        var initialNextPage: Int = 1
         var floorCommentResult: ForumCommentPageResult = ForumCommentPageResult(
             pid = 4773820,
             comments = listOf(comment("page two reply comment")),
@@ -303,6 +585,17 @@ class ForumThreadDetailViewModelTest {
         var floorCommentFailure: Throwable? = null
         val deferredFloorCommentResults = mutableListOf<CompletableDeferred<ForumCommentPageResult>>()
         val floorCommentRequests = mutableListOf<FloorCommentRequest>()
+
+        /** 引用楼层定位脚本：请求记录、可编程结果/失败/挂起。 */
+        var floorJumpResult: ForumThreadDetail? = null
+        var floorJumpFailure: Throwable? = null
+        var deferredFloorJumpResult: CompletableDeferred<ForumThreadDetail?>? = null
+        val floorJumpRequests = mutableListOf<Int>()
+
+        /** 线性翻页脚本：按调用顺序弹出；耗尽或失败时回退 [detailLoadFailure]。 */
+        val scriptedDetailPages = mutableListOf<ForumThreadDetail>()
+        val detailPageRequests = mutableListOf<Int>()
+        var detailLoadFailure: Throwable? = null
 
         override fun observeThreadDetail(
             tid: Int,
@@ -328,10 +621,18 @@ class ForumThreadDetailViewModelTest {
                 floorOrder == ForumFloorOrder.REVERSE -> detail(
                     "Reverse",
                     floorOrder,
-                    uid = threadAuthorUid
+                    uid = threadAuthorUid,
+                    replies = initialReplies,
+                    nextPage = initialNextPage
                 )
 
-                else -> detail("Regular", floorOrder, uid = threadAuthorUid)
+                else -> detail(
+                    "Regular",
+                    floorOrder,
+                    uid = threadAuthorUid,
+                    replies = initialReplies,
+                    nextPage = initialNextPage
+                )
             }
             emit(CachedLoadEvent.Fresh(CacheEntry(next, page.toLong(), CacheSource.Network, false)))
         }
@@ -342,7 +643,24 @@ class ForumThreadDetailViewModelTest {
             floorOrder: ForumFloorOrder,
             authorUid: Int?,
             forceRefresh: Boolean
-        ): ForumThreadDetail = detail("Page $page", floorOrder, page)
+        ): ForumThreadDetail {
+            detailPageRequests += page
+            detailLoadFailure?.let { throw it }
+            return scriptedDetailPages.removeFirstOrNull()
+                ?: detail("Page $page", floorOrder, page)
+        }
+
+        override suspend fun loadFloorJumpPage(
+            tid: Int,
+            pid: Int,
+            floorOrder: ForumFloorOrder
+        ): ForumThreadDetail? {
+            floorJumpRequests += pid
+            floorJumpFailure?.let { throw it }
+            deferredFloorJumpResult?.let { return it.await() }
+            // 与真实仓储同契约：落地页不含目标 pid 时返回 null
+            return floorJumpResult?.takeIf { it.pid == pid || it.replies.any { r -> r.pid == pid } }
+        }
 
         override suspend fun loadFloorComments(
             tid: Int,
@@ -422,6 +740,7 @@ private fun detail(
     title: String,
     floorOrder: ForumFloorOrder,
     page: Int = 1,
+    nextPage: Int = page,
     uid: Int = 0,
     replyCount: Int = 0,
     replies: List<ForumReply> = listOf(defaultReply())
@@ -440,7 +759,7 @@ private fun detail(
     contentBlocks = listOf(firstPostBlock),
     comments = listOf(comment("inline first post comment")),
     replies = replies,
-    pageInfo = PageInfo(activePage = page, nextPage = page, referPages = listOf(page)),
+    pageInfo = PageInfo(activePage = page, nextPage = nextPage, referPages = listOf(page)),
     pid = 4773811,
     commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
 )
@@ -456,6 +775,19 @@ private fun defaultReply(): ForumReply = ForumReply(
     pid = 4773820,
     comments = listOf(comment("inline reply comment")),
     commentPageInfo = PageInfo(activePage = 1, nextPage = 2)
+)
+
+private fun floorReply(floor: Int, pid: Int): ForumReply = ForumReply(
+    floor = floor,
+    author = "Reply Author $floor",
+    authorUid = 0,
+    authorAvatar = "",
+    authorGroup = "",
+    contentBlocks = listOf(replyBlock),
+    postTime = "",
+    pid = pid,
+    comments = emptyList(),
+    commentPageInfo = PageInfo(activePage = 1, nextPage = 1)
 )
 
 private fun comment(content: String): Comment =

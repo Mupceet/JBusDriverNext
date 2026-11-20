@@ -380,6 +380,43 @@ class ForumRepositoryCacheFlowTest {
     }
 
     @Test
+    fun `loadFloorJumpPage follows findpost url and returns detail containing target pid`() =
+        runBlocking {
+            val sessionClient = FakeSessionClient(findPostLandingHtml(pid = 4773820))
+            val repository = repository(FakeCacheStore(), sessionClient)
+
+            val detail = repository.loadFloorJumpPage(
+                tid = 172059,
+                pid = 4773820,
+                floorOrder = ForumFloorOrder.REVERSE
+            )
+
+            assertEquals(
+                "https://example.test/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=172059&ordertype=1",
+                sessionClient.urls.single()
+            )
+            assertEquals(4773820, detail?.replies?.single()?.pid)
+        }
+
+    @Test
+    fun `loadFloorJumpPage returns null when landing page lacks target pid`() = runBlocking {
+        val sessionClient = FakeSessionClient(findPostLandingHtml(pid = 4779999))
+        val repository = repository(FakeCacheStore(), sessionClient)
+
+        val detail = repository.loadFloorJumpPage(
+            tid = 172059,
+            pid = 4773820,
+            floorOrder = ForumFloorOrder.REGULAR
+        )
+
+        assertNull(detail)
+        assertEquals(
+            "https://example.test/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=172059",
+            sessionClient.urls.single()
+        )
+    }
+
+    @Test
     fun `first successful forum fetch persists cookies`() = runBlocking {
         val persister = FakeCookiePersister()
         val sessionClient = FakeSessionClient(successHomeHtml("Board"))
@@ -548,6 +585,25 @@ class ForumRepositoryCacheFlowTest {
         <html>
           <body>
             <h1 id="thread_subject">Thread Title</h1>
+          </body>
+        </html>
+    """.trimIndent()
+
+    /** findpost 重定向落地页（最小结构），解析出一层楼，pid 取自 postmessage_ id。 */
+    private fun findPostLandingHtml(pid: Int): String = """
+        <html>
+          <body>
+            <h1 id="thread_subject">Thread Title</h1>
+            <div class="nthread_postbox">
+              <div class="pi">
+                <a id="postnum$pid"><em>12</em><sup>#</sup></a>
+                <div class="authi">
+                  <a class="xw1" href="home.php?mod=space&amp;uid=6">Alice</a>
+                  <em id="authorposton$pid">发表于 2025-4-26 20:28:02</em>
+                </div>
+              </div>
+              <table><tbody><tr><td class="t_f" id="postmessage_$pid">quoted reply</td></tr></tbody></table>
+            </div>
           </body>
         </html>
     """.trimIndent()

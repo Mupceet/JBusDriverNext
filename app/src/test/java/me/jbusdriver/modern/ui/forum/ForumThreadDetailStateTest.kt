@@ -177,6 +177,102 @@ class ForumThreadDetailStateTest {
         assertEquals(R.string.load_failed, result.error)
     }
 
+    @Test
+    fun `floorGaps returns empty for contiguous or short reply lists`() {
+        assertEquals(emptyList<FloorGap>(), floorGaps(emptyList(), ForumFloorOrder.REVERSE))
+        assertEquals(emptyList<FloorGap>(), floorGaps(listOf(reply(3)), ForumFloorOrder.REGULAR))
+        assertEquals(
+            emptyList<FloorGap>(),
+            floorGaps(listOf(reply(5), reply(4), reply(3)), ForumFloorOrder.REVERSE)
+        )
+        assertEquals(
+            emptyList<FloorGap>(),
+            floorGaps(listOf(reply(3), reply(4), reply(5)), ForumFloorOrder.REGULAR)
+        )
+    }
+
+    @Test
+    fun `floorGaps ignores single missing floor as deleted floor`() {
+        // 4→2 缺第 3 楼（单个缺失=已删楼层），两种顺序都不视为断层
+        assertEquals(
+            emptyList<FloorGap>(),
+            floorGaps(listOf(reply(5), reply(4), reply(2), reply(1)), ForumFloorOrder.REVERSE)
+        )
+        assertEquals(
+            emptyList<FloorGap>(),
+            floorGaps(listOf(reply(1), reply(2), reply(4), reply(5)), ForumFloorOrder.REGULAR)
+        )
+    }
+
+    @Test
+    fun `floorGaps marks discontinuity with above and below floors in both orders`() {
+        val descending = listOf(reply(100), reply(99), reply(12), reply(11))
+        assertEquals(
+            listOf(FloorGap(aboveFloor = 99, belowFloor = 12)),
+            floorGaps(descending, ForumFloorOrder.REVERSE)
+        )
+        val ascending = listOf(reply(11), reply(12), reply(99), reply(100))
+        assertEquals(
+            listOf(FloorGap(aboveFloor = 99, belowFloor = 12)),
+            floorGaps(ascending, ForumFloorOrder.REGULAR)
+        )
+    }
+
+    @Test
+    fun `mergeReplyPages dedups by floor and sorts by order`() {
+        val existing = listOf(reply(100), reply(99), reply(12), reply(11))
+        val incoming = listOf(reply(99), reply(50), reply(13)) // 99 跨页重复，保留已展示版本
+
+        val mergedReverse = mergeReplyPages(existing, incoming, ForumFloorOrder.REVERSE)
+        assertEquals(listOf(100, 99, 50, 13, 12, 11), mergedReverse.map { it.floor })
+        assertSame(existing[1], mergedReverse[1])
+
+        val mergedRegular = mergeReplyPages(listOf(reply(12), reply(11)), incoming, ForumFloorOrder.REGULAR)
+        assertEquals(listOf(11, 12, 13, 50, 99), mergedRegular.map { it.floor })
+    }
+
+    @Test
+    fun `buildReplyListItems inserts gap divider below upper floor in reverse order`() {
+        val replies = listOf(reply(100), reply(99), reply(12), reply(11))
+
+        val items = buildReplyListItems(replies, ForumFloorOrder.REVERSE, showGapDividers = true)
+
+        assertEquals(
+            listOf("reply_100", "reply_99", "gap_12", "reply_12", "reply_11"),
+            items.map { it.key }
+        )
+    }
+
+    @Test
+    fun `buildReplyListItems inserts gap divider above lower floor in regular order`() {
+        val replies = listOf(reply(11), reply(12), reply(99), reply(100))
+
+        val items = buildReplyListItems(replies, ForumFloorOrder.REGULAR, showGapDividers = true)
+
+        assertEquals(
+            listOf("reply_11", "reply_12", "gap_12", "reply_99", "reply_100"),
+            items.map { it.key }
+        )
+    }
+
+    @Test
+    fun `buildReplyListItems omits gap dividers when no more pages`() {
+        val replies = listOf(reply(100), reply(99), reply(12), reply(11))
+
+        val items = buildReplyListItems(replies, ForumFloorOrder.REVERSE, showGapDividers = false)
+
+        assertEquals(listOf("reply_100", "reply_99", "reply_12", "reply_11"), items.map { it.key })
+    }
+
+    @Test
+    fun `buildReplyListItems omits divider for single deleted floor`() {
+        val replies = listOf(reply(5), reply(4), reply(2), reply(1))
+
+        val items = buildReplyListItems(replies, ForumFloorOrder.REVERSE, showGapDividers = true)
+
+        assertEquals(listOf("reply_5", "reply_4", "reply_2", "reply_1"), items.map { it.key })
+    }
+
     private fun cacheEntry(value: ForumThreadDetail): CacheEntry<ForumThreadDetail> =
         CacheEntry(value, 1_000L, CacheSource.Network, false)
 

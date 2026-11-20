@@ -4,6 +4,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.cache.CacheEntry
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
 import me.jbusdriver.modern.core.cache.FreshRevalidateOutcome
+import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.domain.model.ForumReply
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 
@@ -167,3 +168,83 @@ private fun ForumThreadDetailUiState.detailChangeReason(fresh: ForumThreadDetail
 /** 忽略点评相对时间（[me.jbusdriver.modern.domain.model.Comment.time]）后的楼层列表，用于"是否有新数据"比对。 */
 private fun List<ForumReply>.withStableCommentTimes(): List<ForumReply> =
     map { it.copy(comments = it.comments.map { c -> c.copy(time = "") }) }
+
+/**
+ * 楼层断层：跳转合并/翻页后列表中相邻楼层号断档的区间。
+ * [aboveFloor]/[belowFloor] 为断层两侧已加载楼层号（above > below，与显示方向无关）。
+ */
+data class FloorGap(val aboveFloor: Int, val belowFloor: Int)
+
+/**
+ * 从已按 [order] 排序的楼层列表派生断层（缺失 ≥2 层的相邻断档）。
+ * 单个缺失楼层（above - below == 2，楼层被删）与无更多页时的断档一样不视为断层，
+ * 避免为不可恢复的已删楼层显示补齐提示。
+ */
+fun floorGaps(replies: List<ForumReply>, order: ForumFloorOrder): List<FloorGap> {
+    if (replies.size < 2) return emptyList()
+    return buildList {
+        for (index in 1 until replies.size) {
+            val prev = replies[index - 1].floor
+            val cur = replies[index].floor
+            val (above, below) = if (order == ForumFloorOrder.REVERSE) prev to cur else cur to prev
+            if (above - below > 2) add(FloorGap(aboveFloor = above, belowFloor = below))
+        }
+    }
+}
+
+/**
+ * 合并已加载楼层与新增页楼层：按 floor 去重（保留已展示的首现版本，置顶/广播楼层跨页重复），
+ * 并按 [order] 全局排序——跳转合并/断层补齐后列表仍须整体有序，断层派生与展示位置才成立。
+ */
+fun mergeReplyPages(
+    existing: List<ForumReply>,
+    incoming: List<ForumReply>,
+    order: ForumFloorOrder
+): List<ForumReply> {
+    val existingFloors = existing.mapTo(HashSet()) { it.floor }
+    return (existing + incoming.filter { it.floor !in existingFloors })
+        .sortedBy { if (order == ForumFloorOrder.REVERSE) -it.floor else it.floor }
+}
+
+/** 回复区组合列表项：楼层或楼层断层分隔行（[key] 供 LazyColumn 复用）。 */
+internal sealed interface ReplyListItem {
+    val key: String
+
+    data class Reply(val reply: ForumReply) : ReplyListItem {
+        override val key: String get() = "reply_${reply.floor}"
+    }
+
+    data class Gap(val gap: FloorGap) : ReplyListItem {
+        override val key: String get() = "gap_${gap.belowFloor}"
+    }
+}
+
+/**
+ * 楼层 + 断层分隔行组合列表（须传入已按 [order] 排序的楼层）。
+ * 分隔行插在断层上沿楼层的下方；仅 [showGapDividers]（仍有更多页）时插入，
+ * 无更多页的断档与单个缺失楼层（已删楼层，[floorGaps] 已过滤）不渲染分隔行。
+ */
+internal fun buildReplyListItems(
+    replies: List<ForumReply>,
+    order: ForumFloorOrder,
+    showGapDividers: Boolean
+): List<ReplyListItem> {
+    if (replies.isEmpty()) return emptyList()
+    val gapAfterFloor: Map<Int, FloorGap> = if (!showGapDividers) {
+        emptyMap()
+    } else {
+        // 倒序（楼层号降序）分隔行跟在上侧（较大楼层号）楼层后；正序反之。
+        val anchorSelector: (FloorGap) -> Int = if (order == ForumFloorOrder.REVERSE) {
+            { it.aboveFloor }
+        } else {
+            { it.belowFloor }
+        }
+        floorGaps(replies, order).associateBy(anchorSelector)
+    }
+    return buildList {
+        for (reply in replies) {
+            add(ReplyListItem.Reply(reply))
+            gapAfterFloor[reply.floor]?.let { add(ReplyListItem.Gap(it)) }
+        }
+    }
+}

@@ -101,6 +101,12 @@ class ForumCacheRefreshViewModelTest {
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
 
+        override suspend fun loadFloorJumpPage(
+            tid: Int,
+            pid: Int,
+            floorOrder: ForumFloorOrder
+        ): ForumThreadDetail? = error("not used")
+
         override suspend fun loadFloorComments(
             tid: Int,
             pid: Int,
@@ -310,6 +316,12 @@ class ForumCacheRefreshViewModelTest {
             authorUid: Int?,
             forceRefresh: Boolean
         ): ForumThreadDetail = error("not used")
+
+        override suspend fun loadFloorJumpPage(
+            tid: Int,
+            pid: Int,
+            floorOrder: ForumFloorOrder
+        ): ForumThreadDetail? = error("not used")
 
         override suspend fun loadFloorComments(
             tid: Int,

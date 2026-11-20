@@ -18,6 +18,7 @@ import me.jbusdriver.modern.core.http.BrowserCookiePersister
 import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.ForumThreadOrder
+import me.jbusdriver.modern.data.settings.buildForumFindPostUrl
 import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
 import me.jbusdriver.modern.data.settings.buildForumThreadListUrl
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
@@ -55,6 +56,16 @@ interface ForumRepository {
         authorUid: Int? = null,
         forceRefresh: Boolean = false
     ): ForumThreadDetail
+
+    /**
+     * 引用楼层定位：请求 findpost 重定向链接，跟随 302 落地到目标楼层所在分页并解析。
+     * 落地页不含目标 pid（反爬墙/解析失败）时返回 null。一次性导航抓取，不走缓存。
+     */
+    suspend fun loadFloorJumpPage(
+        tid: Int,
+        pid: Int,
+        floorOrder: ForumFloorOrder = ForumFloorOrder.REGULAR
+    ): ForumThreadDetail?
 
     suspend fun loadFloorComments(
         tid: Int,
@@ -248,6 +259,20 @@ class DefaultForumRepository @Inject constructor(
             forceRefresh = forceRefresh,
             revalidate = false
         ).firstCachedOrFresh()
+
+    override suspend fun loadFloorJumpPage(
+        tid: Int,
+        pid: Int,
+        floorOrder: ForumFloorOrder
+    ): ForumThreadDetail? {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = buildForumFindPostUrl(baseUrl, tid, pid, floorOrder)
+        forumLogD("[Forum] loadFloorJumpPage: url=$url")
+        val doc = fetchForumDocument(url)
+        val detail = parseForumThreadDetail(doc, baseUrl)
+        return detail.takeIf { it.pid == pid || it.replies.any { it.pid == pid } }
+    }
 
     override suspend fun loadFloorComments(
         tid: Int,
