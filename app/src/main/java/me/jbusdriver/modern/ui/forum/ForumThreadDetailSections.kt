@@ -276,7 +276,8 @@ private fun ForumCommentText(comment: Comment) {
         )
         Text(
             comment.content,
-            style = MaterialTheme.typography.bodySmall,
+            // 正文放大一号后点评同步 bodySmall → bodyMedium，避免视觉偏小
+            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 2.dp)
         )
     }

@@ -615,7 +615,8 @@ private fun QuoteContent(
                 }
                 Text(
                     text = contentText,
-                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                    // 正文放大一号后引用块同步 bodySmall → bodyMedium，避免视觉偏小
+                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
                     color = quoteTextColor
                 )
             }
