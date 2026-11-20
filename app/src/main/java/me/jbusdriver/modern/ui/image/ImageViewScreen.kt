@@ -246,8 +246,16 @@ private fun ThumbnailStrip(
 ) {
     val listState = rememberLazyListState()
 
+    // 首次组合直接定位到当前页（条子每次重新进入组合都从 0 位起步，动画滚动会表现为
+    // 向左滑动一下），之后的翻页跟随才用动画滚动。
+    val initialPage = remember { currentPage }
+    LaunchedEffect(Unit) {
+        listState.scrollToItem(initialPage)
+    }
     LaunchedEffect(currentPage) {
-        listState.animateScrollToItem(currentPage)
+        if (currentPage != initialPage) {
+            listState.animateScrollToItem(currentPage)
+        }
     }
 
     LazyRow(
