@@ -244,6 +244,45 @@ class ForumThreadParserTest {
     }
 
     @Test
+    fun `thread list last reply time uses visible relative text like dateline`() {
+        val doc = Jsoup.parse(
+            """
+                <html><body>
+                  <table>
+                    <tbody id="normalthread_42">
+                      <tr><th>
+                        <div class="post_infolist_tit">
+                          <a class="s" href="forum.php?mod=viewthread&amp;tid=42">Thread title</a>
+                        </div>
+                        <span class="dateline"><span title="2026-11-18">前天 09:12</span></span>
+                        <span class="time"><span title="2026-11-19 22:41">3 天前</span><a href="home.php?mod=space&amp;uid=7">replier</a></span>
+                      </th></tr>
+                    </tbody>
+                    <tbody id="normalthread_43">
+                      <tr><th>
+                        <div class="post_infolist_tit">
+                          <a class="s" href="forum.php?mod=viewthread&amp;tid=43">Legacy thread</a>
+                        </div>
+                        <span class="time"><span>昨天 21:00</span><a href="home.php?mod=space&amp;uid=8">old_replier</a></span>
+                      </th></tr>
+                    </tbody>
+                  </table>
+                </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=forumdisplay&fid=4"
+        )
+
+        val threads = parseForumThreads(doc, "https://www.javbus.com").threads
+
+        // 新格式：取可见相对时间而非 title 里的绝对日期，与 dateline 展示口径一致
+        assertEquals("前天 09:12", threads[0].dateLine)
+        assertEquals("replier", threads[0].lastReplyAuthor)
+        assertEquals("3 天前", threads[0].lastReplyTime)
+        // 旧格式：叶子 span 无 title，走末位 span 文本兜底
+        assertEquals("昨天 21:00", threads[1].lastReplyTime)
+    }
+
+    @Test
     fun `restricted reply remains visible without normal body cell`() {
         val detail = parseForumThreadDetail(
             fixture(

@@ -93,7 +93,9 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
         viewCount = tbody.select(".views").text().trim().toIntOrNull() ?: 0,
         replyCount = tbody.select(".reply").text().trim().toIntOrNull() ?: 0,
         lastReplyAuthor = tbody.select(".time a").text().trim(),
-        lastReplyTime = tbody.select(".time span[title]").attr("title")
+        // 与 dateline 同口径：取可见的相对时间（"3 天前"/"昨天 22:41"）而非 title 属性里的
+        // 绝对日期，卡片里与发帖时间并排展示时格式一致；旧格式叶子 span 文本兜底。
+        lastReplyTime = tbody.select(".time span[title]").text().trim()
             .ifBlank { tbody.select(".time span").lastOrNull()?.text()?.trim() ?: "" },
         images = images,
         isPinned = isPinned,
