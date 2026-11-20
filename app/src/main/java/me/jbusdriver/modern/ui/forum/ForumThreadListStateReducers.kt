@@ -67,7 +67,7 @@ private inline fun ForumThreadListUiState.applyFreshEntry(
     val fresh = entry.value
     val outcome = when {
         isAtTop -> FreshRevalidateOutcome.ApplyImmediately
-        // 主题数量与排序未变（仅浏览数、回复数等卡片内字段变化）：
+        // 主题数量与排序未变（仅卡片第四行字段变化：最后回帖用户/时间、浏览数、回复数）：
         // 静默就地刷新，不弹"有新数据"提示，也不打断已滚动的列表。
         threads.take(fresh.threads.size).map { it.tid } == fresh.threads.map { it.tid } ->
             FreshRevalidateOutcome.ApplyInPlace

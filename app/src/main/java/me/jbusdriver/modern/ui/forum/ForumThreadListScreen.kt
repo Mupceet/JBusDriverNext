@@ -350,7 +350,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            // 第一行：头像 + 作者/时间双行 + 浏览·回复
+            // 第一行：头像 + 作者/时间双行
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -379,11 +379,6 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                         maxLines = 1
                     )
                 }
-                Text(
-                    forumViewReplyCountText(thread.viewCount, thread.replyCount),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
             // 第二行：标题（徽标随行）
             val trailingLabels = buildList {
@@ -460,6 +455,44 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                         }
                     }
                 }
+            }
+            // 第四行：最新回帖用户/时间 + 浏览·回复。本行字段正是静默刷新
+            // （ApplyInPlace）就地更新的变更信息——tid 未变时后台 revalidate
+            // 只改本行内容，不打断滚动、不弹"有新数据"。
+            Row(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (thread.lastReplyAuthor.isNotBlank()) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            thread.lastReplyAuthor,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            // fill=false：正常时按内容宽，空间不足时才收缩省略，时间始终完整
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Text(
+                            thread.lastReplyTime,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                Text(
+                    forumViewReplyCountText(thread.viewCount, thread.replyCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
