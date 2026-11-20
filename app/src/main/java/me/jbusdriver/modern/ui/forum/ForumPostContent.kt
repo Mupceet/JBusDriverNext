@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
@@ -150,6 +151,11 @@ internal fun ForumPostContent(
     onQuoteClick: (Int) -> Unit = {},
     /** 点击正文/引用块中识别出的影片番号；null 表示不做番号识别（如长按复制预览）。 */
     onMovieCodeClick: ((String) -> Unit)? = null,
+    /**
+     * 点击正文行内链接时回调（含系统默认打开的兜底）。null 表示不拦截，
+     * 链接维持 LinkAnnotation 默认行为（UriHandler 打开浏览器），如长按复制预览。
+     */
+    onLinkClick: ((String) -> Unit)? = null,
     showImages: Boolean = true
 ) {
     val viewableImageUrls = remember(blocks, loadedGifUrls, autoLoadGifs, showImages) {
@@ -182,10 +188,14 @@ internal fun ForumPostContent(
         blocks.forEach { block ->
             when (block) {
                 is ContentBlock.RichText -> block.paragraphs.forEach { paragraph ->
-                    StyledParagraph(paragraph, onMovieCodeClick = onMovieCodeClick)
+                    StyledParagraph(paragraph, onMovieCodeClick = onMovieCodeClick, onLinkClick = onLinkClick)
                 }
 
-                is ContentBlock.ListBlock -> RichListContent(block.list, onMovieCodeClick = onMovieCodeClick)
+                is ContentBlock.ListBlock -> RichListContent(
+                    block.list,
+                    onMovieCodeClick = onMovieCodeClick,
+                    onLinkClick = onLinkClick
+                )
                 is ContentBlock.Image -> if (showImages) {
                     if (block.isGif && !autoLoadGifs && block.url !in loadedGifUrls) {
                         GifPlaceholder(
@@ -219,13 +229,14 @@ internal fun ForumPostContent(
 private fun StyledParagraph(
     paragraph: RichParagraph,
     modifier: Modifier = Modifier,
-    onMovieCodeClick: ((String) -> Unit)? = null
+    onMovieCodeClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
 ) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     val surface = MaterialTheme.colorScheme.surface
     val primary = MaterialTheme.colorScheme.primary
-    val text = remember(paragraph, onSurface, surface, primary, onMovieCodeClick) {
-        paragraph.toAnnotatedString(onSurface, surface, primary, onMovieCodeClick)
+    val text = remember(paragraph, onSurface, surface, primary, onMovieCodeClick, onLinkClick) {
+        paragraph.toAnnotatedString(onSurface, surface, primary, onMovieCodeClick, onLinkClick)
     }
     val inlineContent = remember(paragraph) {
         paragraph.toInlineContent()
@@ -247,7 +258,8 @@ private fun RichParagraph.toAnnotatedString(
     onSurface: Color,
     surface: Color,
     primary: Color,
-    onMovieCodeClick: ((String) -> Unit)? = null
+    onMovieCodeClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
 ): AnnotatedString = buildAnnotatedString {
     parts.forEachIndexed { index, part ->
         if (part.inlineImageUrl.isNotEmpty()) {
@@ -255,7 +267,21 @@ private fun RichParagraph.toAnnotatedString(
         } else {
             withStyle(part.toSpanStyle(onSurface, surface, primary)) {
                 if (part.isLink && part.linkUrl.isNotBlank()) {
-                    withLink(LinkAnnotation.Url(part.linkUrl)) {
+                    val link = if (onLinkClick != null) {
+                        // 挂 listener 接管默认 UriHandler 行为，由调用方决定站内路由或回落浏览器
+                        val onLinkClickNotNull = onLinkClick
+                        LinkAnnotation.Url(
+                            part.linkUrl,
+                            linkInteractionListener = LinkInteractionListener { annotation ->
+                                (annotation as? LinkAnnotation.Url)?.let {
+                                    onLinkClickNotNull(it.url)
+                                }
+                            }
+                        )
+                    } else {
+                        LinkAnnotation.Url(part.linkUrl)
+                    }
+                    withLink(link) {
                         append(part.text)
                     }
                 } else if (onMovieCodeClick != null) {
@@ -445,7 +471,8 @@ private fun Color.toHsl(): HslColor {
 private fun RichListContent(
     list: RichList,
     depth: Int = 0,
-    onMovieCodeClick: ((String) -> Unit)? = null
+    onMovieCodeClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null
 ) {
     Column(
         modifier = Modifier.padding(start = forumListIndentStep(depth).dp),
@@ -460,12 +487,16 @@ private fun RichListContent(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     item.paragraphs.forEach { paragraph ->
-                        StyledParagraph(paragraph, onMovieCodeClick = onMovieCodeClick)
+                        StyledParagraph(
+                            paragraph,
+                            onMovieCodeClick = onMovieCodeClick,
+                            onLinkClick = onLinkClick
+                        )
                     }
                 }
             }
             item.children.forEach { child ->
-                RichListContent(child, depth + 1, onMovieCodeClick)
+                RichListContent(child, depth + 1, onMovieCodeClick, onLinkClick)
             }
         }
     }

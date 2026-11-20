@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.forum
 
 import android.widget.Toast
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,8 +37,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,9 +52,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
+import me.jbusdriver.modern.data.parser.extractFloorTarget
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
@@ -58,6 +67,9 @@ import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
+
+/** 楼层跳转定位后背景高亮的持续时间。 */
+private const val FLOOR_HIGHLIGHT_DURATION_MS = 800L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,24 +179,51 @@ fun ForumThreadDetailScreen(
                         // sticky 操作条高度，跳转引用楼层时用它让目标楼层落在操作条下方
                         var operationBarHeightPx by remember { mutableIntStateOf(0) }
 
+                        // 楼层跳转定位后的高亮楼层 pid（纯 UI 瞬时状态，超时自动清除）
+                        var highlightedPid by remember { mutableStateOf(0) }
+                        LaunchedEffect(highlightedPid) {
+                            if (highlightedPid != 0) {
+                                delay(FLOOR_HIGHLIGHT_DURATION_MS)
+                                highlightedPid = 0
+                            }
+                        }
+
                         // 点击引用楼层的 "xxx 发表于 xxx"：跳转到被引楼层。
                         // 列表顺序：header + 首帖分块 + content_comments + replies_header + replies。
                         // 负偏移让目标楼层的名称落在 sticky 操作条下方，避免被遮挡。
-                        val jumpToFloor: (Int) -> Unit = jump@{ quotedPid ->
-                            if (quotedPid <= 0) return@jump
+                        // 返回是否命中：目标为本帖首帖，或楼层已在已加载的 replies 中；
+                        // 未命中（未翻到该页/被"只看楼主"过滤）由调用方回落浏览器打开。
+                        val jumpToFloor: (Int) -> Boolean = jump@{ quotedPid ->
+                            if (quotedPid <= 0) return@jump false
                             if (quotedPid == detail.pid) {
                                 scope.launch { listState.animateScrollToItem(0) }
-                            } else {
-                                val replyIndex = detail.replies.indexOfFirst { it.pid == quotedPid }
-                                if (replyIndex >= 0) {
-                                    val replyStartIndex = firstPostSections.size + 3
-                                    scope.launch {
-                                        listState.animateScrollToItem(
-                                            replyStartIndex + replyIndex,
-                                            -operationBarHeightPx
-                                        )
-                                    }
-                                }
+                                return@jump true
+                            }
+                            val replyIndex = detail.replies.indexOfFirst { it.pid == quotedPid }
+                            if (replyIndex < 0) return@jump false
+                            val replyStartIndex = firstPostSections.size + 3
+                            scope.launch {
+                                // animateScrollToItem 挂起至完全落位(长距离滚动含预估高度修正段)
+                                // 后才返回,高亮计时必须在落位后启动,否则 800ms 在滚动途中耗尽
+                                listState.animateScrollToItem(
+                                    replyStartIndex + replyIndex,
+                                    -operationBarHeightPx
+                                )
+                                highlightedPid = quotedPid
+                            }
+                            true
+                        }
+
+                        // 帖内行内链接：同帖楼层指路链接（goto=findpost / #pid 锚点）跳转定位，
+                        // 其余（外链/跨帖/未加载楼层）维持系统默认打开。
+                        val uriHandler = LocalUriHandler.current
+                        val onPostLinkClick: (String) -> Unit = onPostLink@{ url ->
+                            val target = extractFloorTarget(url)
+                            if (target == null ||
+                                (target.threadId != 0 && target.threadId != detail.tid) ||
+                                !jumpToFloor(target.postId)
+                            ) {
+                                runCatching { uriHandler.openUri(url) }
                             }
                         }
 
@@ -248,8 +287,9 @@ fun ForumThreadDetailScreen(
                                             autoLoadGifs = autoLoadGifs,
                                             onLoadGif = { viewModel.onLoadGif(it) },
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
-                                            onQuoteClick = jumpToFloor,
+                                            onQuoteClick = { jumpToFloor(it) },
                                             onMovieCodeClick = openMovieByCode,
+                                            onLinkClick = onPostLinkClick,
                                             onLongClick = {
                                                 dialogContent =
                                                     ForumDialogContent.Blocks(detail.contentBlocks)
@@ -313,7 +353,32 @@ fun ForumThreadDetailScreen(
                                     )
                                 }
                                 items(items = detail.replies, key = { reply -> "reply_${reply.floor}" }) { reply ->
-                                    Box(modifier = Modifier.padding(bottom = 16.dp)) {
+                                    // 楼层跳转定位后短暂高亮目标楼层:在内容外围外扩绘制圆角背景,
+                                    // 内容位置不变,与背景边缘留出呼吸间距
+                                    val highlightColor by animateColorAsState(
+                                        targetValue = if (highlightedPid == reply.pid) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            Color.Transparent
+                                        },
+                                        label = "floorHighlight"
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(bottom = 16.dp)
+                                            .drawBehind {
+                                                if (highlightColor.alpha > 0f) {
+                                                    val outsetX = 12.dp.toPx()
+                                                    val outsetY = 8.dp.toPx()
+                                                    drawRoundRect(
+                                                        color = highlightColor,
+                                                        topLeft = Offset(-outsetX, -outsetY),
+                                                        size = Size(size.width + outsetX * 2, size.height + outsetY * 2),
+                                                        cornerRadius = CornerRadius(8.dp.toPx())
+                                                    )
+                                                }
+                                            }
+                                    ) {
                                         ReplyItem(
                                             reply = reply,
                                             onImageClick = onImageClick,
@@ -321,8 +386,9 @@ fun ForumThreadDetailScreen(
                                             autoLoadGifs = autoLoadGifs,
                                             onLoadGif = { viewModel.onLoadGif(it) },
                                             onLoadAllGifs = { viewModel.onLoadAllGifs() },
-                                            onQuoteClick = jumpToFloor,
+                                            onQuoteClick = { jumpToFloor(it) },
                                             onMovieCodeClick = openMovieByCode,
+                                            onLinkClick = onPostLinkClick,
                                             onLongClick = {
                                                 dialogContent =
                                                     ForumDialogContent.Blocks(reply.contentBlocks)

@@ -29,6 +29,40 @@ fun String.wrapForumLink(baseUrl: String): String = when {
     else -> baseUrl.trimEnd('/') + "/forum/" + this
 }
 
+/**
+ * 帖内楼层指路链接的目标；[threadId] 为 0 表示 URL 未携带帖子 id（无法判定跨帖）。
+ */
+data class FloorTarget(val threadId: Int, val postId: Int)
+
+private val findPostPidRegex = Regex("pid=(\\d+)")
+private val findPostPtidRegex = Regex("ptid=(\\d+)")
+private val anchorPidRegex = Regex("#pid(\\d+)")
+private val threadUrlTidRegex = Regex("thread-(\\d+)-")
+private val queryTidRegex = Regex("[?&]tid=(\\d+)")
+
+/**
+ * 解析 Discuz 楼层指路链接，供帖子详情页做"定位到目标楼层"路由：
+ * - 跳转形式：`forum.php?mod=redirect&goto=findpost&pid=<楼层id>&ptid=<帖子id>`
+ * - 锚点形式：`thread-<tid>-<page>-1.html#pid<楼层id>` 或 `viewthread&tid=<tid>…#pid<楼层id>`
+ *
+ * 两种形式都不匹配时返回 null；跳转形式缺 ptid 时 [FloorTarget.threadId] 为 0。
+ */
+fun extractFloorTarget(url: String): FloorTarget? {
+    if (url.isBlank()) return null
+    if (url.contains("goto=findpost")) {
+        val pid = findPostPidRegex.find(url)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        if (pid <= 0) return null
+        val tid = findPostPtidRegex.find(url)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        return FloorTarget(threadId = tid, postId = pid)
+    }
+    val anchorPid = anchorPidRegex.find(url)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+    if (anchorPid <= 0) return null
+    val tid = threadUrlTidRegex.find(url)?.groupValues?.get(1)?.toIntOrNull()
+        ?: queryTidRegex.find(url)?.groupValues?.get(1)?.toIntOrNull()
+        ?: 0
+    return FloorTarget(threadId = tid, postId = anchorPid)
+}
+
 internal fun String.isGifUrl(): Boolean {
     val path = substringBefore("?").substringBefore("#").lowercase()
     return path.endsWith(".gif")

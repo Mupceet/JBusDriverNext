@@ -323,6 +323,7 @@ internal fun ReplyItem(
     onLongClick: () -> Unit = {},
     onQuoteClick: (Int) -> Unit = {},
     onMovieCodeClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null,
     onViewComments: (ForumReply) -> Unit = {}
 ) {
     Row(
@@ -377,7 +378,8 @@ internal fun ReplyItem(
                 onLoadAllGifs = onLoadAllGifs,
                 onLongClick = onLongClick,
                 onQuoteClick = onQuoteClick,
-                onMovieCodeClick = onMovieCodeClick
+                onMovieCodeClick = onMovieCodeClick,
+                onLinkClick = onLinkClick
             )
             PostCommentsPreview(
                 comments = reply.comments,

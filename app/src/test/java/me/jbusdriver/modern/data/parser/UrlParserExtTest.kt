@@ -52,4 +52,62 @@ class UrlParserExtTest {
         assertEquals("/mono/movie/adult/x/xps.jpg", dmm.stripToPath())
         assertNotEquals(dmm.stripToPath(), site.stripToPath())
     }
+
+    @Test
+    fun `extractFloorTarget parses findpost redirect with ptid`() {
+        assertEquals(
+            FloorTarget(threadId = 12345, postId = 67890),
+            extractFloorTarget("https://www.example.com/forum/forum.php?mod=redirect&goto=findpost&pid=67890&ptid=12345")
+        )
+        // ptid 在前的参数顺序同样命中
+        assertEquals(
+            FloorTarget(threadId = 12345, postId = 67890),
+            extractFloorTarget("/forum.php?mod=redirect&goto=findpost&ptid=12345&pid=67890")
+        )
+    }
+
+    @Test
+    fun `extractFloorTarget findpost without ptid has zero threadId`() {
+        assertEquals(
+            FloorTarget(threadId = 0, postId = 67890),
+            extractFloorTarget("https://www.example.com/forum/forum.php?mod=redirect&goto=findpost&pid=67890")
+        )
+    }
+
+    @Test
+    fun `extractFloorTarget does not confuse ptid with pid`() {
+        // ptid 的值不能被误读为 pid
+        assertEquals(
+            FloorTarget(threadId = 12345, postId = 67890),
+            extractFloorTarget("https://www.example.com/forum/forum.php?mod=redirect&goto=findpost&ptid=12345&pid=67890")
+        )
+    }
+
+    @Test
+    fun `extractFloorTarget parses thread url with pid anchor`() {
+        assertEquals(
+            FloorTarget(threadId = 12345, postId = 67890),
+            extractFloorTarget("https://www.example.com/forum/thread-12345-2-1.html#pid67890")
+        )
+        assertEquals(
+            FloorTarget(threadId = 12345, postId = 67890),
+            extractFloorTarget("https://www.example.com/forum/forum.php?mod=viewthread&tid=12345&page=2#pid67890")
+        )
+    }
+
+    @Test
+    fun `extractFloorTarget anchor without tid has zero threadId`() {
+        assertEquals(
+            FloorTarget(threadId = 0, postId = 67890),
+            extractFloorTarget("#pid67890")
+        )
+    }
+
+    @Test
+    fun `extractFloorTarget returns null for non floor links`() {
+        assertEquals(null, extractFloorTarget(""))
+        assertEquals(null, extractFloorTarget("https://www.example.com/forum/thread-12345-2-1.html"))
+        assertEquals(null, extractFloorTarget("https://www.example.com/forum/forum.php?mod=viewthread&tid=12345"))
+        assertEquals(null, extractFloorTarget("https://www.example.com/misc.php?action=jump&pid=67890"))
+    }
 }
