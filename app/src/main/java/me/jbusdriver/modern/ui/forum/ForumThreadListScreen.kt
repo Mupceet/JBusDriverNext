@@ -48,13 +48,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -344,7 +354,9 @@ private fun threadOrderLabel(order: ForumThreadOrder): String = when (order) {
 private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .pinnedCornerRibbon(thread.isPinned),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -380,12 +392,7 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                     )
                 }
             }
-            // 第二行：标题（徽标随行）
-            val trailingLabels = buildList {
-                if (thread.isPinned) {
-                    add(ForumInlineLabel("置頂", MaterialTheme.colorScheme.primary))
-                }
-            }
+            // 第二行：标题（徽标随行；置頂改为卡片右上角斜角丝带）
             val trailingIcons = buildList {
                 if (thread.isLocked) {
                     add(
@@ -423,11 +430,10 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                 typeName = thread.typeName,
                 typeColor = thread.typeColor,
                 modifier = Modifier.padding(top = 8.dp),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 badgeStyle = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                trailingLabels = trailingLabels,
                 trailingIcons = trailingIcons
             )
             // 第三行：缩略图。固定三等分槽位（80:55），有几张占几个，空槽不绘制——
@@ -492,6 +498,49 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                     forumViewReplyCountText(thread.viewCount, thread.replyCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 置頂帖右上角斜角丝带：primary 色带以 45° 掠过卡片圆角，文字沿带向排布；
+ * 超出卡片圆角矩形的部分按卡片形状裁剪，从上/右缘自然收边。
+ */
+@Composable
+private fun Modifier.pinnedCornerRibbon(isPinned: Boolean): Modifier {
+    if (!isPinned) return this
+    val label = stringResource(R.string.pinned)
+    val bandColor = MaterialTheme.colorScheme.primary
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onPrimary
+    )
+    val textMeasurer = rememberTextMeasurer()
+    val textLayout = remember(label, labelStyle) { textMeasurer.measure(label, labelStyle) }
+    return drawWithContent {
+        drawContent()
+        val cardShape = Path().apply {
+            addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(12.dp.toPx())))
+        }
+        clipPath(cardShape) {
+            // 色带中心落在距角对角线半臂处：上/右缘各探入 reach/2，两端伸出卡片由裁剪收边
+            val reach = 30.dp.toPx()
+            val center = Offset(size.width - reach / 2f, reach / 2f)
+            rotate(degrees = 45f, pivot = center) {
+                val bandHeight = 18.dp.toPx()
+                drawRect(
+                    color = bandColor,
+                    topLeft = Offset(-size.width, center.y - bandHeight / 2f),
+                    size = Size(size.width * 3f, bandHeight)
+                )
+                drawText(
+                    textLayoutResult = textLayout,
+                    topLeft = Offset(
+                        center.x - textLayout.size.width / 2f,
+                        center.y - textLayout.size.height / 2f
+                    )
                 )
             }
         }

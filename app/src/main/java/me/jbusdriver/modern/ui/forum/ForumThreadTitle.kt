@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 
 @Immutable
@@ -36,13 +35,6 @@ internal data class ForumInlineBadge(
     val label: String,
     val containerColor: Color,
     val contentColor: Color = Color.White
-)
-
-@Immutable
-internal data class ForumInlineLabel(
-    val label: String,
-    val color: Color,
-    val bold: Boolean = true
 )
 
 @Immutable
@@ -62,7 +54,6 @@ internal fun ForumThreadTitle(
     style: TextStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
-    trailingLabels: List<ForumInlineLabel> = emptyList(),
     trailingIcons: List<ForumInlineIcon> = emptyList(),
     badgeStyle: TextStyle = MaterialTheme.typography.bodySmall,
     /** 点击标题中识别出的影片番号；null 表示不识别。 */
@@ -84,7 +75,7 @@ internal fun ForumThreadTitle(
         }
     }
     val annotatedTitle = remember(
-        title, style, badges, trailingLabels, trailingIcons, primary, onMovieCodeClick
+        title, style, badges, trailingIcons, primary, onMovieCodeClick
     ) {
         buildAnnotatedString {
             badges.forEach { badge ->
@@ -96,18 +87,6 @@ internal fun ForumThreadTitle(
                     appendMovieCodeSegments(title, primary, onMovieCodeClick)
                 } else {
                     append(title)
-                }
-            }
-            trailingLabels.forEach { label ->
-                append(" ")
-                withStyle(
-                    style.copy(
-                        color = label.color,
-                        fontSize = 10.sp,
-                        fontWeight = if (label.bold) FontWeight.Bold else style.fontWeight
-                    ).toSpanStyle()
-                ) {
-                    append(label.label)
                 }
             }
             trailingIcons.forEach { icon ->
