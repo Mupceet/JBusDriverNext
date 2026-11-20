@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,7 +36,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -46,8 +48,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,11 +67,15 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.domain.model.ForumThread
 import me.jbusdriver.modern.ui.RouteForumThreadList
+import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.ui.components.EmptyStateView
 import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.SelectableDropdownItem
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,9 +134,16 @@ fun ForumThreadListScreen(
     }
 
 
+    val hazeState = rememberAppHazeState()
+
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.hazeTopBar(hazeState),
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -149,57 +164,81 @@ fun ForumThreadListScreen(
             ThemedSnackbarHost(hostState = snackbarHostState)
         }
     ) { innerPadding ->
+        // 内容穿透毛玻璃顶栏：不吃顶部 padding，顶高转交列表 contentPadding
+        val contentTopPadding = innerPadding.calculateTopPadding()
         Box(modifier = Modifier
             .fillMaxSize()
-            .padding(innerPadding)) {
-            PullToRefreshBox(
+            .padding(
+                start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                bottom = innerPadding.calculateBottomPadding()
+            )) {
+            AppPullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = { viewModel.refresh() },
-                modifier = Modifier.fillMaxSize()
+                // 指示圈下移到玻璃顶栏底缘，避免画在玻璃里
+                indicatorInsetTop = contentTopPadding,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSourceContent(hazeState)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Type filter chips
-                    if (state.typeFilters.isNotEmpty()) {
-                        val chipListState = rememberLazyListState()
-                        val selectedFilterIndex =
-                            state.typeFilters.indexOfFirst { it.typeId == state.currentTypeId }
-                        LaunchedEffect(state.typeFilters) {
-                            if (selectedFilterIndex >= 0) {
-                                // +1 because "全部" chip is at index 0
-                                chipListState.scrollToItem(selectedFilterIndex + 1)
-                            }
-                        }
-                        LazyRow(
-                            state = chipListState,
-                            contentPadding = PaddingValues(horizontal = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            item {
-                                FilterChip(
-                                    selected = state.currentTypeId == null,
-                                    onClick = { viewModel.filterByType(null) },
-                                    label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
-                                )
-                            }
-                            itemsIndexed(
-                                state.typeFilters,
-                                key = { index, _ -> "typeFilter_$index" }) { _, filter ->
-                                FilterChip(
-                                    selected = state.currentTypeId == filter.typeId,
-                                    onClick = { viewModel.filterByType(filter.typeId) },
-                                    label = { Text(filter.name, fontSize = 12.sp) }
-                                )
-                            }
+                    val chipListState = rememberLazyListState()
+                    val selectedFilterIndex =
+                        state.typeFilters.indexOfFirst { it.typeId == state.currentTypeId }
+                    LaunchedEffect(state.typeFilters) {
+                        if (selectedFilterIndex >= 0) {
+                            // +1 because "全部" chip is at index 0
+                            chipListState.scrollToItem(selectedFilterIndex + 1)
                         }
                     }
+                    val typeFilterChips: (@Composable () -> Unit)? =
+                        if (state.typeFilters.isNotEmpty()) {
+                            {
+                                LazyRow(
+                                    state = chipListState,
+                                    contentPadding = PaddingValues(horizontal = 14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    item {
+                                        FilterChip(
+                                            selected = state.currentTypeId == null,
+                                            onClick = { viewModel.filterByType(null) },
+                                            label = { Text(stringResource(R.string.all), fontSize = 12.sp) }
+                                        )
+                                    }
+                                    itemsIndexed(
+                                        state.typeFilters,
+                                        key = { index, _ -> "typeFilter_$index" }) { _, filter ->
+                                        FilterChip(
+                                            selected = state.currentTypeId == filter.typeId,
+                                            onClick = { viewModel.filterByType(filter.typeId) },
+                                            label = { Text(filter.name, fontSize = 12.sp) }
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            null
+                        }
 
                     when {
                         state.threads.isNotEmpty() -> {
                             LazyColumn(
                                 state = listState,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                contentPadding = PaddingValues(
+                                    start = 12.dp,
+                                    end = 12.dp,
+                                    top = contentTopPadding + 4.dp,
+                                    bottom = 4.dp
+                                ),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                // chips 作为首项随列表滚动，保证内容从毛玻璃顶栏下穿过
+                                if (typeFilterChips != null) {
+                                    item(key = "typeFilters") { typeFilterChips() }
+                                }
                                 items(state.threads, key = { it.tid }) { thread ->
                                     ThreadCard(
                                         thread = thread,
@@ -220,8 +259,19 @@ fun ForumThreadListScreen(
                             }
                         }
 
-                        state.isLoading -> LoadingViewCentered()
-                        else -> EmptyStateView(message = state.error?.let { stringResource(it) })
+                        // 居中区排除顶部玻璃，转圈落在可见区域中心
+                        state.isLoading -> LoadingViewCentered(
+                            Modifier.padding(top = contentTopPadding)
+                        )
+                        else -> Column(modifier = Modifier.fillMaxSize()) {
+                            // 空态保留固定 chips，避免结果为空时无法切回其他筛选
+                            if (typeFilterChips != null) {
+                                Box(modifier = Modifier.padding(top = contentTopPadding)) {
+                                    typeFilterChips()
+                                }
+                            }
+                            EmptyStateView(message = state.error?.let { stringResource(it) })
+                        }
                     }
                 }
             }

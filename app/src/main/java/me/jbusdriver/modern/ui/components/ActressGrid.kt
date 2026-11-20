@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -55,7 +56,11 @@ fun ActressGrid(
     onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
     onActressLongClick: ((ActressUiModel) -> Unit)? = null,
     header: (@Composable () -> Unit)? = null,
-    gridState: LazyGridState = rememberLazyGridState()
+    gridState: LazyGridState = rememberLazyGridState(),
+    /** 追加到 contentPadding 顶部的高度（毛玻璃顶栏场景由调用方传入）。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 追加到 contentPadding 底部的高度（毛玻璃底部导航栏场景由调用方传入）。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val scope = rememberCoroutineScope()
     val showScrollToTop = rememberScrollToTopVisibility(gridState)
@@ -75,7 +80,12 @@ fun ActressGrid(
             columns = GridCells.Adaptive(95.dp),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(
+                start = 14.dp,
+                end = 14.dp,
+                top = 8.dp + contentPaddingTop,
+                bottom = 8.dp + contentPaddingBottom
+            ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -125,7 +135,7 @@ fun ActressGrid(
             onClick = { scope.launch { gridState.animateScrollToItem(0) } },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 64.dp)
+                .padding(bottom = 64.dp + contentPaddingBottom)
         )
     }
 }

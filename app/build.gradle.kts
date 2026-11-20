@@ -87,13 +87,31 @@ android {
         unitTests.isReturnDefaultValues = true
     }
 
+    // 性能测试包：-PperfReleaseAsDebug=true 时用 release 优化产物（R8）打 debug 包名/签名，
+    // 可直接覆盖已装的 debug 包；行为参数对齐 debug（关更新检查、允许明文），
+    // 保证与 debug 包对比时唯一变量是优化级别
+    val perfReleaseAsDebug = (findProperty("perfReleaseAsDebug") as String?) == "true"
+
     buildTypes {
         release {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", "false")
-            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
-            applicationIdSuffix = ".release"
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
+            buildConfigField(
+                "boolean",
+                "UPDATE_CHECK_ENABLED",
+                if (perfReleaseAsDebug) "false" else "true"
+            )
+            if (perfReleaseAsDebug) {
+                applicationIdSuffix = ".debug"
+                signingConfig = signingConfigs.getByName("debug")
+                manifestPlaceholders["allowBackup"] = "true"
+                manifestPlaceholders["usesCleartextTraffic"] = "true"
+            } else {
+                applicationIdSuffix = ".release"
+                if (hasReleaseSigning) {
+                    signingConfig = signingConfigs.getByName("release")
+                }
+                manifestPlaceholders["allowBackup"] = "false"
+                manifestPlaceholders["usesCleartextTraffic"] = "false"
             }
             isMinifyEnabled = true
             isShrinkResources = true
@@ -101,8 +119,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            manifestPlaceholders["allowBackup"] = "false"
-            manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
         debug {
             buildConfigField("boolean", "CACHE_REFRESH_TEST_MODE", cacheRefreshTestMode.toString())
@@ -204,6 +220,11 @@ dependencies {
     debugImplementation(libs.compose.ui.test.manifest)
     androidTestImplementation(libs.coroutines.test)
     androidTestImplementation(libs.room.testing)
+
+    // Haze background blur (see ui/components/HazeExt.kt for the isolated usage)
+    implementation(libs.haze)
+    implementation(libs.haze.blur)
+    implementation(libs.haze.blur.materials)
 
     // Lifecycle + ViewModel + Navigation 3
     implementation(libs.activity.compose)

@@ -2,6 +2,7 @@ package me.jbusdriver.modern.ui.movielist
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +15,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +39,7 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.data.db.entity.LtxResolveState
 import me.jbusdriver.modern.ui.MovieUiModel
+import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
 import me.jbusdriver.modern.ui.components.ScrollableCenteredState
@@ -59,6 +61,10 @@ fun LtxListScreen(
     active: Boolean = true,
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     viewModel: LtxListViewModel = hiltViewModel(key = "movie_ltx"),
+    /** 毛玻璃顶栏高度，转交列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val ltxEnabled by viewModel.ltxEnabled.collectAsStateWithLifecycle()
@@ -127,18 +133,25 @@ fun LtxListScreen(
     }
 
     // 下拉刷新：分页模型下单次刷新流量小（一页），直接刷
-    PullToRefreshBox(
+    AppPullToRefreshBox(
         // 首次加载（状态未明）用全屏转圈，避免与下拉指示圈叠显；
         // 状态明确后的加载一律由下拉指示圈表达
         isRefreshing = uiState.isRefreshing && !uiState.isLoading,
         onRefresh = {
             if (ltxEnabled) viewModel.refresh()
         },
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
+        // 指示圈下移到玻璃顶栏底缘，避免画在玻璃里
+        indicatorInsetTop = contentPaddingTop
     ) {
+        // 居中区排除上下玻璃，转圈/提示落在可见区域中心
+        val centeredStateModifier = Modifier.padding(
+            top = contentPaddingTop,
+            bottom = contentPaddingBottom
+        )
         when {
             !ltxEnabled -> {
-                ScrollableCenteredState(modifier = modifier) {
+                ScrollableCenteredState(modifier = centeredStateModifier) {
                     Text(
                         stringResource(R.string.ltx_disabled),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -147,7 +160,7 @@ fun LtxListScreen(
             }
 
             uiState.isLoading -> {
-                ScrollableCenteredState(modifier = modifier) {
+                ScrollableCenteredState(modifier = centeredStateModifier) {
                     CircularProgressIndicator()
                 }
             }
@@ -161,7 +174,7 @@ fun LtxListScreen(
             }
 
             uiState.items.isEmpty() -> {
-                ScrollableCenteredState(modifier = modifier) {
+                ScrollableCenteredState(modifier = centeredStateModifier) {
                     Text(
                         stringResource(R.string.ltx_empty),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -242,6 +255,8 @@ fun LtxListScreen(
                     modifier = modifier,
                     listState = listState,
                     gridState = gridState,
+                    contentPaddingTop = contentPaddingTop,
+                    contentPaddingBottom = contentPaddingBottom
                 )
             }
         }

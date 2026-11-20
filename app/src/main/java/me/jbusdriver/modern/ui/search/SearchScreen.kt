@@ -33,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -62,6 +65,9 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.ActressGrid
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.MovieList
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -141,74 +147,24 @@ fun SearchScreen(
         }
     }
 
-    Column(
+    val hazeState = rememberAppHazeState()
+    val density = LocalDensity.current
+    var headerHeightPx by remember { mutableIntStateOf(0) }
+    // 悬浮搜索头高度（含状态栏 padding），作为结果列表的顶部 contentPadding
+    val headerHeight = with(density) { headerHeightPx.toDp() }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .imePadding()
     ) {
-        // Search input with back button
-        OutlinedTextField(
-            value = searchInput,
-            onValueChange = { searchInput = it },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { doSearch() }),
-            shape = RoundedCornerShape(25),
+        // 结果层：整体作为模糊源，列表从悬浮搜索头下方穿过
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester)
-                .padding(horizontal = 14.dp),
-            leadingIcon = {
-                IconButton(onClick = {
-                    focusManager.clearFocus()
-                    onBack()
-                }) {
-                    Icon(
-                        painterResource(R.drawable.arrow_back_24px),
-                        contentDescription = stringResource(R.string.back)
-                    )
-                }
-            },
-            trailingIcon = {
-                if (searchInput.isNotEmpty()) {
-                    IconButton(onClick = {
-                        searchInput = ""
-                        viewModel.clearSearch()
-                        focusRequester.requestFocus()
-                    }) {
-                        Icon(
-                            painterResource(R.drawable.close_24px),
-                            contentDescription = stringResource(R.string.clear)
-                        )
-                    }
-                }
-            }
-        )
-
-        // Search type chips
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .fillMaxSize()
+                .hazeSourceContent(hazeState)
         ) {
-            items(SearchType.entries) { type ->
-                FilterChip(
-                    selected = uiState.searchType == type,
-                    onClick = {
-                        val query = searchInput.trim()
-                        if (query.isNotBlank()) {
-                            viewModel.search(query, type)
-                        } else {
-                            viewModel.setSearchType(type)
-                        }
-                    },
-                    label = { Text(type.title, style = MaterialTheme.typography.labelSmall) }
-                )
-            }
-        }
-
         // Results
         val isActress = uiState.searchType == SearchType.ACTRESS
         val hasResults =
@@ -229,7 +185,8 @@ fun SearchScreen(
                             isDownloaded = { it.code.uppercase() in downloadedCodes },
                             modifier = Modifier
                                 .weight(1f)
-                                .then(dismissKeyboardModifier)
+                                .then(dismissKeyboardModifier),
+                            contentPaddingTop = headerHeight
                         )
                         Box(
                             modifier = Modifier
@@ -270,7 +227,7 @@ fun SearchScreen(
 
             !hasResults && uiState.query.isBlank() -> {
                 if (searchHistory.isNotEmpty()) {
-                    Column(modifier = Modifier.padding(14.dp)) {
+                    Column(modifier = Modifier.padding(top = headerHeight, start = 14.dp, end = 14.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -371,7 +328,8 @@ fun SearchScreen(
                 isLoadingMore = uiState.isLoadingMore,
                 onLoadMore = { viewModel.loadMore() },
                 onActressClick = { actress, _ -> onActressClick(actress, censorType) },
-                modifier = dismissKeyboardModifier
+                modifier = dismissKeyboardModifier,
+                contentPaddingTop = headerHeight
             )
 
             // 联网影片结果（已提交搜索；不再混入本地结果/header）
@@ -383,8 +341,82 @@ fun SearchScreen(
                 onMovieClick = { movie, _ -> onMovieClick(movie, censorType) },
                 isGrid = isGrid,
                 isDownloaded = { it.code.uppercase() in downloadedCodes },
-                modifier = dismissKeyboardModifier
+                modifier = dismissKeyboardModifier,
+                contentPaddingTop = headerHeight
             )
+        }
+        }
+
+        // 悬浮搜索头：输入框 + 类型 chips，内容从其下方穿过（毛玻璃）。
+        // haze 必须先于 statusBarsPadding，玻璃面才盖得住状态栏；
+        // onSizeChanged 在 padding 前量到含状态栏的全高，供结果列表 contentPadding 用
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .hazeTopBar(hazeState)
+                .onSizeChanged { headerHeightPx = it.height }
+                .statusBarsPadding()
+        ) {
+            // Search input with back button
+            OutlinedTextField(
+                value = searchInput,
+                onValueChange = { searchInput = it },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { doSearch() }),
+                shape = RoundedCornerShape(25),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .padding(horizontal = 14.dp),
+                leadingIcon = {
+                    IconButton(onClick = {
+                        focusManager.clearFocus()
+                        onBack()
+                    }) {
+                        Icon(
+                            painterResource(R.drawable.arrow_back_24px),
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
+                trailingIcon = {
+                    if (searchInput.isNotEmpty()) {
+                        IconButton(onClick = {
+                            searchInput = ""
+                            viewModel.clearSearch()
+                            focusRequester.requestFocus()
+                        }) {
+                            Icon(
+                                painterResource(R.drawable.close_24px),
+                                contentDescription = stringResource(R.string.clear)
+                            )
+                        }
+                    }
+                }
+            )
+
+            // Search type chips
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(SearchType.entries) { type ->
+                    FilterChip(
+                        selected = uiState.searchType == type,
+                        onClick = {
+                            val query = searchInput.trim()
+                            if (query.isNotBlank()) {
+                                viewModel.search(query, type)
+                            } else {
+                                viewModel.setSearchType(type)
+                            }
+                        },
+                        label = { Text(type.title, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
         }
     }
 }

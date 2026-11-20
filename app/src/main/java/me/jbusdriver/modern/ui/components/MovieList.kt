@@ -26,6 +26,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -62,7 +63,14 @@ fun MovieList(
      */
     footerMovieLongPressMenu: (@Composable (MovieUiModel, () -> Unit) -> Unit)? = null,
     gridState: LazyGridState = rememberLazyGridState(),
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    /**
+     * 追加到 contentPadding 顶部的额外高度。毛玻璃布局下内容从顶栏下穿过时，
+     * 由调用方传入顶栏底缘高度（状态栏 + 栏高），保证首项不被遮挡。
+     */
+    contentPaddingTop: Dp = 0.dp,
+    /** 追加到 contentPadding 底部的额外高度（毛玻璃底部导航栏高度，由调用方传入）。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val useGrid = isGrid ?: false
     if (useGrid) {
@@ -84,7 +92,12 @@ fun MovieList(
                 columns = GridCells.Adaptive(minSize = 95.dp),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 14.dp),
+                contentPadding = PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = contentPaddingTop,
+                    bottom = contentPaddingBottom
+                ),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (header != null) {
@@ -150,7 +163,7 @@ fun MovieList(
                 onClick = { scope.launch { gridState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 64.dp)
+                    .padding(bottom = 64.dp + contentPaddingBottom)
             )
         }
     } else {
@@ -171,7 +184,12 @@ fun MovieList(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 14.dp),
+                contentPadding = PaddingValues(
+                    start = 14.dp,
+                    end = 14.dp,
+                    top = contentPaddingTop,
+                    bottom = contentPaddingBottom
+                ),
             ) {
                 if (header != null) {
                     item { header() }
@@ -247,7 +265,7 @@ fun MovieList(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 64.dp)
+                    .padding(bottom = 64.dp + contentPaddingBottom)
             )
         }
     }

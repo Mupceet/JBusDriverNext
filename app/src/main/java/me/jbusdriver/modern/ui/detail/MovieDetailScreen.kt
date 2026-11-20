@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +74,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImagePainter
 import me.jbusdriver.R
 import me.jbusdriver.modern.ui.components.AppAsyncImage
+import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.ActressUiModel
 import me.jbusdriver.modern.ui.GenreUiModel
@@ -84,6 +84,9 @@ import me.jbusdriver.modern.ui.MovieUiModel
 import me.jbusdriver.modern.ui.components.CollectButton
 import me.jbusdriver.modern.ui.components.ErrorView
 import me.jbusdriver.modern.ui.components.ShareButton
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.data.localvideo.launchLocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.movieCodeFromUrl
@@ -154,10 +157,17 @@ fun MovieDetailScreen(
     val detail = uiState.movieDetail
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
+    val hazeState = rememberAppHazeState()
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.hazeTopBar(hazeState),
                 title = {
                     val translatedTitle = (uiState.titleTranslation as? TitleTranslationState.Translated)?.text
                     Text(
@@ -219,16 +229,25 @@ fun MovieDetailScreen(
             )
         }
     ) { padding ->
-        PullToRefreshBox(
+        AppPullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.refresh() },
+            // 内容穿透毛玻璃顶栏：不吃 padding，顶高转交 DetailContent 的 contentPadding；
+            // 指示圈同样下移到顶栏底缘，避免画在玻璃里
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .hazeSourceContent(hazeState),
+            indicatorInsetTop = padding.calculateTopPadding()
         ) {
             when {
                 uiState.isLoading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    // 居中区排除顶部玻璃，转圈落在可见区域中心
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(top = padding.calculateTopPadding()),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 }
@@ -251,7 +270,7 @@ fun MovieDetailScreen(
                         detail = detail,
                         titleTranslation = uiState.titleTranslation,
                         onToggleTitleTranslation = viewModel::toggleTitleTranslation,
-                        padding = PaddingValues(),
+                        padding = padding,
                         onMovieClick = { movie -> onMovieClick(movie, censorType) },
                         onActressClick = { actress -> onActressClick(actress, censorType) },
                         onGenreClick = { genre -> onGenreClick(genre, censorType) },
@@ -365,9 +384,8 @@ internal fun DetailContent(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = padding
     ) {
         // Cover image
         item(key = "cover") {

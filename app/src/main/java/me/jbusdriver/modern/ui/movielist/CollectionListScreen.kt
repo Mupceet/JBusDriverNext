@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,7 +40,11 @@ fun CollectionListScreen(
     active: Boolean = true,
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
     onActressClick: (ActressUiModel, String?) -> Unit = { _, _ -> },
-    viewModel: CollectionListViewModel = hiltViewModel()
+    viewModel: CollectionListViewModel = hiltViewModel(),
+    /** 毛玻璃顶栏高度，转交列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -96,6 +101,8 @@ fun CollectionListScreen(
                     onToggleCollect = { viewModel.removeMovie(it) },
                     isDownloaded = { it.code.uppercase() in downloadedCodes },
                     isGrid = isGrid,
+                    contentPaddingTop = contentPaddingTop,
+                    contentPaddingBottom = contentPaddingBottom,
                     footerHeader = {
                         if (uncollected.isNotEmpty()) {
                             Text(
@@ -165,7 +172,9 @@ fun CollectionListScreen(
                     actresses = uiState.actresses,
                     onActressClick = onActressClick,
                     onActressLongClick = { viewModel.removeActress(it) },
-                    modifier = modifier
+                    modifier = modifier,
+                    contentPaddingTop = contentPaddingTop,
+                    contentPaddingBottom = contentPaddingBottom
                 )
             }
         }

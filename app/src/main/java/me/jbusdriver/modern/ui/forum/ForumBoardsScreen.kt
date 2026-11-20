@@ -28,7 +28,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,12 +46,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.modern.ui.components.AppAsyncImage
+import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
@@ -70,7 +71,11 @@ private val TabLabels =
 @Composable
 fun ForumBoardsScreen(
     onBoardClick: (ForumBoard) -> Unit,
-    onThreadClick: (Int) -> Unit
+    onThreadClick: (Int) -> Unit,
+    /** 毛玻璃顶栏高度，转交列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp
 ) {
     val viewModel: ForumBoardsViewModel = hiltViewModel()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -82,10 +87,12 @@ fun ForumBoardsScreen(
         onPauseOrDispose { }
     }
 
-    PullToRefreshBox(
+    AppPullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = { viewModel.refresh() },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        // 指示圈下移到玻璃顶栏底缘，避免画在玻璃里
+        indicatorInsetTop = contentPaddingTop
     ) {
         val context = LocalContext.current
         LaunchedEffect(viewModel) {
@@ -100,13 +107,23 @@ fun ForumBoardsScreen(
             ForumHomeContent(
                 state = state,
                 onBoardClick = onBoardClick,
-                onThreadClick = onThreadClick
+                onThreadClick = onThreadClick,
+                contentPaddingTop = contentPaddingTop,
+                contentPaddingBottom = contentPaddingBottom
             )
         } else {
+            // 居中区排除上下玻璃，转圈/空态落在可见区域中心
+            val centeredStateModifier = Modifier.padding(
+                top = contentPaddingTop,
+                bottom = contentPaddingBottom
+            )
             if (state.isLoading) {
-                LoadingViewCentered()
+                LoadingViewCentered(centeredStateModifier)
             } else {
-                EmptyStateView(message = state.error?.let { stringResource(it) })
+                EmptyStateView(
+                    message = state.error?.let { stringResource(it) },
+                    modifier = centeredStateModifier
+                )
             }
         }
         if (state.isRevalidating && state.groups.isNotEmpty()) {
@@ -114,6 +131,8 @@ fun ForumBoardsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
+                    // 顶部校验进度条下移到玻璃顶栏底缘
+                    .padding(top = contentPaddingTop)
             )
         }
         ThemedSnackbarHost(
@@ -127,10 +146,17 @@ fun ForumBoardsScreen(
 private fun ForumHomeContent(
     state: ForumBoardsUiState,
     onBoardClick: (ForumBoard) -> Unit,
-    onThreadClick: (Int) -> Unit
+    onThreadClick: (Int) -> Unit,
+    contentPaddingTop: Dp = 0.dp,
+    contentPaddingBottom: Dp = 0.dp
 ) {
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(
+            start = 14.dp,
+            end = 14.dp,
+            top = 8.dp + contentPaddingTop,
+            bottom = 8.dp + contentPaddingBottom
+        ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Carousel

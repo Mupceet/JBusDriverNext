@@ -3,6 +3,8 @@ package me.jbusdriver.modern.ui.forum
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,7 +27,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -42,6 +44,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -60,12 +63,16 @@ import me.jbusdriver.modern.data.parser.extractFloorTarget
 import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.ui.components.EmptyStateView
 import me.jbusdriver.modern.ui.components.GifPlaceholder
 import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 
 /** 楼层跳转定位后背景高亮的持续时间。 */
@@ -128,9 +135,16 @@ fun ForumThreadDetailScreen(
     }
 
 
+    val hazeState = rememberAppHazeState()
+
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.hazeTopBar(hazeState),
                 title = {
                     Text(
                         detail?.title ?: "",
@@ -158,14 +172,21 @@ fun ForumThreadDetailScreen(
             ThemedSnackbarHost(hostState = snackbarHostState)
         }
     ) { innerPadding ->
+        // 内容穿透毛玻璃顶栏：不吃顶部 padding，顶高转交 LazyColumn contentPadding
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(
+                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                    bottom = innerPadding.calculateBottomPadding()
+                )
         ) {
-            PullToRefreshBox(
+            AppPullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = { viewModel.refresh() },
+                // 指示圈下移到玻璃顶栏底缘，避免画在玻璃里
+                indicatorInsetTop = innerPadding.calculateTopPadding(),
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {
@@ -253,9 +274,16 @@ fun ForumThreadDetailScreen(
                         }
 
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .hazeSourceContent(hazeState),
                             state = listState,
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = innerPadding.calculateTopPadding() + 14.dp,
+                                bottom = 14.dp
+                            )
                         ) {
                             item(key = "header") {
                                 Box(modifier = Modifier.padding(bottom = 8.dp)) {
@@ -430,8 +458,14 @@ fun ForumThreadDetailScreen(
                         }
                     }
 
-                    state.isLoading -> LoadingViewCentered()
-                    else -> EmptyStateView(message = state.error?.let { stringResource(it) })
+                    // 居中区排除顶部玻璃，转圈落在可见区域中心
+                    state.isLoading -> LoadingViewCentered(
+                        Modifier.padding(top = innerPadding.calculateTopPadding())
+                    )
+                    else -> EmptyStateView(
+                        message = state.error?.let { stringResource(it) },
+                        modifier = Modifier.padding(top = innerPadding.calculateTopPadding())
+                    )
                 }
                 LaunchedEffect(viewModel) {
                     viewModel.messages.collect { message ->

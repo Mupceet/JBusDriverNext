@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -55,6 +56,12 @@ fun CollectCategoryScreen(
     onActressClick: (ActressUiModel, String?) -> Unit,
     modifier: Modifier = Modifier,
     onSearchClick: (String) -> Unit = {},
+    /** 毛玻璃顶栏高度，转交各页列表 contentPadding 顶。 */
+    contentPaddingTop: Dp = 0.dp,
+    /** 毛玻璃底部导航栏高度，转交各页列表 contentPadding 底。 */
+    contentPaddingBottom: Dp = 0.dp,
+    /** 把 chips 行上报给主壳的持久玻璃头（chips 常驻不随列表滚动）。 */
+    onChipsAvailable: (@Composable () -> Unit) -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val pagerState = rememberPagerState { 2 }
@@ -131,7 +138,8 @@ fun CollectCategoryScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    // 收藏 tab chips 行：上报给主壳持久玻璃头，常驻屏幕、不随列表滚动
+    val tabChips: @Composable () -> Unit = {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -228,24 +236,25 @@ fun CollectCategoryScreen(
                 }
             }
         }
+    }
+    LaunchedEffect(Unit) { onChipsAvailable(tabChips) }
 
-        HorizontalPager(
-            state = pagerState,
-            beyondViewportPageCount = 1,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) { page ->
-            val dbType = if (page == 0) MovieDBType else ActressDBType
-            val vm: CollectionListViewModel = hiltViewModel(key = "collect_$page")
-            CollectionListScreen(
-                dbType = dbType,
-                active = true,
-                onMovieClick = onMovieClick,
-                onActressClick = onActressClick,
-                viewModel = vm
-            )
-        }
+    HorizontalPager(
+        state = pagerState,
+        beyondViewportPageCount = 1,
+        modifier = Modifier.fillMaxSize()
+    ) { page ->
+        val dbType = if (page == 0) MovieDBType else ActressDBType
+        val vm: CollectionListViewModel = hiltViewModel(key = "collect_$page")
+        CollectionListScreen(
+            dbType = dbType,
+            active = true,
+            onMovieClick = onMovieClick,
+            onActressClick = onActressClick,
+            viewModel = vm,
+            contentPaddingTop = contentPaddingTop,
+            contentPaddingBottom = contentPaddingBottom
+        )
     }
 
     // Filter Bottom Sheet

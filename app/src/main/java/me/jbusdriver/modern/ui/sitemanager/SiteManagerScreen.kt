@@ -8,6 +8,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,7 +43,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +56,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.mirror.MirrorUrl
 import me.jbusdriver.modern.data.mirror.ScanPhase
+import me.jbusdriver.modern.ui.components.hazeSourceContent
+import me.jbusdriver.modern.ui.components.hazeTopBar
+import me.jbusdriver.modern.ui.components.rememberAppHazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,9 +85,16 @@ fun SiteManagerScreen(
         }
     }
 
+    val hazeState = rememberAppHazeState()
+
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
+                ),
+                modifier = Modifier.hazeTopBar(hazeState),
                 title = { Text(stringResource(R.string.site_manager_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -115,9 +130,16 @@ fun SiteManagerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .hazeSourceContent(hazeState)
+                .padding(
+                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                    bottom = innerPadding.calculateBottomPadding()
+                )
                 .padding(horizontal = 14.dp)
                 .verticalScroll(rememberScrollState())
+                // 内容穿透毛玻璃顶栏：顶高放在 scroll 之后,随内容滚动提供首项让位
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
             SiteSection(
                 title = stringResource(R.string.site_group_preset),
