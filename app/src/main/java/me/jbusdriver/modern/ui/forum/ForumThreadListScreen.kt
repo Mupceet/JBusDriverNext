@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -195,7 +197,7 @@ fun ForumThreadListScreen(
                         state.threads.isNotEmpty() -> {
                             LazyColumn(
                                 state = listState,
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(state.threads, key = { it.tid }) { thread ->
@@ -297,104 +299,116 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            AppAsyncImage(
-                model = thread.authorAvatar,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentScale = ContentScale.Crop
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                val trailingLabels = buildList {
-                    if (thread.isPinned) {
-                        add(ForumInlineLabel("\u7f6e\u9802", MaterialTheme.colorScheme.primary))
-                    }
-                }
-                val trailingIcons = buildList {
-                    if (thread.isLocked) {
-                        add(
-                            ForumInlineIcon(
-                                id = "locked",
-                                iconRes = R.drawable.lock_24px,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                contentDescription = "closed"
-                            )
-                        )
-                    }
-                    if (thread.isDigest) {
-                        add(
-                            ForumInlineIcon(
-                                id = "digest",
-                                iconRes = R.drawable.thumb_up_24px,
-                                tint = MaterialTheme.colorScheme.primary,
-                                contentDescription = "recommend"
-                            )
-                        )
-                    }
-                    if (thread.isHot) {
-                        add(
-                            ForumInlineIcon(
-                                id = "hot",
-                                iconRes = R.drawable.local_fire_department_24px,
-                                tint = MaterialTheme.colorScheme.error,
-                                contentDescription = "hot"
-                            )
-                        )
-                    }
-                }
-                ForumThreadTitle(
-                    title = thread.title,
-                    typeName = thread.typeName,
-                    typeColor = thread.typeColor,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    badgeStyle = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    trailingLabels = trailingLabels,
-                    trailingIcons = trailingIcons
+        Column(modifier = Modifier.padding(10.dp)) {
+            // 第一行：头像 + 作者/时间双行 + 浏览·回复
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AppAsyncImage(
+                    model = thread.authorAvatar,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
                 )
-                // Thumbnails
-                if (thread.images.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.padding(top = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        thread.images.take(3).forEach { imgUrl ->
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        thread.author,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        thread.dateLine,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                Text(
+                    forumViewReplyCountText(thread.viewCount, thread.replyCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // 第二行：标题（徽标随行）
+            val trailingLabels = buildList {
+                if (thread.isPinned) {
+                    add(ForumInlineLabel("置頂", MaterialTheme.colorScheme.primary))
+                }
+            }
+            val trailingIcons = buildList {
+                if (thread.isLocked) {
+                    add(
+                        ForumInlineIcon(
+                            id = "locked",
+                            iconRes = R.drawable.lock_24px,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = "closed"
+                        )
+                    )
+                }
+                if (thread.isDigest) {
+                    add(
+                        ForumInlineIcon(
+                            id = "digest",
+                            iconRes = R.drawable.thumb_up_24px,
+                            tint = MaterialTheme.colorScheme.primary,
+                            contentDescription = "recommend"
+                        )
+                    )
+                }
+                if (thread.isHot) {
+                    add(
+                        ForumInlineIcon(
+                            id = "hot",
+                            iconRes = R.drawable.local_fire_department_24px,
+                            tint = MaterialTheme.colorScheme.error,
+                            contentDescription = "hot"
+                        )
+                    )
+                }
+            }
+            ForumThreadTitle(
+                title = thread.title,
+                typeName = thread.typeName,
+                typeColor = thread.typeColor,
+                modifier = Modifier.padding(top = 8.dp),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                badgeStyle = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                trailingLabels = trailingLabels,
+                trailingIcons = trailingIcons
+            )
+            // 第三行：缩略图。固定三等分槽位（80:55），有几张占几个，空槽不绘制——
+            // 任意图片数的卡内图块尺寸一致，也避免单张拉满整行导致低分辨率缩略图发糊
+            if (thread.images.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    repeat(3) { index ->
+                        val imgUrl = thread.images.getOrNull(index)
+                        if (imgUrl != null) {
                             AppAsyncImage(
                                 model = imgUrl,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .size(width = 80.dp, height = 55.dp)
+                                    .weight(1f)
+                                    .aspectRatio(80f / 55f)
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentScale = ContentScale.Crop
                             )
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f).aspectRatio(80f / 55f))
                         }
                     }
-                }
-                // Meta info
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "${thread.author} · ${thread.dateLine}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        forumViewReplyCountText(thread.viewCount, thread.replyCount),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
