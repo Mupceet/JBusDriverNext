@@ -38,8 +38,9 @@ class ForumThreadDetailStateTest {
 
     @Test
     fun `load detail fresh away from top stores changed detail as pending`() {
+        // 已加载楼层（共有楼层）内容变化（编辑）→ 提示刷新
         val current = detail("Title", replies = listOf(reply(1), reply(2)))
-        val fresh = detail("Title", replies = listOf(reply(10)))
+        val fresh = detail("Title", replies = listOf(reply(1), reply(2).copy(author = "edited")))
         val state = ForumThreadDetailUiState(
             detail = current,
             isRevalidating = true,
@@ -97,10 +98,58 @@ class ForumThreadDetailStateTest {
 
     @Test
     fun `counter-only revalidate preserves already loaded later-page replies`() {
-        // 用户已翻页合并了 floor 1..3；仅计数器变化的 revalidate 不应丢掉已加载的后续楼层。
+        // 用户已翻页合并了 floor 1..3；仅计数器变化的 revalidate 不应丢掉已加载的后续楼层，
+        // 且已翻页时保留旧翻页链（fresh 只覆盖第 1 页窗口）。
+        val pagedPageInfo = PageInfo(activePage = 2, nextPage = 3, referPages = listOf(1, 2, 3))
         val current = detail("Title", replies = listOf(reply(1), reply(2), reply(3)))
-            .copy(viewCount = 1_000)
+            .copy(viewCount = 1_000, pageInfo = pagedPageInfo)
         val fresh = detail("Title", replies = listOf(reply(1))).copy(viewCount = 5_000)
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false,
+            hasLoadedBeyondFirstPage = true
+        )
+
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
+        assertNull(reduction.state.pendingFreshDetail)
+        assertEquals(listOf(1, 2, 3), reduction.state.detail?.replies?.map { it.floor })
+        assertEquals(5_000, reduction.state.detail?.viewCount)
+        assertEquals(pagedPageInfo, reduction.state.detail?.pageInfo)
+    }
+
+    @Test
+    fun `reverse order new replies merge silently without prompting`() {
+        // 倒序：新增回复进入首屏 → 按楼层号对齐判定为纯新增 → 静默合并（旧索引对齐逻辑会误提示）。
+        val current = detail("T", replies = listOf(reply(5), reply(4), reply(3)))
+        val fresh = detail("T", replies = listOf(reply(6), reply(5), reply(4)))
+        val state = ForumThreadDetailUiState(
+            detail = current,
+            floorOrder = ForumFloorOrder.REVERSE,
+            isRevalidating = true
+        )
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
+        assertNull(reduction.state.pendingFreshDetail)
+        assertEquals(listOf(6, 5, 4, 3), reduction.state.detail?.replies?.map { it.floor })
+        assertEquals(3, reduction.state.detail?.replyCount)
+    }
+
+    @Test
+    fun `first page growth with unchanged floors merges silently and adopts fresh page info`() {
+        // 未翻页时首页自身增长（3→6 楼，既有楼层未变）：静默拼接 + 计数器取 fresh + 采纳 fresh 翻页信息。
+        val current = detail("T", replies = listOf(reply(1), reply(2), reply(3)))
+        val freshPageInfo = PageInfo(activePage = 1, nextPage = 2, referPages = listOf(1, 2))
+        val fresh = detail(
+            "T",
+            replies = listOf(reply(1), reply(2), reply(3), reply(4), reply(5), reply(6))
+        ).copy(pageInfo = freshPageInfo)
         val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
 
         val reduction = state.applyDetailRevalidateFresh(
@@ -110,25 +159,35 @@ class ForumThreadDetailStateTest {
 
         assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
         assertNull(reduction.state.pendingFreshDetail)
-        assertEquals(listOf(1, 2, 3), reduction.state.detail?.replies?.map { it.floor })
-        assertEquals(5_000, reduction.state.detail?.viewCount)
+        assertEquals(
+            listOf(1, 2, 3, 4, 5, 6),
+            reduction.state.detail?.replies?.map { it.floor }
+        )
+        assertEquals(6, reduction.state.detail?.replyCount)
+        assertEquals(freshPageInfo, reduction.state.detail?.pageInfo)
+        assertEquals(1_000L, reduction.state.lastUpdatedAtMillis)
     }
 
     @Test
-    fun `new first-page reply away from top prompts to refresh`() {
-        // 倒序：新增回复进入首屏楼层 → 视为内容变化 → 不在顶部时提示刷新。
-        val current = detail("T", replies = listOf(reply(5), reply(4), reply(3)))
-        val fresh = detail("T", replies = listOf(reply(6), reply(5), reply(4)))
-        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+    fun `floor missing from fresh is kept silently without prompting`() {
+        // 已加载但 fresh 未含的楼层（如被删）：无法区分窗口外与被删，从宽保留、不提示；计数器仍取 fresh。
+        val current = detail("T", replies = listOf(reply(4), reply(3), reply(2)))
+        val fresh = detail("T", replies = listOf(reply(4), reply(2)))
+        val state = ForumThreadDetailUiState(
+            detail = current,
+            floorOrder = ForumFloorOrder.REVERSE,
+            isRevalidating = true
+        )
 
         val reduction = state.applyDetailRevalidateFresh(
             entry = cacheEntry(fresh),
             isAtTop = false
         )
 
-        assertEquals(FreshRevalidateOutcome.StorePending, reduction.outcome)
-        assertEquals(fresh, reduction.state.pendingFreshDetail)
-        assertSame(current, reduction.state.detail)
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
+        assertNull(reduction.state.pendingFreshDetail)
+        assertEquals(listOf(4, 3, 2), reduction.state.detail?.replies?.map { it.floor })
+        assertEquals(2, reduction.state.detail?.replyCount)
     }
 
     @Test

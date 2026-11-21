@@ -30,11 +30,13 @@ internal fun ForumThreadDetailUiState.applyLoadDetailCached(
 internal fun ForumThreadDetailUiState.applyLoadDetailFresh(
     entry: CacheEntry<ForumThreadDetail>,
     isAtTop: Boolean,
-    forceApply: Boolean
+    forceApply: Boolean,
+    hasLoadedBeyondFirstPage: Boolean = false
 ): ForumThreadDetailFreshReduction =
     applyFreshDetail(
         entry = entry,
         shouldApplyImmediately = isAtTop || forceApply,
+        hasLoadedBeyondFirstPage = hasLoadedBeyondFirstPage,
         loadingCopy = { state ->
             state.copy(
                 isLoading = false,
@@ -47,11 +49,13 @@ internal fun ForumThreadDetailUiState.applyLoadDetailFresh(
 
 internal fun ForumThreadDetailUiState.applyDetailRevalidateFresh(
     entry: CacheEntry<ForumThreadDetail>,
-    isAtTop: Boolean
+    isAtTop: Boolean,
+    hasLoadedBeyondFirstPage: Boolean = false
 ): ForumThreadDetailFreshReduction =
     applyFreshDetail(
         entry = entry,
         shouldApplyImmediately = isAtTop,
+        hasLoadedBeyondFirstPage = hasLoadedBeyondFirstPage,
         loadingCopy = { state -> state.copy(isRevalidating = false) }
     )
 
@@ -79,6 +83,7 @@ internal fun ForumThreadDetailUiState.applyLoadDetailFailure(
 private inline fun ForumThreadDetailUiState.applyFreshDetail(
     entry: CacheEntry<ForumThreadDetail>,
     shouldApplyImmediately: Boolean,
+    hasLoadedBeyondFirstPage: Boolean,
     loadingCopy: (ForumThreadDetailUiState) -> ForumThreadDetailUiState
 ): ForumThreadDetailFreshReduction {
     val fresh = entry.value
@@ -112,14 +117,11 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
         )
 
         FreshRevalidateOutcome.ApplyInPlace -> ForumThreadDetailFreshReduction(
-            // 首屏内容未变（仅浏览数/回复数等高频计数器变动）：静默刷新计数器与时间戳，
-            // 既不弹"有新数据"打扰用户，也不替换已加载的多页楼层（避免丢页/回到顶部）。
+            // 已加载楼层无内容变化（仅计数器变动，或 fresh 带来纯新增楼层）：静默拼入新增楼层、
+            // 刷新计数器与时间戳，不弹"有新数据"打扰用户，也不替换已加载的多页楼层（避免丢页/回到顶部）。
             state = loadingCopy(
                 copy(
-                    detail = (detail ?: fresh).copy(
-                        viewCount = fresh.viewCount,
-                        replyCount = fresh.replyCount
-                    ),
+                    detail = mergeFreshInPlace(fresh, hasLoadedBeyondFirstPage),
                     lastUpdatedAtMillis = entry.storedAtMillis
                 )
             ),
@@ -127,7 +129,7 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
             changeReason = changeReason
         )
 
-        // 当前策略不会产出该值（无内容变化时也会静默刷新计数器）；保留分支保证 when 穷尽。
+        // 当前策略不会产出该值（无内容变化时也会静默合并计数器）；保留分支保证 when 穷尽。
         FreshRevalidateOutcome.NoChange -> ForumThreadDetailFreshReduction(
             state = loadingCopy(this),
             outcome = outcome,
@@ -137,15 +139,37 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
 }
 
 /**
- * 判定帖子详情首屏可见内容是否变化；变化时返回原因（用于日志），无变化返回 null。
+ * 静默合并：新增楼层经 [mergeReplyPages] 按 floor 去重排序拼入（正在看的楼层由列表 key 锚定不跳动），
+ * 浏览数/回复数取 fresh。未翻页（仍为第 1 页线性链）时一并采纳 fresh 的翻页信息——
+ * 短帖首页楼层增长跨页后 hasNext 才能更新；已翻页则保留旧翻页链（fresh 只覆盖第 1 页窗口）。
+ */
+private fun ForumThreadDetailUiState.mergeFreshInPlace(
+    fresh: ForumThreadDetail,
+    hasLoadedBeyondFirstPage: Boolean
+): ForumThreadDetail {
+    val current = detail ?: return fresh
+    return current.copy(
+        viewCount = fresh.viewCount,
+        replyCount = fresh.replyCount,
+        replies = mergeReplyPages(current.replies, fresh.replies, floorOrder),
+        pageInfo = if (hasLoadedBeyondFirstPage) current.pageInfo else fresh.pageInfo
+    )
+}
+
+/**
+ * 判定 fresh 相对已加载内容是否存在"需提示用户刷新"的变化；无变化返回 null（纯新增走静默合并）。
+ *
+ * 楼层比对按楼层号对齐（而非索引对齐——倒序下纯新增楼层会把索引整体错位误判为变化）：
+ * - 两个列表共有的楼层内容不一致（编辑/新点评/属性变化）→ 视为有新数据（提示刷新）；
+ * - fresh 多出的楼层为纯新增 → 不视为变化，由 ApplyInPlace 分支静默拼入；
+ * - 已加载但 fresh 未含的楼层（窗口外翻页楼层/被删楼层）→ 忽略并保留已加载内容，
+ *   手动刷新可校正；无法按楼层范围区分"窗口外"与"被删"（置顶楼会撑大窗口、
+ *   只看楼主模式下楼层稀疏），故统一从宽处理。
  *
  * 不参与判定的噪声字段：
  * - 浏览数（[ForumThreadDetail.viewCount]）/回复数（[ForumThreadDetail.replyCount]）：高频计数器；
  * - 点评时间字符串（[me.jbusdriver.modern.domain.model.Comment.time]，如"半小时前"）：
  *   为相对时间、会持续刷新而非固定时间戳，故比对前先归一化。
- *
- * 由此倒序下新增回复会进入首屏楼层 → 视为有新数据（提示刷新）；
- * 正序下新增回复落在更后页、首屏楼层不变 → 不视为有新数据（仅 ApplyInPlace 分支静默刷新计数器）。
  */
 private fun ForumThreadDetailUiState.detailChangeReason(fresh: ForumThreadDetail): String? {
     val old = detail ?: return "首次加载"
@@ -153,16 +177,16 @@ private fun ForumThreadDetailUiState.detailChangeReason(fresh: ForumThreadDetail
     if (old.typeName != fresh.typeName) return "类型"
     if (old.contentBlocks != fresh.contentBlocks) return "正文"
 
-    val oldReplies = old.replies.take(fresh.replies.size).withStableCommentTimes()
-    val freshReplies = fresh.replies.withStableCommentTimes()
-    if (oldReplies == freshReplies) return null
-    if (oldReplies.size != freshReplies.size) return "楼层数 ${oldReplies.size}→${freshReplies.size}"
-    val index = oldReplies.zip(freshReplies).indexOfFirst { (a, b) -> a != b }
-    if (index < 0) return null
-    val changedFloor = freshReplies[index].floor
-    val onlyCommentsChanged =
-        oldReplies[index].copy(comments = emptyList()) == freshReplies[index].copy(comments = emptyList())
-    return "楼层${changedFloor}#${if (onlyCommentsChanged) "点评" else "内容/属性"}"
+    val freshByFloor = fresh.replies.withStableCommentTimes().associateBy { it.floor }
+    for (oldReply in old.replies.withStableCommentTimes()) {
+        val freshReply = freshByFloor[oldReply.floor] ?: continue
+        if (oldReply != freshReply) {
+            val onlyCommentsChanged =
+                oldReply.copy(comments = emptyList()) == freshReply.copy(comments = emptyList())
+            return "楼层${oldReply.floor}#${if (onlyCommentsChanged) "点评" else "内容/属性"}"
+        }
+    }
+    return null
 }
 
 /** 忽略点评相对时间（[me.jbusdriver.modern.domain.model.Comment.time]）后的楼层列表，用于"是否有新数据"比对。 */

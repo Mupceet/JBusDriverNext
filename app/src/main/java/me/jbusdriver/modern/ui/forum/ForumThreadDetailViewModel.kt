@@ -190,6 +190,19 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     private fun isCurrent(generation: Long, identity: DetailRequestIdentity): Boolean =
         generation == requestGeneration && activeIdentity == identity
 
+    /** 静默合并楼层增减时的调试日志（楼层内容变化走 StorePending 提示，另有日志）。 */
+    private fun logSilentMerge(
+        source: String,
+        oldDetail: ForumThreadDetail?,
+        merged: ForumThreadDetail?
+    ) {
+        if (oldDetail == null || merged == null) return
+        val newCount = merged.replies.size
+        if (newCount > oldDetail.replies.size) {
+            KLog.d("[Forum] $source 静默合并楼层 tid=$tid：${oldDetail.replies.size}→$newCount", TAG)
+        }
+    }
+
     fun onLoadGif(url: String) {
         if (sessionTappedGifs.add(url)) {
             _loadedGifUrls.update { it + url }
@@ -325,8 +338,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             )
                             val oldDetail = _uiState.value.detail
                             if (oldDetail != null) {
+                                // 按楼层号对齐（与 detailChangeReason 一致），纯新增楼层不再显示为逐行内容变化
+                                val freshFloors = fresh.replies.mapTo(HashSet()) { it.floor }
                                 logReplyDiff(
-                                    oldDetail.replies.take(fresh.replies.size),
+                                    oldDetail.replies.filter { it.floor in freshFloors },
                                     fresh.replies,
                                     "Detail.loadDetail"
                                 )
@@ -340,10 +355,13 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             val reduction = _uiState.value.applyLoadDetailFresh(
                                 event.entry.copy(value = fresh),
                                 isAtTop = isAtTopForFreshUpdates,
-                                forceApply = forceRefresh || !showLoading
+                                forceApply = forceRefresh || !showLoading,
+                                hasLoadedBeyondFirstPage = currentPage > 1
                             )
                             if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
                                 KLog.d("[Forum] loadDetail 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
+                            } else if (reduction.outcome == FreshRevalidateOutcome.ApplyInPlace) {
+                                logSilentMerge("loadDetail", oldDetail, reduction.state.detail)
                             }
                             _uiState.value = reduction.state.withFilterCounts(authorUid)
                             if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
@@ -390,8 +408,10 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             )
                             val oldDetail = _uiState.value.detail
                             if (oldDetail != null) {
+                                // 按楼层号对齐（与 detailChangeReason 一致），纯新增楼层不再显示为逐行内容变化
+                                val freshFloors = fresh.replies.mapTo(HashSet()) { it.floor }
                                 logReplyDiff(
-                                    oldDetail.replies.take(fresh.replies.size),
+                                    oldDetail.replies.filter { it.floor in freshFloors },
                                     fresh.replies,
                                     "Detail.revalidate"
                                 )
@@ -404,13 +424,16 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                             }
                             val reduction = _uiState.value.applyDetailRevalidateFresh(
                                 event.entry.copy(value = fresh),
-                                isAtTop = isAtTopForFreshUpdates
+                                isAtTop = isAtTopForFreshUpdates,
+                                hasLoadedBeyondFirstPage = currentPage > 1
                             )
                             if (reduction.outcome == FreshRevalidateOutcome.ApplyImmediately) {
                                 currentPage = 1
                             }
                             if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
                                 KLog.d("[Forum] revalidate 有新数据提示 tid=$tid：${reduction.changeReason ?: "未知"}", TAG)
+                            } else if (reduction.outcome == FreshRevalidateOutcome.ApplyInPlace) {
+                                logSilentMerge("revalidate", oldDetail, reduction.state.detail)
                             }
                             _uiState.value = reduction.state
                             if (reduction.outcome == FreshRevalidateOutcome.StorePending) {
