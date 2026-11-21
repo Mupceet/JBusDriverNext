@@ -49,3 +49,10 @@ data object RouteSettings : NavKey
 
 @Serializable
 data object RouteSiteManager : NavKey
+
+/** 内置浏览器兜底打开网页（替代跳系统浏览器）。 */
+@Serializable
+data class RouteBrowser(
+    val url: String,
+    val title: String = ""
+) : NavKey

@@ -340,4 +340,13 @@
     <string name="settings_translation_target_en">English</string>
     <string name="translate_test_success">翻譯成功：%1$s</string>
     <string name="translate_test_failed">測試失敗，請檢查接口配置</string>
+
+    <!-- Browser -->
+    <string name="browser_title">瀏覽器</string>
+    <string name="browser_more">更多</string>
+    <string name="browser_open">打開</string>
+    <string name="browser_open_in_browser">在瀏覽器中打開</string>
+    <string name="browser_preview_image">預覽圖片</string>
+    <string name="browser_download_queued">已加入下載隊列</string>
+    <string name="browser_download_failed">無法開始下載</string>
 </resources>

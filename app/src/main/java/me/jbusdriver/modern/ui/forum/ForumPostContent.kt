@@ -56,7 +56,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -98,6 +97,7 @@ import me.jbusdriver.modern.domain.model.findBareLinkMatches
 import me.jbusdriver.modern.domain.model.findMovieCodeMatches
 import me.jbusdriver.modern.domain.model.normalizeMovieCode
 import me.jbusdriver.modern.domain.model.toExternalUrl
+import me.jbusdriver.modern.ui.browser.rememberWebOpener
 import me.jbusdriver.modern.ui.components.GifPlaceholder
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
@@ -303,7 +303,7 @@ private fun StyledParagraph(
     if (!paragraph.hasVisibleContent()) return
 
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
+    val openWeb = rememberWebOpener()
     val haptics = LocalHapticFeedback.current
     val copiedMessage = stringResource(R.string.copied)
     val copiedLinkMessage = stringResource(R.string.copied_link)
@@ -354,7 +354,7 @@ private fun StyledParagraph(
                             ForumLinkKind.MOVIE_CODE -> currentOnMovieCodeClick?.invoke(hit.value)
 
                             ForumLinkKind.URL -> currentOnLinkClick?.invoke(hit.value)
-                                ?: uriHandler.openUri(hit.value)
+                                ?: openWeb(hit.value)
 
                             // 磁力/ED2K/网盘:交给系统应用(下载器/播放器/网盘客户端)或浏览器
                             ForumLinkKind.MAGNET,

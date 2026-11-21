@@ -48,7 +48,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +63,7 @@ import me.jbusdriver.modern.data.parser.ForumLinkTarget
 import me.jbusdriver.modern.data.parser.resolveForumLinkTarget
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.browser.rememberWebOpener
 import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.ui.components.EmptyStateView
 import me.jbusdriver.modern.ui.components.GifPlaceholder
@@ -255,8 +255,8 @@ fun ForumThreadDetailScreen(
                         }
 
                         // 帖内行内链接：同帖楼层指路链接（goto=findpost / #pid 锚点）跳转定位，
-                        // 其余（外链/跨帖）维持系统默认打开。
-                        val uriHandler = LocalUriHandler.current
+                        // 其余（外链/跨站）用内置浏览器打开。
+                        val openWeb = rememberWebOpener()
 
                         // 引用楼层/同帖 findpost 链接点击：先在已加载楼层中定位；未命中时经
                         // findpost 重定向拉取目标页合并后重新定位，仍失败回退浏览器打开链接。
@@ -265,9 +265,7 @@ fun ForumThreadDetailScreen(
                             scope.launch {
                                 when (viewModel.locateQuotedFloor(quotedPid)) {
                                     FloorLocateResult.Located -> jumpToFloor(quotedPid)
-                                    FloorLocateResult.NotFound -> runCatching {
-                                        uriHandler.openUri(fallbackUrl)
-                                    }
+                                    FloorLocateResult.NotFound -> openWeb(fallbackUrl)
 
                                     FloorLocateResult.Superseded -> Unit
                                 }
@@ -291,7 +289,7 @@ fun ForumThreadDetailScreen(
 
                                 is ForumLinkTarget.Board -> onOpenBoard(target.forumId)
                                 is ForumLinkTarget.Image -> onImageClick(listOf(target.url), 0)
-                                is ForumLinkTarget.Web -> runCatching { uriHandler.openUri(url) }
+                                is ForumLinkTarget.Web -> openWeb(url)
                             }
                         }
 

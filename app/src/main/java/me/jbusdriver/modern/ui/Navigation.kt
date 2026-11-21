@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,6 +30,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.StateFlow
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.ui.browser.BrowserScreen
+import me.jbusdriver.modern.ui.browser.LocalWebNavigator
+import me.jbusdriver.modern.ui.browser.WebNavigator
 import me.jbusdriver.modern.ui.detail.MovieDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
@@ -90,297 +94,347 @@ fun JBusNavigation(
         ) + fadeOut(tween(ANIM_DURATION)))
     }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
-        transitionSpec = {
-            suppressAnim = false
-            forwardSpec
-        },
-        popTransitionSpec = {
-            (scaleIn(
-                initialScale = 0.9f,
-                animationSpec = tween(ANIM_DURATION)
-            ) + fadeIn(tween(ANIM_DURATION))) togetherWith slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(ANIM_DURATION)
-            )
-        },
-        predictivePopTransitionSpec = {
-            (scaleIn(
-                initialScale = 0.9f,
-                animationSpec = tween(ANIM_DURATION)
-            ) + fadeIn(tween(ANIM_DURATION))) togetherWith slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(ANIM_DURATION)
-            )
-        },
-        entryDecorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator()
-        ),
-        entryProvider = entryProvider {
-            entry<RouteMain> {
-                MainScreen(
-                    onMovieClick = { movie, censorType ->
-                        backStack.add(RouteMovieDetail(movie.link, censorType))
-                    },
-                    onActressClick = { actress, censorType ->
-                        backStack.add(
-                            RouteLinkMovies(
-                                actress.link,
-                                actress.name,
-                                type = "actress",
-                                avatar = actress.avatar,
-                                censorType = censorType
-                            )
-                        )
-                    },
-                    onGenreClick = { genre, censorType ->
-                        backStack.add(
-                            RouteLinkMovies(
-                                genre.link,
-                                genre.name,
-                                type = "genre",
-                                censorType = censorType
-                            )
-                        )
-                    },
-                    onSearchClick = { searchType ->
-                        backStack.add(RouteSearch(searchType))
-                    },
-                    onForumBoardClick = { board ->
-                        backStack.add(RouteForumThreadList(board.id, board.name, board.typeId))
-                    },
-                    onForumThreadClick = { tid ->
-                        backStack.add(RouteForumThreadDetail(tid))
-                    },
-                    onSettingsClick = { backStack.add(RouteSettings) }
+    // 网页统一入口：优先 push 内置浏览器（RouteBrowser），各界面经 rememberWebOpener() 使用
+    val webNavigator = remember {
+        WebNavigator { webUrl -> backStack.add(RouteBrowser(webUrl)) }
+    }
+
+    CompositionLocalProvider(LocalWebNavigator provides webNavigator) {
+        NavDisplay(
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            transitionSpec = {
+                suppressAnim = false
+                forwardSpec
+            },
+            popTransitionSpec = {
+                (scaleIn(
+                    initialScale = 0.9f,
+                    animationSpec = tween(ANIM_DURATION)
+                ) + fadeIn(tween(ANIM_DURATION))) togetherWith slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(ANIM_DURATION)
                 )
-            }
-            entry<RouteSearch>(
-                metadata = metadata {
-                    put(NavDisplay.TransitionKey) {
-                        (slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(ANIM_DURATION_SEARCH)
-                        ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
-                                (scaleOut(
-                                    targetScale = 0.9f,
-                                    animationSpec = tween(ANIM_DURATION)
-                                ) + fadeOut(tween(ANIM_DURATION)))
-                    }
-                    put(NavDisplay.PopTransitionKey) {
-                        (scaleIn(
-                            initialScale = 0.9f,
-                            animationSpec = tween(ANIM_DURATION)
-                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                                (slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(ANIM_DURATION_SEARCH)
-                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
-                    }
-                    put(NavDisplay.PredictivePopTransitionKey) {
-                        (scaleIn(
-                            initialScale = 0.9f,
-                            animationSpec = tween(ANIM_DURATION)
-                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                                (slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(ANIM_DURATION_SEARCH)
-                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
-                    }
-                }
-            ) { key ->
-                SearchScreen(
-                    defaultSearchType = key.defaultSearchType,
-                    onMovieClick = { movie, censorType ->
-                        backStack.add(RouteMovieDetail(movie.link, censorType))
-                    },
-                    onActressClick = { actress, censorType ->
-                        backStack.add(
-                            RouteLinkMovies(
-                                actress.link,
-                                actress.name,
-                                type = "actress",
-                                avatar = actress.avatar,
-                                censorType = censorType
-                            )
-                        )
-                    },
-                    onBack = { backStack.removeLastOrNull() }
+            },
+            predictivePopTransitionSpec = {
+                (scaleIn(
+                    initialScale = 0.9f,
+                    animationSpec = tween(ANIM_DURATION)
+                ) + fadeIn(tween(ANIM_DURATION))) togetherWith slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(ANIM_DURATION)
                 )
-            }
-            entry<RouteMovieDetail> { key ->
-                MovieDetailScreen(
-                    movieUrl = key.movieUrl,
-                    censorType = key.censorType,
-                    onMovieClick = { movie, censorType ->
-                        backStack.add(RouteMovieDetail(movie.link, censorType))
-                    },
-                    onImageClick = { images, startIndex ->
-                        backStack.add(RouteImageViewer(images, startIndex))
-                    },
-                    onActressClick = { actress, censorType ->
-                        backStack.add(
-                            RouteLinkMovies(
-                                actress.link,
-                                actress.name,
-                                type = "actress",
-                                avatar = actress.avatar,
-                                censorType = censorType
-                            )
-                        )
-                    },
-                    onGenreClick = { genre, censorType ->
-                        backStack.add(
-                            RouteLinkMovies(
-                                genre.link,
-                                genre.name,
-                                type = "genre",
-                                censorType = censorType
-                            )
-                        )
-                    },
-                    onHeaderClick = { header, censorType ->
-                        if (header.link.isNotBlank()) {
+            },
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator()
+            ),
+            entryProvider = entryProvider {
+                entry<RouteMain> {
+                    MainScreen(
+                        onMovieClick = { movie, censorType ->
+                            backStack.add(RouteMovieDetail(movie.link, censorType))
+                        },
+                        onActressClick = { actress, censorType ->
                             backStack.add(
                                 RouteLinkMovies(
-                                    header.link,
-                                    header.name + ": " + header.value,
-                                    type = "header",
+                                    actress.link,
+                                    actress.name,
+                                    type = "actress",
+                                    avatar = actress.avatar,
                                     censorType = censorType
                                 )
                             )
-                        }
-                    },
-                    onBack = { backStack.removeLastOrNull() }
-                )
-            }
-            entry<RouteImageViewer> { key ->
-                ImageViewScreen(
-                    images = key.images,
-                    startIndex = key.startIndex,
-                    onBack = { backStack.removeLastOrNull() }
-                )
-            }
-            entry<RouteLinkMovies> { key ->
-                LinkMovieListRoute(
-                    linkUrl = key.linkUrl,
-                    title = key.title,
-                    type = key.type,
-                    avatarUrl = key.avatar,
-                    censorType = key.censorType,
-                    onMovieClick = { movie, censorType ->
-                        backStack.add(RouteMovieDetail(movie.link, censorType))
-                    },
-                    onBack = { backStack.removeLastOrNull() }
-                )
-            }
-            entry<RouteForumThreadList> { key ->
-                ForumThreadListScreen(
-                    fid = key.fid,
-                    title = key.title,
-                    typeId = key.typeId,
-                    onThreadClick = { tid ->
-                        backStack.add(RouteForumThreadDetail(tid))
-                    },
-                    onBack = { backStack.removeLastOrNull() }
-                )
-            }
-            entry<RouteForumThreadDetail> { key ->
-                ForumThreadDetailScreen(
-                    tid = key.tid,
-                    onImageClick = { images, startIndex ->
-                        backStack.add(RouteImageViewer(images, startIndex))
-                    },
-                    onOpenMovieDetail = { url ->
-                        backStack.add(RouteMovieDetail(movieUrl = url, censorType = null))
-                    },
-                    onOpenThread = { tid ->
-                        backStack.add(RouteForumThreadDetail(tid))
-                    },
-                    onOpenBoard = { fid ->
-                        backStack.add(RouteForumThreadList(fid = fid))
-                    },
-                    onBack = { backStack.removeLastOrNull() }
-                )
-            }
-            entry<RouteSettings>(
-                metadata = metadata {
-                    put(NavDisplay.TransitionKey) {
-                        (slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(ANIM_DURATION_SEARCH)
-                        ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
+                        },
+                        onGenreClick = { genre, censorType ->
+                            backStack.add(
+                                RouteLinkMovies(
+                                    genre.link,
+                                    genre.name,
+                                    type = "genre",
+                                    censorType = censorType
+                                )
+                            )
+                        },
+                        onSearchClick = { searchType ->
+                            backStack.add(RouteSearch(searchType))
+                        },
+                        onForumBoardClick = { board ->
+                            backStack.add(RouteForumThreadList(board.id, board.name, board.typeId))
+                        },
+                        onForumThreadClick = { tid ->
+                            backStack.add(RouteForumThreadDetail(tid))
+                        },
+                        onSettingsClick = { backStack.add(RouteSettings) }
+                    )
+                }
+                entry<RouteSearch>(
+                    metadata = metadata {
+                        put(NavDisplay.TransitionKey) {
+                            (slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
                                 (scaleOut(
                                     targetScale = 0.9f,
                                     animationSpec = tween(ANIM_DURATION)
                                 ) + fadeOut(tween(ANIM_DURATION)))
-                    }
-                    put(NavDisplay.PopTransitionKey) {
-                        (scaleIn(
-                            initialScale = 0.9f,
-                            animationSpec = tween(ANIM_DURATION)
-                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                                (slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(ANIM_DURATION_SEARCH)
-                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
-                    }
-                    put(NavDisplay.PredictivePopTransitionKey) {
-                        (scaleIn(
-                            initialScale = 0.9f,
-                            animationSpec = tween(ANIM_DURATION)
-                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                                (slideOutVertically(
-                                    targetOffsetY = { it },
-                                    animationSpec = tween(ANIM_DURATION_SEARCH)
-                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
-                    }
-                }
-            ) {
-                SettingsScreen(
-                    onBack = { backStack.removeLastOrNull() },
-                    onOpenSiteManager = { backStack.add(RouteSiteManager) }
-                )
-            }
-            entry<RouteSiteManager>(
-                metadata = metadata {
-                    put(NavDisplay.TransitionKey) {
-                        (slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(ANIM_DURATION_SEARCH)
-                        ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
-                            (scaleOut(
-                                targetScale = 0.9f,
+                        }
+                        put(NavDisplay.PopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
                                 animationSpec = tween(ANIM_DURATION)
-                            ) + fadeOut(tween(ANIM_DURATION)))
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                        put(NavDisplay.PredictivePopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
                     }
-                    put(NavDisplay.PopTransitionKey) {
-                        (scaleIn(
-                            initialScale = 0.9f,
-                            animationSpec = tween(ANIM_DURATION)
-                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                            (slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(ANIM_DURATION_SEARCH)
-                            ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
-                    }
-                    put(NavDisplay.PredictivePopTransitionKey) {
-                        (scaleIn(
-                            initialScale = 0.9f,
-                            animationSpec = tween(ANIM_DURATION)
-                        ) + fadeIn(tween(ANIM_DURATION))) togetherWith
-                            (slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(ANIM_DURATION_SEARCH)
-                            ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
-                    }
+                ) { key ->
+                    SearchScreen(
+                        defaultSearchType = key.defaultSearchType,
+                        onMovieClick = { movie, censorType ->
+                            backStack.add(RouteMovieDetail(movie.link, censorType))
+                        },
+                        onActressClick = { actress, censorType ->
+                            backStack.add(
+                                RouteLinkMovies(
+                                    actress.link,
+                                    actress.name,
+                                    type = "actress",
+                                    avatar = actress.avatar,
+                                    censorType = censorType
+                                )
+                            )
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
                 }
-            ) {
-                SiteManagerScreen(onBack = { backStack.removeLastOrNull() })
+                entry<RouteMovieDetail> { key ->
+                    MovieDetailScreen(
+                        movieUrl = key.movieUrl,
+                        censorType = key.censorType,
+                        onMovieClick = { movie, censorType ->
+                            backStack.add(RouteMovieDetail(movie.link, censorType))
+                        },
+                        onImageClick = { images, startIndex ->
+                            backStack.add(RouteImageViewer(images, startIndex))
+                        },
+                        onActressClick = { actress, censorType ->
+                            backStack.add(
+                                RouteLinkMovies(
+                                    actress.link,
+                                    actress.name,
+                                    type = "actress",
+                                    avatar = actress.avatar,
+                                    censorType = censorType
+                                )
+                            )
+                        },
+                        onGenreClick = { genre, censorType ->
+                            backStack.add(
+                                RouteLinkMovies(
+                                    genre.link,
+                                    genre.name,
+                                    type = "genre",
+                                    censorType = censorType
+                                )
+                            )
+                        },
+                        onHeaderClick = { header, censorType ->
+                            if (header.link.isNotBlank()) {
+                                backStack.add(
+                                    RouteLinkMovies(
+                                        header.link,
+                                        header.name + ": " + header.value,
+                                        type = "header",
+                                        censorType = censorType
+                                    )
+                                )
+                            }
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteImageViewer> { key ->
+                    ImageViewScreen(
+                        images = key.images,
+                        startIndex = key.startIndex,
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteLinkMovies> { key ->
+                    LinkMovieListRoute(
+                        linkUrl = key.linkUrl,
+                        title = key.title,
+                        type = key.type,
+                        avatarUrl = key.avatar,
+                        censorType = key.censorType,
+                        onMovieClick = { movie, censorType ->
+                            backStack.add(RouteMovieDetail(movie.link, censorType))
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteForumThreadList> { key ->
+                    ForumThreadListScreen(
+                        fid = key.fid,
+                        title = key.title,
+                        typeId = key.typeId,
+                        onThreadClick = { tid ->
+                            backStack.add(RouteForumThreadDetail(tid))
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteForumThreadDetail> { key ->
+                    ForumThreadDetailScreen(
+                        tid = key.tid,
+                        onImageClick = { images, startIndex ->
+                            backStack.add(RouteImageViewer(images, startIndex))
+                        },
+                        onOpenMovieDetail = { url ->
+                            backStack.add(RouteMovieDetail(movieUrl = url, censorType = null))
+                        },
+                        onOpenThread = { tid ->
+                            backStack.add(RouteForumThreadDetail(tid))
+                        },
+                        onOpenBoard = { fid ->
+                            backStack.add(RouteForumThreadList(fid = fid))
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteSettings>(
+                    metadata = metadata {
+                        put(NavDisplay.TransitionKey) {
+                            (slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
+                                (scaleOut(
+                                    targetScale = 0.9f,
+                                    animationSpec = tween(ANIM_DURATION)
+                                ) + fadeOut(tween(ANIM_DURATION)))
+                        }
+                        put(NavDisplay.PopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                        put(NavDisplay.PredictivePopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                    }
+                ) {
+                    SettingsScreen(
+                        onBack = { backStack.removeLastOrNull() },
+                        onOpenSiteManager = { backStack.add(RouteSiteManager) }
+                    )
+                }
+                entry<RouteSiteManager>(
+                    metadata = metadata {
+                        put(NavDisplay.TransitionKey) {
+                            (slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
+                                (scaleOut(
+                                    targetScale = 0.9f,
+                                    animationSpec = tween(ANIM_DURATION)
+                                ) + fadeOut(tween(ANIM_DURATION)))
+                        }
+                        put(NavDisplay.PopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                        put(NavDisplay.PredictivePopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                    }
+                ) {
+                    SiteManagerScreen(onBack = { backStack.removeLastOrNull() })
+                }
+                entry<RouteBrowser>(
+                    metadata = metadata {
+                        put(NavDisplay.TransitionKey) {
+                            (slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
+                                (scaleOut(
+                                    targetScale = 0.9f,
+                                    animationSpec = tween(ANIM_DURATION)
+                                ) + fadeOut(tween(ANIM_DURATION)))
+                        }
+                        put(NavDisplay.PopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                        put(NavDisplay.PredictivePopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                    }
+                ) { key ->
+                    BrowserScreen(
+                        url = key.url,
+                        title = key.title,
+                        onImageClick = { images, startIndex ->
+                            backStack.add(RouteImageViewer(images, startIndex))
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
             }
-        }
-    )
+        )
+    }
 }

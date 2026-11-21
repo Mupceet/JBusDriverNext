@@ -350,4 +350,13 @@
     <string name="settings_translation_target_en">English</string>
     <string name="translate_test_success">Translation OK: %1$s</string>
     <string name="translate_test_failed">Test failed — check the API configuration</string>
+
+    <!-- Browser -->
+    <string name="browser_title">Browser</string>
+    <string name="browser_more">More</string>
+    <string name="browser_open">Open</string>
+    <string name="browser_open_in_browser">Open in browser</string>
+    <string name="browser_preview_image">Preview image</string>
+    <string name="browser_download_queued">Added to download queue</string>
+    <string name="browser_download_failed">Couldn\'t start download</string>
 </resources>
