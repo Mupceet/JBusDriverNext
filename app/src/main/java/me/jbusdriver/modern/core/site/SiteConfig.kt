@@ -12,6 +12,58 @@ import javax.inject.Singleton
 
 const val DEFAULT_SITE_URL = "https://www.javbus.com"
 
+/**
+ * 预置镜像站点（官方镜像组合：11 个名字 × 4 个 TLD）。
+ * 与 AndroidManifest 的 VIEW intent-filter 中的 host 清单保持同步（manifest 为
+ * apex + `*.` 通配子域形式）。供站点管理「长按添加」一次性批量加入自定义组。
+ */
+val PRESET_MIRROR_URLS: List<String> = listOf(
+    "https://www.busfan.casa",
+    "https://www.busfan.bond",
+    "https://www.busfan.lol",
+    "https://www.busfan.cfd",
+    "https://www.seedm.casa",
+    "https://www.seedm.bond",
+    "https://www.seedm.lol",
+    "https://www.seedm.cfd",
+    "https://www.javbus.casa",
+    "https://www.javbus.bond",
+    "https://www.javbus.lol",
+    "https://www.javbus.cfd",
+    "https://www.dmmsee.casa",
+    "https://www.dmmsee.bond",
+    "https://www.dmmsee.lol",
+    "https://www.dmmsee.cfd",
+    "https://www.busjav.casa",
+    "https://www.busjav.bond",
+    "https://www.busjav.lol",
+    "https://www.busjav.cfd",
+    "https://www.busdmm.casa",
+    "https://www.busdmm.bond",
+    "https://www.busdmm.lol",
+    "https://www.busdmm.cfd",
+    "https://www.buscdn.casa",
+    "https://www.buscdn.bond",
+    "https://www.buscdn.lol",
+    "https://www.buscdn.cfd",
+    "https://www.cdnbus.casa",
+    "https://www.cdnbus.bond",
+    "https://www.cdnbus.lol",
+    "https://www.cdnbus.cfd",
+    "https://www.dmmbus.casa",
+    "https://www.dmmbus.bond",
+    "https://www.dmmbus.lol",
+    "https://www.dmmbus.cfd",
+    "https://www.fanbus.casa",
+    "https://www.fanbus.bond",
+    "https://www.fanbus.lol",
+    "https://www.fanbus.cfd",
+    "https://www.seejav.casa",
+    "https://www.seejav.bond",
+    "https://www.seejav.lol",
+    "https://www.seejav.cfd"
+)
+
 interface SitePreferenceSource {
     suspend fun currentSelectedBaseUrl(): String
 }

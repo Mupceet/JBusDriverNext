@@ -178,6 +178,8 @@
     <string name="site_add_title">Add custom URL</string>
     <string name="site_add_hint">Enter a URL you can reach (with http/https)</string>
     <string name="site_add_invalid_or_duplicate">Invalid or duplicate URL</string>
+    <string name="site_add_all_mirrors_done">Added %1$d mirror sites</string>
+    <string name="site_add_all_mirrors_exists">All preset mirror sites already added</string>
     <string name="site_add_saved_reachable">Saved; reachable (%1$d ms)</string>
     <string name="site_add_saved_unreachable">Saved; currently unreachable (still selectable)</string>
     <string name="site_delete_selected_first">Switch to another site before deleting</string>

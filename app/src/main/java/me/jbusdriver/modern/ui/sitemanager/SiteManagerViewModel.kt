@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
@@ -20,6 +21,7 @@ import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.core.site.DEFAULT_SITE_URL
+import me.jbusdriver.modern.core.site.PRESET_MIRROR_URLS
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.core.site.normalizeBaseUrl
 import me.jbusdriver.modern.data.mirror.MirrorUrl
@@ -132,6 +134,35 @@ class SiteManagerViewModel @Inject constructor(
                 SiteGroup.SCANNED -> store.removeScannedUrl(entry.url)
                 SiteGroup.CUSTOM -> store.removeCustomUrl(entry.url)
             }
+        }
+    }
+
+    /**
+     * 长按「添加」按钮：一次性批量加入全部预置镜像站点（[PRESET_MIRROR_URLS]），
+     * 已存在的自动跳过；批量加入不逐个探测可达性。
+     */
+    fun addAllPresetMirrors() {
+        viewModelScope.launch {
+            val knownNormalized = (
+                listOf(me.jbusdriver.modern.core.site.DEFAULT_SITE_URL) +
+                    store.customBaseUrls.first() +
+                    store.cachedMirrorUrls.first()
+                )
+                .map { normalizeBaseUrl(it) }
+                .toSet()
+            var added = 0
+            PRESET_MIRROR_URLS.forEach { url ->
+                if (normalizeBaseUrl(url) !in knownNormalized && store.addCustomUrl(url)) {
+                    added++
+                }
+            }
+            _messages.emit(
+                if (added > 0) {
+                    UserMessage(R.string.site_add_all_mirrors_done, listOf(added))
+                } else {
+                    UserMessage(R.string.site_add_all_mirrors_exists)
+                }
+            )
         }
     }
 

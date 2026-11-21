@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.BrowserSessionClient
+import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.domain.model.movieCodeFromUrl
 import me.jbusdriver.modern.data.localvideo.LocalVideoForegroundScanner
 import me.jbusdriver.modern.data.localvideo.LocalVideoMetadataEnricher
 import me.jbusdriver.modern.ui.theme.JBusTheme
@@ -26,6 +28,9 @@ class ModernMainActivity : ComponentActivity() {
 
     @Inject
     lateinit var browserSessionClient: BrowserSessionClient
+
+    @Inject
+    lateinit var siteConfig: SiteConfig
 
     @Inject
     lateinit var localVideoForegroundScanner: LocalVideoForegroundScanner
@@ -101,7 +106,7 @@ class ModernMainActivity : ComponentActivity() {
         val javbusUrl = when (intent?.action) {
             android.content.Intent.ACTION_VIEW -> intent.data?.toString()
             android.content.Intent.ACTION_SEND ->
-                JBUS_URL_REGEX.find(
+                SHARED_URL_REGEX.find(
                     intent.getStringExtra(android.content.Intent.EXTRA_TEXT) ?: ""
                 )?.value
 
@@ -115,7 +120,7 @@ class ModernMainActivity : ComponentActivity() {
 
     private fun resolveJavbusRoute(url: String): NavKey {
         val path = runCatching { java.net.URL(url).path.orEmpty().trimEnd('/') }
-            .getOrElse { return RouteMain }
+            .getOrElse { return RouteBrowser(url = url) }
         val segments = path.split("/").filter { it.isNotBlank() }
         val isUncensored = "/uncensored/" in url || path.startsWith("/uncensored")
         val censorType = if (isUncensored) "UNCENSORED" else null
@@ -126,8 +131,16 @@ class ModernMainActivity : ComponentActivity() {
         if (segments.last() in listOf("genre", "actresses")) {
             return RouteMain
         }
-        if (segments.size == 1) {
-            return RouteMovieDetail(movieUrl = url, censorType = censorType)
+
+        // 影片详情:路径为 /{番号} 或 /uncensored/{番号} 即可,不校验域名——镜像站分享的
+        // 影片链接同样归一化到当前站点加载
+        movieCodeFromUrl(url.removeSuffix("/"))?.let { code ->
+            if (segments.size == 1 || (isUncensored && segments.size == 2)) {
+                return RouteMovieDetail(
+                    movieUrl = siteConfig.resolve("/" + code),
+                    censorType = censorType
+                )
+            }
         }
 
         val isPrefixSegment = segments[0] in listOf("uncensored", "xyz")
@@ -161,11 +174,12 @@ class ModernMainActivity : ComponentActivity() {
             return RouteMovieDetail(movieUrl = url, censorType = censorType)
         }
 
-        return RouteMain
+        // 未能识别为站内结构:交给内置浏览器(分享任意网站的链接也可在应用内打开)
+        return RouteBrowser(url = url)
     }
 
     companion object {
-        private val JBUS_URL_REGEX = Regex("""https?://(?:www\.)?javbus\.com/\S+""")
+        private val SHARED_URL_REGEX = Regex("""https?://\S+""")
 
         fun start(context: android.content.Context) {
             val intent = android.content.Intent(context, ModernMainActivity::class.java)

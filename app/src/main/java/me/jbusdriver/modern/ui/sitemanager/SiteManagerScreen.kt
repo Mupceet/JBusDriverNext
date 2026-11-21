@@ -5,6 +5,7 @@ import me.jbusdriver.modern.core.copy
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -159,8 +160,20 @@ fun SiteManagerScreen(
                 onDelete = viewModel::deleteEntry,
                 showDelete = customManageMode,
                 action = {
-                    TextButton(onClick = { showAddDialog = true }) {
-                        Text(stringResource(R.string.site_add))
+                    // 单击弹输入框;长按一次性批量添加全部预置镜像站点
+                    Box(
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = { showAddDialog = true },
+                                onLongClick = viewModel::addAllPresetMirrors
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.site_add),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                     TextButton(
                         onClick = { customManageMode = !customManageMode },
