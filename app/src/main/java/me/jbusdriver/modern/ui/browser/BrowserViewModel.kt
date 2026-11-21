@@ -18,8 +18,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.core.http.WebViewHelper
+import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.ui.UserMessage
+import java.net.URI
 import javax.inject.Inject
 
 /**
@@ -33,6 +36,8 @@ import javax.inject.Inject
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
     @ApplicationContext appContext: Context,
+    private val browserSessionClient: BrowserSessionClient,
+    private val siteConfig: SiteConfig,
 ) : ViewModel() {
 
     // WebView 以 applicationContext 创建，无 Activity 泄漏；生命周期随路由条目的 ViewModelStore
@@ -86,6 +91,20 @@ class BrowserViewModel @Inject constructor(
     /** 供 Screen 透传一次性消息（如复制成功）。 */
     fun sendMessage(message: UserMessage) {
         viewModelScope.launch { _messages.emit(message) }
+    }
+
+    /**
+     * 站内 URL 预热反爬会话：CookieManager 没有会话 cookie 时 WebView 直连会被站点
+     * 节流（图片极慢，release 新装/冷启动实测）。会话有效时仅做恢复（毫秒级），
+     * 失效时走一次隐藏 WebView 引导后再加载页面。
+     */
+    suspend fun prepareSessionFor(url: String) {
+        siteConfig.awaitReady()
+        val host = runCatching { URI(url).host }.getOrNull() ?: return
+        val siteHost = runCatching { URI(siteConfig.referer()).host }.getOrNull() ?: return
+        if (host.equals(siteHost, ignoreCase = true)) {
+            runCatching { browserSessionClient.warmUp() }
+        }
     }
 
     override fun onCleared() {

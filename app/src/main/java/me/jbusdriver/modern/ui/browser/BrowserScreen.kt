@@ -122,10 +122,13 @@ fun BrowserScreen(
         }
     }
 
-    // 旋转重建后从 WebView 实例恢复标题；首次进入加载初始 URL
+    // 旋转重建后从 WebView 实例恢复标题；首次进入先确保站内会话就位再加载初始 URL
     LaunchedEffect(Unit) {
         webView.title?.takeIf { it.isNotBlank() && it != "about:blank" }?.let { pageTitle = it }
-        if (webView.url.isNullOrBlank()) webView.loadUrl(url)
+        if (webView.url.isNullOrBlank()) {
+            viewModel.prepareSessionFor(url)
+            webView.loadUrl(url)
+        }
     }
 
     val fileChooserLauncher =
