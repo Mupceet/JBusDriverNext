@@ -150,7 +150,7 @@
 -keepclassmembers enum me.jbusdriver.modern.domain.model.ForumTextSize {
     *;
 }
--keepclassmembers class me.jbusdriver.modern.data.SessionCookieStore$PersistedCookie {
+-keepclassmembers class me.jbusdriver.modern.core.http.SessionCookieStore$PersistedCookie {
     !static !transient <fields>;
 }
 
