@@ -60,6 +60,8 @@ fun releaseTime(): String? = LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
 android {
     namespace = "me.jbusdriver"
     compileSdk = 37
+    // foundation 1.13.0-beta01 等库要求 compileSdk ≥ 37.1(AGP 9 支持次版本 SDK)
+    compileSdkMinor = 1
 
     signingConfigs {
         if (hasReleaseSigning) {

@@ -13,6 +13,9 @@
     <string name="share">Share</string>
     <string name="copy">Copy</string>
     <string name="copy_link">Copy link</string>
+    <string name="copy_text">Copy text</string>
+    <string name="copy_movie_code">Copy movie code</string>
+    <string name="open_movie">Open movie</string>
     <string name="close">Close</string>
     <string name="refresh">Refresh</string>
     <string name="all">All</string>
@@ -94,8 +97,6 @@
     <string name="floor_number_label">Floor %1$d</string>
     <string name="floor_gap_load">Floors %1$d–%2$d not loaded. Tap to load</string>
     <string name="retry_load_comments">Retry reviews</string>
-    <string name="content_preview">Content Preview</string>
-    <string name="copy_all">Copy All</string>
     <string name="share_thread">Share Thread</string>
     <string name="copied">Copied</string>
     <string name="copied_title">Title copied</string>

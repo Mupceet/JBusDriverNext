@@ -61,7 +61,6 @@ import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.data.parser.extractFloorTarget
-import me.jbusdriver.modern.domain.model.ContentBlock
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
@@ -192,7 +191,6 @@ fun ForumThreadDetailScreen(
             ) {
                 when {
                     detail != null -> {
-                        var dialogContent by remember { mutableStateOf<ForumDialogContent?>(null) }
                         val (firstPostSections, firstPostViewableImages) = remember(
                             detail.contentBlocks, autoLoadGifs, loadedGifUrls
                         ) {
@@ -282,22 +280,6 @@ fun ForumThreadDetailScreen(
                             }
                         }
 
-                        dialogContent?.let { content ->
-                            SelectableContentDialog(
-                                blocks = content.blocks,
-                                onDismiss = { dialogContent = null },
-                                onCopyAll = {
-                                    context.copy(content.copyText)
-                                    Toast.makeText(
-                                        context,
-                                        R.string.copied,
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    dialogContent = null
-                                }
-                            )
-                        }
-
                         state.commentSheet?.let { sheet ->
                             FloorCommentsBottomSheet(
                                 sheet = sheet,
@@ -341,7 +323,7 @@ fun ForumThreadDetailScreen(
                                     is FirstPostSection.Text -> item(
                                         key = "content_${section.startBlockIndex}"
                                     ) {
-                                        ForumPostContent(
+                                        SelectableForumPostContent(
                                             blocks = section.blocks,
                                             onImageClick = onImageClick,
                                             modifier = Modifier.padding(vertical = 2.dp),
@@ -353,11 +335,7 @@ fun ForumThreadDetailScreen(
                                                 onFloorJumpClick(pid, viewModel.findPostUrl(pid))
                                             },
                                             onMovieCodeClick = openMovieByCode,
-                                            onLinkClick = onPostLinkClick,
-                                            onLongClick = {
-                                                dialogContent =
-                                                    ForumDialogContent.Blocks(detail.contentBlocks)
-                                            }
+                                            onLinkClick = onPostLinkClick
                                         )
                                     }
 
@@ -464,10 +442,6 @@ fun ForumThreadDetailScreen(
                                                     },
                                                     onMovieCodeClick = openMovieByCode,
                                                     onLinkClick = onPostLinkClick,
-                                                    onLongClick = {
-                                                        dialogContent =
-                                                            ForumDialogContent.Blocks(reply.contentBlocks)
-                                                    },
                                                     onViewComments = { r ->
                                                         viewModel.openReplyCommentsSheet(r.floor)
                                                     }
@@ -538,16 +512,6 @@ fun ForumThreadDetailScreen(
                 )
             }
         }
-    }
-}
-
-private sealed interface ForumDialogContent {
-    val blocks: List<ContentBlock>
-    val copyText: String
-
-    data class Blocks(val originalBlocks: List<ContentBlock>) : ForumDialogContent {
-        override val blocks: List<ContentBlock> = expandForumLinksForPreview(originalBlocks)
-        override val copyText: String = buildForumPlainText(originalBlocks)
     }
 }
 

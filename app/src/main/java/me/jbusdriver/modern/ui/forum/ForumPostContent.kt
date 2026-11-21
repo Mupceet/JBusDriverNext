@@ -1,8 +1,11 @@
 package me.jbusdriver.modern.ui.forum
 
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +13,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.text.selection.DisableSelection
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.rememberSelectionState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +35,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,23 +45,34 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.changedToDown
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -59,6 +80,7 @@ import androidx.core.graphics.toColorInt
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.modern.ui.components.dimColorFilter
 import me.jbusdriver.modern.ui.components.rememberSiteImageRequest
@@ -71,8 +93,10 @@ import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.domain.model.findMovieCodeMatches
 import me.jbusdriver.modern.domain.model.normalizeMovieCode
 import me.jbusdriver.modern.ui.components.GifPlaceholder
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * 首帖分段:把连续的非图片块聚合成 [FirstPostSection.Text],每个图片块单独成 [FirstPostSection.ImageBlock]。
@@ -147,7 +171,6 @@ internal fun ForumPostContent(
     autoLoadGifs: Boolean = false,
     onLoadGif: (String) -> Unit = {},
     onLoadAllGifs: () -> Unit = {},
-    onLongClick: (() -> Unit)? = null,
     onQuoteClick: (Int) -> Unit = {},
     /** 点击正文/引用块中识别出的影片番号；null 表示不做番号识别（如长按复制预览）。 */
     onMovieCodeClick: ((String) -> Unit)? = null,
@@ -167,21 +190,9 @@ internal fun ForumPostContent(
                 .map { it.url }
         }
     }
-    val haptics = LocalHapticFeedback.current
 
     Column(
-        modifier = modifier.then(
-            if (onLongClick != null) {
-                Modifier.pointerInput(onLongClick) {
-                    detectTapGestures(onLongPress = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongClick()
-                    })
-                }
-            } else {
-                Modifier
-            }
-        ),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         var viewableIndex = 0
@@ -225,6 +236,48 @@ internal fun ForumPostContent(
     }
 }
 
+/**
+ * 可选中复制的帖子正文:内部包一层 [SelectionContainer],纯文本点击无反应、长按进入
+ * 系统选区(工具栏复制/全选、拖拽扩展),链接与番号区域由 [StyledParagraph] 的长按菜单接管。
+ *
+ * 每个文本段各持有独立 [SelectionState](API 要求一个 state 只绑定一个容器),图片不参与
+ * 选区,保持首帖分段「图片随滚动回收」的内存设计;有选区时返回键先取消选区再交给导航退出。
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun SelectableForumPostContent(
+    blocks: List<ContentBlock>,
+    onImageClick: (List<String>, Int) -> Unit,
+    modifier: Modifier = Modifier,
+    loadedGifUrls: Set<String> = emptySet(),
+    autoLoadGifs: Boolean = false,
+    onLoadGif: (String) -> Unit = {},
+    onLoadAllGifs: () -> Unit = {},
+    onQuoteClick: (Int) -> Unit = {},
+    onMovieCodeClick: ((String) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null,
+    showImages: Boolean = true
+) {
+    val selectionState = rememberSelectionState()
+    BackHandler(enabled = selectionState.selectedTexts.isNotEmpty()) {
+        selectionState.clear()
+    }
+    SelectionContainer(state = selectionState, modifier = modifier) {
+        ForumPostContent(
+            blocks = blocks,
+            onImageClick = onImageClick,
+            loadedGifUrls = loadedGifUrls,
+            autoLoadGifs = autoLoadGifs,
+            onLoadGif = onLoadGif,
+            onLoadAllGifs = onLoadAllGifs,
+            onQuoteClick = onQuoteClick,
+            onMovieCodeClick = onMovieCodeClick,
+            onLinkClick = onLinkClick,
+            showImages = showImages
+        )
+    }
+}
+
 @Composable
 private fun StyledParagraph(
     paragraph: RichParagraph,
@@ -235,63 +288,266 @@ private fun StyledParagraph(
     val onSurface = MaterialTheme.colorScheme.onSurface
     val surface = MaterialTheme.colorScheme.surface
     val primary = MaterialTheme.colorScheme.primary
-    val text = remember(paragraph, onSurface, surface, primary, onMovieCodeClick, onLinkClick) {
-        paragraph.toAnnotatedString(onSurface, surface, primary, onMovieCodeClick, onLinkClick)
+    val renderData = remember(paragraph, onSurface, surface, primary, onMovieCodeClick, onLinkClick) {
+        paragraph.toRenderData(onSurface, surface, primary, onMovieCodeClick, onLinkClick)
     }
     val inlineContent = remember(paragraph) {
         paragraph.toInlineContent()
     }
-    if (paragraph.hasVisibleContent()) {
+    if (!paragraph.hasVisibleContent()) return
+
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    val haptics = LocalHapticFeedback.current
+    val copiedMessage = stringResource(R.string.copied)
+    val copiedLinkMessage = stringResource(R.string.copied_link)
+    val currentOnMovieCodeClick by rememberUpdatedState(onMovieCodeClick)
+    val currentOnLinkClick by rememberUpdatedState(onLinkClick)
+
+    var linkMenuRange by remember { mutableStateOf<ParagraphLinkRange?>(null) }
+    var linkMenuExpanded by remember { mutableStateOf(false) }
+    var linkMenuOffset by remember { mutableStateOf(Offset.Zero) }
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    Box(modifier = modifier) {
         Text(
-            text = text,
+            text = renderData.text,
             inlineContent = inlineContent,
-            modifier = modifier,
+            onTextLayout = { layoutResult = it },
             style = MaterialTheme.typography.bodyMedium.copy(
                 lineHeight = 22.sp,
                 color = onSurface
-            )
+            ),
+            modifier = Modifier.pointerInput(renderData.linkRanges) {
+                awaitEachGesture {
+                    val press = awaitFirstDownAtInitial() ?: return@awaitEachGesture
+                    val layout = layoutResult ?: return@awaitEachGesture
+                    val offset = layout.getOffsetForPosition(press.position)
+                    val hit = renderData.linkRanges.firstOrNull { it.contains(offset) }
+                        ?: return@awaitEachGesture // 非链接区域不拦截:点击无反应,长按进入选区
+
+                    // 命中链接:立即消费按下事件,SelectionContainer 的选区检测与
+                    // LinkAnnotation 的点击检测都不会再响应本次手势
+                    press.consume()
+
+                    when (
+                        withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            awaitLinkPress(press.id, press.position)
+                        }
+                    ) {
+                        LinkPressOutcome.Tap -> {
+                            if (hit.isMovieCode) {
+                                currentOnMovieCodeClick?.invoke(hit.value)
+                            } else {
+                                currentOnLinkClick?.invoke(hit.value)
+                                    ?: uriHandler.openUri(hit.value)
+                            }
+                        }
+
+                        // withTimeoutOrNull 超时返回 null = 按住超过长按时限;
+                        // 若此时指针仍按住,即为长按手势
+                        null -> {
+                            if (currentEvent.changes.any { it.pressed }) {
+                                // 先立即弹菜单(手指未抬起即生效),再持续消费直至抬起,
+                                // 保证选区绝不启动
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                linkMenuOffset = press.position
+                                linkMenuRange = hit
+                                linkMenuExpanded = true
+                                while (currentEvent.changes.any { it.pressed }) {
+                                    currentEvent.changes.forEach { it.consume() }
+                                    awaitPointerEvent(PointerEventPass.Initial)
+                                }
+                            }
+                        }
+
+                        LinkPressOutcome.Scrolled -> Unit // 滚动手势,停止拦截
+                    }
+                }
+            }
         )
+        // 链接/番号长按菜单:零尺寸 Box 按按压点(像素)定位,菜单锚定其上;
+        // DisableSelection 避免菜单文本注册进外层选区容器
+        DisableSelection {
+            linkMenuRange?.let { range ->
+                Box(
+                    modifier = Modifier.offset {
+                        IntOffset(linkMenuOffset.x.roundToInt(), linkMenuOffset.y.roundToInt())
+                    }
+                ) {
+                    DropdownMenu(
+                        expanded = linkMenuExpanded,
+                        onDismissRequest = { linkMenuExpanded = false }
+                    ) {
+                    if (range.isMovieCode) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy_movie_code)) },
+                            onClick = {
+                                context.copy(range.value)
+                                Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                linkMenuExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.open_movie)) },
+                            onClick = {
+                                currentOnMovieCodeClick?.invoke(range.value)
+                                linkMenuExpanded = false
+                            }
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy_text)) },
+                            onClick = {
+                                context.copy(range.displayText)
+                                Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                linkMenuExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy_link)) },
+                            onClick = {
+                                context.copy(range.value)
+                                Toast.makeText(context, copiedLinkMessage, Toast.LENGTH_SHORT).show()
+                                linkMenuExpanded = false
+                            }
+                        )
+                    }
+                    }
+                }
+            }
+        }
     }
 }
 
-private fun RichParagraph.toAnnotatedString(
+/** 链接区域按下手势的分类结果。 */
+private enum class LinkPressOutcome {
+    /** 未超过长按时限即抬起:点击链接。 */
+    Tap,
+
+    /** 滑动超出触摸斜率:滚动手势,放弃拦截。 */
+    Scrolled
+}
+
+/**
+ * Initial pass 等待首次按下(祖先节点先于本节点收到 Initial 事件)。
+ * 返回 null 表示本手势开始前所有指针已抬起(如连击的收尾事件)。
+ */
+private suspend fun AwaitPointerEventScope.awaitFirstDownAtInitial(): PointerInputChange? {
+    while (true) {
+        val event = awaitPointerEvent(PointerEventPass.Initial)
+        val down = event.changes.firstOrNull { it.changedToDown() }
+        if (down != null) return down
+        if (event.changes.all { it.changedToUpIgnoreConsumed() }) return null
+    }
+}
+
+/**
+ * 按住链接期间仅在 Initial pass 观察手势,不消费事件,保证 LazyColumn 滚动可正常接管。
+ * 超过长按时限的情形由调用方用 withTimeoutOrNull 判定(返回 null 且指针仍按住)。
+ */
+private suspend fun AwaitPointerEventScope.awaitLinkPress(
+    pointerId: PointerId,
+    pressPosition: Offset
+): LinkPressOutcome {
+    while (true) {
+        val event = awaitPointerEvent(PointerEventPass.Initial)
+        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+        when {
+            (change.position - pressPosition).getDistance() > viewConfiguration.touchSlop -> {
+                return LinkPressOutcome.Scrolled
+            }
+
+            change.changedToUpIgnoreConsumed() -> return LinkPressOutcome.Tap
+        }
+    }
+    return LinkPressOutcome.Scrolled
+}
+
+/** 段落内的可长按链接区间(URL 链接或番号),offset 相对整段 [ParagraphRenderData.text]。 */
+@Immutable
+internal data class ParagraphLinkRange(
+    val start: Int,
+    val endExclusive: Int,
+    /** URL 链接为链接地址;番号为规范化番号。 */
+    val value: String,
+    /** 链接的显示文本,「复制链接文本」用。 */
+    val displayText: String,
+    val isMovieCode: Boolean
+) {
+    operator fun contains(offset: Int): Boolean = offset in start until endExclusive
+}
+
+/** 段落渲染产物:带样式的 [AnnotatedString] 与可长按链接区间。 */
+@Immutable
+internal data class ParagraphRenderData(
+    val text: AnnotatedString,
+    val linkRanges: List<ParagraphLinkRange>
+)
+
+private fun RichParagraph.toRenderData(
     onSurface: Color,
     surface: Color,
     primary: Color,
     onMovieCodeClick: ((String) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null
-): AnnotatedString = buildAnnotatedString {
-    parts.forEachIndexed { index, part ->
-        if (part.inlineImageUrl.isNotEmpty()) {
-            appendInlineContent(part.inlineContentId(index), part.inlineImageAlt.ifBlank { " " })
-        } else {
-            withStyle(part.toSpanStyle(onSurface, surface, primary)) {
-                if (part.isLink && part.linkUrl.isNotBlank()) {
-                    val link = if (onLinkClick != null) {
-                        // 挂 listener 接管默认 UriHandler 行为，由调用方决定站内路由或回落浏览器
-                        val onLinkClickNotNull = onLinkClick
-                        LinkAnnotation.Url(
-                            part.linkUrl,
-                            linkInteractionListener = LinkInteractionListener { annotation ->
-                                (annotation as? LinkAnnotation.Url)?.let {
-                                    onLinkClickNotNull(it.url)
+): ParagraphRenderData {
+    val linkRanges = mutableListOf<ParagraphLinkRange>()
+    val text = buildAnnotatedString {
+        parts.forEachIndexed { index, part ->
+            if (part.inlineImageUrl.isNotEmpty()) {
+                appendInlineContent(part.inlineContentId(index), part.inlineImageAlt.ifBlank { " " })
+            } else {
+                withStyle(part.toSpanStyle(onSurface, surface, primary)) {
+                    if (part.isLink && part.linkUrl.isNotBlank()) {
+                        val start = length
+                        val link = if (onLinkClick != null) {
+                            // 挂 listener 接管默认 UriHandler 行为，由调用方决定站内路由或回落浏览器
+                            val onLinkClickNotNull = onLinkClick
+                            LinkAnnotation.Url(
+                                part.linkUrl,
+                                linkInteractionListener = LinkInteractionListener { annotation ->
+                                    (annotation as? LinkAnnotation.Url)?.let {
+                                        onLinkClickNotNull(it.url)
+                                    }
                                 }
+                            )
+                        } else {
+                            LinkAnnotation.Url(part.linkUrl)
+                        }
+                        withLink(link) {
+                            append(part.text)
+                        }
+                        linkRanges += ParagraphLinkRange(
+                            start = start,
+                            endExclusive = length,
+                            value = part.linkUrl,
+                            displayText = part.text,
+                            isMovieCode = false
+                        )
+                    } else if (onMovieCodeClick != null) {
+                        appendMovieCodeSegments(
+                            part.text,
+                            primary,
+                            onMovieCodeClick,
+                            onLinkRange = { start, endExclusive, code, displayText ->
+                                linkRanges += ParagraphLinkRange(
+                                    start = start,
+                                    endExclusive = endExclusive,
+                                    value = code,
+                                    displayText = displayText,
+                                    isMovieCode = true
+                                )
                             }
                         )
                     } else {
-                        LinkAnnotation.Url(part.linkUrl)
-                    }
-                    withLink(link) {
                         append(part.text)
                     }
-                } else if (onMovieCodeClick != null) {
-                    appendMovieCodeSegments(part.text, primary, onMovieCodeClick)
-                } else {
-                    append(part.text)
                 }
             }
         }
     }
+    return ParagraphRenderData(text, linkRanges)
 }
 
 /**
@@ -299,11 +555,14 @@ private fun RichParagraph.toAnnotatedString(
  * primary 色 + 下划线的可点击链接（[LinkAnnotation.Clickable]）。
  * 仅供非链接、非内联表情的文本调用；长按复制预览等场景传 null 回调即不识别。
  * 帖子正文/引用块与帖子标题（[ForumThreadTitle]）共用。
+ *
+ * [onLinkRange] 用于收集番号在整段 AnnotatedString 中的区间（供长按菜单命中测试）。
  */
 internal fun AnnotatedString.Builder.appendMovieCodeSegments(
     text: String,
     primary: Color,
-    onMovieCodeClick: (String) -> Unit
+    onMovieCodeClick: (String) -> Unit,
+    onLinkRange: ((start: Int, endExclusive: Int, code: String, displayText: String) -> Unit)? = null
 ) {
     var cursor = 0
     findMovieCodeMatches(text).forEach { match ->
@@ -312,6 +571,7 @@ internal fun AnnotatedString.Builder.appendMovieCodeSegments(
         }
         val code = normalizeMovieCode(match.value) ?: match.value
         val linkStyle = SpanStyle(color = primary, textDecoration = TextDecoration.Underline)
+        val start = length
         withStyle(linkStyle) {
             withLink(
                 LinkAnnotation.Clickable(tag = MOVIE_CODE_LINK_TAG) {
@@ -321,6 +581,7 @@ internal fun AnnotatedString.Builder.appendMovieCodeSegments(
                 append(match.value)
             }
         }
+        onLinkRange?.invoke(start, length, code, match.value)
         cursor = match.range.last + 1
     }
     if (cursor < text.length) {
@@ -651,25 +912,6 @@ private fun RestrictedNotice(message: String) {
     }
 }
 
-internal fun buildForumPlainText(blocks: List<ContentBlock>): String =
-    blocks.flatMap(ContentBlock::toPlainLines)
-        .filter(String::isNotBlank)
-        .joinToString("\n")
-
-internal fun expandForumLinksForPreview(blocks: List<ContentBlock>): List<ContentBlock> =
-    blocks.map { block ->
-        when (block) {
-            is ContentBlock.RichText -> block.copy(
-                paragraphs = block.paragraphs.map(RichParagraph::expandLinksForPreview)
-            )
-
-            is ContentBlock.ListBlock -> block.copy(list = block.list.expandLinksForPreview())
-            is ContentBlock.Image,
-            is ContentBlock.Quote,
-            is ContentBlock.RestrictedNotice -> block
-        }
-    }
-
 internal fun forumFloorLabel(floor: Int, isPinned: Boolean, pinnedLabel: String): String =
     if (isPinned) "$pinnedLabel · $floor#" else "$floor#"
 
@@ -677,49 +919,6 @@ internal fun forumListIndentStep(depth: Int): Int {
     val currentIndent = depth.coerceIn(0, MAX_LIST_DEPTH) * LIST_INDENT_DP
     val parentIndent = (depth - 1).coerceIn(0, MAX_LIST_DEPTH) * LIST_INDENT_DP
     return currentIndent - parentIndent
-}
-
-private fun ContentBlock.toPlainLines(): List<String> = when (this) {
-    is ContentBlock.RichText -> paragraphs.map(RichParagraph::plainText)
-    is ContentBlock.ListBlock -> list.toPlainLines(depth = 0)
-    is ContentBlock.Image -> emptyList()
-    is ContentBlock.Quote -> listOf(if (author.isEmpty()) content else "$author：$content")
-    is ContentBlock.RestrictedNotice -> listOf(message)
-}
-
-private fun RichParagraph.plainText(): String =
-    parts.joinToString("") { it.plainTextWithExpandedLink() }.trim()
-
-private fun TextPart.plainTextWithExpandedLink(): String =
-    if (isLink && linkUrl.isNotBlank()) "$text $linkUrl " else text
-
-private fun RichParagraph.expandLinksForPreview(): RichParagraph =
-    RichParagraph(parts.flatMap(TextPart::expandLinkForPreview))
-
-private fun TextPart.expandLinkForPreview(): List<TextPart> =
-    if (isLink && linkUrl.isNotBlank()) {
-        listOf(this, TextPart(" $linkUrl "))
-    } else {
-        listOf(this)
-    }
-
-private fun RichList.expandLinksForPreview(): RichList =
-    copy(items = items.map(RichListItem::expandLinksForPreview))
-
-private fun RichListItem.expandLinksForPreview(): RichListItem =
-    copy(
-        paragraphs = paragraphs.map(RichParagraph::expandLinksForPreview),
-        children = children.map(RichList::expandLinksForPreview)
-    )
-
-private fun RichList.toPlainLines(depth: Int): List<String> = items.flatMapIndexed { index, item ->
-    val indent = "  ".repeat(depth)
-    val marker = if (ordered) "${start + index}. " else "\u2022 "
-    val ownLines = item.paragraphs.mapIndexed { paragraphIndex, paragraph ->
-        val prefix = if (paragraphIndex == 0) marker else "  "
-        "$indent$prefix${paragraph.plainText()}"
-    }
-    ownLines + item.children.flatMap { it.toPlainLines(depth + 1) }
 }
 
 private const val MIN_TEXT_CONTRAST = 4.5f
