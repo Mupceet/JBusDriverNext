@@ -478,10 +478,12 @@ fun ForumThreadDetailScreen(
                                 }
                             } else if (detail.replies.isNotEmpty() && !detail.pageInfo.hasNext) {
                                 item(key = "no_more") {
+                                    // 顶部留白让出底部居中回顶按钮（bottom=64 高 40 → 占据距底 64~104dp），
+                                    // 完全滚到底时末楼不被按钮遮挡，提示语保持在按钮下方收尾。
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(16.dp),
+                                            .padding(top = 64.dp, bottom = 16.dp),
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         Text(
