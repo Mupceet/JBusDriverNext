@@ -136,7 +136,8 @@ internal fun MagnetBottomSheet(
  *
  * 与站内磁力混排，靠首 tag「LTX」区分来源；展示类型（ed2k/magnet）、
  * 文件名与体积；待确认链接附加角标。
- * 点击行为：magnet 走系统 chooser 打开，ed2k 直接复制（Android 少有 ed2k handler）。
+ * 点击行为：magnet 走系统 chooser 打开（与站内磁力一致），
+ * ed2k 交给能处理的系统应用、无处理应用时提示（与论坛帖子链接一致）；复制统一走右侧按钮。
  */
 @Composable
 private fun LtxLinkItem(link: LtxLinkUiModel, context: Context) {
@@ -149,12 +150,7 @@ private fun LtxLinkItem(link: LtxLinkUiModel, context: Context) {
                 if (link.type == LtxLinkType.MAGNET) {
                     openMagnetChooser(context, link.link)
                 } else {
-                    context.copy(link.link)
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.copied_link),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    openExternalLink(context, link.link)
                 }
             },
         shape = RoundedCornerShape(8.dp),
@@ -266,6 +262,15 @@ private fun openMagnetChooser(context: Context, magnetUri: String) {
             Intent.createChooser(intent, context.getString(R.string.select_download))
         )
     } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, context.getString(R.string.no_handler), Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** ed2k 等链接交给能处理的系统应用（eMule/下载器），无可处理应用时提示（与论坛帖子链接行为一致）。 */
+private fun openExternalLink(context: Context, uri: String) {
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri.toUri()))
+    }.onFailure {
         Toast.makeText(context, context.getString(R.string.no_handler), Toast.LENGTH_SHORT).show()
     }
 }
