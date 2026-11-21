@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -856,18 +857,35 @@ private fun RichListContent(
     }
 }
 
+/**
+ * 已加载图片的宽高比缓存（仅内存）：LazyColumn item 滑出即销毁组合，Coil 状态随之丢失，
+ * 滑回时若无缓存会先按占位高度(180dp)组合再跳到图片真实高度造成闪动；命中缓存的
+ * 比例后首帧即按真实高度组合。key 为图片 URL。
+ */
+private val forumImageAspectRatios = HashMap<String, Float>()
+
 @Composable
 internal fun ForumImage(block: ContentBlock.Image, onClick: () -> Unit) {
     if (block.isFullSize) {
+        val aspectRatio = forumImageAspectRatios[block.url]
         SubcomposeAsyncImage(
             model = rememberSiteImageRequest(block.url),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
+                .then(aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onClick),
             contentScale = ContentScale.FillWidth,
             colorFilter = dimColorFilter(),
+            onSuccess = { state ->
+                val drawable = state.result.drawable
+                val width = drawable.intrinsicWidth
+                val height = drawable.intrinsicHeight
+                if (width > 0 && height > 0) {
+                    forumImageAspectRatios[block.url] = width.toFloat() / height.toFloat()
+                }
+            },
             loading = {
                 Box(
                     modifier = Modifier
