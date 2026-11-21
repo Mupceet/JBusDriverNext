@@ -79,19 +79,24 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
+import android.content.Intent
+import android.net.Uri
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.modern.ui.components.dimColorFilter
 import me.jbusdriver.modern.ui.components.rememberSiteImageRequest
 import me.jbusdriver.modern.domain.model.ContentBlock
+import me.jbusdriver.modern.domain.model.ForumLinkKind
 import me.jbusdriver.modern.domain.model.ForumTextSize
 import me.jbusdriver.modern.domain.model.RichList
 import me.jbusdriver.modern.domain.model.RichListItem
 import me.jbusdriver.modern.domain.model.RichParagraph
 import me.jbusdriver.modern.domain.model.TextPart
+import me.jbusdriver.modern.domain.model.findBareLinkMatches
 import me.jbusdriver.modern.domain.model.findMovieCodeMatches
 import me.jbusdriver.modern.domain.model.normalizeMovieCode
+import me.jbusdriver.modern.domain.model.toExternalUrl
 import me.jbusdriver.modern.ui.components.GifPlaceholder
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
@@ -301,8 +306,17 @@ private fun StyledParagraph(
     val haptics = LocalHapticFeedback.current
     val copiedMessage = stringResource(R.string.copied)
     val copiedLinkMessage = stringResource(R.string.copied_link)
+    val noHandlerMessage = stringResource(R.string.no_handler)
     val currentOnMovieCodeClick by rememberUpdatedState(onMovieCodeClick)
     val currentOnLinkClick by rememberUpdatedState(onLinkClick)
+    // 磁力/ED2K/网盘等非 http 链接交给能处理的应用(下载器/播放器/网盘客户端),无处理应用时提示
+    val openExternal: (String) -> Unit = { link ->
+        runCatching {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+        }.onFailure {
+            Toast.makeText(context, noHandlerMessage, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     var linkMenuRange by remember { mutableStateOf<ParagraphLinkRange?>(null) }
     var linkMenuExpanded by remember { mutableStateOf(false) }
@@ -335,13 +349,16 @@ private fun StyledParagraph(
                             awaitLinkPress(press.id, press.position)
                         }
                     ) {
-                        LinkPressOutcome.Tap -> {
-                            if (hit.isMovieCode) {
-                                currentOnMovieCodeClick?.invoke(hit.value)
-                            } else {
-                                currentOnLinkClick?.invoke(hit.value)
-                                    ?: uriHandler.openUri(hit.value)
-                            }
+                        LinkPressOutcome.Tap -> when (hit.kind) {
+                            ForumLinkKind.MOVIE_CODE -> currentOnMovieCodeClick?.invoke(hit.value)
+
+                            ForumLinkKind.URL -> currentOnLinkClick?.invoke(hit.value)
+                                ?: uriHandler.openUri(hit.value)
+
+                            // 磁力/ED2K/网盘:交给系统应用(下载器/播放器/网盘客户端)或浏览器
+                            ForumLinkKind.MAGNET,
+                            ForumLinkKind.ED2K,
+                            ForumLinkKind.CLOUD -> openExternal(hit.toExternalLinkUrl())
                         }
 
                         // withTimeoutOrNull 超时返回 null = 按住超过长按时限;
@@ -378,42 +395,66 @@ private fun StyledParagraph(
                     DropdownMenu(
                         expanded = linkMenuExpanded,
                         onDismissRequest = { linkMenuExpanded = false }
-                    ) {
-                    if (range.isMovieCode) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.copy_movie_code)) },
-                            onClick = {
-                                context.copy(range.value)
-                                Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
-                                linkMenuExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.open_movie)) },
-                            onClick = {
-                                currentOnMovieCodeClick?.invoke(range.value)
-                                linkMenuExpanded = false
-                            }
-                        )
-                    } else {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.copy_text)) },
-                            onClick = {
-                                context.copy(range.displayText)
-                                Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
-                                linkMenuExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.copy_link)) },
-                            onClick = {
-                                context.copy(range.value)
-                                Toast.makeText(context, copiedLinkMessage, Toast.LENGTH_SHORT).show()
-                                linkMenuExpanded = false
-                            }
-                        )
+                ) {
+                    when (range.kind) {
+                        ForumLinkKind.MOVIE_CODE -> {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.copy_movie_code)) },
+                                onClick = {
+                                    context.copy(range.value)
+                                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                    linkMenuExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.open_movie)) },
+                                onClick = {
+                                    currentOnMovieCodeClick?.invoke(range.value)
+                                    linkMenuExpanded = false
+                                }
+                            )
+                        }
+
+                        ForumLinkKind.URL -> {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.copy_text)) },
+                                onClick = {
+                                    context.copy(range.displayText)
+                                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                    linkMenuExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.copy_link)) },
+                                onClick = {
+                                    context.copy(range.value)
+                                    Toast.makeText(context, copiedLinkMessage, Toast.LENGTH_SHORT).show()
+                                    linkMenuExpanded = false
+                                }
+                            )
+                        }
+
+                        ForumLinkKind.MAGNET,
+                        ForumLinkKind.ED2K,
+                        ForumLinkKind.CLOUD -> {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.copy)) },
+                                onClick = {
+                                    context.copy(range.value)
+                                    Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                    linkMenuExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.open_external)) },
+                                onClick = {
+                                    openExternal(range.toExternalLinkUrl())
+                                    linkMenuExpanded = false
+                                }
+                            )
+                        }
                     }
-                    }
+                }
                 }
             }
         }
@@ -464,18 +505,25 @@ private suspend fun AwaitPointerEventScope.awaitLinkPress(
     return LinkPressOutcome.Scrolled
 }
 
-/** 段落内的可长按链接区间(URL 链接或番号),offset 相对整段 [ParagraphRenderData.text]。 */
+/** 段落内的可长按链接区间(裸链接/番号),offset 相对整段 [ParagraphRenderData.text]。 */
 @Immutable
 internal data class ParagraphLinkRange(
     val start: Int,
     val endExclusive: Int,
-    /** URL 链接为链接地址;番号为规范化番号。 */
+    /** 链接类型,决定点击路由与长按菜单。 */
+    val kind: ForumLinkKind,
+    /** 链接值:URL/磁力/ED2K/网盘为原文(去尾标点),番号为规范化形式。 */
     val value: String,
     /** 链接的显示文本,「复制链接文本」用。 */
-    val displayText: String,
-    val isMovieCode: Boolean
+    val displayText: String
 ) {
     operator fun contains(offset: Int): Boolean = offset in start until endExclusive
+
+    /** 网盘裸域名补全 scheme,供外部打开;其余类型原样返回。 */
+    fun toExternalLinkUrl(): String = when (kind) {
+        ForumLinkKind.CLOUD -> if (value.startsWith("http", true)) value else "https://$value"
+        else -> value
+    }
 }
 
 /** 段落渲染产物:带样式的 [AnnotatedString] 与可长按链接区间。 */
@@ -521,27 +569,26 @@ private fun RichParagraph.toRenderData(
                         linkRanges += ParagraphLinkRange(
                             start = start,
                             endExclusive = length,
+                            kind = ForumLinkKind.URL,
                             value = part.linkUrl,
-                            displayText = part.text,
-                            isMovieCode = false
+                            displayText = part.text
                         )
-                    } else if (onMovieCodeClick != null) {
-                        appendMovieCodeSegments(
-                            part.text,
-                            primary,
-                            onMovieCodeClick,
-                            onLinkRange = { start, endExclusive, code, displayText ->
+                    } else {
+                        appendContentLinkSegments(
+                            text = part.text,
+                            primary = primary,
+                            recognizeMovieCodes = onMovieCodeClick != null,
+                            onMovieCodeClick = onMovieCodeClick,
+                            onLinkRange = { start, endExclusive, kind, value, displayText ->
                                 linkRanges += ParagraphLinkRange(
                                     start = start,
                                     endExclusive = endExclusive,
-                                    value = code,
-                                    displayText = displayText,
-                                    isMovieCode = true
+                                    kind = kind,
+                                    value = value,
+                                    displayText = displayText
                                 )
                             }
                         )
-                    } else {
-                        append(part.text)
                     }
                 }
             }
@@ -551,18 +598,66 @@ private fun RichParagraph.toRenderData(
 }
 
 /**
+ * 把非链接文本按裸链接命中（URL/磁力/ED2K/网盘，可选番号）分段追加：
+ * 命中片段渲染为 primary 色 + 下划线并收集区间，普通片段原样继承外层样式。
+ * 帖子标题（[ForumThreadTitle]）不经此路径，仍只用 [appendMovieCodeSegments]。
+ */
+private fun AnnotatedString.Builder.appendContentLinkSegments(
+    text: String,
+    primary: Color,
+    recognizeMovieCodes: Boolean,
+    onMovieCodeClick: ((String) -> Unit)?,
+    onLinkRange: (start: Int, endExclusive: Int, kind: ForumLinkKind, value: String, displayText: String) -> Unit
+) {
+    val matches = findBareLinkMatches(text).filter { match ->
+        recognizeMovieCodes || match.kind != ForumLinkKind.MOVIE_CODE
+    }
+    if (matches.isEmpty()) {
+        append(text)
+        return
+    }
+    var cursor = 0
+    matches.forEach { match ->
+        if (match.range.first > cursor) {
+            append(text.substring(cursor, match.range.first))
+        }
+        val start = length
+        val displayText = text.substring(match.range)
+        withStyle(SpanStyle(color = primary, textDecoration = TextDecoration.Underline)) {
+            if (match.kind == ForumLinkKind.MOVIE_CODE) {
+                val code = normalizeMovieCode(displayText) ?: match.value
+                withLink(
+                    LinkAnnotation.Clickable(tag = MOVIE_CODE_LINK_TAG) {
+                        onMovieCodeClick?.invoke(code)
+                    }
+                ) {
+                    append(displayText)
+                }
+                onLinkRange(start, length, match.kind, code, displayText)
+            } else {
+                withLink(LinkAnnotation.Url(match.value)) {
+                    append(displayText)
+                }
+                onLinkRange(start, length, match.kind, match.value, displayText)
+            }
+        }
+        cursor = match.range.last + 1
+    }
+    if (cursor < text.length) {
+        append(text.substring(cursor))
+    }
+}
+
+/**
  * 把纯文本按番号命中分段追加：普通片段原样继承外层样式，番号片段渲染为
  * primary 色 + 下划线的可点击链接（[LinkAnnotation.Clickable]）。
  * 仅供非链接、非内联表情的文本调用；长按复制预览等场景传 null 回调即不识别。
- * 帖子正文/引用块与帖子标题（[ForumThreadTitle]）共用。
- *
- * [onLinkRange] 用于收集番号在整段 AnnotatedString 中的区间（供长按菜单命中测试）。
+ * 帖子标题（[ForumThreadTitle]）专用；帖子正文走 [appendContentLinkSegments]。
  */
 internal fun AnnotatedString.Builder.appendMovieCodeSegments(
     text: String,
     primary: Color,
-    onMovieCodeClick: (String) -> Unit,
-    onLinkRange: ((start: Int, endExclusive: Int, code: String, displayText: String) -> Unit)? = null
+    onMovieCodeClick: (String) -> Unit
 ) {
     var cursor = 0
     findMovieCodeMatches(text).forEach { match ->
@@ -571,7 +666,6 @@ internal fun AnnotatedString.Builder.appendMovieCodeSegments(
         }
         val code = normalizeMovieCode(match.value) ?: match.value
         val linkStyle = SpanStyle(color = primary, textDecoration = TextDecoration.Underline)
-        val start = length
         withStyle(linkStyle) {
             withLink(
                 LinkAnnotation.Clickable(tag = MOVIE_CODE_LINK_TAG) {
@@ -581,7 +675,6 @@ internal fun AnnotatedString.Builder.appendMovieCodeSegments(
                 append(match.value)
             }
         }
-        onLinkRange?.invoke(start, length, code, match.value)
         cursor = match.range.last + 1
     }
     if (cursor < text.length) {

@@ -297,6 +297,12 @@ fun JBusNavigation(
                     onOpenMovieDetail = { url ->
                         backStack.add(RouteMovieDetail(movieUrl = url, censorType = null))
                     },
+                    onOpenThread = { tid ->
+                        backStack.add(RouteForumThreadDetail(tid))
+                    },
+                    onOpenBoard = { fid ->
+                        backStack.add(RouteForumThreadList(fid = fid))
+                    },
                     onBack = { backStack.removeLastOrNull() }
                 )
             }

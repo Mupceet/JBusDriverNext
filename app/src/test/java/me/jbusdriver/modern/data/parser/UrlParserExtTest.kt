@@ -110,4 +110,66 @@ class UrlParserExtTest {
         assertEquals(null, extractFloorTarget("https://www.example.com/forum/forum.php?mod=viewthread&tid=12345"))
         assertEquals(null, extractFloorTarget("https://www.example.com/misc.php?action=jump&pid=67890"))
     }
+
+    @Test
+    fun `resolveForumLinkTarget floor targets keep thread and post ids`() {
+        assertEquals(
+            ForumLinkTarget.Thread(threadId = 12345, postId = 67890),
+            resolveForumLinkTarget("https://www.example.com/forum/forum.php?mod=redirect&goto=findpost&pid=67890&ptid=12345")
+        )
+        assertEquals(
+            ForumLinkTarget.Thread(threadId = 12345, postId = 67890),
+            resolveForumLinkTarget("/forum/thread-12345-2-1.html#pid67890")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget routes thread links regardless of host`() {
+        // 主站/镜像/任意未知域名:结构特征即站内凭证,tid 提取后归一化到当前站点
+        assertEquals(
+            ForumLinkTarget.Thread(456, null),
+            resolveForumLinkTarget("https://www.example.com/forum/thread-456-1-1.html")
+        )
+        assertEquals(
+            ForumLinkTarget.Thread(456, null),
+            resolveForumLinkTarget("https://unscanned-mirror.example.org/thread-456-1-1.html")
+        )
+        assertEquals(
+            ForumLinkTarget.Thread(456, null),
+            resolveForumLinkTarget("https://mirror.example.net/forum/forum.php?mod=viewthread&tid=456")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget routes board links`() {
+        assertEquals(
+            ForumLinkTarget.Board(36),
+            resolveForumLinkTarget("https://www.example.com/forum/forumdisplay.php?fid=36")
+        )
+        assertEquals(
+            ForumLinkTarget.Board(36),
+            resolveForumLinkTarget("https://unscanned-mirror.example.org/forum-36-1.html")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget routes image links by extension`() {
+        assertEquals(
+            ForumLinkTarget.Image("https://pics.example.net/data/attach/abc.jpg?token=1"),
+            resolveForumLinkTarget("https://pics.example.net/data/attach/abc.jpg?token=1")
+        )
+        assertEquals(
+            ForumLinkTarget.Image("https://x.example.com/a.PNG"),
+            resolveForumLinkTarget("https://x.example.com/a.PNG")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget falls back to web for unstructured urls`() {
+        assertEquals(
+            ForumLinkTarget.Web("https://blog.example.com/post/1"),
+            resolveForumLinkTarget("https://blog.example.com/post/1")
+        )
+        assertEquals(ForumLinkTarget.Web(""), resolveForumLinkTarget(""))
+    }
 }

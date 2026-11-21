@@ -16,6 +16,7 @@
     <string name="copy_text">Copy text</string>
     <string name="copy_movie_code">Copy movie code</string>
     <string name="open_movie">Open movie</string>
+    <string name="open_external">Open externally</string>
     <string name="close">Close</string>
     <string name="refresh">Refresh</string>
     <string name="all">All</string>

@@ -60,7 +60,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.copy
-import me.jbusdriver.modern.data.parser.extractFloorTarget
+import me.jbusdriver.modern.data.parser.ForumLinkTarget
+import me.jbusdriver.modern.data.parser.resolveForumLinkTarget
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
 import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
@@ -85,6 +86,10 @@ fun ForumThreadDetailScreen(
     onImageClick: (List<String>, Int) -> Unit,
     /** 点击帖子中识别出的番号后打开影片详情（参数为详情页绝对 URL）。 */
     onOpenMovieDetail: (String) -> Unit = {},
+    /** 点击他帖链接后打开帖子详情（tid，用当前站点加载，镜像链接归一化）。 */
+    onOpenThread: (Int) -> Unit = {},
+    /** 点击板块链接后打开板块帖子列表（fid）。 */
+    onOpenBoard: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel =
@@ -269,14 +274,24 @@ fun ForumThreadDetailScreen(
                             }
                         }
 
+                        // 帖内链接路由:按 Discuz 结构特征判定(不查域名,镜像链接归一化到当前站点加载)
+                        // ① 楼层指路 → 本帖跳转;② 图片直链 → 查看器;③ 他帖 → 详情;④ 板块 → 列表;⑤ 其余 → 浏览器
                         val onPostLinkClick: (String) -> Unit = onPostLink@{ url ->
-                            val target = extractFloorTarget(url)
-                            if (target == null ||
-                                (target.threadId != 0 && target.threadId != detail.tid)
-                            ) {
-                                runCatching { uriHandler.openUri(url) }
-                            } else {
-                                onFloorJumpClick(target.postId, url)
+                            when (val target = resolveForumLinkTarget(url)) {
+                                is ForumLinkTarget.Thread -> {
+                                    val sameThread = target.threadId == 0 || target.threadId == detail.tid
+                                    when {
+                                        sameThread && target.postId != null ->
+                                            onFloorJumpClick(target.postId, url)
+
+                                        !sameThread -> onOpenThread(target.threadId)
+                                        // 本帖无楼层锚点:停留当前页
+                                    }
+                                }
+
+                                is ForumLinkTarget.Board -> onOpenBoard(target.forumId)
+                                is ForumLinkTarget.Image -> onImageClick(listOf(target.url), 0)
+                                is ForumLinkTarget.Web -> runCatching { uriHandler.openUri(url) }
                             }
                         }
 
@@ -513,6 +528,7 @@ fun ForumThreadDetailScreen(
             }
         }
     }
+
 }
 
 /** 楼层断层分隔行：提示两侧楼层之间未加载的区间，点击后循环翻页补齐。 */

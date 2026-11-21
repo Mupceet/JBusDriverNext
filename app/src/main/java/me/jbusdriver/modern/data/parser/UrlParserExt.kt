@@ -63,6 +63,51 @@ fun extractFloorTarget(url: String): FloorTarget? {
     return FloorTarget(threadId = tid, postId = anchorPid)
 }
 
+/** 帖子详情内点击链接的应用内路由目标。 */
+sealed interface ForumLinkTarget {
+    /**
+     * 帖子链接；[postId] 非空表示带楼层锚点；[threadId] 为 0 表示 URL 未携带帖子 id
+     * （按本帖处理，见 [extractFloorTarget]）。
+     */
+    data class Thread(val threadId: Int, val postId: Int?) : ForumLinkTarget
+
+    /** 板块链接（`fid=` / `forum-<fid>-`）。 */
+    data class Board(val forumId: Int) : ForumLinkTarget
+
+    /** 图片直链（按扩展名判定，域无关），可直接进应用内查看器。 */
+    data class Image(val url: String) : ForumLinkTarget
+
+    /** 无 Discuz 结构特征：交由浏览器/外部打开。 */
+    data class Web(val url: String) : ForumLinkTarget
+}
+
+private val boardQueryFidRegex = Regex("[?&]fid=(\\d+)")
+private val boardPathFidRegex = Regex("forum-(\\d+)-")
+
+private val IMAGE_LINK_EXTENSIONS = listOf(".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+/**
+ * 按结构特征把链接解析为应用内路由目标，**不检查域名**：
+ * 镜像站与主站路径同构，`thread-<tid>-…` / `tid=<tid>` / `fid=<fid>` 等结构本身就是
+ * 站内凭证；提取 id 后由调用方用当前站点加载，任何未收录镜像都能正确路由。
+ * 优先级：楼层指路 > 图片直链 > 帖子 > 板块；全不命中时 [ForumLinkTarget.Web]。
+ */
+fun resolveForumLinkTarget(url: String): ForumLinkTarget {
+    if (url.isBlank()) return ForumLinkTarget.Web(url)
+    extractFloorTarget(url)?.let { return ForumLinkTarget.Thread(it.threadId, it.postId) }
+    val path = url.substringBefore('#').substringBefore('?').lowercase()
+    if (IMAGE_LINK_EXTENSIONS.any(path::endsWith)) return ForumLinkTarget.Image(url)
+    (queryTidRegex.find(url) ?: threadUrlTidRegex.find(url))?.let { match ->
+        val tid = match.groupValues[1].toIntOrNull()
+        if (tid != null && tid > 0) return ForumLinkTarget.Thread(tid, null)
+    }
+    (boardQueryFidRegex.find(url) ?: boardPathFidRegex.find(url))?.let { match ->
+        val fid = match.groupValues[1].toIntOrNull()
+        if (fid != null && fid > 0) return ForumLinkTarget.Board(fid)
+    }
+    return ForumLinkTarget.Web(url)
+}
+
 internal fun String.isGifUrl(): Boolean {
     val path = substringBefore("?").substringBefore("#").lowercase()
     return path.endsWith(".gif")

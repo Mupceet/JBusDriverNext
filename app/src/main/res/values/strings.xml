@@ -16,6 +16,7 @@
     <string name="copy_text">複製文本</string>
     <string name="copy_movie_code">複製番號</string>
     <string name="open_movie">打開影片</string>
+    <string name="open_external">外部開啟</string>
     <string name="close">關閉</string>
     <string name="refresh">刷新</string>
     <string name="all">全部</string>
