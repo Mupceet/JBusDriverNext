@@ -95,6 +95,7 @@ import me.jbusdriver.modern.domain.model.RichParagraph
 import me.jbusdriver.modern.domain.model.TextPart
 import me.jbusdriver.modern.domain.model.findBareLinkMatches
 import me.jbusdriver.modern.domain.model.findMovieCodeMatches
+import me.jbusdriver.modern.domain.model.movieCodeFromUrl
 import me.jbusdriver.modern.domain.model.normalizeMovieCode
 import me.jbusdriver.modern.domain.model.toExternalUrl
 import me.jbusdriver.modern.ui.browser.rememberWebOpener
@@ -417,6 +418,16 @@ private fun StyledParagraph(
                         }
 
                         ForumLinkKind.URL -> {
+                            // 番号形式的 URL(如 https://…/NHDT-876):提供直达影片详情
+                            movieCodeFromUrl(range.value)?.takeIf { currentOnMovieCodeClick != null }?.let { code ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.open_movie)) },
+                                    onClick = {
+                                        currentOnMovieCodeClick?.invoke(code)
+                                        linkMenuExpanded = false
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.copy_text)) },
                                 onClick = {

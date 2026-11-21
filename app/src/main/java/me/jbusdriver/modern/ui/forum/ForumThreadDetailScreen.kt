@@ -273,7 +273,8 @@ fun ForumThreadDetailScreen(
                         }
 
                         // 帖内链接路由:按 Discuz 结构特征判定(不查域名,镜像链接归一化到当前站点加载)
-                        // ① 楼层指路 → 本帖跳转;② 图片直链 → 查看器;③ 他帖 → 详情;④ 板块 → 列表;⑤ 其余 → 浏览器
+                        // ① 楼层指路 → 本帖跳转;② 图片直链 → 查看器;③ 影片番号链接 → 影片详情;
+                        // ④ 他帖 → 详情;⑤ 板块 → 列表;⑥ 其余 → 内置浏览器
                         val onPostLinkClick: (String) -> Unit = onPostLink@{ url ->
                             when (val target = resolveForumLinkTarget(url)) {
                                 is ForumLinkTarget.Thread -> {
@@ -289,6 +290,8 @@ fun ForumThreadDetailScreen(
 
                                 is ForumLinkTarget.Board -> onOpenBoard(target.forumId)
                                 is ForumLinkTarget.Image -> onImageClick(listOf(target.url), 0)
+                                is ForumLinkTarget.Movie ->
+                                    onOpenMovieDetail(viewModel.movieUrlForCode(target.code))
                                 is ForumLinkTarget.Web -> openWeb(url)
                             }
                         }

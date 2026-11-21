@@ -1,5 +1,7 @@
 package me.jbusdriver.modern.data.parser
 
+import me.jbusdriver.modern.domain.model.movieCodeFromUrl
+
 fun String.wrapImage(baseUrl: String): String = when {
     isBlank() -> ""
     startsWith("http") -> this
@@ -77,7 +79,13 @@ sealed interface ForumLinkTarget {
     /** 图片直链（按扩展名判定，域无关），可直接进应用内查看器。 */
     data class Image(val url: String) : ForumLinkTarget
 
-    /** 无 Discuz 结构特征：交由浏览器/外部打开。 */
+    /**
+     * 影片详情链接（路径为 `/{番号}` 或 `/uncensored/{番号}`，如
+     * `https://…/NHDT-876`，域无关）；[code] 为规范化番号，调用方按当前站点重建加载。
+     */
+    data class Movie(val code: String) : ForumLinkTarget
+
+    /** 无结构特征：交由浏览器/外部打开。 */
     data class Web(val url: String) : ForumLinkTarget
 }
 
@@ -88,15 +96,16 @@ private val IMAGE_LINK_EXTENSIONS = listOf(".jpg", ".jpeg", ".png", ".gif", ".we
 
 /**
  * 按结构特征把链接解析为应用内路由目标，**不检查域名**：
- * 镜像站与主站路径同构，`thread-<tid>-…` / `tid=<tid>` / `fid=<fid>` 等结构本身就是
- * 站内凭证；提取 id 后由调用方用当前站点加载，任何未收录镜像都能正确路由。
- * 优先级：楼层指路 > 图片直链 > 帖子 > 板块；全不命中时 [ForumLinkTarget.Web]。
+ * 镜像站与主站路径同构，`thread-<tid>-…` / `tid=<tid>` / `fid=<fid>` / `/{番号}` 等结构
+ * 本身就是站内凭证；提取 id/番号后由调用方用当前站点加载，任何未收录镜像都能正确路由。
+ * 优先级：楼层指路 > 图片直链 > 影片详情 > 帖子 > 板块；全不命中时 [ForumLinkTarget.Web]。
  */
 fun resolveForumLinkTarget(url: String): ForumLinkTarget {
     if (url.isBlank()) return ForumLinkTarget.Web(url)
     extractFloorTarget(url)?.let { return ForumLinkTarget.Thread(it.threadId, it.postId) }
     val path = url.substringBefore('#').substringBefore('?').lowercase()
     if (IMAGE_LINK_EXTENSIONS.any(path::endsWith)) return ForumLinkTarget.Image(url)
+    movieCodeFromUrl(url)?.let { return ForumLinkTarget.Movie(it) }
     (queryTidRegex.find(url) ?: threadUrlTidRegex.find(url))?.let { match ->
         val tid = match.groupValues[1].toIntOrNull()
         if (tid != null && tid > 0) return ForumLinkTarget.Thread(tid, null)

@@ -172,4 +172,36 @@ class UrlParserExtTest {
         )
         assertEquals(ForumLinkTarget.Web(""), resolveForumLinkTarget(""))
     }
+
+    @Test
+    fun `resolveForumLinkTarget routes movie code urls domain-free`() {
+        assertEquals(
+            ForumLinkTarget.Movie("NHDT-876"),
+            resolveForumLinkTarget("https://www.javbus.com/NHDT-876")
+        )
+        assertEquals(
+            ForumLinkTarget.Movie("NHDT-876"),
+            resolveForumLinkTarget("https://unscanned-mirror.example.org/NHDT-876")
+        )
+        assertEquals(
+            ForumLinkTarget.Movie("NHDT-876"),
+            resolveForumLinkTarget("https://www.javbus.com/uncensored/NHDT-876")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget keeps image before movie detection`() {
+        assertEquals(
+            ForumLinkTarget.Image("https://www.javbus.com/pics/cover/NHDT-876.jpg"),
+            resolveForumLinkTarget("https://www.javbus.com/pics/cover/NHDT-876.jpg")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget non code single segments stay web`() {
+        assertEquals(
+            ForumLinkTarget.Web("https://www.example.com/about"),
+            resolveForumLinkTarget("https://www.example.com/about")
+        )
+    }
 }
