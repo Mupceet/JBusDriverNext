@@ -63,6 +63,7 @@ import me.jbusdriver.modern.data.parser.ForumLinkTarget
 import me.jbusdriver.modern.data.parser.resolveForumLinkTarget
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.ui.RouteForumThreadDetail
+import me.jbusdriver.modern.ui.RouteLinkMovies
 import me.jbusdriver.modern.ui.browser.rememberWebOpener
 import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.ui.components.EmptyStateView
@@ -90,6 +91,8 @@ fun ForumThreadDetailScreen(
     onOpenThread: (Int) -> Unit = {},
     /** 点击板块链接后打开板块帖子列表（fid）。 */
     onOpenBoard: (Int) -> Unit = {},
+    /** 点击站内列表页链接（演员/导演/制作/发行/系列/分类）后打开关联影片列表。 */
+    onOpenLinkMovies: (RouteLinkMovies) -> Unit = {},
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel =
@@ -273,8 +276,9 @@ fun ForumThreadDetailScreen(
                         }
 
                         // 帖内链接路由:按 Discuz 结构特征判定(不查域名,镜像链接归一化到当前站点加载)
-                        // ① 楼层指路 → 本帖跳转;② 图片直链 → 查看器;③ 影片番号链接 → 影片详情;
-                        // ④ 他帖 → 详情;⑤ 板块 → 列表;⑥ 其余 → 内置浏览器
+                        // ① 楼层指路 → 本帖跳转;② 图片直链 → 查看器;③ 站内列表页(演员/导演等) →
+                        // 关联影片列表;④ 影片番号链接 → 影片详情;⑤ 他帖 → 详情;⑥ 板块 → 列表;
+                        // ⑦ 其余 → 内置浏览器
                         val onPostLinkClick: (String) -> Unit = onPostLink@{ url ->
                             when (val target = resolveForumLinkTarget(url)) {
                                 is ForumLinkTarget.Thread -> {
@@ -290,6 +294,16 @@ fun ForumThreadDetailScreen(
 
                                 is ForumLinkTarget.Board -> onOpenBoard(target.forumId)
                                 is ForumLinkTarget.Image -> onImageClick(listOf(target.url), 0)
+                                // 列表页标题不预设(锚文本/链接 id 观感差),先「載入中」,页面
+                                // 面包屑解析后由 resolvedTitle 更新
+                                is ForumLinkTarget.ListPage -> onOpenLinkMovies(
+                                    RouteLinkMovies(
+                                        linkUrl = target.url,
+                                        type = target.type,
+                                        censorType = target.censorType
+                                    )
+                                )
+
                                 is ForumLinkTarget.Movie ->
                                     onOpenMovieDetail(viewModel.movieUrlForCode(target.code))
                                 is ForumLinkTarget.Web -> openWeb(url)

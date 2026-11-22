@@ -51,6 +51,8 @@ sealed interface ResolvedTitle {
     val name: String
 
     data class Actress(override val name: String) : ResolvedTitle
+
+    /** 非女優页面从面包屑解析出的名称；类别标签由 UI 按 RouteLinkMovies.type 选择。 */
     data class Genre(override val name: String) : ResolvedTitle
 }
 

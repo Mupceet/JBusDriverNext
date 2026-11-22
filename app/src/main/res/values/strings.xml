@@ -190,6 +190,11 @@
     <string name="delete">刪除</string>
     <string name="actress_type">演員: %1$s</string>
     <string name="genre_type">類別: %1$s</string>
+    <string name="director_type">導演: %1$s</string>
+    <string name="studio_type">製作商: %1$s</string>
+    <string name="label_type">發行商: %1$s</string>
+    <string name="series_type">系列: %1$s</string>
+    <string name="publisher_type">發行商: %1$s</string>
 
     <!-- Common actions -->
     <string name="clear">清除</string>

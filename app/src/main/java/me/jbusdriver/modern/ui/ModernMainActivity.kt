@@ -19,6 +19,7 @@ import me.jbusdriver.modern.core.http.BrowserSessionClient
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.domain.model.movieCodeFromUrl
 import me.jbusdriver.modern.data.localvideo.LocalVideoForegroundScanner
+import me.jbusdriver.modern.data.parser.LIST_PAGE_PATH_TYPES
 import me.jbusdriver.modern.data.localvideo.LocalVideoMetadataEnricher
 import me.jbusdriver.modern.ui.theme.JBusTheme
 import javax.inject.Inject
@@ -146,26 +147,13 @@ class ModernMainActivity : ComponentActivity() {
         val isPrefixSegment = segments[0] in listOf("uncensored", "xyz")
         val contentSegment = if (isPrefixSegment) segments.getOrNull(1) else segments[0]
 
-        if (contentSegment in listOf(
-                "star",
-                "genre",
-                "director",
-                "studio",
-                "label",
-                "series",
-                "publisher"
-            )
-        ) {
-            val type = when (contentSegment) {
-                "star" -> "actress"
-                "genre" -> "genre"
-                else -> "header"
-            }
+        val listPageType = contentSegment?.let { LIST_PAGE_PATH_TYPES[it] }
+        if (listPageType != null) {
             val title = segments.last()
             return RouteLinkMovies(
                 linkUrl = url,
                 title = title,
-                type = type,
+                type = listPageType,
                 censorType = censorType
             )
         }

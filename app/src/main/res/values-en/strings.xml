@@ -195,6 +195,11 @@
     <string name="delete">Delete</string>
     <string name="actress_type">Actress: %1$s</string>
     <string name="genre_type">Genre: %1$s</string>
+    <string name="director_type">Director: %1$s</string>
+    <string name="studio_type">Studio: %1$s</string>
+    <string name="label_type">Label: %1$s</string>
+    <string name="series_type">Series: %1$s</string>
+    <string name="publisher_type">Publisher: %1$s</string>
 
     <!-- Common actions -->
     <string name="clear">Clear</string>

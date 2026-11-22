@@ -30,6 +30,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.StateFlow
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.data.parser.listPageTypeFromPath
 import me.jbusdriver.modern.ui.browser.BrowserScreen
 import me.jbusdriver.modern.ui.browser.LocalWebNavigator
 import me.jbusdriver.modern.ui.browser.WebNavigator
@@ -258,7 +259,7 @@ fun JBusNavigation(
                                     RouteLinkMovies(
                                         header.link,
                                         header.name + ": " + header.value,
-                                        type = "header",
+                                        type = listPageTypeFromPath(header.link) ?: "header",
                                         censorType = censorType
                                     )
                                 )
@@ -312,6 +313,9 @@ fun JBusNavigation(
                         },
                         onOpenBoard = { fid ->
                             backStack.add(RouteForumThreadList(fid = fid))
+                        },
+                        onOpenLinkMovies = { key ->
+                            backStack.add(key)
                         },
                         onBack = { backStack.removeLastOrNull() }
                     )

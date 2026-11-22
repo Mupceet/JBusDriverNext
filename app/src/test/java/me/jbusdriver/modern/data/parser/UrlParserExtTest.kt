@@ -204,4 +204,77 @@ class UrlParserExtTest {
             resolveForumLinkTarget("https://www.example.com/about")
         )
     }
+
+    @Test
+    fun `resolveForumLinkTarget routes star links as actress list page`() {
+        assertEquals(
+            ForumLinkTarget.ListPage(
+                "https://www.busdmm.casa/star/sv3",
+                type = "actress"
+            ),
+            resolveForumLinkTarget("https://www.busdmm.casa/star/sv3")
+        )
+        assertEquals(
+            ForumLinkTarget.ListPage(
+                "https://www.example.com/star/3fvb?from=post",
+                type = "actress"
+            ),
+            resolveForumLinkTarget("https://www.example.com/star/3fvb?from=post")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget routes header list pages domain free`() {
+        for ((segment, type) in mapOf(
+            "director" to "director",
+            "studio" to "studio",
+            "label" to "label",
+            "series" to "series",
+            "publisher" to "publisher"
+        )) {
+            assertEquals(
+                ForumLinkTarget.ListPage("https://www.example.com/$segment/g472", type = type),
+                resolveForumLinkTarget("https://www.example.com/$segment/g472")
+            )
+        }
+    }
+
+    @Test
+    fun `resolveForumLinkTarget routes genre list pages`() {
+        assertEquals(
+            ForumLinkTarget.ListPage("https://www.example.com/genre/abc", type = "genre"),
+            resolveForumLinkTarget("https://www.example.com/genre/abc")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget marks uncensored prefix on list pages`() {
+        assertEquals(
+            ForumLinkTarget.ListPage(
+                "https://www.example.com/uncensored/star/sv3",
+                type = "actress",
+                censorType = "UNCENSORED"
+            ),
+            resolveForumLinkTarget("https://www.example.com/uncensored/star/sv3")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget list page wins over movie code shape`() {
+        // /star/<番号形id>:列表页结构前缀优先于番号识别
+        assertEquals(
+            ForumLinkTarget.ListPage("https://www.example.com/star/AB-123", type = "actress"),
+            resolveForumLinkTarget("https://www.example.com/star/AB-123")
+        )
+    }
+
+    @Test
+    fun `resolveForumLinkTarget bare index pages stay web`() {
+        for (segment in listOf("star", "genre", "director", "studio", "label", "series", "publisher")) {
+            assertEquals(
+                ForumLinkTarget.Web("https://www.example.com/$segment"),
+                resolveForumLinkTarget("https://www.example.com/$segment")
+            )
+        }
+    }
 }

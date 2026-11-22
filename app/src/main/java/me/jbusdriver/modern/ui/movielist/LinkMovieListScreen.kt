@@ -187,7 +187,15 @@ fun LinkMovieListScreen(
 
     val displayTitle = when (val rt = state.resolvedTitle) {
         is ResolvedTitle.Actress -> stringResource(R.string.actress_type, rt.name)
-        is ResolvedTitle.Genre -> stringResource(R.string.genre_type, rt.name)
+        // 非女優页面的面包屑名称:类别标签按链接路径类型选择,无法归类时退回「類別」
+        is ResolvedTitle.Genre -> when (type) {
+            "director" -> stringResource(R.string.director_type, rt.name)
+            "studio" -> stringResource(R.string.studio_type, rt.name)
+            "label" -> stringResource(R.string.label_type, rt.name)
+            "series" -> stringResource(R.string.series_type, rt.name)
+            "publisher" -> stringResource(R.string.publisher_type, rt.name)
+            else -> stringResource(R.string.genre_type, rt.name)
+        }
         null -> when {
             title.isNotBlank() && type == "actress" -> stringResource(R.string.actress_type, title)
             title.isNotBlank() && type == "genre" -> stringResource(R.string.genre_type, title)
