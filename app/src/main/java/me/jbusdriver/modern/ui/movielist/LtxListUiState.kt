@@ -21,7 +21,7 @@ enum class LtxSortField(@StringRes val labelRes: Int) {
     ADDED(R.string.ltx_sort_field_added),
     SCORE(R.string.ltx_sort_field_score),
     DATE(R.string.ltx_sort_field_date),
-    CODE(R.string.ltx_sort_field_code);
+    CODE(R.string.sort_field_code);
 
     /** 站点查询排序字段名（与 [LtxListSort] 的 field 枚举一致）。 */
     internal val serverField: String get() = name.lowercase()
@@ -34,8 +34,8 @@ enum class LtxSortField(@StringRes val labelRes: Int) {
 
 /** LTX 列表排序方向：倒序（降序）为默认（服务端排序）。 */
 enum class LtxSortDirection(@StringRes val labelRes: Int) {
-    DESC(R.string.ltx_sort_dir_desc),
-    ASC(R.string.ltx_sort_dir_asc);
+    DESC(R.string.sort_dir_desc),
+    ASC(R.string.sort_dir_asc);
 
     /** 站点查询方向名。 */
     internal val serverDir: String get() = name.lowercase()

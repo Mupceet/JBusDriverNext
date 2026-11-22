@@ -533,12 +533,46 @@ private fun SortOption.toMovieComparator(): Comparator<MovieUiModel> = when (thi
     SortOption.COLLECT_ASC -> compareBy { it.createTime }
     SortOption.PUBLISH_DESC -> compareByDescending { it.date }
     SortOption.PUBLISH_ASC -> compareBy { it.date }
+    SortOption.CODE_ASC -> Comparator { a, b -> compareNatural(a.code, b.code) }
+    SortOption.CODE_DESC -> Comparator { a, b -> compareNatural(b.code, a.code) }
 }
 
 private fun SortOption.toActressComparator(): Comparator<ActressUiModel> = when (this) {
     SortOption.COLLECT_DESC -> compareByDescending { it.createTime }
     SortOption.COLLECT_ASC -> compareBy { it.createTime }
     else -> compareByDescending { it.createTime }
+}
+
+/**
+ * 番號自然序比較：連續數字段按數值比（IPX-2 排在 IPX-10 前），其餘字符忽略大小寫逐位比；
+ * 數字段先比長度再逐位，避免轉數值溢出。
+ */
+private fun compareNatural(a: String, b: String): Int {
+    var i = 0
+    var j = 0
+    while (i < a.length && j < b.length) {
+        if (a[i].isDigit() && b[j].isDigit()) {
+            var i2 = i
+            var j2 = j
+            while (i2 < a.length && a[i2].isDigit()) i2++
+            while (j2 < b.length && b[j2].isDigit()) j2++
+            val lenA = i2 - i
+            val lenB = j2 - j
+            if (lenA != lenB) return lenA.compareTo(lenB)
+            for (k in 0 until lenA) {
+                val byDigit = a[i + k].compareTo(b[j + k])
+                if (byDigit != 0) return byDigit
+            }
+            i = i2
+            j = j2
+        } else {
+            val byChar = a[i].uppercaseChar().compareTo(b[j].uppercaseChar())
+            if (byChar != 0) return byChar
+            i++
+            j++
+        }
+    }
+    return (a.length - i).compareTo(b.length - j)
 }
 
 /** 将毫秒时间戳转换为年份 */

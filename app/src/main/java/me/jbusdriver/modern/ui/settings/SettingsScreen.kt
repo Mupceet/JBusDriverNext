@@ -618,8 +618,8 @@ private fun themeModeLabel(mode: ThemeMode) = when (mode) {
 }
 
 private fun floorOrderLabel(order: ForumFloorOrder) = when (order) {
-    ForumFloorOrder.REGULAR -> "正序"
-    ForumFloorOrder.REVERSE -> "倒序"
+    ForumFloorOrder.REGULAR -> "升序"
+    ForumFloorOrder.REVERSE -> "降序"
 }
 
 @Composable

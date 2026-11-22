@@ -1,34 +1,24 @@
 package me.jbusdriver.modern.ui.movielist
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -37,11 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.jbusdriver.R
 import me.jbusdriver.modern.data.db.MovieDBType
+import me.jbusdriver.modern.ui.components.DropdownButton
 
 /**
  * 收藏篩選 Bottom Sheet。
  *
- * 佈局參考 CategoryBottomSheet：高度限制 0.618f，標題居左，重置+排序居右。
+ * 佈局參考 CategoryBottomSheet：高度限制 0.618f，標題居左，
+ * 右上角為重置 + 排序雙下拉（內容/順序拆分，兩按鈕相鄰）。
  * 篩選 Chip 點擊即時生效。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -58,6 +50,11 @@ fun CollectionFilterSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // 演員 tab 僅支持收藏時間排序；當前 sortOption 超出可用範圍時按 COLLECT_DESC 展示
+    // （與 CollectionListViewModel 的 comparator 回退一致）。
+    val sortOptions = if (dbType == MovieDBType) SortOption.movieOptions else SortOption.actressOptions
+    val effectiveSort = filterState.sortOption.takeIf { it in sortOptions } ?: sortOptions.first()
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
@@ -67,7 +64,7 @@ fun CollectionFilterSheet(
                 .fillMaxWidth()
                 .fillMaxHeight(0.618f)
         ) {
-            // ── Header: title (left) + reset + sort (right) ──
+            // ── Header: title (left) + reset + sort field/direction (right) ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -89,10 +86,26 @@ fun CollectionFilterSheet(
                             Text(stringResource(R.string.reset), fontSize = 12.sp)
                         }
                     }
-                    SortDropdown(
-                        dbType = dbType,
-                        current = filterState.sortOption,
-                        onSelect = { onFilterChange(filterState.copy(sortOption = it)) }
+                    // 排序內容/順序拆成兩個相鄰下拉；field 選項從可用排序選項派生（單一真源）
+                    DropdownButton(
+                        options = sortOptions.map { it.field }.distinct(),
+                        selected = effectiveSort.field,
+                        label = { stringResource(it.labelRes) },
+                        onSelect = { field ->
+                            onFilterChange(
+                                filterState.copy(sortOption = SortOption.of(field, effectiveSort.direction))
+                            )
+                        }
+                    )
+                    DropdownButton(
+                        options = SortDirection.entries.toList(),
+                        selected = effectiveSort.direction,
+                        label = { stringResource(it.labelRes) },
+                        onSelect = { direction ->
+                            onFilterChange(
+                                filterState.copy(sortOption = SortOption.of(effectiveSort.field, direction))
+                            )
+                        }
                     )
                 }
             }
@@ -288,38 +301,6 @@ private fun MonthChipRow(
                 },
                 enabled = available
             )
-        }
-    }
-}
-
-@Composable
-private fun SortDropdown(
-    dbType: Int,
-    current: SortOption,
-    onSelect: (SortOption) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val options = if (dbType == MovieDBType) SortOption.movieOptions else SortOption.actressOptions
-
-    Box {
-        OutlinedButton(
-            onClick = { expanded = true },
-            contentPadding = PaddingValues(horizontal = 14.dp)
-        ) {
-            Text(current.label, style = MaterialTheme.typography.labelMedium)
-            Spacer(Modifier.width(2.dp))
-            Text("▾", fontSize = 20.sp)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.label, fontSize = 14.sp) },
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    }
-                )
-            }
         }
     }
 }

@@ -188,7 +188,7 @@ private fun ReplyFilterButton(
     )
 }
 
-/** 右侧“正序 / 倒序”胶囊：比左侧弱化（描边、小号字）。 */
+/** 右侧“升序 / 降序”胶囊：比左侧弱化（描边、小号字）。 */
 @Composable
 private fun FloorOrderPill(
     label: String,

@@ -81,8 +81,8 @@
     <!-- Forum -->
     <string name="reply_filter_all">全部評論</string>
     <string name="reply_filter_author">只看樓主</string>
-    <string name="floor_order_regular">正序</string>
-    <string name="floor_order_reverse">倒序</string>
+    <string name="floor_order_regular">升序</string>
+    <string name="floor_order_reverse">降序</string>
     <string name="thread_order_dateline">最新主題</string>
     <string name="thread_order_lastpost">最新回覆</string>
     <string name="thread_order_heats">熱門主题</string>
@@ -105,13 +105,13 @@
     <string name="ltx_pending">待確認</string>
     <string name="ltx_status_all">全部</string>
     <string name="ltx_status_confirmed">已確認</string>
-    <string name="ltx_sort_label">排序</string>
     <string name="ltx_sort_field_added">入庫時間</string>
     <string name="ltx_sort_field_score">評分</string>
     <string name="ltx_sort_field_date">發行時間</string>
-    <string name="ltx_sort_field_code">番號</string>
-    <string name="ltx_sort_dir_desc">倒序</string>
-    <string name="ltx_sort_dir_asc">正序</string>
+    <string name="sort_field_code">番號</string>
+    <string name="sort_field_publish">發佈時間</string>
+    <string name="sort_dir_desc">降序</string>
+    <string name="sort_dir_asc">升序</string>
     <string name="ltx_filter_confirm_label">確認狀態</string>
     <string name="ltx_site_label">站內收錄</string>
     <string name="ltx_site_included">已收錄</string>

@@ -108,13 +108,13 @@
     <string name="ltx_pending">Pending</string>
     <string name="ltx_status_all">All</string>
     <string name="ltx_status_confirmed">Confirmed</string>
-    <string name="ltx_sort_label">Sort</string>
     <string name="ltx_sort_field_added">Added time</string>
     <string name="ltx_sort_field_score">Score</string>
     <string name="ltx_sort_field_date">Release date</string>
-    <string name="ltx_sort_field_code">Code</string>
-    <string name="ltx_sort_dir_desc">Descending</string>
-    <string name="ltx_sort_dir_asc">Ascending</string>
+    <string name="sort_field_code">Code</string>
+    <string name="sort_field_publish">Publish time</string>
+    <string name="sort_dir_desc">Descending</string>
+    <string name="sort_dir_asc">Ascending</string>
     <string name="ltx_filter_confirm_label">Confirm status</string>
     <string name="ltx_site_label">Site coverage</string>
     <string name="ltx_site_included">On site</string>

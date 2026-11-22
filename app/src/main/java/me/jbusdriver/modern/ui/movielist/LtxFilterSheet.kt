@@ -24,12 +24,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.jbusdriver.R
+import me.jbusdriver.modern.ui.components.DropdownButton
 
 /**
  * LTX 篩選 Bottom Sheet。
  *
- * 布局参考复用 [CollectionFilterSheet]：标题居左、重置居右，筛选 chip 点击即时生效。
- * 分组：確認狀態、站內收錄（三态多选：已收錄/未收錄/未檢測）、排序（标题 + 方向/依据）。
+ * 布局参考复用 [CollectionFilterSheet]：标题居左、右上角为重置 + 排序双下拉
+ * （內容/順序拆分，兩按鈕相鄰），筛选 chip 点击即时生效。
+ * 分组：確認狀態、站內收錄（三态多选：已收錄/未收錄/未檢測）；排序入口在头部下拉。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -57,7 +59,7 @@ fun LtxFilterSheet(
                 .fillMaxWidth()
                 .fillMaxHeight(0.65f)
         ) {
-            // ── Header: title (left) + reset (right) ──
+            // ── Header: title (left) + reset + sort field/direction (right) ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -70,10 +72,25 @@ fun LtxFilterSheet(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                if (hasActiveFilters) {
-                    TextButton(onClick = onReset) {
-                        Text(stringResource(R.string.reset), fontSize = 12.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (hasActiveFilters) {
+                        TextButton(onClick = onReset) {
+                            Text(stringResource(R.string.reset), fontSize = 12.sp)
+                        }
                     }
+                    // 排序內容/順序拆成兩個相鄰下拉，與收藏篩選彈窗一致
+                    DropdownButton(
+                        options = LtxSortField.entries.toList(),
+                        selected = sortField,
+                        label = { stringResource(it.labelRes) },
+                        onSelect = onSortFieldChange
+                    )
+                    DropdownButton(
+                        options = LtxSortDirection.entries.toList(),
+                        selected = sortDirection,
+                        label = { stringResource(it.labelRes) },
+                        onSelect = onSortDirectionChange
+                    )
                 }
             }
 
@@ -112,37 +129,6 @@ fun LtxFilterSheet(
                             label = stringResource(state.labelRes),
                             selected = state in resolveFilter,
                             onClick = { onToggleResolveFilter(state) }
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.padding(top = 16.dp))
-
-            // ── 排序：标题单独一行，方向、依据依次成行（chip 名称自明，不加标签） ──
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    stringResource(R.string.ltx_sort_label),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.padding(top = 6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LtxSortDirection.entries.forEach { direction ->
-                        LtxFilterChip(
-                            label = stringResource(direction.labelRes),
-                            selected = sortDirection == direction,
-                            onClick = { onSortDirectionChange(direction) }
-                        )
-                    }
-                }
-                Spacer(Modifier.padding(top = 8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LtxSortField.entries.forEach { field ->
-                        LtxFilterChip(
-                            label = stringResource(field.labelRes),
-                            selected = sortField == field,
-                            onClick = { onSortFieldChange(field) }
                         )
                     }
                 }

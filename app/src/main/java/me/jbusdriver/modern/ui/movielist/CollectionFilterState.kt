@@ -1,7 +1,7 @@
 package me.jbusdriver.modern.ui.movielist
 
-import me.jbusdriver.modern.ui.movielist.SortOption.Companion.actressOptions
-import me.jbusdriver.modern.ui.movielist.SortOption.Companion.movieOptions
+import androidx.annotation.StringRes
+import me.jbusdriver.R
 
 
 /**
@@ -15,21 +15,66 @@ enum class CensorFilter { ALL, CENSORED, UNCENSORED }
 enum class LocalVideoFilter { ALL, DOWNLOADED, NOT_DOWNLOADED }
 
 /**
- * 排序選項。
+ * 排序內容（依據的欄位），篩選彈窗排序下拉顯示文本見 [labelRes]。
+ */
+enum class SortField(@StringRes val labelRes: Int) {
+    COLLECT(R.string.collect_time),
+    PUBLISH(R.string.sort_field_publish),
+    CODE(R.string.sort_field_code)
+}
+
+/**
+ * 排序順序，篩選彈窗排序下拉顯示文本見 [labelRes]。
+ */
+enum class SortDirection(@StringRes val labelRes: Int) {
+    DESC(R.string.sort_dir_desc),
+    ASC(R.string.sort_dir_asc)
+}
+
+/**
+ * 合併排序選項（內容 + 順序），同時是收藏排序的持久化格式（DataStore 存枚舉名），
+ * 新增項不改既有枚舉名以保持舊存檔兼容。
  *
- * [label] 為 Bottom Sheet 排序下拉中顯示的文本。
  * [movieOptions] 影片列表可用的排序選項。
  * [actressOptions] 演員列表可用的排序選項（僅收藏時間）。
  */
-enum class SortOption(val label: String) {
-    COLLECT_DESC("收藏時間倒序"),
-    COLLECT_ASC("收藏時間正序"),
-    PUBLISH_DESC("發佈時間倒序"),
-    PUBLISH_ASC("發佈時間正序");
+enum class SortOption {
+    COLLECT_DESC,
+    COLLECT_ASC,
+    PUBLISH_DESC,
+    PUBLISH_ASC,
+    CODE_DESC,
+    CODE_ASC;
+
+    /** 排序內容。 */
+    val field: SortField
+        get() = when (this) {
+            COLLECT_DESC, COLLECT_ASC -> SortField.COLLECT
+            PUBLISH_DESC, PUBLISH_ASC -> SortField.PUBLISH
+            CODE_DESC, CODE_ASC -> SortField.CODE
+        }
+
+    /** 排序順序。 */
+    val direction: SortDirection
+        get() = if (name.endsWith("_ASC")) SortDirection.ASC else SortDirection.DESC
 
     companion object {
-        val movieOptions: List<SortOption> = entries
+        val movieOptions: List<SortOption> = entries.toList()
         val actressOptions: List<SortOption> = listOf(COLLECT_DESC, COLLECT_ASC)
+
+        /** 排序內容 + 順序 → 合併排序選項。 */
+        fun of(field: SortField, direction: SortDirection): SortOption = when (direction) {
+            SortDirection.ASC -> when (field) {
+                SortField.COLLECT -> COLLECT_ASC
+                SortField.PUBLISH -> PUBLISH_ASC
+                SortField.CODE -> CODE_ASC
+            }
+            SortDirection.DESC -> when (field) {
+                SortField.COLLECT -> COLLECT_DESC
+                SortField.PUBLISH -> PUBLISH_DESC
+                SortField.CODE -> CODE_DESC
+            }
+        }
     }
 }
 
