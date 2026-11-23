@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.jbusdriver.modern.ui.components.AppAsyncImage
 import me.jbusdriver.R
@@ -79,7 +80,6 @@ internal fun ThreadHeader(
             badgeStyle = MaterialTheme.typography.titleMedium,
             onMovieCodeClick = onMovieCodeClick,
             modifier = Modifier
-                .padding(top = 4.dp)
                 .pointerInput(onTitleLongClick) {
                     detectTapGestures(onLongPress = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -94,7 +94,7 @@ internal fun ThreadHeader(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                "${detail.author} · ${detail.postTime}",
+                detail.postTime,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -103,6 +103,44 @@ internal fun ThreadHeader(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+/** 顶栏常显的楼主信息行：左 32dp 头像，右昵称在上、等级在下（昵称单行省略）。 */
+@Composable
+internal fun ThreadAuthorRow(
+    detail: ForumThreadDetail,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        AppAsyncImage(
+            model = detail.authorAvatar,
+            contentDescription = null,
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = ContentScale.Crop
+        )
+        Column {
+            Text(
+                detail.author,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!detail.authorGroup.isNullOrBlank()) {
+                Text(
+                    detail.authorGroup,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
+            }
         }
     }
 }

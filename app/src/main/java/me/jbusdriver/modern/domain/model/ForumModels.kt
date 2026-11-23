@@ -96,7 +96,9 @@ data class ForumThreadDetail(
     val replies: List<ForumReply>,
     val pageInfo: PageInfo,
     val pid: Int = 0,
-    val commentPageInfo: PageInfo = PageInfo()
+    val commentPageInfo: PageInfo = PageInfo(),
+    /** 楼主等级/用户组；可空以兼容升级前磁盘缓存（Gson 缺字段会绕过构造函数置 null）。 */
+    val authorGroup: String? = null
 )
 
 @Immutable

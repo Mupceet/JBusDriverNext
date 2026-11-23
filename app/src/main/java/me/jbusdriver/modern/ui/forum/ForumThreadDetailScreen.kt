@@ -50,7 +50,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -154,11 +153,8 @@ fun ForumThreadDetailScreen(
                 ),
                 modifier = Modifier.hazeTopBar(hazeState),
                 title = {
-                    Text(
-                        detail?.title ?: "",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    // 常显楼主信息行（头像+昵称+等级），帖子标题只在内容区展示
+                    detail?.let { ThreadAuthorRow(detail = it) }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

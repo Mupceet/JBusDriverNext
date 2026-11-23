@@ -168,6 +168,11 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         }
         .ifBlank { doc.select(".pls.favatar .avatar img[src]").firstOrNull()?.attr("src") ?: "" }
 
+    // 楼主等级/用户组：旧模板在首帖 .pls em a（与回复楼层同源）；nthread 模板首帖 pls 为空，
+    // 楼主信息卡片在页面侧栏 div.viewthread_authorinfo（p>em>a 为用户组）。取不到时为 null（UI 不渲染等级行）。
+    val authorGroup = firstPost?.select(".pls em a")?.text()?.trim()?.ifBlank { null }
+        ?: doc.selectFirst("div.viewthread_authorinfo em a")?.text()?.trim()?.ifBlank { null }
+
     val typeOptionBlocks = parseForumPostContent(firstPost?.selectFirst("div.typeoption"), baseUrl)
     val contentBlocks =
         typeOptionBlocks + parseForumPostContent(firstPost?.selectFirst("td.t_f"), baseUrl)
@@ -237,7 +242,8 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         replies = replies,
         pageInfo = parseForumPageInfo(doc),
         pid = firstPostPid,
-        commentPageInfo = firstPostCommentPageInfo
+        commentPageInfo = firstPostCommentPageInfo,
+        authorGroup = authorGroup
     )
 }
 

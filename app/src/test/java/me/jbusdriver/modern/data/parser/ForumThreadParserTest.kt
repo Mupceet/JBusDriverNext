@@ -7,6 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -30,6 +31,77 @@ class ForumThreadParserTest {
         assertFalse(detail.comments[0].time == "2026-6-9 08:59")
         assertFalse(detail.comments[1].time.contains("2026-6-9"))
         assertEquals(PageInfo(activePage = 1, nextPage = 2), detail.commentPageInfo)
+    }
+
+    @Test
+    fun `thread detail parses first post author group`() {
+        val doc = Jsoup.parse(
+            """
+            <html><body>
+            <span id="thread_subject">等級</span>
+            <div id="post_1" class="nthread_postbox nthread_firstpostbox">
+              <div class="pls"><em><a href="home.php?mod=spacecp&amp;ac=usergroup">正式會員</a></em></div>
+              <a class="au" href="home.php?mod=space&amp;uid=1">author</a>
+              <table><tbody><tr><td class="t_f" id="postmessage_1">first</td></tr></tbody></table>
+            </div>
+            </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertEquals("正式會員", detail.authorGroup)
+    }
+
+    @Test
+    fun `thread detail author group falls back to sidebar author info card`() {
+        // nthread 模板：首帖 td.pls 为空，楼主信息卡片在页面侧栏 div.viewthread_authorinfo
+        val doc = Jsoup.parse(
+            """
+            <html><body>
+            <div id="ct" class="wp cl ct2">
+              <div class="sd sd_allbox">
+                <div class="viewthread_authorinfo">
+                  <div class="avatar"><a class="avtm"><img src="https://uc.example.com/a_avatar_middle.jpg"></a></div>
+                  <div class="authi"><a class="xw1">Astraea_lfl</a></div>
+                  <p><em><a href="home.php?mod=spacecp&amp;ac=usergroup&amp;gid=11">實習司機</a></em></p>
+                </div>
+              </div>
+              <div class="mn">
+                <div class="nthread_postbox nthread_firstpostbox">
+                  <table><tbody><tr><td class="pls"></td><td class="plc"><div class="pct"><div class="pcb"><div class="t_fsz"><table><tbody><tr><td class="t_f" id="postmessage_5009595">first</td></tr></tbody></table></div></div></div></td></tr></tbody></table>
+                </div>
+              </div>
+            </div>
+            </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=179167"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertEquals("實習司機", detail.authorGroup)
+    }
+
+    @Test
+    fun `thread detail author group is null when first post has no group element`() {
+        val doc = Jsoup.parse(
+            """
+            <html><body>
+            <span id="thread_subject">無等級</span>
+            <div id="post_1" class="nthread_postbox nthread_firstpostbox">
+              <a class="au" href="home.php?mod=space&amp;uid=1">author</a>
+              <table><tbody><tr><td class="t_f" id="postmessage_1">first</td></tr></tbody></table>
+            </div>
+            </body></html>
+            """.trimIndent(),
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=172059"
+        )
+
+        val detail = parseForumThreadDetail(doc, "https://www.javbus.com")
+
+        assertNull(detail.authorGroup)
     }
 
     @Test
