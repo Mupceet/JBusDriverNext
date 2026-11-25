@@ -56,3 +56,13 @@ data class RouteBrowser(
     val url: String,
     val title: String = ""
 ) : NavKey
+
+/**
+ * 内置浏览器承载的 LTX 人机验证：加载 [url]（LTX 站点首页）让 SPA 过 Turnstile，
+ * 探测到门禁通过即导出会话并自动返回列表页（见 Navigation 中该路由的接线）。
+ */
+@Serializable
+data class RouteLtxVerify(
+    val url: String,
+    val title: String = ""
+) : NavKey

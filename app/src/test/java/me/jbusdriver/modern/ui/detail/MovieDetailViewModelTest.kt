@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.jbusdriver.R
 import me.jbusdriver.modern.core.http.LtxWebSession
+import me.jbusdriver.modern.core.http.LtxWebViewSession
 import me.jbusdriver.modern.data.repository.CollectRepository
 import me.jbusdriver.modern.data.repository.LocalVideoRepository
 import me.jbusdriver.modern.data.repository.LtxRepository
@@ -139,7 +140,9 @@ class MovieDetailViewModelTest {
             return stubLtxEntry
         }
         override val verificationRequests: SharedFlow<Unit> = MutableSharedFlow()
+        override val sessionAdopted: SharedFlow<Unit> = MutableSharedFlow()
         override fun adoptWebSession(session: LtxWebSession) = Unit
+        override fun adoptCryptoSession(session: LtxWebViewSession) = Unit
         override suspend fun currentOrigin(): String = "https://ltx.example.test"
     }
 

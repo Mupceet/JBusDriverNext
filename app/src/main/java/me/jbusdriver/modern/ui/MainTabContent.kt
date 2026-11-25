@@ -64,6 +64,8 @@ internal fun MovieTabContent(
     toggleGrid: () -> Unit,
     onSearchClick: (String) -> Unit,
     onMovieClick: (MovieUiModel, String?) -> Unit,
+    /** 人机验证需人工介入：跳转验证浏览器（LTX 页转发仓库事件）。 */
+    onOpenLtxVerification: (String) -> Unit = {},
     /** 毛玻璃顶栏高度，转交各页列表 contentPadding 顶。 */
     contentPaddingTop: Dp = 0.dp,
     /** 毛玻璃底部导航栏高度，转交各页列表 contentPadding 底。 */
@@ -242,6 +244,7 @@ internal fun MovieTabContent(
                 onMovieClick = remember {
                     { movie: MovieUiModel, censor: String? -> onMovieClickState.value(movie, censor) }
                 },
+                onOpenLtxVerification = onOpenLtxVerification,
                 viewModel = ltxVm,
                 contentPaddingTop = contentPaddingTop,
                 contentPaddingBottom = contentPaddingBottom

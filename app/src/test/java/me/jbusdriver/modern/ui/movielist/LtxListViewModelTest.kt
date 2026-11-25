@@ -33,6 +33,7 @@ import me.jbusdriver.modern.domain.model.DeleteResult
 import me.jbusdriver.modern.domain.model.LocalVideo
 import me.jbusdriver.modern.domain.model.LocalVideoGroup
 import me.jbusdriver.modern.core.http.LtxWebSession
+import me.jbusdriver.modern.core.http.LtxWebViewSession
 import me.jbusdriver.modern.domain.model.LocalVideoSummary
 import me.jbusdriver.modern.domain.model.LtxEntry
 import me.jbusdriver.modern.domain.model.LtxLink
@@ -80,7 +81,9 @@ class LtxListViewModelTest {
         override suspend fun peekCachedPage(query: LtxListQuery): LtxCatalogCache? = cachedCatalog
         override suspend fun findByCode(code: String): LtxEntry? = null
         override val verificationRequests: MutableSharedFlow<Unit> = MutableSharedFlow()
+        override val sessionAdopted: MutableSharedFlow<Unit> = MutableSharedFlow(extraBufferCapacity = 1)
         override fun adoptWebSession(session: LtxWebSession) = Unit
+        override fun adoptCryptoSession(session: LtxWebViewSession) = Unit
         override suspend fun currentOrigin(): String = "https://ltx.example.test"
     }
 
@@ -783,6 +786,27 @@ class LtxListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(R.string.ltx_protocol_upgraded, viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun sessionAdoptedTriggersSnapshotResetReload() = runTest(testDispatcher) {
+        // 验证浏览器路由注入会话后经仓库 sessionAdopted 事件回流：丢弃快照重建
+        // 数据集（事件在验证页压栈期间发出，本 VM 挂在 RouteMain 不丢事件）
+        val repo = FakeLtxRepository().apply {
+            pageFactory = { _, _, _ -> page(entries = listOf(entry("AAA-001")), snapshot = "s0") }
+        }
+        val viewModel = createViewModel(ltxRepo = repo)
+        viewModel.start()
+        advanceUntilIdle()
+        assertEquals(1, repo.calls.size)
+
+        repo.sessionAdopted.emit(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, repo.calls.size)
+        assertEquals(0, repo.calls[1].offset)
+        assertNull(repo.calls[1].snapshot)
+        assertEquals(listOf("AAA-001"), viewModel.uiState.value.items.map { it.code })
     }
 
     @Test

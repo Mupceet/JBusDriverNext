@@ -72,7 +72,8 @@ fun MainScreen(
     onSearchClick: (String) -> Unit = {},
     onForumBoardClick: (me.jbusdriver.modern.domain.model.ForumBoard) -> Unit = {},
     onForumThreadClick: (Int) -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onOpenLtxVerification: (String) -> Unit = {}
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(BottomNavCategory.MOVIE) }
     val saveableStateHolder = rememberSaveableStateHolder()
@@ -178,6 +179,7 @@ fun MainScreen(
                             toggleGrid = toggleGrid,
                             onSearchClick = onSearchClick,
                             onMovieClick = onMovieClick,
+                            onOpenLtxVerification = onOpenLtxVerification,
                             contentPaddingTop = contentTopPadding,
                             contentPaddingBottom = contentBottomPadding,
                             onChipsAvailable = { movieChipsSlot = it }

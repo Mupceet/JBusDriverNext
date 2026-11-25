@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import androidx.core.net.toUri
 import android.webkit.WebChromeClient
@@ -43,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +60,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import me.jbusdriver.R
+import me.jbusdriver.modern.core.http.LtxWebSession
+import me.jbusdriver.modern.core.http.WebViewHelper.currentWebSession
+import me.jbusdriver.modern.core.http.WebViewHelper.probeStatusAwait
 import me.jbusdriver.modern.ui.components.hazeTopBar
 import me.jbusdriver.modern.ui.components.rememberAppHazeState
 
@@ -71,6 +78,26 @@ private sealed interface LongPressTarget {
 }
 
 /**
+ * 页面加载后的探测规格（验证类场景，如 LTX 人机验证）。
+ *
+ * 非空时浏览器每 3s 在页面内 XHR 探测 [probeUrl]：状态码命中 [acceptStatuses]
+ * 且 [postGate]（若提供）放行、能导出当前 Cookie 会话，即回调 [onVerified]
+ * 并自动关闭页面。探测语义由调用方定义（路由接线处），本组件不感知具体协议。
+ */
+data class BrowserProbeSpec(
+    val probeUrl: String,
+    val acceptStatuses: Set<Int>,
+    /** 顶栏下方提示横幅文案（null 不显示）。 */
+    val hint: String? = null,
+    /**
+     * 门禁通过后的附加确认（如页内加密握手）：返回 false = 未就绪，本轮不导出、
+     * 下轮探测后重试；返回 true（或整个钩子为 null）才导出会话并自动关闭。
+     * [status] 是本轮命中的探测状态码，供调用方区分协议语义。
+     */
+    val postGate: (suspend (status: Int, webView: WebView) -> Boolean)? = null,
+)
+
+/**
  * 内置浏览器（兜底打开网页，替代跳系统浏览器以免污染浏览历史）。
  *
  * - 与隐藏抓取会话共享进程级 CookieManager：论坛页自动带匿名反爬会话
@@ -78,6 +105,7 @@ private sealed interface LongPressTarget {
  * - 下载走系统 DownloadManager（带 Cookie/Referer/UA）；文件选择器支持上传；
  *   长按链接/图片弹菜单（图片可进应用内查看器）
  * - WebView 由 [BrowserViewModel] 持有，旋转时页面与历史保留
+ * - [probe] 非空时运行验证探测循环，通过后 [onVerified] 交还会话并自动关闭
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +114,8 @@ fun BrowserScreen(
     title: String,
     onImageClick: (List<String>, Int) -> Unit,
     onBack: () -> Unit,
+    probe: BrowserProbeSpec? = null,
+    onVerified: (LtxWebSession) -> Unit = {},
     viewModel: BrowserViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -128,6 +158,35 @@ fun BrowserScreen(
         if (webView.url.isNullOrBlank()) {
             viewModel.prepareSessionFor(url)
             webView.loadUrl(url)
+        }
+    }
+
+    // 验证探测循环：页面内 XHR 轮询 probeUrl（同源同权，自动带 Cookie），状态命中、
+    // postGate 放行且能导出 Cookie 会话即回调 onVerified 并自动关闭。无超时上限，
+    // 由用户关闭页面取消；旋转重建循环重启（探测幂等，verified 标志防 onVerified 重入）。
+    // 用户导航到其他源后 XHR 跨源失败返回 null，无误判。
+    var verified by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(probe) {
+        val spec = probe ?: return@LaunchedEffect
+        while (isActive) {
+            val status = runCatching { webView.probeStatusAwait(spec.probeUrl) }
+                .getOrNull()?.status
+            if (status != null && status in spec.acceptStatuses) {
+                val ready = spec.postGate?.let { runCatching { it(status, webView) }.getOrNull() } ?: true
+                if (ready) {
+                    val session = webView.currentWebSession(spec.probeUrl)
+                    if (session != null) {
+                        CookieManager.getInstance().flush()
+                        if (!verified) {
+                            verified = true
+                            onVerified(session)
+                            onBack()
+                        }
+                        return@LaunchedEffect
+                    }
+                }
+            }
+            delay(3_000)
         }
     }
 
@@ -313,6 +372,18 @@ fun BrowserScreen(
                         }
                     }
                 )
+                // 验证场景提示横幅：告知用户当前页面用途与「通过后自动返回」
+                probe?.hint?.let { hint ->
+                    Text(
+                        hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                    )
+                }
                 // 用范围判断代替 start/finished 配对控制，加载完自动隐藏
                 if (progress in 1..99 && loadError == null) {
                     LinearProgressIndicator(

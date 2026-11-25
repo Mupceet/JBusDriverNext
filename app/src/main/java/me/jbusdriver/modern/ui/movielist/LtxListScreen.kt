@@ -18,10 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +57,8 @@ fun LtxListScreen(
     modifier: Modifier = Modifier,
     active: Boolean = true,
     onMovieClick: (MovieUiModel, String?) -> Unit = { _, _ -> },
+    /** 人机验证需人工介入：跳转验证浏览器（RouteLtxVerify 接线由导航层提供）。 */
+    onOpenLtxVerification: (String) -> Unit = {},
     viewModel: LtxListViewModel = hiltViewModel(key = "movie_ltx"),
     /** 毛玻璃顶栏高度，转交列表 contentPadding 顶。 */
     contentPaddingTop: Dp = 0.dp,
@@ -80,13 +79,12 @@ fun LtxListScreen(
         if (active) viewModel.start()
     }
 
-    // 人机验证人工介入：仓库发射请求后弹可见验证窗口（弹窗开合是 UI 局部状态）
-    var showVerification by rememberSaveable { mutableStateOf(false) }
+    // 人机验证人工介入：仓库发射请求后跳转验证浏览器（验证页自动关闭回本页，
+    // 会话经仓库 sessionAdopted 事件回流触发刷新，这里只负责发起跳转）
     LaunchedEffect(Unit) {
-        viewModel.verificationRequests.collect { showVerification = true }
-    }
-    if (showVerification) {
-        LtxVerificationDialog(viewModel = viewModel, onDismiss = { showVerification = false })
+        viewModel.verificationRequests.collect {
+            onOpenLtxVerification(viewModel.verificationOrigin())
+        }
     }
 
     // 滚动驱动的补全分两层，兼顾「边滑边补全」与「停留优先」：

@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui
 
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -21,6 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -29,8 +33,13 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.StateFlow
+import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
+import me.jbusdriver.modern.core.http.LtxPageHandshake
+import me.jbusdriver.modern.data.ltx.LTX_GATE_PASSED_STATUSES
+import me.jbusdriver.modern.data.ltx.LTX_ITEMS_PATH
 import me.jbusdriver.modern.data.parser.listPageTypeFromPath
+import me.jbusdriver.modern.ui.browser.BrowserProbeSpec
 import me.jbusdriver.modern.ui.browser.BrowserScreen
 import me.jbusdriver.modern.ui.browser.LocalWebNavigator
 import me.jbusdriver.modern.ui.browser.WebNavigator
@@ -39,6 +48,7 @@ import me.jbusdriver.modern.ui.forum.ForumThreadDetailScreen
 import me.jbusdriver.modern.ui.forum.ForumThreadListScreen
 import me.jbusdriver.modern.ui.image.ImageViewScreen
 import me.jbusdriver.modern.ui.movielist.LinkMovieListRoute
+import me.jbusdriver.modern.ui.movielist.LtxVerifyViewModel
 import me.jbusdriver.modern.ui.search.SearchScreen
 import me.jbusdriver.modern.ui.settings.SettingsScreen
 import me.jbusdriver.modern.ui.sitemanager.SiteManagerScreen
@@ -166,7 +176,10 @@ fun JBusNavigation(
                         onForumThreadClick = { tid ->
                             backStack.add(RouteForumThreadDetail(tid))
                         },
-                        onSettingsClick = { backStack.add(RouteSettings) }
+                        onSettingsClick = { backStack.add(RouteSettings) },
+                        onOpenLtxVerification = { url ->
+                            backStack.add(RouteLtxVerify(url))
+                        }
                     )
                 }
                 entry<RouteSearch>(
@@ -432,6 +445,82 @@ fun JBusNavigation(
                     BrowserScreen(
                         url = key.url,
                         title = key.title,
+                        onImageClick = { images, startIndex ->
+                            backStack.add(RouteImageViewer(images, startIndex))
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteLtxVerify>(
+                    metadata = metadata {
+                        put(NavDisplay.TransitionKey) {
+                            (slideInVertically(
+                                initialOffsetY = { it },
+                                animationSpec = tween(ANIM_DURATION_SEARCH)
+                            ) + fadeIn(tween(ANIM_DURATION_SEARCH))) togetherWith
+                                (scaleOut(
+                                    targetScale = 0.9f,
+                                    animationSpec = tween(ANIM_DURATION)
+                                ) + fadeOut(tween(ANIM_DURATION)))
+                        }
+                        put(NavDisplay.PopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                        put(NavDisplay.PredictivePopTransitionKey) {
+                            (scaleIn(
+                                initialScale = 0.9f,
+                                animationSpec = tween(ANIM_DURATION)
+                            ) + fadeIn(tween(ANIM_DURATION))) togetherWith
+                                (slideOutVertically(
+                                    targetOffsetY = { it },
+                                    animationSpec = tween(ANIM_DURATION_SEARCH)
+                                ) + fadeOut(tween(ANIM_DURATION_SEARCH)))
+                        }
+                    }
+                ) { key ->
+                    // LTX 人机验证浏览器：SPA 过 Turnstile 后页内探测 items 状态；
+                    // 新协议（428）须在页内完成加密握手（完全验证）才导出会话自动关闭，
+                    // 探测通过只证明边缘门禁，过早导出会让仓库层二次握手失败
+                    val verifyVm: LtxVerifyViewModel = hiltViewModel()
+                    val verifyTitle = stringResource(R.string.ltx_verify_title)
+                    val verifyHint = stringResource(R.string.ltx_verify_hint)
+                    val verifyPassed = stringResource(R.string.ltx_verify_passed)
+                    val context = LocalContext.current
+                    val itemsProbeUrl = remember(key.url) { key.url.trimEnd('/') + LTX_ITEMS_PATH }
+                    BrowserScreen(
+                        url = key.url,
+                        title = key.title.ifBlank { verifyTitle },
+                        probe = remember(key.url, verifyHint) {
+                            BrowserProbeSpec(
+                                probeUrl = itemsProbeUrl,
+                                acceptStatuses = LTX_GATE_PASSED_STATUSES,
+                                hint = verifyHint,
+                                postGate = { status, webView ->
+                                    when (status) {
+                                        // 旧协议镜像（200）：无加密会话，Cookie 导出即用
+                                        200 -> true
+                                        // 新协议：页内握手完成才算完全验证
+                                        else -> {
+                                            val full = LtxPageHandshake.establish(webView, itemsProbeUrl)
+                                            if (full != null) verifyVm.onCryptoSession(full)
+                                            full != null
+                                        }
+                                    }
+                                },
+                            )
+                        },
+                        onVerified = { session ->
+                            // 会话注入后浏览器自动关闭、列表静默刷新：Toast 补一句成功反馈
+                            verifyVm.onVerified(session)
+                            Toast.makeText(context, verifyPassed, Toast.LENGTH_SHORT).show()
+                        },
                         onImageClick = { images, startIndex ->
                             backStack.add(RouteImageViewer(images, startIndex))
                         },

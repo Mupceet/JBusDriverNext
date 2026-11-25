@@ -11,7 +11,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.http.WebViewHelper.currentWebSession
-import me.jbusdriver.modern.core.http.WebViewHelper.evaluateJs
 import me.jbusdriver.modern.core.http.WebViewHelper.fetchPageTextAwait
 import me.jbusdriver.modern.core.http.WebViewHelper.loadUrlAwait
 import me.jbusdriver.modern.core.http.WebViewHelper.probeStatusAwait
@@ -19,72 +18,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "LtxWebGate"
-
-/**
- * 页内握手启动脚本：门禁通过后注入，在页面上下文以 WebCrypto 异步完成
- * ECDH P-256 + HKDF-SHA256 会话建立（与站点 SPA 同协议），结果写入
- * window.__ltxHsResult。replaceAll 均为字符串字面量替换（无正则）。
- */
-private const val HANDSHAKE_START_JS = """
-(function() {
-  if (window.__ltxHsDone) return 'already';
-  window.__ltxHsDone = true;
-  window.__ltxHsResult = null;
-  function b64(buf) {
-    var s = '';
-    for (var i = 0; i < buf.length; i++) s += String.fromCharCode(buf[i]);
-    return btoa(s).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
-  }
-  function unb64(t) {
-    t = t.replaceAll('-', '+').replaceAll('_', '/');
-    while (t.length % 4 !== 0) t += '=';
-    var bin = atob(t);
-    var out = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  (async function() {
-    try {
-      var kp = await crypto.subtle.generateKey({name: 'ECDH', namedCurve: 'P-256'}, false, ['deriveBits']);
-      var raw = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
-      var resp = await fetch('/api/crypto/session', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({v: 1, publicKey: b64(raw)})
-      });
-      if (!resp.ok) { window.__ltxHsResult = JSON.stringify({ok: false, status: resp.status}); return; }
-      var s = await resp.json();
-      if (s.v !== 1 || !s.sid) { window.__ltxHsResult = JSON.stringify({ok: false, error: 'bad session response'}); return; }
-      var serverKey = await crypto.subtle.importKey('raw', unb64(s.publicKey), {name: 'ECDH', namedCurve: 'P-256'}, false, []);
-      var shared = new Uint8Array(await crypto.subtle.deriveBits({name: 'ECDH', public: serverKey}, kp.privateKey, 256));
-      var hk = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits']);
-      var info = new TextEncoder().encode('ltx-api-response-v1:' + s.sid);
-      var keyBits = new Uint8Array(await crypto.subtle.deriveBits({name: 'HKDF', hash: 'SHA-256', salt: unb64(s.salt), info: info}, hk, 256));
-      window.__ltxHsResult = JSON.stringify({ok: true, sid: s.sid, key: b64(keyBits), expiresAt: s.expiresAt});
-    } catch (e) {
-      window.__ltxHsResult = JSON.stringify({ok: false, error: String(e)});
-    }
-  })();
-  return 'started';
-})()
-"""
-
-/** 读取握手脚本写入 window 变量的结果 JSON（未完成时为 null）。 */
-private const val HANDSHAKE_READ_JS = """
-(function() {
-  return window.__ltxHsResult === undefined ? null : window.__ltxHsResult;
-})()
-"""
-
-/** 复位握手标记：握手失败后允许下一轮探测重新注入。 */
-private const val HANDSHAKE_RESET_JS = """
-(function() {
-  window.__ltxHsDone = false;
-  window.__ltxHsResult = null;
-  return 'reset';
-})()
-"""
 
 /**
  * WebView 过 LTX 人机验证后的会话凭证。
@@ -204,8 +137,8 @@ class DefaultLtxWebViewGateway @Inject constructor(
 
     /**
      * 新协议会话建立：探测 [url]（items）状态——428 = 门禁已过（边缘质询与
-     * Turnstile Cookie 均就绪）；随后注入握手脚本（ECDH+HKDF 在页面内执行，
-     * 结果写回 window 变量）并轮询收割。
+     * Turnstile Cookie 均就绪）；随后在页内推进加密握手（[LtxPageHandshake]，
+     * 失败自动复位重试，等页内 SPA 补完 Turnstile 后自愈）并轮询收割。
      */
     private suspend fun establishSessionInternal(url: String): LtxWebViewSession? {
         val origin = url.originOrNull() ?: return null
@@ -221,30 +154,23 @@ class DefaultLtxWebViewGateway @Inject constructor(
             while (System.currentTimeMillis() < deadline) {
                 val probe = runCatching { webView.probeStatusAwait(url) }.getOrNull()
                 if (probe != null && probe.status == STATUS_PRECONDITION_REQUIRED) {
-                    // 门禁已过：启动（或收割）页面内握手
                     if (!handshakeStarted) {
                         handshakeStarted = true
-                        runCatching { webView.evaluateJs(HANDSHAKE_START_JS) }
                         KLog.t(TAG).i("WebView gateway: gate passed (428), handshake started")
                     }
-                    val result = runCatching { webView.evaluateJs(HANDSHAKE_READ_JS) }.getOrNull()
-                    val parsed = parseHandshakeResult(result)
-                    if (parsed != null) {
+                    val handshake = runCatching { LtxPageHandshake.pump(webView) }.getOrNull()
+                    if (handshake != null) {
                         val webSession = webView.currentWebSession(url)
                         if (webSession != null) {
                             CookieManager.getInstance().flush()
-                            KLog.t(TAG).i("WebView gateway: session established (sid=${parsed.first}, expires=${parsed.third})")
+                            KLog.t(TAG).i("WebView gateway: session established (sid=${handshake.sid}, expires=${handshake.expiresAtMillis})")
                             return LtxWebViewSession(
-                                sid = parsed.first,
-                                aesKeyBase64Url = parsed.second,
-                                expiresAtMillis = parsed.third,
+                                sid = handshake.sid,
+                                aesKeyBase64Url = handshake.aesKeyBase64Url,
+                                expiresAtMillis = handshake.expiresAtMillis,
                                 webSession = webSession,
                             )
                         }
-                    } else if (result != null && result != "null") {
-                        // 握手已完成但失败（如与门禁恢复竞态）：复位标记，下轮探测后重试
-                        runCatching { webView.evaluateJs(HANDSHAKE_RESET_JS) }
-                        delay(POLL_INTERVAL_MILLIS)
                     }
                 } else {
                     KLog.t(TAG).i("WebView gateway: gate not passed yet (probe=${probe?.status ?: "none"})")
@@ -257,25 +183,6 @@ class DefaultLtxWebViewGateway @Inject constructor(
             webView.stopLoading()
             webView.destroy()
         }
-    }
-
-    /** 解析握手脚本写回的结果 JSON：ok 时返回 (sid, key, expiresAt)。 */
-    private fun parseHandshakeResult(result: String?): Triple<String, String, Long>? {
-        if (result == null || result == "null") return null
-        val json = runCatching {
-            org.json.JSONObject(WebViewHelper.unescapeJsString(result))
-        }.getOrNull() ?: return null
-        if (!json.optBoolean("ok")) {
-            if (json.has("error") || json.has("status")) {
-                KLog.t(TAG).w("WebView gateway: handshake failed: ${json.optString("error")} status=${json.optInt("status")}")
-            }
-            return null
-        }
-        val sid = json.optString("sid")
-        val key = json.optString("key")
-        val expiresAt = json.optLong("expiresAt")
-        if (sid.isNotEmpty() && key.isNotEmpty() && expiresAt > 0) return Triple(sid, key, expiresAt)
-        return null
     }
 
     private fun String.originOrNull(): String? = toUri().let { uri ->

@@ -19,6 +19,13 @@ val LEGACY_LTX_BASE_URLS = setOf("https://ltx.libray.workers.dev")
 /** LTX 全量数据端点路径（单包 JSON，无分页、无鉴权）。 */
 const val LTX_ITEMS_PATH = "/api/items"
 
+/**
+ * 人机验证通过的探测状态集合：200 = 旧协议镜像可直接抓取；428 cryptoSession =
+ * 迁移站边缘质询与 Turnstile 门禁已过、仅缺加密会话（会话由仓库层随后建立）。
+ * 验证浏览器据此判定通过并自动关闭。
+ */
+val LTX_GATE_PASSED_STATUSES = setOf(200, 428)
+
 /** 加密会话协商端点路径（迁移站协议，2026-11-15 起）。 */
 const val LTX_SESSION_PATH = "/api/crypto/session"
 

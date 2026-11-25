@@ -19,7 +19,6 @@ import me.jbusdriver.R
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.GSON
 import me.jbusdriver.modern.core.coroutine.IoDispatcher
-import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.site.SiteConfig
 import me.jbusdriver.modern.data.db.entity.LtxMovie
@@ -144,17 +143,17 @@ class LtxListViewModel @Inject constructor(
         }
     }
 
-    /** 人机验证需人工介入事件（转发自仓库），UI 据此弹出可见验证窗口。 */
+    /** 人机验证需人工介入事件（转发自仓库），UI 据此跳转验证浏览器。 */
     val verificationRequests: SharedFlow<Unit> = ltxRepository.verificationRequests
 
-    /** 人工验证窗口的加载目标（LTX 站点首页）。 */
+    /** 人工验证页的加载目标（LTX 站点首页）。 */
     suspend fun verificationOrigin(): String = ltxRepository.currentOrigin()
 
-    /** 人工验证通过：注入会话使后续拉取走 OkHttp 快路径，并立即重建（新快照）。 */
-    fun onVerificationSuccess(session: LtxWebSession) {
+    init {
+        // 会话注入事件（验证浏览器路由经仓库中转）：本 VM 挂在 RouteMain 的
+        // ViewModelStore，验证页压栈期间协程照常运行，事件不丢；收到即重建数据
         viewModelScope.launch {
-            ltxRepository.adoptWebSession(session)
-            refresh()
+            ltxRepository.sessionAdopted.collect { refresh() }
         }
     }
 

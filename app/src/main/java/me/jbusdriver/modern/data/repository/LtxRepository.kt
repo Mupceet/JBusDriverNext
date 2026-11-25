@@ -14,6 +14,7 @@ import me.jbusdriver.modern.core.fromJson
 import me.jbusdriver.modern.core.coroutine.IoDispatcher
 import me.jbusdriver.modern.core.http.LtxWebSession
 import me.jbusdriver.modern.core.http.LtxWebViewGateway
+import me.jbusdriver.modern.core.http.LtxWebViewSession
 import me.jbusdriver.modern.core.http.NetClient
 import me.jbusdriver.modern.data.ltx.DEFAULT_LTX_BASE_URL
 import me.jbusdriver.modern.data.ltx.LTX_ITEMS_PATH
@@ -97,8 +98,20 @@ interface LtxRepository {
      */
     val verificationRequests: SharedFlow<Unit>
 
-    /** 注入人工验证流程获取的会话，使后续拉取走 OkHttp 快路径。 */
+    /** 注入人工验证流程获取的会话，使后续拉取走 OkHttp 快路径；注入后发射 [sessionAdopted]。 */
     fun adoptWebSession(session: LtxWebSession)
+
+    /**
+     * 直接采纳验证浏览器页内握手完成的加密会话（含 Cookie/UA）：跳过 OkHttp
+     * 协商与隐形网关二次握手，数据零协商直达；采纳后发射 [sessionAdopted]。
+     */
+    fun adoptCryptoSession(session: LtxWebViewSession)
+
+    /**
+     * 会话已注入事件（跨屏回传）：验证浏览器路由拿到会话后经仓库中转，
+     * 列表 ViewModel 订阅此事件重建数据（VM 挂在栈底路由，浏览器压栈期间不丢事件）。
+     */
+    val sessionAdopted: SharedFlow<Unit>
 
     /** 当前 LTX 站点首页地址（人工验证 WebView 的加载目标）。 */
     suspend fun currentOrigin(): String
@@ -150,6 +163,9 @@ class DefaultLtxRepository @Inject constructor(
 
     private val _verificationRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     override val verificationRequests: SharedFlow<Unit> = _verificationRequests
+
+    private val _sessionAdopted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val sessionAdopted: SharedFlow<Unit> = _sessionAdopted
 
     override suspend fun loadPage(query: LtxListQuery, snapshot: String?, offset: Int): LtxPage =
         withContext(ioDispatcher) {
@@ -361,14 +377,8 @@ class DefaultLtxRepository @Inject constructor(
         }
         val fromWeb = webGateway.establishSessionViaWebView(itemsUrl)
         if (fromWeb != null) {
-            val keyBytes = base64UrlDecode(fromWeb.aesKeyBase64Url)
-            if (keyBytes != null && keyBytes.size == 32) {
-                webSession = fromWeb.webSession
-                val session = LtxCryptoSession(
-                    sid = fromWeb.sid,
-                    aesKey = SecretKeySpec(keyBytes, "AES"),
-                    expiresAtMillis = fromWeb.expiresAtMillis,
-                )
+            val session = toCryptoSession(fromWeb)
+            if (session != null) {
                 cryptoSession = session
                 return session
             }
@@ -547,6 +557,29 @@ class DefaultLtxRepository @Inject constructor(
 
     override fun adoptWebSession(session: LtxWebSession) {
         webSession = session
+        _sessionAdopted.tryEmit(Unit)
+    }
+
+    override fun adoptCryptoSession(session: LtxWebViewSession) {
+        val crypto = toCryptoSession(session)
+        if (crypto == null) {
+            // 密钥材料非法：退化为仅 Cookie（下次拉取由仓库层重新握手）
+            webSession = session.webSession
+            KLog.t(TAG).w("LTX adopt crypto session: bad key material, cookie-only adopted")
+        }
+        _sessionAdopted.tryEmit(Unit)
+    }
+
+    /** WebView 握手产物 → 加密会话（同页写 Cookie/UA；密钥非法返回 null）。 */
+    private fun toCryptoSession(fromWeb: LtxWebViewSession): LtxCryptoSession? {
+        val keyBytes = base64UrlDecode(fromWeb.aesKeyBase64Url)
+        if (keyBytes == null || keyBytes.size != 32) return null
+        webSession = fromWeb.webSession
+        return LtxCryptoSession(
+            sid = fromWeb.sid,
+            aesKey = SecretKeySpec(keyBytes, "AES"),
+            expiresAtMillis = fromWeb.expiresAtMillis,
+        )
     }
 
     override suspend fun currentOrigin(): String = settings.currentLtxBaseUrl().trimEnd('/')
