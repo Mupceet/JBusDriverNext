@@ -247,7 +247,8 @@ fun floorGaps(replies: List<ForumReply>, order: ForumFloorOrder): List<FloorGap>
 
 /**
  * 合并已加载楼层与新增页楼层：按 floor 去重（保留已展示的首现版本，置顶/广播楼层跨页重复），
- * 并按 [order] 全局排序——跳转合并/断层补齐后列表仍须整体有序，断层派生与展示位置才成立。
+ * 置顶楼层固定在最前（首现顺序，不参与排序——其楼层号天然乱序，排序会把它拉回数值位置），
+ * 其余按 [order] 全局排序——跳转合并/断层补齐后主体仍整体有序，断层派生与展示位置才成立。
  */
 fun mergeReplyPages(
     existing: List<ForumReply>,
@@ -255,8 +256,9 @@ fun mergeReplyPages(
     order: ForumFloorOrder
 ): List<ForumReply> {
     val existingFloors = existing.mapTo(HashSet()) { it.floor }
-    return (existing + incoming.filter { it.floor !in existingFloors })
-        .sortedBy { if (order == ForumFloorOrder.REVERSE) -it.floor else it.floor }
+    val (pinned, normal) = (existing + incoming.filter { it.floor !in existingFloors })
+        .partition { it.isPinned }
+    return pinned + normal.sortedBy { if (order == ForumFloorOrder.REVERSE) -it.floor else it.floor }
 }
 
 /** 回复区组合列表项：楼层或楼层断层分隔行（[key] 供 LazyColumn 复用）。 */

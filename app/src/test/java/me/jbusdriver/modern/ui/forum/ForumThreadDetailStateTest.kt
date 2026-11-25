@@ -345,6 +345,25 @@ class ForumThreadDetailStateTest {
     }
 
     @Test
+    fun `mergeReplyPages keeps pinned floor at top across page merges`() {
+        // 翻页/跳转/补洞合并：置顶楼固定最前不参与排序（排序会拉回楼层号数值位置），跨页重复去重。
+        val pinned = reply(12).copy(isPinned = true)
+        val page1 = listOf(pinned, reply(2), reply(3))
+        val page2 = listOf(reply(12), reply(4), reply(5)) // 置顶 12 跨页重复
+
+        val merged = mergeReplyPages(page1, page2, ForumFloorOrder.REGULAR)
+        assertEquals(listOf(12, 2, 3, 4, 5), merged.map { it.floor })
+        assertEquals(true, merged.first().isPinned)
+
+        val mergedReverse = mergeReplyPages(
+            listOf(pinned, reply(3), reply(2)),
+            listOf(reply(1)),
+            ForumFloorOrder.REVERSE
+        )
+        assertEquals(listOf(12, 3, 2, 1), mergedReverse.map { it.floor })
+    }
+
+    @Test
     fun `buildReplyListItems inserts gap divider below upper floor in reverse order`() {
         val replies = listOf(reply(100), reply(99), reply(12), reply(11))
 
