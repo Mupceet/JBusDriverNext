@@ -191,6 +191,60 @@ class ForumThreadDetailStateTest {
     }
 
     @Test
+    fun `pinned floor keeps its top slot when new replies merge silently`() {
+        // 置顶楼层显示在列表顶部（楼层号乱序）：静默合并只追加新增楼层，不得全局重排
+        // 把置顶楼层拉回楼层号顺序位置（mergeReplyPages 的排序会，回归自 3d8eb050）。
+        val pinned = reply(12).copy(isPinned = true)
+        val current = detail("T", replies = listOf(pinned, reply(2), reply(3), reply(4)))
+        val fresh = detail(
+            "T",
+            replies = listOf(reply(12).copy(isPinned = true), reply(2), reply(3), reply(4), reply(5))
+        )
+        val state = ForumThreadDetailUiState(detail = current, isRevalidating = true)
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
+        assertEquals(
+            listOf(12, 2, 3, 4, 5),
+            reduction.state.detail?.replies?.map { it.floor }
+        )
+        assertEquals(true, reduction.state.detail?.replies?.first()?.isPinned)
+    }
+
+    @Test
+    fun `reverse order pinned floor keeps its slot and new replies insert after it`() {
+        // 倒序 + 置顶：置顶楼保持首位，新增楼层（楼层号最大）插在置顶楼之后。
+        val current = detail(
+            "T",
+            replies = listOf(reply(12).copy(isPinned = true), reply(11), reply(10))
+        )
+        val fresh = detail(
+            "T",
+            replies = listOf(reply(12).copy(isPinned = true), reply(13), reply(11), reply(10))
+        )
+        val state = ForumThreadDetailUiState(
+            detail = current,
+            floorOrder = ForumFloorOrder.REVERSE,
+            isRevalidating = true
+        )
+
+        val reduction = state.applyDetailRevalidateFresh(
+            entry = cacheEntry(fresh),
+            isAtTop = false
+        )
+
+        assertEquals(FreshRevalidateOutcome.ApplyInPlace, reduction.outcome)
+        assertEquals(
+            listOf(12, 13, 11, 10),
+            reduction.state.detail?.replies?.map { it.floor }
+        )
+    }
+
+    @Test
     fun `relative comment time drift alone is not treated as new data`() {
         // 点评时间为相对文案（"半小时前"等），会持续刷新而非固定时间戳，不应据此判为有新数据。
         val current = detail("T", replies = listOf(reply(1).copy(comments = listOf(comment("c", "半小时前")))))

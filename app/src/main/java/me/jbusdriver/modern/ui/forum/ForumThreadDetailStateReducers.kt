@@ -139,7 +139,8 @@ private inline fun ForumThreadDetailUiState.applyFreshDetail(
 }
 
 /**
- * 静默合并：新增楼层经 [mergeReplyPages] 按 floor 去重排序拼入（正在看的楼层由列表 key 锚定不跳动），
+ * 静默合并：新增楼层经 [mergeFreshRepliesPreservingOrder] 按 floor 去重后保序拼入
+ * （正在看的楼层由列表 key 锚定不跳动，置顶楼层保持顶部特殊位置不被重排），
  * 浏览数/回复数取 fresh。未翻页（仍为第 1 页线性链）时一并采纳 fresh 的翻页信息——
  * 短帖首页楼层增长跨页后 hasNext 才能更新；已翻页则保留旧翻页链（fresh 只覆盖第 1 页窗口）。
  */
@@ -151,9 +152,37 @@ private fun ForumThreadDetailUiState.mergeFreshInPlace(
     return current.copy(
         viewCount = fresh.viewCount,
         replyCount = fresh.replyCount,
-        replies = mergeReplyPages(current.replies, fresh.replies, floorOrder),
+        replies = mergeFreshRepliesPreservingOrder(current.replies, fresh.replies, floorOrder),
         pageInfo = if (hasLoadedBeyondFirstPage) current.pageInfo else fresh.pageInfo
     )
+}
+
+/**
+ * 静默合并专用拼接：已加载楼层保持原顺序原版本（含置顶/广播楼层的顶部特殊位置——
+ * [mergeReplyPages] 的全局排序会把它们拉回楼层号顺序位置），新增楼层按楼层序
+ * 插入到正确索引；插入点仅在非置顶楼层里找（置顶楼破坏楼层号有序性，
+ * 正序下会把新楼层误插到置顶楼前面）。置顶楼层与相邻楼层的断档同首次加载一致，
+ * 由 [floorGaps] 现有行为兜底。
+ */
+private fun mergeFreshRepliesPreservingOrder(
+    existing: List<ForumReply>,
+    incoming: List<ForumReply>,
+    order: ForumFloorOrder
+): List<ForumReply> {
+    val existingFloors = existing.mapTo(HashSet()) { it.floor }
+    val additions = incoming.filter { it.floor !in existingFloors }.sortedBy { it.floor }
+    if (additions.isEmpty()) return existing
+    val merged = existing.toMutableList()
+    for (reply in additions) {
+        val insertAt = merged.indexOfFirst { current ->
+            !current.isPinned && (
+                if (order == ForumFloorOrder.REVERSE) current.floor <= reply.floor
+                else current.floor >= reply.floor
+                )
+        }
+        merged.add(if (insertAt < 0) merged.size else insertAt, reply)
+    }
+    return merged
 }
 
 /**
