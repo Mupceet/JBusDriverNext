@@ -208,14 +208,26 @@ private fun MovieItemContent(movie: MovieUiModel, isDownloaded: Boolean) {
                     horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    movie.tags.forEach { tag ->
+                    // 首 tag 高亮（tertiaryContainer）：首个 tag 是排序键等关键数据
+                    // （如 LTX 评分），与背景和其余 tag 都拉开区分度
+                    movie.tags.forEachIndexed { index, tag ->
+                        val container = if (index == 0) {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        }
+                        val content = if (index == 0) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        }
                         Text(
                             text = tag,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = content,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .background(container)
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -367,9 +379,11 @@ private fun MovieGridItemContent(movie: MovieUiModel, isDownloaded: Boolean) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // 首 tag 高亮（tertiaryContainer）：首个 tag 是排序键等关键数据
+                // （如 LTX 评分），与列表卡的首 tag 规则一致
                 val tagColors = listOf(
-                    MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer,
-                    MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+                    MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer,
+                    MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 (0..1).forEach { index ->
                     val tag = movie.tags.getOrNull(index)
@@ -458,14 +472,25 @@ fun CompactMovieItem(
                         verticalArrangement = Arrangement.spacedBy(1.dp),
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
-                        movie.tags.take(3).forEach { tag ->
+                        // 首 tag 高亮：与 MovieItem/MovieGridItem 的首 tag 规则一致
+                        movie.tags.take(3).forEachIndexed { index, tag ->
+                            val container = if (index == 0) {
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            }
+                            val content = if (index == 0) {
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            }
                             Text(
                                 text = tag,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = content,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .background(container)
                                     .padding(horizontal = 4.dp, vertical = 1.dp)
                             )
                         }

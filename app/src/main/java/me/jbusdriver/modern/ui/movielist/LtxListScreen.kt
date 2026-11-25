@@ -45,6 +45,7 @@ import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 
 /**
  * 影片 tab LTX 页：全库列表 + 状态筛选 + 排序 + 可见窗口驱动的站内补全。
@@ -333,7 +334,9 @@ private fun LtxItemUiModel.toCardModel(
     isResolving: Boolean,
 ): MovieUiModel {
     val tags = buildList {
-        add("LTX")
+        // 评分居首即首 tag 高亮位（渲染层首 tag 用 tertiaryContainer 突出）。
+        // 固定 US locale 保证小数点不随设备语言漂移。
+        if (score != null) add("★%.1f".format(Locale.US, score))
         if (isPending) add(pendingLabel)
         if (resolveState == LtxResolveState.NOT_FOUND) add(notFoundLabel)
         if (resolveState == LtxResolveState.UNRESOLVED) {
