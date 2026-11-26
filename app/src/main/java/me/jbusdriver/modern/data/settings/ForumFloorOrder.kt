@@ -23,7 +23,8 @@ fun buildForumThreadDetailUrl(
     val url = "$baseUrl/forum/forum.php?mod=viewthread&tid=$tid&page=$page"
     val withAuthor = if (authorUid != null && authorUid > 0) "$url&authorid=$authorUid" else url
     return when (floorOrder) {
-        ForumFloorOrder.REGULAR -> withAuthor
+        // 正序必须显式携带 ordertype=2：部分帖子服务端默认就是倒序，缺省参数会被当作倒序渲染。
+        ForumFloorOrder.REGULAR -> "$withAuthor&ordertype=2"
         ForumFloorOrder.REVERSE -> "$withAuthor&ordertype=1"
     }
 }
@@ -36,7 +37,8 @@ fun forumThreadDetailCacheKey(
 
 /**
  * 构建 findpost 重定向链接（引用楼层的原始跳转目标）。
- * 服务端会 302 到目标楼层所在分页；REVERSE 附带 ordertype 让落地页与显示顺序一致。
+ * 服务端会 302 到目标楼层所在分页；两种顺序都显式携带 ordertype 让落地页与显示顺序一致
+ * （部分帖子服务端默认就是倒序，正序落地页缺省参数会被当作倒序）。
  */
 fun buildForumFindPostUrl(
     baseUrl: String,
@@ -45,5 +47,8 @@ fun buildForumFindPostUrl(
     floorOrder: ForumFloorOrder
 ): String {
     val url = "$baseUrl/forum/forum.php?mod=redirect&goto=findpost&pid=$pid&ptid=$tid"
-    return if (floorOrder == ForumFloorOrder.REVERSE) "$url&ordertype=1" else url
+    return when (floorOrder) {
+        ForumFloorOrder.REGULAR -> "$url&ordertype=2"
+        ForumFloorOrder.REVERSE -> "$url&ordertype=1"
+    }
 }

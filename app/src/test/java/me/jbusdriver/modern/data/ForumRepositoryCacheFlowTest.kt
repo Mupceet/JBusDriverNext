@@ -281,13 +281,13 @@ class ForumRepositoryCacheFlowTest {
     }
 
     @Test
-    fun `observeThreadDetail builds url without ordertype for regular floor order`() = runBlocking {
+    fun `observeThreadDetail builds url with asc ordertype for regular floor order`() = runBlocking {
         val sessionClient = FakeSessionClient(threadDetailHtml())
         val repository = repository(FakeCacheStore(), sessionClient)
 
         repository.observeThreadDetail(tid = 9, page = 1, floorOrder = ForumFloorOrder.REGULAR).toList()
 
-        assertFalse(sessionClient.urls.single().contains("ordertype"))
+        assertTrue(sessionClient.urls.single().contains("ordertype=2"))
     }
 
     @Test
@@ -411,7 +411,7 @@ class ForumRepositoryCacheFlowTest {
 
         assertNull(detail)
         assertEquals(
-            "https://example.test/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=172059",
+            "https://example.test/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=172059&ordertype=2",
             sessionClient.urls.single()
         )
     }

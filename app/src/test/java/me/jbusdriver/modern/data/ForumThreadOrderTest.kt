@@ -12,9 +12,9 @@ import org.junit.Test
 class ForumThreadOrderTest {
 
     @Test
-    fun `regular order keeps detail url unchanged`() {
+    fun `regular order appends asc ordertype parameter`() {
         assertEquals(
-            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=168357&page=1",
+            "https://www.javbus.com/forum/forum.php?mod=viewthread&tid=168357&page=1&ordertype=2",
             buildForumThreadDetailUrl(
                 baseUrl = "https://www.javbus.com",
                 tid = 168357,
@@ -50,9 +50,9 @@ class ForumThreadOrderTest {
     }
 
     @Test
-    fun `findpost url keeps regular order without ordertype`() {
+    fun `findpost url appends asc ordertype for regular order`() {
         assertEquals(
-            "https://www.javbus.com/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=168357",
+            "https://www.javbus.com/forum/forum.php?mod=redirect&goto=findpost&pid=4773820&ptid=168357&ordertype=2",
             buildForumFindPostUrl(
                 baseUrl = "https://www.javbus.com",
                 tid = 168357,
