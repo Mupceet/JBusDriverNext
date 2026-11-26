@@ -6,6 +6,7 @@ import android.provider.DocumentsContract
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.jbusdriver.modern.KLog
 import java.io.FileNotFoundException
 import javax.inject.Inject
 import androidx.core.net.toUri
@@ -29,14 +30,19 @@ class DocumentFileVideoFileDeleter @Inject constructor(
             val deleted = DocumentsContract.deleteDocument(resolver, uri.toUri())
             when {
                 deleted -> DeleteFileResult.SUCCESS
-                fileExists(uri) -> DeleteFileResult.FAILED
+                fileExists(uri) -> {
+                    KLog.w("Local video delete returned false but file exists: $uri")
+                    DeleteFileResult.FAILED
+                }
                 else -> DeleteFileResult.NOT_FOUND
             }
         } catch (_: FileNotFoundException) {
             DeleteFileResult.NOT_FOUND
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            KLog.w("Local video delete denied (persisted grant may lack write): $uri -> ${e.message}")
             DeleteFileResult.FAILED
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            KLog.w("Local video delete failed: $uri -> ${e.message}")
             DeleteFileResult.FAILED
         }
     }

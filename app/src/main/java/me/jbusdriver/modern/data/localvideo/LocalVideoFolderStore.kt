@@ -45,13 +45,21 @@ class LocalVideoFolderStore @Inject constructor(
     suspend fun currentFolderUri(): String? =
         dataStore.data.first()[KEY_FOLDER_URI]
 
-    /** 记录文件夹：申请持久读权限，并写入 uri 与显示名。 */
+    /** 记录文件夹：申请持久读写权限（写授权是 SAF 删除/改名的前提），并写入 uri 与显示名。 */
     suspend fun setFolder(uri: Uri) = withContext(Dispatchers.IO) {
         runCatching {
             context.contentResolver.takePersistableUriPermission(
                 uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
+        }.onFailure {
+            // 个别 picker 只授予读权限；回退为只持久化读，保证扫描仍可用。
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
         }
         val displayName = runCatching { DocumentFile.fromTreeUri(context, uri)?.name }.getOrNull()
         dataStore.edit {
@@ -79,13 +87,13 @@ class LocalVideoFolderStore @Inject constructor(
         }
     }
 
-    /** 清除文件夹：释放权限并删除全部相关 key（含排除集合）。 */
+    /** 清除文件夹：释放读写权限并删除全部相关 key（含排除集合）。 */
     suspend fun clearFolder() = withContext(Dispatchers.IO) {
         currentFolderUri()?.let { uriStr ->
             runCatching {
                 context.contentResolver.releasePersistableUriPermission(
                     uriStr.toUri(),
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                 )
             }
         }
