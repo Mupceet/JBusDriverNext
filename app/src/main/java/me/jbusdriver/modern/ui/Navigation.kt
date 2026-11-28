@@ -110,6 +110,11 @@ fun JBusNavigation(
         WebNavigator { webUrl -> backStack.add(RouteBrowser(webUrl)) }
     }
 
+    // 全局原生登录弹窗：activity 级共享实例（此处位于 NavDisplay 之外，hiltViewModel()
+    // 解析到 Activity 的 ViewModelStore），任何论坛界面的匿名写操作都可唤起
+    val forumLoginViewModel: me.jbusdriver.modern.ui.forum.account.ForumLoginDialogViewModel =
+        hiltViewModel()
+
     CompositionLocalProvider(LocalWebNavigator provides webNavigator) {
         NavDisplay(
             backStack = backStack,
@@ -179,6 +184,7 @@ fun JBusNavigation(
                         onForumUserClick = { uid ->
                             backStack.add(RouteUserSpace(uid))
                         },
+                        onForumLoginClick = { forumLoginViewModel.onLoginRequested() },
                         onSettingsClick = { backStack.add(RouteSettings) },
                         onOpenLtxVerification = { url ->
                             backStack.add(RouteLtxVerify(url))
@@ -339,6 +345,7 @@ fun JBusNavigation(
                         onOpenUserSpace = { uid ->
                             backStack.add(RouteUserSpace(uid))
                         },
+                        onLoginClick = { forumLoginViewModel.onLoginRequested() },
                         onBack = { backStack.removeLastOrNull() }
                     )
                 }
@@ -554,5 +561,8 @@ fun JBusNavigation(
                 }
             }
         )
+
+        // 弹窗浮于任意目的地之上（Dialog 窗口层），全局仅渲染一次
+        me.jbusdriver.modern.ui.forum.account.ForumLoginDialogHost(forumLoginViewModel)
     }
 }

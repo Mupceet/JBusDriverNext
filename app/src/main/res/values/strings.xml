@@ -147,8 +147,6 @@
     <string name="forum_tab_hot">熱點話題</string>
 
     <!-- Forum account -->
-    <string name="forum_anonymous_title">匿名瀏覽</string>
-    <string name="forum_anonymous_hint">點擊登入論壇賬號</string>
     <string name="forum_login_title">登錄論壇</string>
     <string name="forum_login_username">用戶名</string>
     <string name="forum_login_password">密碼</string>
@@ -157,6 +155,12 @@
     <string name="forum_login_submit">登錄</string>
     <string name="forum_login_submitting">登錄中…</string>
     <string name="forum_login_success">登錄成功</string>
+    <!-- 帖子底部操作条（收藏/点赞/回帖入口） -->
+    <string name="forum_action_reply_hint">添加回覆…</string>
+    <string name="forum_action_reply_no_permission">尚未獲得回覆權限</string>
+    <string name="forum_action_reply_coming_soon">回覆功能即將推出</string>
+    <string name="forum_action_favorite">收藏</string>
+    <string name="forum_action_already_favorited">已收藏過該帖子</string>
     <string name="forum_user_threads">主題</string>
     <string name="forum_user_replies">回覆</string>
     <string name="forum_user_favorites">收藏</string>

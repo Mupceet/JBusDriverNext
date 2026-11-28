@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.forum.account
 
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,13 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.jbusdriver.R
-import me.jbusdriver.modern.ui.forum.ForumLoginUiState
 
 /**
  * 原生登录弹窗（JbForum-ref 同构流程）：账号/密码/seccode 验证码；
@@ -159,5 +162,28 @@ private fun CaptchaSlot(state: ForumLoginUiState, onRefresh: () -> Unit) {
                 modifier = Modifier.size(20.dp)
             )
         }
+    }
+}
+
+/**
+ * 全局登录弹窗宿主：Navigation 根层渲染一次，弹窗浮在任意论坛界面之上。
+ * [viewModel] 须为 activity 级共享实例（JBusNavigation 顶层 hiltViewModel() 取得）。
+ */
+@Composable
+fun ForumLoginDialogHost(viewModel: ForumLoginDialogViewModel) {
+    val loginState by viewModel.loginUiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { message ->
+            Toast.makeText(context, message.format(context), Toast.LENGTH_SHORT).show()
+        }
+    }
+    loginState?.let { state ->
+        ForumLoginDialog(
+            state = state,
+            onDismiss = viewModel::dismissLoginDialog,
+            onSubmit = viewModel::submitLogin,
+            onRefreshCaptcha = viewModel::requestLoginChallenge
+        )
     }
 }

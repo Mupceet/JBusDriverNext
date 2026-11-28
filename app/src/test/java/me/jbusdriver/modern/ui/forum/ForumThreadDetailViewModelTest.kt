@@ -569,12 +569,165 @@ class ForumThreadDetailViewModelTest {
         )
     }
 
+    @Test
+    fun `bottom bar gates reply entry by login state and group level`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred())
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+        // 匿名：既未登录也无回复权限
+        assertFalse(viewModel.uiState.value.isLoggedIn)
+        assertFalse(viewModel.uiState.value.canReply)
+
+        repository.loginState.value =
+            me.jbusdriver.modern.domain.model.ForumLoginState.LoggedIn(
+                uid = 7, username = "tester", groupName = "路人乘客"
+            )
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isLoggedIn)
+        assertFalse("路人乘客不可回帖", viewModel.uiState.value.canReply)
+
+        repository.loginState.value =
+            me.jbusdriver.modern.domain.model.ForumLoginState.LoggedIn(
+                uid = 7, username = "tester", groupName = "駕校學員"
+            )
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.canReply)
+    }
+
+    @Test
+    fun `toggleFavorite success marks favorited, bumps count and ignores repeat`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            favoriteResult = Result.success(Unit)
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleFavorite()
+        advanceUntilIdle()
+        assertEquals(listOf(42 to ""), repository.favoriteRequests)
+        val state = viewModel.uiState.value
+        assertTrue(state.isFavorited)
+        assertFalse(state.isSubmittingAction)
+        assertEquals(1, state.detail?.favoriteCount)
+
+        // 已收藏后的重复点击只提示，不再发请求
+        viewModel.toggleFavorite()
+        advanceUntilIdle()
+        assertEquals(1, repository.favoriteRequests.size)
+    }
+
+    @Test
+    fun `toggleFavorite failure surfaces server text and stays unfavorited`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            favoriteResult = Result.failure(IllegalStateException("您已收藏該主題"))
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleFavorite()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertFalse(state.isFavorited)
+        assertFalse(state.isSubmittingAction)
+        assertEquals(0, state.detail?.favoriteCount)
+    }
+
+    @Test
+    fun `favorite verification in flight holds optimistic state and locks concurrent taps`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            deferredFavorite = CompletableDeferred()
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+
+        // 点击即乐观生效：收藏挂起校验期间已点亮、计数已 +1
+        viewModel.toggleFavorite()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isSubmittingAction)
+        assertTrue("乐观生效：校验未返回也已收藏", viewModel.uiState.value.isFavorited)
+        assertEquals(1, viewModel.uiState.value.detail?.favoriteCount)
+
+        // 校验期间（提交锁）并发点击被静默拦截，不重复发请求
+        viewModel.toggleFavorite()
+        runCurrent()
+        assertEquals(1, repository.favoriteRequests.size)
+
+        repository.deferredFavorite?.complete(Result.success(Unit))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isFavorited)
+        assertFalse(viewModel.uiState.value.isSubmittingAction)
+        assertEquals("成功静默确认，乐观计数即终态", 1, viewModel.uiState.value.detail?.favoriteCount)
+    }
+
+    @Test
+    fun `logged-in user sees thread in local favorite mirror pre-marked as favorited`() = runTest(testDispatcher) {
+        val repository = FakeForumDetailRepository(CompletableDeferred()).apply {
+            isFavoritedInDb = true
+        }
+        val viewModel = ForumThreadDetailViewModel(
+            repository = repository,
+            forumSettingsReader = FakeForumSettingsReader(),
+            loadedGifTracker = FakeLoadedGifTracker(),
+            gifCacheReader = FakeGifCacheReader(),
+            siteConfig = FakeSiteConfig("https://forum.example.test/root"),
+            navKey = RouteForumThreadDetail(42),
+            savedStateHandle = SavedStateHandle()
+        )
+        advanceUntilIdle()
+        // 匿名阶段不探测、不点亮
+        assertFalse(viewModel.uiState.value.isFavorited)
+
+        repository.loginState.value =
+            me.jbusdriver.modern.domain.model.ForumLoginState.LoggedIn(uid = 7, username = "tester")
+        advanceUntilIdle()
+        // 本地收藏库命中 → 直接预标记点亮，无需点击、无网络请求
+        assertTrue("本地收藏镜像命中应预点亮", viewModel.uiState.value.isFavorited)
+        assertTrue("未发任何写请求", repository.favoriteRequests.isEmpty())
+
+        // 预点亮后再点击 → 只提示已收藏，不重复提交
+        viewModel.toggleFavorite()
+        advanceUntilIdle()
+        assertTrue(repository.favoriteRequests.isEmpty())
+    }
+
     private class FakeForumDetailRepository(
         private val staleRefresh: CompletableDeferred<ForumThreadDetail>
     ) : ForumRepository {
-        // 账号能力桩：本测试不覆盖登录/用户空间
+        // 账号能力桩：本测试不覆盖登录/用户空间（写操作门控测试会改写登录态）
         override val loginState = kotlinx.coroutines.flow.MutableStateFlow(
-            me.jbusdriver.modern.domain.model.ForumLoginState.Anonymous
+            me.jbusdriver.modern.domain.model.ForumLoginState.Anonymous as me.jbusdriver.modern.domain.model.ForumLoginState
         )
         override suspend fun refreshLoginState() = Unit
         override suspend fun tryRestoreCachedLoginState() = Unit
@@ -586,8 +739,21 @@ class ForumThreadDetailViewModelTest {
             seccode: String
         ): Result<me.jbusdriver.modern.domain.model.ForumLoginState> = error("unused")
         override suspend fun logout() = Unit
-        override suspend fun addFavoriteThread(tid: Int, actionUrl: String): Result<Unit> = error("unused")
-        override suspend fun recommendThread(tid: Int, actionUrl: String, previousCount: Int): Result<Int> = error("unused")
+
+        /** 帖子写操作脚本：可编程结果/挂起与请求记录。 */
+        var favoriteResult: Result<Unit> = Result.success(Unit)
+        var deferredFavorite: CompletableDeferred<Result<Unit>>? = null
+        val favoriteRequests = mutableListOf<Pair<Int, String>>()
+
+        /** 本地收藏库镜像命中标记（预标记探针数据源）。 */
+        var isFavoritedInDb: Boolean = false
+
+        override suspend fun addFavoriteThread(tid: Int, actionUrl: String?): Result<Unit> {
+            favoriteRequests += tid to (actionUrl ?: "")
+            return deferredFavorite?.await() ?: favoriteResult
+        }
+
+        override suspend fun isFavoritedThread(tid: Int): Boolean = isFavoritedInDb
         override suspend fun loadUserProfile(uid: Int) : me.jbusdriver.modern.domain.model.ForumUserProfile = error("unused")
         override fun observeUserProfile(uid: Int, forceRefresh: Boolean, revalidate: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserProfile>>()
         override fun observeUserThreads(uid: Int, type: me.jbusdriver.modern.domain.model.ForumUserThreadType, page: Int, forceRefresh: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserThreadPageResult>>()

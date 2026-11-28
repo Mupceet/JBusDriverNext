@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,6 +46,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -71,6 +73,7 @@ import me.jbusdriver.modern.ui.components.LoadingViewCentered
 import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.ShareButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
+import me.jbusdriver.modern.ui.components.hazeBottomBar
 import me.jbusdriver.modern.ui.components.hazeSourceContent
 import me.jbusdriver.modern.ui.components.hazeTopBar
 import me.jbusdriver.modern.ui.components.rememberAppHazeState
@@ -94,6 +97,8 @@ fun ForumThreadDetailScreen(
     onOpenLinkMovies: (RouteLinkMovies) -> Unit = {},
     /** 点击作者（楼主栏/楼层）后打开用户空间（uid）。 */
     onOpenUserSpace: (Int) -> Unit = {},
+    /** 匿名态点击收藏/点赞 → 全局登录弹窗（ForumLoginDialogHost，Navigation 根层）。 */
+    onLoginClick: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel =
@@ -145,6 +150,10 @@ fun ForumThreadDetailScreen(
 
 
     val hazeState = rememberAppHazeState()
+    val density = LocalDensity.current
+    // 底部操作条总高（含导航条 inset），量出后并入列表 contentPadding 让内容从玻璃条下穿过
+    var actionBarHeightPx by remember { mutableIntStateOf(0) }
+    val actionBarHeight = with(density) { actionBarHeightPx.toDp() }
 
     Scaffold(
         topBar = {
@@ -174,18 +183,45 @@ fun ForumThreadDetailScreen(
                 }
             )
         },
+        bottomBar = {
+            if (detail != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .hazeBottomBar(hazeState)
+                        .navigationBarsPadding()
+                        .onSizeChanged { actionBarHeightPx = it.height }
+                ) {
+                    ThreadActionBar(
+                        canReply = state.canReply,
+                        isFavorited = state.isFavorited,
+                        favoriteCount = detail.favoriteCount,
+                        onReplyClick = {
+                            // F2-1 回帖被站点等级制阻塞，入口占位先行
+                            Toast.makeText(
+                                context,
+                                R.string.forum_action_reply_coming_soon,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onFavoriteClick = {
+                            if (state.isLoggedIn) viewModel.toggleFavorite() else onLoginClick()
+                        }
+                    )
+                }
+            }
+        },
         snackbarHost = {
             ThemedSnackbarHost(hostState = snackbarHostState)
         }
     ) { innerPadding ->
-        // 内容穿透毛玻璃顶栏：不吃顶部 padding，顶高转交 LazyColumn contentPadding
+        // 内容穿透上下两块毛玻璃：不吃 Scaffold 顶/底 padding，两栏高度转交 LazyColumn contentPadding
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                    bottom = innerPadding.calculateBottomPadding()
+                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current)
                 )
         ) {
             AppPullToRefreshBox(
@@ -326,7 +362,7 @@ fun ForumThreadDetailScreen(
                                 start = 16.dp,
                                 end = 16.dp,
                                 top = innerPadding.calculateTopPadding() + 14.dp,
-                                bottom = 14.dp
+                                bottom = actionBarHeight + 14.dp
                             )
                         ) {
                             item(key = "header") {
@@ -539,7 +575,7 @@ fun ForumThreadDetailScreen(
                     onClick = { scope.launch { listState.scrollToItem(0) } },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 64.dp)
+                        .padding(bottom = actionBarHeight + 12.dp)
                 )
             }
         }

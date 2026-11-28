@@ -21,7 +21,6 @@ import me.jbusdriver.modern.data.settings.ForumSettingsReader
 import me.jbusdriver.modern.domain.model.ForumBanner
 import me.jbusdriver.modern.domain.model.ForumBoardGroup
 import me.jbusdriver.modern.domain.model.ForumHomeData
-import me.jbusdriver.modern.domain.model.ForumLoginChallenge
 import me.jbusdriver.modern.domain.model.ForumLoginState
 import me.jbusdriver.modern.domain.model.ForumHomeSummary
 import me.jbusdriver.modern.ui.UserMessage
@@ -40,13 +39,7 @@ data class ForumBoardsUiState(
     val lastUpdatedAtMillis: Long? = null
 )
 
-/** 登录对话框状态；null = 关闭。错误为站点原文（parseDiscuzMessage），在对话框内展示。 */
-data class ForumLoginUiState(
-    val isLoading: Boolean = false,
-    val challenge: ForumLoginChallenge? = null,
-    val isSubmitting: Boolean = false,
-    val error: String? = null
-)
+/** 登录对话框状态与全局宿主见 ui/forum/account/ForumLoginDialogViewModel.kt（activity 级共享）。 */
 
 @HiltViewModel
 class ForumBoardsViewModel @Inject constructor(
@@ -59,13 +52,6 @@ class ForumBoardsViewModel @Inject constructor(
 
     /** 论坛登录态（服务端校准，账号开关打开时维护）。 */
     val accountState: StateFlow<ForumLoginState> = repository.loginState
-
-    private val _loginUiState = MutableStateFlow<ForumLoginUiState?>(null)
-    val loginUiState: StateFlow<ForumLoginUiState?> = _loginUiState.asStateFlow()
-
-    /** 登录成功一次性事件（UI 关闭对话框）。 */
-    private val _loginSucceeded = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val loginSucceeded: SharedFlow<Unit> = _loginSucceeded.asSharedFlow()
 
     /** 一次性用户消息（Snackbar/Toast），UI 展示后即视为消费 */
     private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 4)
@@ -96,16 +82,6 @@ class ForumBoardsViewModel @Inject constructor(
                 }
             }
         }
-        // 登录态翻转为已登录时自动关闭登录弹窗（覆盖网页登录返回后的收敛）
-        viewModelScope.launch {
-            repository.loginState.collect { state ->
-                if (state is ForumLoginState.LoggedIn && _loginUiState.value != null) {
-                    _loginUiState.value = null
-                    _loginSucceeded.tryEmit(Unit)
-                    _messages.emit(UserMessage(R.string.forum_login_success))
-                }
-            }
-        }
         // 浏览器关闭即静默校准登录态（覆盖从帖子链接进浏览器手动登录的场景；
         // 见 ForumAccountSignals——叠加层返回不触发 ON_RESUME，须靠此信号）
         viewModelScope.launch {
@@ -118,83 +94,6 @@ class ForumBoardsViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    /**
-     * 匿名态点击账号条：先在后台校准登录态——网页登录返回后此处即收敛（条变已登录、
-     * 弹窗自动关闭）；确认仍匿名才加载验证码打开原生登录框。不依赖生命周期回调
-     * （内置浏览器为应用内叠加层，返回不触发 ON_RESUME）。
-     */
-    fun onAccountBarTapped() {
-        if (_loginUiState.value != null) return
-        _loginUiState.value = ForumLoginUiState(isLoading = true)
-        viewModelScope.launch {
-            repository.refreshLoginState()
-            if (repository.loginState.value is ForumLoginState.Anonymous && _loginUiState.value != null) {
-                runCatching { repository.requestLoginChallenge() }
-                    .onSuccess { challenge ->
-                        _loginUiState.update { it?.copy(challenge = challenge, isLoading = false) }
-                    }
-                    .onFailure { e ->
-                        _loginUiState.update {
-                            it?.copy(error = e.message ?: "驗證碼獲取失敗，請重試", isLoading = false)
-                        }
-                    }
-            } else {
-                _loginUiState.value = null
-            }
-        }
-    }
-
-    /** 打开登录对话框并获取验证码挑战；也用于"刷新验证码"。 */
-    fun requestLoginChallenge() {
-        viewModelScope.launch {
-            _loginUiState.value = ForumLoginUiState(isLoading = true)
-            runCatching { repository.requestLoginChallenge() }
-                .onSuccess { challenge ->
-                    _loginUiState.value = ForumLoginUiState(challenge = challenge)
-                }
-                .onFailure { e ->
-                    KLog.e("[Forum] requestLoginChallenge failed: ${e.message}", TAG)
-                    _loginUiState.value = ForumLoginUiState(error = e.message ?: "驗證碼獲取失敗，請重試")
-                }
-        }
-    }
-
-    fun submitLogin(username: String, password: String, seccode: String) {
-        val challenge = _loginUiState.value?.challenge ?: return
-        viewModelScope.launch {
-            _loginUiState.update { it?.copy(isSubmitting = true, error = null) }
-            val result = runCatching {
-                repository.login(challenge, username, password, seccode)
-            }.getOrElse { Result.failure(it) }
-            result.onSuccess {
-                _loginUiState.value = null
-                _loginSucceeded.tryEmit(Unit)
-                _messages.emit(UserMessage(R.string.forum_login_success))
-            }.onFailure { e ->
-                // 失败后旧验证码已失效：保留错误文案（标题位展示），槽位转刷新中并自动换新图
-                _loginUiState.update {
-                    (it ?: ForumLoginUiState()).copy(
-                        isSubmitting = false,
-                        isLoading = true,
-                        challenge = null,
-                        error = e.message ?: "登錄失敗"
-                    )
-                }
-                runCatching { repository.requestLoginChallenge() }
-                    .onSuccess { newChallenge ->
-                        _loginUiState.update { it?.copy(challenge = newChallenge, isLoading = false) }
-                    }
-                    .onFailure {
-                        _loginUiState.update { it?.copy(isLoading = false) }
-                    }
-            }
-        }
-    }
-
-    fun dismissLoginDialog() {
-        _loginUiState.value = null
     }
 
     /** 重新校准登录态（网页登录返回 / 恢复到前台时调用）。 */

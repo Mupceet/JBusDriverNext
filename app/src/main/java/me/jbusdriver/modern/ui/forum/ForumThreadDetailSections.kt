@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.draw.scale
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -258,6 +260,127 @@ private fun FloorOrderPill(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             maxLines = 1
         )
+    }
+}
+
+/**
+ * 帖子底部固定操作条（未来回帖入口也在此）：左侧圆角回复提示框常驻（无回帖权限时
+ * 换"无权限"hint 且点击无反应，避免底栏空洞），右侧收藏带计数（点赞已移除——站点
+ * 点赞不可撤销，交互反直觉）。计数来自帖子页 #p_btn，游客态也渲染；匿名点击由调用方
+ * 引导全局登录弹窗。容器自身为透明玻璃（调用方挂 hazeBottomBar），内容从条下穿过
+ * （条高由调用方量出后并入列表 contentPadding）。
+ */
+@Composable
+internal fun ThreadActionBar(
+    canReply: Boolean,
+    isFavorited: Boolean,
+    favoriteCount: Int,
+    onReplyClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // 回复提示框：视觉上的"伪输入框"，F2-1 回帖上线前点击仅提示；
+        // 无权限（含匿名/等级不足）换 hint 文案、点击无反应
+        Surface(
+            onClick = { if (canReply) onReplyClick() },
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = stringResource(
+                    if (canReply) R.string.forum_action_reply_hint
+                    else R.string.forum_action_reply_no_permission
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp)
+            )
+        }
+
+        ActionCountPill(
+            iconRes = if (isFavorited) R.drawable.favorite_fill_24px else R.drawable.favorite_24px,
+            label = stringResource(R.string.forum_action_favorite),
+            count = favoriteCount,
+            active = isFavorited,
+            onClick = onFavoriteClick
+        )
+    }
+}
+
+/**
+ * 收藏计数胶囊：图标 + 数字。点击即乐观生效（状态由 VM 立即置位），点亮瞬间播放
+ * 反馈动画——容器/内容色淡变 + 图标弹跳。点亮态用 error 红实底（与影片收藏按钮同惯例，
+ * 淡紫 primary 在玻璃条上不够醒目）；并发重复点击由 VM 提交锁静默拦截。
+ */
+@Composable
+private fun ActionCountPill(
+    iconRes: Int,
+    label: String,
+    count: Int,
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    val containerColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (active) MaterialTheme.colorScheme.error else Color.Transparent,
+        label = "actionPillContainer"
+    )
+    val contentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (active) MaterialTheme.colorScheme.onError
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "actionPillColor"
+    )
+    val borderColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (active) Color.Transparent else MaterialTheme.colorScheme.outlineVariant,
+        label = "actionPillBorder"
+    )
+    val iconScale = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(active) {
+        if (active) {
+            iconScale.snapTo(0.6f)
+            iconScale.animateTo(
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                    stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                )
+            )
+        }
+    }
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = containerColor,
+        contentColor = contentColor,
+        border = BorderStroke(1.dp, borderColor),
+        onClick = onClick,
+        modifier = Modifier.minimumInteractiveComponentSize()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            androidx.compose.material3.Icon(
+                painter = androidx.compose.ui.res.painterResource(iconRes),
+                contentDescription = label,
+                modifier = Modifier
+                    .size(16.dp)
+                    .scale(iconScale.value)
+            )
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1
+            )
+        }
     }
 }
 

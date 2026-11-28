@@ -73,6 +73,8 @@ fun MainScreen(
     onForumBoardClick: (me.jbusdriver.modern.domain.model.ForumBoard) -> Unit = {},
     onForumThreadClick: (Int) -> Unit = {},
     onForumUserClick: (Int) -> Unit = {},
+    /** 匿名态点击账号条 → 全局登录弹窗（ForumLoginDialogViewModel，activity 级共享）。 */
+    onForumLoginClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onOpenLtxVerification: (String) -> Unit = {}
 ) {
@@ -112,7 +114,6 @@ fun MainScreen(
     val forumAccountEnabled by store.forumAccountEnabled.collectAsStateWithLifecycle()
     val forumAccountState = forumViewModel?.accountState?.collectAsStateWithLifecycle()?.value
         ?: me.jbusdriver.modern.domain.model.ForumLoginState.Anonymous
-    val forumLoginUi = forumViewModel?.loginUiState?.collectAsStateWithLifecycle()?.value
 
     // 从其它界面返回本页时重新校准论坛登录态
     androidx.lifecycle.compose.LifecycleResumeEffect(forumAccountEnabled) {
@@ -237,7 +238,21 @@ fun MainScreen(
                     onSearchClick = { onSearchClick("") },
                     onSettingsClick = onSettingsClick,
                     scrollState = searchBarScrollBehavior.state,
-                    modifier = Modifier.onSizeChanged { searchVisibleHeightPx = it.height }
+                    modifier = Modifier.onSizeChanged { searchVisibleHeightPx = it.height },
+                    // 账号开关打开时，论坛页右上角设置图标换成账号头像
+                    // （点击登录/用户中心，长按打开设置）；其余 tab 保持设置图标
+                    trailingIcon = if (selectedCategory == BottomNavCategory.FORUM && forumAccountEnabled) {
+                        {
+                            me.jbusdriver.modern.ui.forum.account.ForumAccountAvatar(
+                                state = forumAccountState,
+                                onLoginClick = onForumLoginClick,
+                                onUserClick = onForumUserClick,
+                                onLongClick = onSettingsClick
+                            )
+                        }
+                    } else {
+                        null
+                    }
                 )
                 Box(
                     modifier = Modifier
@@ -251,28 +266,13 @@ fun MainScreen(
                         BottomNavCategory.MOVIE -> movieChipsSlot?.invoke()
                         BottomNavCategory.ACTRESS -> actressChipsSlot?.invoke()
                         BottomNavCategory.COLLECT -> collectChipsSlot?.invoke()
-                        // 论坛：账号开关打开时，玻璃头常驻账号状态条（匿名/已登录）
-                        BottomNavCategory.FORUM -> {
-                            if (forumAccountEnabled) {
-                                me.jbusdriver.modern.ui.forum.account.ForumAccountBar(
-                                    state = forumAccountState,
-                                    onLoginClick = { forumViewModel?.onAccountBarTapped() },
-                                    onUserClick = onForumUserClick
-                                )
-                            }
-                        }
+                        // 论坛：账号条已移除（账号入口收敛到搜索栏头像 ForumAccountAvatar），
+                        // 玻璃头不含 chips 行，高度随内容自适应
+                        BottomNavCategory.FORUM -> Unit
                     }
                 }
 
-                // 登录弹窗（匿名态点击账号条触发）；网页兜底时先关弹窗再开浏览器
-                forumLoginUi?.let { loginState ->
-                    me.jbusdriver.modern.ui.forum.account.ForumLoginDialog(
-                        state = loginState,
-                        onDismiss = { forumViewModel?.dismissLoginDialog() },
-                        onSubmit = { u, p, c -> forumViewModel?.submitLogin(u, p, c) },
-                        onRefreshCaptcha = { forumViewModel?.requestLoginChallenge() }
-                    )
-                }
+                // 登录弹窗为全局宿主（Navigation 根层渲染），见 ForumLoginDialogHost
             }
         }
     }

@@ -150,8 +150,6 @@
     <string name="forum_tab_latest">Latest Threads</string>
     <string name="forum_tab_latest_reply">Latest Replies</string>
     <string name="forum_tab_hot">Hot Topics</string>
-    <string name="forum_anonymous_title">Anonymous browsing</string>
-    <string name="forum_anonymous_hint">Tap to log in to the forum</string>
     <string name="forum_login_title">Log in to forum</string>
     <string name="forum_login_username">Username</string>
     <string name="forum_login_password">Password</string>
@@ -160,6 +158,12 @@
     <string name="forum_login_submit">Log in</string>
     <string name="forum_login_submitting">Logging in…</string>
     <string name="forum_login_success">Logged in</string>
+    <!-- Thread bottom action bar (favorite/recommend/reply entry) -->
+    <string name="forum_action_reply_hint">Add a reply…</string>
+    <string name="forum_action_reply_no_permission">No reply permission yet</string>
+    <string name="forum_action_reply_coming_soon">Replying is coming soon</string>
+    <string name="forum_action_favorite">Favorite</string>
+    <string name="forum_action_already_favorited">Already favorited</string>
     <string name="forum_user_threads">Threads</string>
     <string name="forum_user_replies">Replies</string>
     <string name="forum_user_favorites">Favorites</string>

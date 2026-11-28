@@ -66,7 +66,9 @@ fun SearchBarWithSettings(
     onSearchClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
-    hint: String? = null
+    hint: String? = null,
+    /** 搜索栏尾部自定义图标（如论坛页的账号头像）；null = 默认设置图标。 */
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -78,16 +80,20 @@ fun SearchBarWithSettings(
             modifier = Modifier.weight(1f)
         )
         Spacer(Modifier.width(8.dp))
-        IconButton(
-            onClick = onSettingsClick,
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.settings_24px),
-                contentDescription = stringResource(R.string.settings_title),
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (trailingIcon != null) {
+            trailingIcon()
+        } else {
+            IconButton(
+                onClick = onSettingsClick,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.settings_24px),
+                    contentDescription = stringResource(R.string.settings_title),
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -97,7 +103,9 @@ fun CollapsingSearchBar(
     onSearchClick: () -> Unit,
     onSettingsClick: () -> Unit,
     scrollState: TopAppBarState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 搜索栏尾部自定义图标；null = 默认设置图标（透传 [SearchBarWithSettings]）。 */
+    trailingIcon: (@Composable () -> Unit)? = null
 ) {
     // Smooth the bar's motion: the raw offset tracks/consumes scroll (collapse first, list
     // frozen), while the rendered offset springs toward it so fast flings glide instead of
@@ -118,7 +126,8 @@ fun CollapsingSearchBar(
             SearchBarWithSettings(
                 onSearchClick = onSearchClick,
                 onSettingsClick = onSettingsClick,
-                modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp, bottom = 8.dp)
+                modifier = Modifier.padding(start = 14.dp, top = 4.dp, end = 14.dp, bottom = 8.dp),
+                trailingIcon = trailingIcon
             )
         }
     ) { measurables, constraints ->

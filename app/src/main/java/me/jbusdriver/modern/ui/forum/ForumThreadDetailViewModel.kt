@@ -28,7 +28,9 @@ import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.repository.ForumRepository
 import me.jbusdriver.modern.domain.model.Comment
 import me.jbusdriver.modern.domain.model.ContentBlock
+import me.jbusdriver.modern.domain.model.ForumLoginState
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
+import me.jbusdriver.modern.domain.model.ForumUserPermissions
 import me.jbusdriver.modern.domain.model.PageInfo
 import me.jbusdriver.modern.domain.model.hasNext
 import me.jbusdriver.modern.domain.model.normalizeMovieCode
@@ -89,7 +91,15 @@ data class ForumThreadDetailUiState(
     val gapLoadingBelowFloor: Int? = null,
     val isChangingFloorOrder: Boolean = false,
     val isChangingAuthorFilter: Boolean = false,
-    val commentSheet: FloorCommentSheetState? = null
+    val commentSheet: FloorCommentSheetState? = null,
+    /** 已登录（写操作前置；匿名点击收藏/点赞由 UI 引导全局登录弹窗）。 */
+    val isLoggedIn: Boolean = false,
+    /** 等级门控（内置表）：可回帖才显示底栏回复入口；匿名恒为 false。 */
+    val canReply: Boolean = false,
+    /** 本会话已收藏（本地收藏库命中或收藏成功后置位）。 */
+    val isFavorited: Boolean = false,
+    /** 收藏后台校验中（提交锁，静默拦截并发点击；乐观状态已生效，UI 无须区分）。 */
+    val isSubmittingAction: Boolean = false
 )
 
 /** [ForumThreadDetailViewModel.locateQuotedFloor] 的结果。 */
@@ -177,6 +187,9 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
     /** 防止延迟到达的旧重算结果覆盖新结果。 */
     private var loadedGifsGeneration = 0L
 
+    /** 已收藏预标记探针只跑一次（登录态就绪后）。 */
+    private var favoritesProbeDone = false
+
     private fun beginRequest(identity: DetailRequestIdentity): Long {
         requestGeneration += 1
         activeIdentity = identity
@@ -256,6 +269,30 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
 
     init {
         KLog.d("[Forum] ForumThreadDetailViewModel init: tid=$tid", TAG)
+        // 登录态 + 内置等级权限表驱动底栏写操作入口（匿名 → 隐藏回复入口、写操作引导登录）
+        viewModelScope.launch {
+            repository.loginState.collect { login ->
+                val permissions = ForumUserPermissions.forGroupName(
+                    (login as? ForumLoginState.LoggedIn)?.groupName
+                )
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = login is ForumLoginState.LoggedIn,
+                        canReply = login is ForumLoginState.LoggedIn && permissions.canReply
+                    )
+                }
+                // 已收藏预标记：登录后查本地收藏库镜像（Room，无网络请求、不限收藏首页），
+                // 库内容随个人主页收藏页浏览与收藏操作持续同步
+                if (login is ForumLoginState.LoggedIn && !favoritesProbeDone) {
+                    favoritesProbeDone = true
+                    runCatching {
+                        if (repository.isFavoritedThread(tid)) {
+                            _uiState.update { it.copy(isFavorited = true) }
+                        }
+                    } // 探针失败静默：未知态由首次点击的服务端校验收敛
+                }
+            }
+        }
         viewModelScope.launch {
             persistedGifUrls = loadPersistedGifUrls()
             recomputeLoadedGifs()
@@ -734,6 +771,45 @@ class ForumThreadDetailViewModel @AssistedInject constructor(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 收藏帖子（只新增，删除走个人主页）：点击即乐观生效（点亮+计数+1，动画反馈），
+     * 后台以仓库层服务端定值校验，失败才回滚并提示站点文案；提交锁静默拦截并发。
+     */
+    fun toggleFavorite() {
+        val detail = _uiState.value.detail ?: return
+        if (_uiState.value.isSubmittingAction) return
+        if (_uiState.value.isFavorited) {
+            viewModelScope.launch { _messages.emit(UserMessage(R.string.forum_action_already_favorited)) }
+            return
+        }
+        _uiState.update { state ->
+            state.copy(
+                isFavorited = true,
+                isSubmittingAction = true,
+                detail = state.detail?.copy(favoriteCount = state.detail.favoriteCount + 1)
+            )
+        }
+        viewModelScope.launch {
+            repository.addFavoriteThread(detail.tid, detail.favoriteActionUrl)
+                .onSuccess {
+                    // 静默确认：乐观状态即终态
+                    _uiState.update { it.copy(isSubmittingAction = false) }
+                }
+                .onFailure { e ->
+                    _uiState.update { state ->
+                        state.copy(
+                            isFavorited = false,
+                            isSubmittingAction = false,
+                            detail = state.detail?.copy(
+                                favoriteCount = (state.detail.favoriteCount - 1).coerceAtLeast(0)
+                            )
+                        )
+                    }
+                    _messages.emit(UserMessage.ofText(e.message ?: "收藏失敗，請稍後重試"))
+                }
         }
     }
 
