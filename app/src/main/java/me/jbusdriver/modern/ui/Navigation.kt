@@ -176,6 +176,9 @@ fun JBusNavigation(
                         onForumThreadClick = { tid ->
                             backStack.add(RouteForumThreadDetail(tid))
                         },
+                        onForumUserClick = { uid ->
+                            backStack.add(RouteUserSpace(uid))
+                        },
                         onSettingsClick = { backStack.add(RouteSettings) },
                         onOpenLtxVerification = { url ->
                             backStack.add(RouteLtxVerify(url))
@@ -330,6 +333,18 @@ fun JBusNavigation(
                         onOpenLinkMovies = { key ->
                             backStack.add(key)
                         },
+                        onOpenUserSpace = { uid ->
+                            backStack.add(RouteUserSpace(uid))
+                        },
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<RouteUserSpace> { key ->
+                    me.jbusdriver.modern.ui.forum.account.UserSpaceScreen(
+                        uid = key.uid,
+                        onThreadClick = { tid ->
+                            backStack.add(RouteForumThreadDetail(tid))
+                        },
                         onBack = { backStack.removeLastOrNull() }
                     )
                 }
@@ -442,6 +457,13 @@ fun JBusNavigation(
                         }
                     }
                 ) { key ->
+                    // 浏览器关闭（返回/系统手势均会退出组合）即通知论坛侧自动校准登录态：
+                    // 叠加层返回不触发 ON_RESUME，须靠此信号（ForumAccountSignals）
+                    val signalsVm: me.jbusdriver.modern.ui.forum.account.ForumAccountSignalsViewModel =
+                        androidx.hilt.navigation.compose.hiltViewModel()
+                    androidx.compose.runtime.DisposableEffect(Unit) {
+                        onDispose { signalsVm.signals.notifyWebLoginClosed() }
+                    }
                     BrowserScreen(
                         url = key.url,
                         title = key.title,

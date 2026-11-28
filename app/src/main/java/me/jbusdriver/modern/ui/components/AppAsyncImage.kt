@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
+import coil.transform.Transformation
 import me.jbusdriver.modern.data.parser.stripToPath
 import me.jbusdriver.modern.ui.theme.LocalIsDarkTheme
 
@@ -58,17 +59,32 @@ fun dimColorFilter(enabled: Boolean = LocalIsDarkTheme.current): ColorFilter? =
  *
  * 非 String 模型原样返回；URL 退化到空 path 时不覆盖默认键。
  * 供 [AppAsyncImage] 及无法走该包装器的调用点（论坛大图、全屏查看器）共用。
+ *
+ * @param model Coil 加载模型（URL、URI、File 等）。
+ * @param transformations 解码后应用的变换。**带变换时必须同时给出 [variant]**：
+ *                       内存缓存键已统一成路径，变换不会再自动进入键里，不加区分会与
+ *                       同一 URL 的原图互相覆盖。
+ * @param variant 加工变体名，追加到内存缓存键末尾；磁盘缓存仍指向原图。
  */
 @Composable
-fun rememberSiteImageRequest(model: Any?): Any? {
+fun rememberSiteImageRequest(
+    model: Any?,
+    transformations: List<Transformation> = emptyList(),
+    variant: String? = null
+): Any? {
     val context = LocalContext.current
-    return remember(context, model) {
+    return remember(context, model, transformations, variant) {
         if (model is String) {
             val cacheKey = model.stripToPath()
             val builder = ImageRequest.Builder(context).data(model)
             if (cacheKey.isNotBlank()) {
-                builder.memoryCacheKey(cacheKey).diskCacheKey(cacheKey)
+                builder
+                    .memoryCacheKey(if (variant == null) cacheKey else "$cacheKey#$variant")
+                    .diskCacheKey(cacheKey)
             }
+            builder.transformations(transformations)
+            // 变换要逐像素读写，而硬件位图不允许读像素
+            if (transformations.isNotEmpty()) builder.allowHardware(false)
             builder.build()
         } else {
             model

@@ -44,6 +44,12 @@ data class RouteForumThreadDetail(
     val tid: Int
 ) : NavKey
 
+/** 个人主页（自/他复用；主題/回覆/收藏/資料 页签就地切换）。uid 来自账号态或作者点击。 */
+@Serializable
+data class RouteUserSpace(
+    val uid: Int
+) : NavKey
+
 @Serializable
 data object RouteSettings : NavKey
 

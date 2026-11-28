@@ -1,8 +1,14 @@
 package me.jbusdriver.modern.data.repository
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import me.jbusdriver.modern.KLog
 import me.jbusdriver.modern.core.cache.CacheStore
 import me.jbusdriver.modern.core.cache.CachedLoadEvent
@@ -10,21 +16,39 @@ import me.jbusdriver.modern.core.cache.ForumCacheTtl
 import me.jbusdriver.modern.core.cache.firstCachedOrFresh
 import me.jbusdriver.modern.core.cache.observeCached
 import me.jbusdriver.modern.core.site.SiteConfig
+import me.jbusdriver.modern.data.parser.parseDiscuzMessage
 import me.jbusdriver.modern.data.parser.parseForumFloorComments
 import me.jbusdriver.modern.data.parser.parseForumHomeData
 import me.jbusdriver.modern.data.parser.parseForumThreadDetail
 import me.jbusdriver.modern.data.parser.parseForumThreads
+import me.jbusdriver.modern.data.parser.parseLoginForm
+import me.jbusdriver.modern.data.parser.parseForumLoginState
+import me.jbusdriver.modern.data.parser.parseForumUserProfile
+import me.jbusdriver.modern.data.parser.parseUserFavorites
+import me.jbusdriver.modern.data.parser.parseUserThreadList
 import me.jbusdriver.modern.core.http.BrowserCookiePersister
 import me.jbusdriver.modern.core.http.BrowserSessionClient
+import me.jbusdriver.modern.core.http.ForumAuthCookieCleaner
+import me.jbusdriver.modern.core.http.NetClient
+import me.jbusdriver.modern.data.settings.ForumAccountCache
 import me.jbusdriver.modern.data.settings.ForumFloorOrder
 import me.jbusdriver.modern.data.settings.ForumThreadOrder
 import me.jbusdriver.modern.data.settings.buildForumFindPostUrl
 import me.jbusdriver.modern.data.settings.buildForumThreadDetailUrl
 import me.jbusdriver.modern.data.settings.buildForumThreadListUrl
 import me.jbusdriver.modern.domain.model.ForumCommentPageResult
+import me.jbusdriver.modern.domain.model.ForumFavoritePageResult
 import me.jbusdriver.modern.domain.model.ForumHomeData
+import me.jbusdriver.modern.domain.model.ForumLoginChallenge
+import me.jbusdriver.modern.domain.model.ForumLoginState
 import me.jbusdriver.modern.domain.model.ForumThreadDetail
 import me.jbusdriver.modern.domain.model.ForumThreadPageResult
+import me.jbusdriver.modern.domain.model.ForumUserProfile
+import me.jbusdriver.modern.domain.model.ForumUserThreadPageResult
+import me.jbusdriver.modern.domain.model.ForumUserThreadType
+import okhttp3.FormBody
+import okhttp3.Request
+import android.webkit.CookieManager
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,6 +64,57 @@ private fun forumLogE(message: String) {
 }
 
 interface ForumRepository {
+    /** 当前登录态（服务端实测刷新；协议依据 docs/FORUM_DESIGN.md §2.3-2）。 */
+    val loginState: StateFlow<ForumLoginState>
+
+    /** 重新拉取自空间页校准登录态，并更新账号缓存。 */
+    suspend fun refreshLoginState()
+
+    /** 若持久化 auth cookie 仍有效，用账号缓存先恢复登录态（启动秒显，不保证有效）。 */
+    suspend fun tryRestoreCachedLoginState()
+
+    /** 获取登录挑战：登录页动态表单 + seccode 验证码图片。 */
+    suspend fun requestLoginChallenge(): ForumLoginChallenge
+
+    /** 提交登录（不持久化账号密码，仅 auth cookie；D6）。失败返回 Result.failure(带站点提示文案)。 */
+    suspend fun login(
+        challenge: ForumLoginChallenge,
+        username: String,
+        password: String,
+        seccode: String
+    ): Result<ForumLoginState>
+
+    /** 登出：服务端 logout（尽力而为）+ 清除本地 auth cookie 与账号缓存。 */
+    suspend fun logout()
+
+    suspend fun loadUserProfile(uid: Int): ForumUserProfile
+
+    suspend fun loadUserThreads(
+        uid: Int,
+        type: ForumUserThreadType,
+        page: Int
+    ): ForumUserThreadPageResult
+
+    suspend fun loadUserFavorites(page: Int): ForumFavoritePageResult
+
+    /** 用户资料 SWR 流：先发缓存（即时渲染），后台刷新后发 Fresh；下拉刷新用 forceRefresh 跳过缓存。 */
+    fun observeUserProfile(
+        uid: Int,
+        forceRefresh: Boolean = false,
+        revalidate: Boolean = true
+    ): Flow<CachedLoadEvent<ForumUserProfile>>
+
+    /** 用户主题/回复列表 SWR 流；下拉刷新用 forceRefresh 跳过缓存。 */
+    fun observeUserThreads(
+        uid: Int,
+        type: ForumUserThreadType,
+        page: Int,
+        forceRefresh: Boolean = false
+    ): Flow<CachedLoadEvent<ForumUserThreadPageResult>>
+
+    /** 我的收藏列表 SWR 流；下拉刷新用 forceRefresh 跳过缓存。 */
+    fun observeUserFavorites(page: Int, forceRefresh: Boolean = false): Flow<CachedLoadEvent<ForumFavoritePageResult>>
+
     suspend fun loadForumBoards(forceRefresh: Boolean = false): ForumHomeData
     suspend fun loadThreads(
         fid: Int,
@@ -106,10 +181,219 @@ class DefaultForumRepository @Inject constructor(
     private val sessionClient: BrowserSessionClient,
     private val cookiePersister: BrowserCookiePersister,
     private val cacheStore: CacheStore,
-    private val siteConfig: SiteConfig
+    private val siteConfig: SiteConfig,
+    private val authCookieCleaner: ForumAuthCookieCleaner,
+    private val accountCache: ForumAccountCache
 ) : ForumRepository {
 
     private val cookiesPersistedForForum = AtomicBoolean(false)
+
+    private val _loginState = MutableStateFlow<ForumLoginState>(ForumLoginState.Anonymous)
+    override val loginState: StateFlow<ForumLoginState> = _loginState.asStateFlow()
+
+    override suspend fun refreshLoginState() {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        runCatching {
+            val doc = fetchForumDocument("$baseUrl/forum/home.php?mod=space")
+            parseForumLoginState(doc, baseUrl)
+        }.onSuccess { state ->
+            _loginState.value = state
+            if (state is ForumLoginState.LoggedIn) {
+                accountCache.save(
+                    ForumAccountCache.CachedAccount(
+                        uid = state.uid,
+                        username = state.username,
+                        avatarUrl = state.avatarUrl,
+                        groupName = state.groupName
+                    )
+                )
+                // 登录后重置一次性持久化标记，确保 auth cookie 立即落盘
+                cookiesPersistedForForum.set(false)
+                persistCookiesAfterFetch()
+            } else {
+                accountCache.clear()
+            }
+        }.onFailure { forumLogE("[Forum] refreshLoginState failed: ${it.message}") }
+    }
+
+    override suspend fun tryRestoreCachedLoginState() {
+        if (_loginState.value !is ForumLoginState.Anonymous) return
+        siteConfig.awaitReady()
+        val hasAuthCookie = CookieManager.getInstance()
+            .getCookie(siteConfig.referer())?.contains("4fJN_2132_auth=") == true
+        if (!hasAuthCookie) return
+        val cached = accountCache.cached.first()
+        if (cached != null && cached.uid > 0 && cached.username.isNotBlank()) {
+            _loginState.value = ForumLoginState.LoggedIn(
+                cached.uid, cached.username, cached.avatarUrl, cached.groupName
+            )
+        }
+    }
+
+    override suspend fun requestLoginChallenge(): ForumLoginChallenge {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val loginUrl = "$baseUrl/forum/member.php?mod=logging&action=login&referer="
+        val doc = fetchForumDocument(loginUrl)
+        val form = parseLoginForm(doc)
+            ?: throw IllegalStateException("登錄頁解析失敗，請稍後重試或改用網頁登入")
+        val imageUrl = "$baseUrl/forum/misc.php?mod=seccode&update=${System.currentTimeMillis()}&idhash=${form.seccodeHash}"
+        val bytes = withContext(Dispatchers.IO) {
+            NetClient.glideOkHttpClient.newCall(
+                Request.Builder().url(imageUrl).header("Referer", loginUrl).build()
+            ).execute().use { resp ->
+                if (!resp.isSuccessful) error("驗證碼獲取失敗(${resp.code})")
+                resp.body.bytes()
+            }
+        }
+        return ForumLoginChallenge(form, bytes)
+    }
+
+    override suspend fun login(
+        challenge: ForumLoginChallenge,
+        username: String,
+        password: String,
+        seccode: String
+    ): Result<ForumLoginState> {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val loginPageUrl = "$baseUrl/forum/member.php?mod=logging&action=login&referer="
+        val postUrl = if (challenge.form.action.startsWith("http")) {
+            challenge.form.action
+        } else {
+            "$baseUrl/forum/${challenge.form.action}"
+        }
+        val form = challenge.form
+        val body = FormBody.Builder()
+            .add("formhash", form.formhash)
+            .add("referer", form.referer.ifBlank { "forum.php" })
+            .add("loginfield", "username")
+            .add("username", username)
+            .add("password", password)
+            .add("questionid", "0")
+            .add("answer", "")
+            .add("seccodehash", form.seccodeHash)
+            .add("seccodemodid", "member::logging")
+            .add("seccodeverify", seccode)
+            .add("cookietime", "2592000")
+            .add("loginsubmit", "true")
+            .build()
+        val responseText = withContext(Dispatchers.IO) {
+            NetClient.glideOkHttpClient.newCall(
+                Request.Builder().url(postUrl).header("Referer", loginPageUrl).post(body).build()
+            ).execute().use { it.body.string() }
+        }
+        // 以服务端实测为准：auth cookie 可能因早前的浏览器登录已存在，CookieManager
+        // 有它不代表"本次提交"成功；验证码对错只有提交后重新解析登录态才能确认
+        refreshLoginState()
+        val state = _loginState.value
+        return if (state is ForumLoginState.LoggedIn) {
+            Result.success(state)
+        } else {
+            forumLogE("[Forum] login rejected, response head: ${responseText.take(200)}")
+            Result.failure(IllegalStateException(parseDiscuzMessage(responseText) ?: "登錄失敗，請檢查帳號密碼與驗證碼"))
+        }
+    }
+
+    override suspend fun logout() {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        runCatching {
+            // 服务端登出（logout 链接内嵌 formhash，GET 即生效）；尽力而为
+            val doc = fetchForumDocument("$baseUrl/forum/forum.php")
+            doc.selectFirst("a[href*='action=logout']")?.attr("href")?.let { href ->
+                val logoutUrl = if (href.startsWith("http")) href else "$baseUrl/forum/$href"
+                fetchForumDocument(logoutUrl)
+            }
+        }.onFailure { forumLogE("[Forum] server logout failed (ignored): ${it.message}") }
+        authCookieCleaner.clearAuthCookies(siteConfig.referer())
+        accountCache.clear()
+        _loginState.value = ForumLoginState.Anonymous
+    }
+
+    override suspend fun loadUserProfile(uid: Int): ForumUserProfile =
+        observeUserProfile(uid).firstCachedOrFresh()
+
+    override suspend fun loadUserThreads(
+        uid: Int,
+        type: ForumUserThreadType,
+        page: Int
+    ): ForumUserThreadPageResult =
+        observeUserThreads(uid, type, page).firstCachedOrFresh()
+
+    override suspend fun loadUserFavorites(page: Int): ForumFavoritePageResult =
+        observeUserFavorites(page).firstCachedOrFresh()
+
+    private fun userSpaceId(uid: Int): String = if (uid > 0) uid.toString() else "self"
+
+    override fun observeUserProfile(
+        uid: Int,
+        forceRefresh: Boolean,
+        revalidate: Boolean
+    ): Flow<CachedLoadEvent<ForumUserProfile>> = flow {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = if (uid > 0) "$baseUrl/forum/home.php?mod=space&uid=$uid" else "$baseUrl/forum/home.php?mod=space"
+        forumLogD("[Forum] observeUserProfile: url=$url")
+        emitAll(
+            cacheStore.observeCached(
+                key = "${forumCachePrefix(baseUrl)}:user-profile:${userSpaceId(uid)}",
+                ttlMillis = ForumCacheTtl.HOME_MILLIS,
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = revalidate,
+                // 游客视角的登录重定向页用户名为空，不可缓存
+                isCacheable = { it.username.isNotBlank() }
+            ) {
+                parseForumUserProfile(fetchForumDocument(url), baseUrl)
+            }
+        )
+    }
+
+    override fun observeUserThreads(
+        uid: Int,
+        type: ForumUserThreadType,
+        page: Int,
+        forceRefresh: Boolean
+    ): Flow<CachedLoadEvent<ForumUserThreadPageResult>> = flow {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = "$baseUrl/forum/home.php?mod=space&uid=$uid&do=thread&view=me&type=${type.param}&from=space&page=$page"
+        forumLogD("[Forum] observeUserThreads: url=$url")
+        emitAll(
+            cacheStore.observeCached(
+                key = "${forumCachePrefix(baseUrl)}:user-threads:$uid:${type.param}:$page",
+                ttlMillis = threadListTtl(page),
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = page == 1,
+                isCacheable = { it.threads.isNotEmpty() }
+            ) {
+                parseUserThreadList(fetchForumDocument(url))
+            }
+        )
+    }
+
+    override fun observeUserFavorites(page: Int, forceRefresh: Boolean): Flow<CachedLoadEvent<ForumFavoritePageResult>> = flow {
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val url = "$baseUrl/forum/home.php?mod=space&do=favorite&view=me&type=thread&page=$page"
+        forumLogD("[Forum] observeUserFavorites: url=$url")
+        emitAll(
+            cacheStore.observeCached(
+                // 收藏为登录私有数据：key 绑定当前登录 uid，换号/登出后不串缓存
+                key = "${forumCachePrefix(baseUrl)}:user-favorites:${_loginState.value.let { (it as? ForumLoginState.LoggedIn)?.uid ?: 0 }}:$page",
+                ttlMillis = threadListTtl(page),
+                disk = true,
+                forceRefresh = forceRefresh,
+                revalidate = page == 1,
+                isCacheable = { it.favorites.isNotEmpty() }
+            ) {
+                parseUserFavorites(fetchForumDocument(url))
+            }
+        )
+    }
 
     private suspend fun fetchForumDocument(url: String): org.jsoup.nodes.Document {
         val doc = sessionClient.fetchDocument(url)

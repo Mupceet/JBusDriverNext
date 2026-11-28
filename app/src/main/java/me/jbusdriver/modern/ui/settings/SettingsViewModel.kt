@@ -48,6 +48,7 @@ class SettingsViewModel @Inject constructor(
     private val appUpdateDownloader: AppUpdateDownloader,
     private val appUpdateAutoChecker: AppUpdateAutoChecker,
     private val translatorEngineFactory: TranslatorEngineFactory,
+    private val forumRepository: me.jbusdriver.modern.data.repository.ForumRepository,
 ) : ViewModel() {
 
     private val _updateCheckState = MutableStateFlow(UpdateCheckState())
@@ -218,6 +219,16 @@ class SettingsViewModel @Inject constructor(
                     else R.string.sensitive_forum_content_hidden
                 )
             )
+        }
+    }
+
+    /** 论坛账号开关：关闭时登出（清 auth cookie 与账号缓存）。 */
+    fun setForumAccountEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            store.setForumAccountEnabled(enabled)
+            if (!enabled) {
+                runCatching { forumRepository.logout() }
+            }
         }
     }
     // endregion

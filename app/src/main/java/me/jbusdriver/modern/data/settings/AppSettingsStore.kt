@@ -45,6 +45,8 @@ interface ForumSettingsReader {
 
     /** 敏感论坛内容（如「性息」分类）是否显示；false 时相关板块/chip/帖子默认隐藏。 */
     val showSensitiveForumContent: StateFlow<Boolean>
+    //** 论坛账号功能开关；关闭时应登出（清 auth cookie）。 */
+    val forumAccountEnabled: StateFlow<Boolean>
     suspend fun currentForumFloorOrder(): ForumFloorOrder
     suspend fun currentThreadSortOrder(): ForumThreadOrder
 }
@@ -152,6 +154,7 @@ interface AppSettingsContract : ThemeSettingsReader, ForumSettingsReader, MovieL
     suspend fun setShowForumTab(enabled: Boolean)
     suspend fun setAutoLoadGifs(enabled: Boolean)
     suspend fun setShowSensitiveForumContent(enabled: Boolean)
+    suspend fun setForumAccountEnabled(enabled: Boolean)
     suspend fun setForumFloorOrder(order: ForumFloorOrder)
     suspend fun setThreadSortOrder(order: ForumThreadOrder)
     suspend fun setTranslateByDefault(enabled: Boolean)
@@ -210,6 +213,7 @@ class AppSettingsStore @Inject constructor(
     // region Forum
     override val autoLoadGifs: StateFlow<Boolean> = flowOf(KEY_AUTO_LOAD_GIFS, false)
     override val showSensitiveForumContent: StateFlow<Boolean> = flowOf(KEY_SHOW_SENSITIVE_FORUM_CONTENT, false)
+    override val forumAccountEnabled: StateFlow<Boolean> = flowOf(KEY_FORUM_ACCOUNT_ENABLED, false)
     override val forumFloorOrder: StateFlow<ForumFloorOrder> = mapped(KEY_FORUM_FLOOR_ORDER, ForumFloorOrder.REGULAR) { ForumFloorOrder.fromPreferenceValue(it) }
     override val threadSortOrder: StateFlow<ForumThreadOrder> = mapped(KEY_THREAD_SORT_ORDER, ForumThreadOrder.LASTPOST) { ForumThreadOrder.fromPreferenceValue(it) }
     override suspend fun currentForumFloorOrder(): ForumFloorOrder =
@@ -218,6 +222,7 @@ class AppSettingsStore @Inject constructor(
         ForumThreadOrder.fromPreferenceValue(dataStore.data.first()[KEY_THREAD_SORT_ORDER])
     override suspend fun setAutoLoadGifs(enabled: Boolean) = put(KEY_AUTO_LOAD_GIFS, enabled)
     override suspend fun setShowSensitiveForumContent(enabled: Boolean) = put(KEY_SHOW_SENSITIVE_FORUM_CONTENT, enabled)
+    override suspend fun setForumAccountEnabled(enabled: Boolean) = put(KEY_FORUM_ACCOUNT_ENABLED, enabled)
     override suspend fun setForumFloorOrder(order: ForumFloorOrder) = put(KEY_FORUM_FLOOR_ORDER, order.preferenceValue)
     override suspend fun setThreadSortOrder(order: ForumThreadOrder) = put(KEY_THREAD_SORT_ORDER, order.preferenceValue)
     // endregion
@@ -356,6 +361,7 @@ class AppSettingsStore @Inject constructor(
         private val KEY_SHOW_FORUM_TAB = booleanPreferencesKey("show_forum_tab")
         private val KEY_AUTO_LOAD_GIFS = booleanPreferencesKey("auto_load_gifs")
         private val KEY_SHOW_SENSITIVE_FORUM_CONTENT = booleanPreferencesKey("show_sensitive_forum_content")
+        private val KEY_FORUM_ACCOUNT_ENABLED = booleanPreferencesKey("forum_account_enabled")
         private val KEY_FORUM_FLOOR_ORDER = stringPreferencesKey("forum_floor_order")
         private val KEY_THREAD_SORT_ORDER = stringPreferencesKey("forum_thread_sort_order")
         private val KEY_MOVIE_LIST_STYLE = stringPreferencesKey("movie_list_style")

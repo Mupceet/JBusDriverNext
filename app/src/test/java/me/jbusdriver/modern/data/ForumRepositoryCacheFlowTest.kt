@@ -448,8 +448,21 @@ class ForumRepositoryCacheFlowTest {
         sessionClient = sessionClient,
         cookiePersister = cookiePersister,
         cacheStore = cacheStore,
-        siteConfig = FakeSiteConfig()
+        siteConfig = FakeSiteConfig(),
+        authCookieCleaner = FakeAuthCookieCleaner,
+        accountCache = FakeAccountCache
     )
+
+    private object FakeAuthCookieCleaner : me.jbusdriver.modern.core.http.ForumAuthCookieCleaner {
+        override suspend fun clearAuthCookies(url: String) = Unit
+    }
+
+    private object FakeAccountCache : me.jbusdriver.modern.data.settings.ForumAccountCache {
+        override val cached =
+            kotlinx.coroutines.flow.flowOf<me.jbusdriver.modern.data.settings.ForumAccountCache.CachedAccount?>(null)
+        override suspend fun save(account: me.jbusdriver.modern.data.settings.ForumAccountCache.CachedAccount) = Unit
+        override suspend fun clear() = Unit
+    }
 
     private class FakeCacheStore : CacheStore {
         val memory = mutableMapOf<String, String>()

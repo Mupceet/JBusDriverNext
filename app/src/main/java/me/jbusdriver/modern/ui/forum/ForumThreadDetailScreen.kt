@@ -92,6 +92,8 @@ fun ForumThreadDetailScreen(
     onOpenBoard: (Int) -> Unit = {},
     /** 点击站内列表页链接（演员/导演/制作/发行/系列/分类）后打开关联影片列表。 */
     onOpenLinkMovies: (RouteLinkMovies) -> Unit = {},
+    /** 点击作者（楼主栏/楼层）后打开用户空间（uid）。 */
+    onOpenUserSpace: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadDetailViewModel =
@@ -154,7 +156,7 @@ fun ForumThreadDetailScreen(
                 modifier = Modifier.hazeTopBar(hazeState),
                 title = {
                     // 常显楼主信息行（头像+昵称+等级），帖子标题只在内容区展示
-                    detail?.let { ThreadAuthorRow(detail = it) }
+                    detail?.let { ThreadAuthorRow(detail = it, onAuthorClick = onOpenUserSpace) }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -468,6 +470,7 @@ fun ForumThreadDetailScreen(
                                                     },
                                                     onMovieCodeClick = openMovieByCode,
                                                     onLinkClick = onPostLinkClick,
+                                                    onAuthorClick = onOpenUserSpace,
                                                     onViewComments = { r ->
                                                         viewModel.openReplyCommentsSheet(r.floor)
                                                     }

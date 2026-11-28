@@ -15,9 +15,14 @@ import javax.inject.Inject
 
 private val Context.sessionCookieDataStore by preferencesDataStore("session_cookies")
 
+/** 论坛登录态 cookie 清理（仓储登出用，便于测试替身）。 */
+interface ForumAuthCookieCleaner {
+    suspend fun clearAuthCookies(url: String)
+}
+
 class SessionCookieStore @Inject constructor(
     @param:ApplicationContext private val context: Context
-) {
+) : ForumAuthCookieCleaner {
     private val dataStore = context.sessionCookieDataStore
 
     suspend fun saveCookies(url: String) {
@@ -73,6 +78,25 @@ class SessionCookieStore @Inject constructor(
         KLog.d("[SessionCookieStore] Cleared all persisted cookies", TAG)
     }
 
+    /**
+     * 登出：仅清除登录态 cookie（保留匿名反爬会话），内存 CookieManager 与持久化两侧同步。
+     */
+    override suspend fun clearAuthCookies(url: String) {
+        dataStore.edit { prefs ->
+            val key = prefsKey(url)
+            val json = prefs[key] ?: return@edit
+            val entries = tryParse(json) ?: return@edit
+            val remaining = entries.filterKeys { it !in AUTH_COOKIES }
+            if (remaining.isEmpty()) prefs.remove(key) else prefs[key] = GSON.toJson(remaining)
+        }
+        val cookieManager = CookieManager.getInstance()
+        for (name in AUTH_COOKIES) {
+            cookieManager.setCookie(url, "$name=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT")
+        }
+        cookieManager.flush()
+        KLog.d("[SessionCookieStore] Cleared auth cookies for $url", TAG)
+    }
+
     private fun prefsKey(url: String): androidx.datastore.preferences.core.Preferences.Key<String> {
         val host = url.substringAfter("://").substringBefore("/")
         return stringPreferencesKey("session_cookies_$host")
@@ -96,15 +120,23 @@ class SessionCookieStore @Inject constructor(
             "4fJN_2132_saltkey",
             "4fJN_2132_sid",
             "4fJN_2132_lastvisit",
-            "4fJN_2132_lastact"
+            "4fJN_2132_lastact",
+            // 登录态 cookie（docs/FORUM_DESIGN.md §2.3-1）：登出时由 clearAuthCookies 清除
+            "4fJN_2132_auth",
+            "bus_auth"
         )
+
+        /** 登录态 cookie 集合；不参与匿名会话有效性判定（CRITICAL_COOKIES 不变）。 */
+        val AUTH_COOKIES = setOf("4fJN_2132_auth", "bus_auth")
         private val CRITICAL_COOKIES = setOf("age", "4fJN_2132_saltkey")
         private val COOKIE_TTL = mapOf(
             "age" to 30 * 24 * 3600L,
             "4fJN_2132_saltkey" to 30 * 24 * 3600L,
             "4fJN_2132_sid" to 24 * 3600L,
             "4fJN_2132_lastvisit" to 30 * 24 * 3600L,
-            "4fJN_2132_lastact" to 24 * 3600L
+            "4fJN_2132_lastact" to 24 * 3600L,
+            "4fJN_2132_auth" to 30 * 24 * 3600L,
+            "bus_auth" to 30 * 24 * 3600L
         )
     }
 }

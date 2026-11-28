@@ -53,6 +53,31 @@ class ForumCacheRefreshViewModelTest {
     private class FakeHomeRepository(
         private val flows: MutableList<Flow<CachedLoadEvent<ForumHomeData>>>
     ) : ForumRepository {
+        // 账号能力桩：本测试不覆盖登录/用户空间
+        override val loginState = kotlinx.coroutines.flow.MutableStateFlow(
+            me.jbusdriver.modern.domain.model.ForumLoginState.Anonymous
+        )
+        override suspend fun refreshLoginState() = Unit
+        override suspend fun tryRestoreCachedLoginState() = Unit
+        override suspend fun requestLoginChallenge() : me.jbusdriver.modern.domain.model.ForumLoginChallenge = error("unused")
+        override suspend fun login(
+            challenge: me.jbusdriver.modern.domain.model.ForumLoginChallenge,
+            username: String,
+            password: String,
+            seccode: String
+        ): Result<me.jbusdriver.modern.domain.model.ForumLoginState> = error("unused")
+        override suspend fun logout() = Unit
+        override suspend fun loadUserProfile(uid: Int) : me.jbusdriver.modern.domain.model.ForumUserProfile = error("unused")
+        override fun observeUserProfile(uid: Int, forceRefresh: Boolean, revalidate: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserProfile>>()
+        override fun observeUserThreads(uid: Int, type: me.jbusdriver.modern.domain.model.ForumUserThreadType, page: Int, forceRefresh: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserThreadPageResult>>()
+        override fun observeUserFavorites(page: Int, forceRefresh: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumFavoritePageResult>>()
+        override suspend fun loadUserThreads(
+            uid: Int,
+            type: me.jbusdriver.modern.domain.model.ForumUserThreadType,
+            page: Int
+        ) : me.jbusdriver.modern.domain.model.ForumUserThreadPageResult = error("unused")
+        override suspend fun loadUserFavorites(page: Int) : me.jbusdriver.modern.domain.model.ForumFavoritePageResult = error("unused")
+
         private var callIndex = 0
         override fun observeForumBoards(
             forceRefresh: Boolean,
@@ -135,7 +160,7 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Cached(CacheEntry(cached, 1_000L, CacheSource.Disk, false)))
             emit(CachedLoadEvent.Fresh(CacheEntry(fresh, 2_000L, CacheSource.Network, false)))
         }))
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -151,7 +176,7 @@ class ForumCacheRefreshViewModelTest {
             emit(CachedLoadEvent.Cached(CacheEntry(cached, 1_000L, CacheSource.Disk, true)))
             emit(CachedLoadEvent.Failure(IllegalStateException("offline"), hadCachedValue = true))
         }))
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -165,7 +190,7 @@ class ForumCacheRefreshViewModelTest {
         val repository = FakeHomeRepository(mutableListOf(flow {
             emit(CachedLoadEvent.Failure(IllegalStateException("offline"), hadCachedValue = false))
         }))
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -204,7 +229,7 @@ class ForumCacheRefreshViewModelTest {
                 )
             }
         ))
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.groups.size)
@@ -245,7 +270,7 @@ class ForumCacheRefreshViewModelTest {
                 }
             )
         )
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.groups.size)
 
@@ -269,6 +294,31 @@ class ForumCacheRefreshViewModelTest {
     private class FakeThreadListRepository(
         private val flows: MutableList<Flow<CachedLoadEvent<ForumThreadPageResult>>>
     ) : ForumRepository {
+        // 账号能力桩：本测试不覆盖登录/用户空间
+        override val loginState = kotlinx.coroutines.flow.MutableStateFlow(
+            me.jbusdriver.modern.domain.model.ForumLoginState.Anonymous
+        )
+        override suspend fun refreshLoginState() = Unit
+        override suspend fun tryRestoreCachedLoginState() = Unit
+        override suspend fun requestLoginChallenge() : me.jbusdriver.modern.domain.model.ForumLoginChallenge = error("unused")
+        override suspend fun login(
+            challenge: me.jbusdriver.modern.domain.model.ForumLoginChallenge,
+            username: String,
+            password: String,
+            seccode: String
+        ): Result<me.jbusdriver.modern.domain.model.ForumLoginState> = error("unused")
+        override suspend fun logout() = Unit
+        override suspend fun loadUserProfile(uid: Int) : me.jbusdriver.modern.domain.model.ForumUserProfile = error("unused")
+        override fun observeUserProfile(uid: Int, forceRefresh: Boolean, revalidate: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserProfile>>()
+        override fun observeUserThreads(uid: Int, type: me.jbusdriver.modern.domain.model.ForumUserThreadType, page: Int, forceRefresh: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserThreadPageResult>>()
+        override fun observeUserFavorites(page: Int, forceRefresh: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumFavoritePageResult>>()
+        override suspend fun loadUserThreads(
+            uid: Int,
+            type: me.jbusdriver.modern.domain.model.ForumUserThreadType,
+            page: Int
+        ) : me.jbusdriver.modern.domain.model.ForumUserThreadPageResult = error("unused")
+        override suspend fun loadUserFavorites(page: Int) : me.jbusdriver.modern.domain.model.ForumFavoritePageResult = error("unused")
+
         private var callIndex = 0
         override fun observeForumBoards(
             forceRefresh: Boolean,
@@ -337,6 +387,7 @@ class ForumCacheRefreshViewModelTest {
     ) : ForumSettingsReader {
         override val autoLoadGifs: StateFlow<Boolean> = MutableStateFlow(false)
         override val showSensitiveForumContent: StateFlow<Boolean> = sensitiveContent
+        override val forumAccountEnabled: StateFlow<Boolean> = MutableStateFlow(false)
         override suspend fun currentForumFloorOrder(): ForumFloorOrder = ForumFloorOrder.REGULAR
         override suspend fun currentThreadSortOrder(): ForumThreadOrder = ForumThreadOrder.LASTPOST
     }
@@ -543,7 +594,7 @@ class ForumCacheRefreshViewModelTest {
                 )
             )
         }))
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
 
         val boards = viewModel.uiState.value.groups.single().boards
@@ -563,7 +614,7 @@ class ForumCacheRefreshViewModelTest {
         val repository = FakeHomeRepository(mutableListOf(flow {
             emit(CachedLoadEvent.Fresh(CacheEntry(data, 1_000L, CacheSource.Network, false)))
         }))
-        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader())
+        val viewModel = ForumBoardsViewModel(repository, FakeForumSettingsReader(), me.jbusdriver.modern.data.repository.ForumAccountSignals())
         advanceUntilIdle()
 
         val groups = viewModel.uiState.value.groups

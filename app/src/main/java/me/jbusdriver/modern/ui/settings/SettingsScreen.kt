@@ -102,6 +102,7 @@ fun SettingsScreen(
     val showActressTab by store.showActressTab.collectAsStateWithLifecycle()
     val showForumTab by store.showForumTab.collectAsStateWithLifecycle()
     val autoLoadGifs by store.autoLoadGifs.collectAsStateWithLifecycle()
+    val forumAccountEnabled by store.forumAccountEnabled.collectAsStateWithLifecycle()
     val forumFloorOrder by store.forumFloorOrder.collectAsStateWithLifecycle()
     val threadSortOrder by store.threadSortOrder.collectAsStateWithLifecycle()
     val movieListStyle by store.movieListStyle.collectAsStateWithLifecycle()
@@ -210,6 +211,7 @@ fun SettingsScreen(
                 showActressTab = showActressTab,
                 showForumTab = showForumTab,
                 autoLoadGifs = autoLoadGifs,
+                forumAccountEnabled = forumAccountEnabled,
                 forumFloorOrder = forumFloorOrder,
                 threadSortOrder = threadSortOrder,
                 movieListStyle = movieListStyle,
@@ -221,6 +223,7 @@ fun SettingsScreen(
                 onShowForumTabChange = { scope.launch { store.setShowForumTab(it) } },
                 onShowForumTabLongClick = viewModel::toggleSensitiveForumContent,
                 onAutoLoadGifsChange = { scope.launch { store.setAutoLoadGifs(it) } },
+                onForumAccountEnabledChange = viewModel::setForumAccountEnabled,
                 onForumFloorOrderChange = { scope.launch { store.setForumFloorOrder(it) } },
                 onThreadSortOrderChange = { scope.launch { store.setThreadSortOrder(it) } },
                 onMovieListStyleChange = { scope.launch { store.setMovieListStyle(it) } },
@@ -298,6 +301,7 @@ private fun AppearanceCard(
     showActressTab: Boolean,
     showForumTab: Boolean,
     autoLoadGifs: Boolean,
+    forumAccountEnabled: Boolean,
     forumFloorOrder: ForumFloorOrder,
     threadSortOrder: ForumThreadOrder,
     movieListStyle: MovieListStyle,
@@ -309,6 +313,7 @@ private fun AppearanceCard(
     onShowForumTabChange: (Boolean) -> Unit,
     onShowForumTabLongClick: () -> Unit,
     onAutoLoadGifsChange: (Boolean) -> Unit,
+    onForumAccountEnabledChange: (Boolean) -> Unit,
     onForumFloorOrderChange: (ForumFloorOrder) -> Unit,
     onThreadSortOrderChange: (ForumThreadOrder) -> Unit,
     onMovieListStyleChange: (MovieListStyle) -> Unit,
@@ -399,6 +404,7 @@ private fun AppearanceCard(
             AnimatedVisibility(visible = showForumTab) {
                 Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
                     SwitchRow("自動載入動圖", autoLoadGifs, onAutoLoadGifsChange)
+                    SwitchRow("論壇賬號", forumAccountEnabled, onForumAccountEnabledChange)
                     FloorOrderRow(forumFloorOrder, onForumFloorOrderChange)
                     ThreadSortOrderRow(threadSortOrder, onThreadSortOrderChange)
                 }

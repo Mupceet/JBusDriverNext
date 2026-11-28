@@ -112,6 +112,14 @@ abstract class DataModule {
     @Singleton
     abstract fun bindWebViewFactory(impl: AndroidWebViewFactory): WebViewFactory
 
+    @Binds
+    @Singleton
+    abstract fun bindForumAuthCookieCleaner(impl: me.jbusdriver.modern.core.http.SessionCookieStore): me.jbusdriver.modern.core.http.ForumAuthCookieCleaner
+
+    @Binds
+    @Singleton
+    abstract fun bindForumAccountCache(impl: me.jbusdriver.modern.data.settings.ForumAccountStore): me.jbusdriver.modern.data.settings.ForumAccountCache
+
     /** 绑定 [MovieRepository] 到 [DefaultMovieRepository]。 */
     @Binds
     @Singleton

@@ -146,6 +146,33 @@
     <string name="forum_tab_latest_reply">最新回覆</string>
     <string name="forum_tab_hot">熱點話題</string>
 
+    <!-- Forum account -->
+    <string name="forum_anonymous_title">匿名瀏覽</string>
+    <string name="forum_anonymous_hint">點擊登入論壇賬號</string>
+    <string name="forum_login_title">登錄論壇</string>
+    <string name="forum_login_username">用戶名</string>
+    <string name="forum_login_password">密碼</string>
+    <string name="forum_login_captcha">驗證碼</string>
+    <string name="forum_login_captcha_refresh">點擊刷新驗證碼</string>
+    <string name="forum_login_submit">登錄</string>
+    <string name="forum_login_submitting">登錄中…</string>
+    <string name="forum_login_success">登錄成功</string>
+    <string name="forum_user_threads">主題</string>
+    <string name="forum_user_replies">回覆</string>
+    <string name="forum_user_favorites">收藏</string>
+    <string name="forum_user_about">資料</string>
+    <string name="forum_user_home_title">個人主頁</string>
+    <string name="forum_user_threads_empty">暫無主題</string>
+    <string name="forum_user_replies_empty">暫無回覆</string>
+    <string name="forum_user_favorites_empty">暫無收藏</string>
+    <string name="forum_profile_section_basic">基本信息</string>
+    <string name="forum_profile_section_activity">活躍狀態</string>
+    <string name="forum_mileage_value">里程 %1$d</string>
+    <string name="forum_mileage_to_next_short">距下一級 %1$d</string>
+    <string name="forum_thread_counts">回%1$d · 看%2$d</string>
+    <string name="forum_logout">退出登錄</string>
+    <string name="forum_logout_confirm">退出後需重新登錄論壇賬號</string>
+
     <!-- Settings -->
     <string name="lab_experimental">實驗性功能可能不穩定</string>
     <string name="forum_settings">論壇功能</string>

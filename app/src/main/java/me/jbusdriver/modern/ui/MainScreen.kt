@@ -72,6 +72,7 @@ fun MainScreen(
     onSearchClick: (String) -> Unit = {},
     onForumBoardClick: (me.jbusdriver.modern.domain.model.ForumBoard) -> Unit = {},
     onForumThreadClick: (Int) -> Unit = {},
+    onForumUserClick: (Int) -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onOpenLtxVerification: (String) -> Unit = {}
 ) {
@@ -107,7 +108,17 @@ fun MainScreen(
     }
 
     // Preload forum data when enabled
-    if (showForumTab) hiltViewModel<ForumBoardsViewModel>()
+    val forumViewModel = if (showForumTab) hiltViewModel<ForumBoardsViewModel>() else null
+    val forumAccountEnabled by store.forumAccountEnabled.collectAsStateWithLifecycle()
+    val forumAccountState = forumViewModel?.accountState?.collectAsStateWithLifecycle()?.value
+        ?: me.jbusdriver.modern.domain.model.ForumLoginState.Anonymous
+    val forumLoginUi = forumViewModel?.loginUiState?.collectAsStateWithLifecycle()?.value
+
+    // 从其它界面返回本页时重新校准论坛登录态
+    androidx.lifecycle.compose.LifecycleResumeEffect(forumAccountEnabled) {
+        if (forumAccountEnabled) forumViewModel?.refreshAccountState()
+        onPauseOrDispose { }
+    }
 
     // Shared search bar collapses first (consuming scroll), then the list scrolls.
     val searchBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -240,9 +251,27 @@ fun MainScreen(
                         BottomNavCategory.MOVIE -> movieChipsSlot?.invoke()
                         BottomNavCategory.ACTRESS -> actressChipsSlot?.invoke()
                         BottomNavCategory.COLLECT -> collectChipsSlot?.invoke()
-                        // 论坛首页无筛选 chips，玻璃头只含状态栏 + 搜索栏
-                        BottomNavCategory.FORUM -> Unit
+                        // 论坛：账号开关打开时，玻璃头常驻账号状态条（匿名/已登录）
+                        BottomNavCategory.FORUM -> {
+                            if (forumAccountEnabled) {
+                                me.jbusdriver.modern.ui.forum.account.ForumAccountBar(
+                                    state = forumAccountState,
+                                    onLoginClick = { forumViewModel?.onAccountBarTapped() },
+                                    onUserClick = onForumUserClick
+                                )
+                            }
+                        }
                     }
+                }
+
+                // 登录弹窗（匿名态点击账号条触发）；网页兜底时先关弹窗再开浏览器
+                forumLoginUi?.let { loginState ->
+                    me.jbusdriver.modern.ui.forum.account.ForumLoginDialog(
+                        state = loginState,
+                        onDismiss = { forumViewModel?.dismissLoginDialog() },
+                        onSubmit = { u, p, c -> forumViewModel?.submitLogin(u, p, c) },
+                        onRefreshCaptcha = { forumViewModel?.requestLoginChallenge() }
+                    )
                 }
             }
         }

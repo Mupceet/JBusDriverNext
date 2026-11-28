@@ -107,11 +107,12 @@ internal fun ThreadHeader(
     }
 }
 
-/** 顶栏常显的楼主信息行：左 32dp 头像，右昵称在上、等级在下（昵称单行省略）。 */
+/** 顶栏常显的楼主信息行：左 32dp 头像，右昵称在上、等级在下（昵称单行省略）；可点进用户空间。 */
 @Composable
 internal fun ThreadAuthorRow(
     detail: ForumThreadDetail,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAuthorClick: (Int) -> Unit = {}
 ) {
     Row(
         modifier = modifier,
@@ -123,10 +124,15 @@ internal fun ThreadAuthorRow(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .let { m ->
+                    if (detail.authorUid > 0) m.clickable { onAuthorClick(detail.authorUid) } else m
+                },
             contentScale = ContentScale.Crop
         )
-        Column {
+        Column(modifier = if (detail.authorUid > 0) {
+            Modifier.clickable { onAuthorClick(detail.authorUid) }
+        } else Modifier) {
             Text(
                 detail.author,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
@@ -357,6 +363,7 @@ internal fun ReplyItem(
     onQuoteClick: (Int) -> Unit = {},
     onMovieCodeClick: ((String) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
+    onAuthorClick: (Int) -> Unit = {},
     onViewComments: (ForumReply) -> Unit = {}
 ) {
     Row(
@@ -369,7 +376,10 @@ internal fun ReplyItem(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .let { m ->
+                    if (reply.authorUid > 0) m.clickable { onAuthorClick(reply.authorUid) } else m
+                },
             contentScale = ContentScale.Crop
         )
         Column(modifier = Modifier.weight(1f)) {

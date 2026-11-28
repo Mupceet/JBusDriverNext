@@ -114,7 +114,7 @@ private fun parseSingleThread(tbody: Element, baseUrl: String, isPinned: Boolean
     )
 }
 
-private fun parseForumPageInfo(doc: Document): PageInfo {
+internal fun parseForumPageInfo(doc: Document): PageInfo {
     val replyPager = doc.select(".pg")
         .firstOrNull { pager ->
             pager.select("a[href]").any { isForumContentPageLink(it.attr("href")) }

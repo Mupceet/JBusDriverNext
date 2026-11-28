@@ -150,6 +150,31 @@
     <string name="forum_tab_latest">Latest Threads</string>
     <string name="forum_tab_latest_reply">Latest Replies</string>
     <string name="forum_tab_hot">Hot Topics</string>
+    <string name="forum_anonymous_title">Anonymous browsing</string>
+    <string name="forum_anonymous_hint">Tap to log in to the forum</string>
+    <string name="forum_login_title">Log in to forum</string>
+    <string name="forum_login_username">Username</string>
+    <string name="forum_login_password">Password</string>
+    <string name="forum_login_captcha">Captcha</string>
+    <string name="forum_login_captcha_refresh">Tap to refresh captcha</string>
+    <string name="forum_login_submit">Log in</string>
+    <string name="forum_login_submitting">Logging in…</string>
+    <string name="forum_login_success">Logged in</string>
+    <string name="forum_user_threads">Threads</string>
+    <string name="forum_user_replies">Replies</string>
+    <string name="forum_user_favorites">Favorites</string>
+    <string name="forum_user_about">About</string>
+    <string name="forum_user_home_title">Personal Homepage</string>
+    <string name="forum_user_threads_empty">No threads yet</string>
+    <string name="forum_user_replies_empty">No replies yet</string>
+    <string name="forum_user_favorites_empty">No favorites yet</string>
+    <string name="forum_logout">Log out</string>
+    <string name="forum_logout_confirm">You will need to log in to the forum again.</string>
+    <string name="forum_profile_section_basic">Basic Info</string>
+    <string name="forum_profile_section_activity">Activity</string>
+    <string name="forum_mileage_value">Mileage %1$d</string>
+    <string name="forum_mileage_to_next_short">%1$d to next level</string>
+    <string name="forum_thread_counts">%1$d replies · %2$d views</string>
 
     <!-- Settings -->
     <string name="lab_experimental">Experimental features may be unstable</string>
