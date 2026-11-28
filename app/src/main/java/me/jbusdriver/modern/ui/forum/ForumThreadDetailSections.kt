@@ -109,12 +109,13 @@ internal fun ThreadHeader(
     }
 }
 
-/** 顶栏常显的楼主信息行：左 32dp 头像，右昵称在上、等级在下（昵称单行省略）；可点进用户空间。 */
+/** 顶栏常显的楼主信息行：左 32dp 头像，右昵称在上、等级在下（昵称单行省略）；
+ *  [onAuthorClick] 非空且 uid 有效时可点进用户空间（账号功能关闭时传 null，与已发布版本一致）。 */
 @Composable
 internal fun ThreadAuthorRow(
     detail: ForumThreadDetail,
     modifier: Modifier = Modifier,
-    onAuthorClick: (Int) -> Unit = {}
+    onAuthorClick: ((Int) -> Unit)? = null
 ) {
     Row(
         modifier = modifier,
@@ -128,11 +129,13 @@ internal fun ThreadAuthorRow(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .let { m ->
-                    if (detail.authorUid > 0) m.clickable { onAuthorClick(detail.authorUid) } else m
+                    if (onAuthorClick != null && detail.authorUid > 0) {
+                        m.clickable { onAuthorClick(detail.authorUid) }
+                    } else m
                 },
             contentScale = ContentScale.Crop
         )
-        Column(modifier = if (detail.authorUid > 0) {
+        Column(modifier = if (onAuthorClick != null && detail.authorUid > 0) {
             Modifier.clickable { onAuthorClick(detail.authorUid) }
         } else Modifier) {
             Text(
@@ -486,7 +489,7 @@ internal fun ReplyItem(
     onQuoteClick: (Int) -> Unit = {},
     onMovieCodeClick: ((String) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null,
-    onAuthorClick: (Int) -> Unit = {},
+    onAuthorClick: ((Int) -> Unit)? = null,
     onViewComments: (ForumReply) -> Unit = {}
 ) {
     Row(
@@ -501,7 +504,9 @@ internal fun ReplyItem(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .let { m ->
-                    if (reply.authorUid > 0) m.clickable { onAuthorClick(reply.authorUid) } else m
+                    if (onAuthorClick != null && reply.authorUid > 0) {
+                        m.clickable { onAuthorClick(reply.authorUid) }
+                    } else m
                 },
             contentScale = ContentScale.Crop
         )

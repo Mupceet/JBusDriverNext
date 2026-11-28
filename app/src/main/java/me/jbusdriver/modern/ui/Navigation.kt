@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -114,6 +115,14 @@ fun JBusNavigation(
     // 解析到 Activity 的 ViewModelStore），任何论坛界面的匿名写操作都可唤起
     val forumLoginViewModel: me.jbusdriver.modern.ui.forum.account.ForumLoginDialogViewModel =
         hiltViewModel()
+
+    // 账号功能开关：关闭时头像不进用户中心，行为与已发布版本一致
+    val settingsViewModel: me.jbusdriver.modern.ui.settings.SettingsViewModel = hiltViewModel()
+    val forumAccountEnabled by settingsViewModel.store.forumAccountEnabled.collectAsStateWithLifecycle()
+    val openUserSpace: ((Int) -> Unit)? =
+        if (forumAccountEnabled) {
+            { uid -> backStack.add(RouteUserSpace(uid)) }
+        } else null
 
     CompositionLocalProvider(LocalWebNavigator provides webNavigator) {
         NavDisplay(
@@ -318,9 +327,7 @@ fun JBusNavigation(
                         onThreadClick = { tid ->
                             backStack.add(RouteForumThreadDetail(tid))
                         },
-                        onOpenUserSpace = { uid ->
-                            backStack.add(RouteUserSpace(uid))
-                        },
+                        onOpenUserSpace = openUserSpace,
                         onBack = { backStack.removeLastOrNull() }
                     )
                 }
@@ -342,9 +349,7 @@ fun JBusNavigation(
                         onOpenLinkMovies = { key ->
                             backStack.add(key)
                         },
-                        onOpenUserSpace = { uid ->
-                            backStack.add(RouteUserSpace(uid))
-                        },
+                        onOpenUserSpace = openUserSpace,
                         onLoginClick = { forumLoginViewModel.onLoginRequested() },
                         onBack = { backStack.removeLastOrNull() }
                     )

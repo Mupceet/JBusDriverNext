@@ -165,7 +165,6 @@
     <string name="forum_user_replies">回覆</string>
     <string name="forum_user_favorites">收藏</string>
     <string name="forum_user_about">資料</string>
-    <string name="forum_user_home_title">個人主頁</string>
     <string name="forum_user_threads_empty">暫無主題</string>
     <string name="forum_user_replies_empty">暫無回覆</string>
     <string name="forum_user_favorites_empty">暫無收藏</string>

@@ -96,7 +96,8 @@ fun ForumThreadListScreen(
     title: String,
     typeId: Int? = null,
     onThreadClick: (Int) -> Unit,
-    onOpenUserSpace: (Int) -> Unit = {},
+    /** 点头像进用户中心；账号功能关闭时传 null（与已发布版本一致：头像不可点）。 */
+    onOpenUserSpace: ((Int) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadListViewModel =
@@ -255,7 +256,9 @@ fun ForumThreadListScreen(
                                     ThreadCard(
                                         thread = thread,
                                         onClick = { onThreadClick(thread.tid) },
-                                        onUserClick = { onOpenUserSpace(thread.authorUid) })
+                                        onUserClick = onOpenUserSpace?.let { open ->
+                                            { open(thread.authorUid) }
+                                        })
                                 }
                                 if (state.isLoadingMore) {
                                     item {
@@ -357,7 +360,7 @@ private fun threadOrderLabel(order: ForumThreadOrder): String = when (order) {
 private fun ThreadCard(
     thread: ForumThread,
     onClick: () -> Unit,
-    onUserClick: () -> Unit = {}
+    onUserClick: (() -> Unit)? = null
 ) {
     Card(
         onClick = onClick,
@@ -383,7 +386,9 @@ private fun ThreadCard(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         // uid 缺失(解析兜底 0)时不可点
                         .let { m ->
-                            if (thread.authorUid > 0) m.clickable(onClick = onUserClick) else m
+                            if (onUserClick != null && thread.authorUid > 0) {
+                                m.clickable(onClick = onUserClick)
+                            } else m
                         },
                     contentScale = ContentScale.Crop
                 )

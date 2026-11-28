@@ -82,6 +82,9 @@ import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 /** 楼层跳转定位后背景高亮的持续时间。 */
 private const val FLOOR_HIGHLIGHT_DURATION_MS = 800L
 
+/** 帖子底部操作条（回覆入口+收藏）是否露出。本版面向基础账号功能先隐藏，置回 true 即恢复。 */
+private val THREAD_ACTION_BAR_ENABLED = false
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForumThreadDetailScreen(
@@ -95,8 +98,8 @@ fun ForumThreadDetailScreen(
     onOpenBoard: (Int) -> Unit = {},
     /** 点击站内列表页链接（演员/导演/制作/发行/系列/分类）后打开关联影片列表。 */
     onOpenLinkMovies: (RouteLinkMovies) -> Unit = {},
-    /** 点击作者（楼主栏/楼层）后打开用户空间（uid）。 */
-    onOpenUserSpace: (Int) -> Unit = {},
+    /** 点击作者（楼主栏/楼层）后打开用户空间（uid）；账号功能关闭时传 null（头像不可点）。 */
+    onOpenUserSpace: ((Int) -> Unit)? = null,
     /** 匿名态点击收藏/点赞 → 全局登录弹窗（ForumLoginDialogHost，Navigation 根层）。 */
     onLoginClick: () -> Unit = {},
     onBack: () -> Unit
@@ -154,6 +157,12 @@ fun ForumThreadDetailScreen(
     // 底部操作条总高（含导航条 inset），量出后并入列表 contentPadding 让内容从玻璃条下穿过
     var actionBarHeightPx by remember { mutableIntStateOf(0) }
     val actionBarHeight = with(density) { actionBarHeightPx.toDp() }
+    // 回顶按钮（高 40）底部偏移：操作条隐藏时距底 64（对齐帖子列表/个人主页），
+    // 恢复操作条后悬于其上方 12dp
+    val fabBottomPadding = if (THREAD_ACTION_BAR_ENABLED) actionBarHeight + 12.dp else 64.dp
+    // 「沒有更多」底部留白：把文字顶到按钮上方（按钮上缘 + 8 间隙 − 列表底 contentPadding），
+    // 操作条显示/隐藏两种状态同一公式成立
+    val noMoreBottomPadding = fabBottomPadding + 48.dp - (actionBarHeight + 14.dp)
 
     Scaffold(
         topBar = {
@@ -184,7 +193,9 @@ fun ForumThreadDetailScreen(
             )
         },
         bottomBar = {
-            if (detail != null) {
+            // 本版先只放开基础账号功能（登录/里程），帖子写操作入口（回覆提示框+收藏条）
+            // 暂不露出；置回 true 即恢复
+            if (THREAD_ACTION_BAR_ENABLED && detail != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -530,12 +541,11 @@ fun ForumThreadDetailScreen(
                                 }
                             } else if (detail.replies.isNotEmpty() && !detail.pageInfo.hasNext) {
                                 item(key = "no_more") {
-                                    // 顶部留白让出底部居中回顶按钮（bottom=64 高 40 → 占据距底 64~104dp），
-                                    // 完全滚到底时末楼不被按钮遮挡，提示语保持在按钮下方收尾。
+                                    // 紧贴末楼；底部留白把文字顶到回顶按钮上方（见 noMoreBottomPadding）
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(top = 64.dp, bottom = 16.dp),
+                                            .padding(top = 8.dp, bottom = noMoreBottomPadding),
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         Text(
@@ -575,7 +585,7 @@ fun ForumThreadDetailScreen(
                     onClick = { scope.launch { listState.scrollToItem(0) } },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = actionBarHeight + 12.dp)
+                        .padding(bottom = fabBottomPadding)
                 )
             }
         }

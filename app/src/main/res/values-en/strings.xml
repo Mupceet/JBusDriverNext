@@ -168,7 +168,6 @@
     <string name="forum_user_replies">Replies</string>
     <string name="forum_user_favorites">Favorites</string>
     <string name="forum_user_about">About</string>
-    <string name="forum_user_home_title">Personal Homepage</string>
     <string name="forum_user_threads_empty">No threads yet</string>
     <string name="forum_user_replies_empty">No replies yet</string>
     <string name="forum_user_favorites_empty">No favorites yet</string>

@@ -213,7 +213,9 @@ class AppSettingsStore @Inject constructor(
     // region Forum
     override val autoLoadGifs: StateFlow<Boolean> = flowOf(KEY_AUTO_LOAD_GIFS, false)
     override val showSensitiveForumContent: StateFlow<Boolean> = flowOf(KEY_SHOW_SENSITIVE_FORUM_CONTENT, false)
-    override val forumAccountEnabled: StateFlow<Boolean> = flowOf(KEY_FORUM_ACCOUNT_ENABLED, false)
+    // 默认开启（2026-11-28 起）：本版面向基础账号功能（登录积累里程）；关闭后回到
+    // 与已发布版本一致的表现（无账号入口、头像不进用户中心）
+    override val forumAccountEnabled: StateFlow<Boolean> = flowOf(KEY_FORUM_ACCOUNT_ENABLED, true)
     override val forumFloorOrder: StateFlow<ForumFloorOrder> = mapped(KEY_FORUM_FLOOR_ORDER, ForumFloorOrder.REGULAR) { ForumFloorOrder.fromPreferenceValue(it) }
     override val threadSortOrder: StateFlow<ForumThreadOrder> = mapped(KEY_THREAD_SORT_ORDER, ForumThreadOrder.LASTPOST) { ForumThreadOrder.fromPreferenceValue(it) }
     override suspend fun currentForumFloorOrder(): ForumFloorOrder =

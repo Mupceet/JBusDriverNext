@@ -339,8 +339,8 @@ fun UserSpaceScreen(
                 }
             }
 
-            // 标题栏：资料加载前显示页面名；加载后名字就在正下方的头像区里，
-            // 标题位留空，等头像区上滑离开时淡入身份行
+            // 标题栏：标题位始终留空——名字就在正下方的头像区里，等头像区上滑
+            // 离开时淡入身份行（资料加载中不显示占位文本）
             Box(modifier = Modifier.fillMaxWidth()) {
                 // 玻璃底单独成层：只有模糊效果，随身份淡入进度同步渐显。静止时完全透明，
                 // 头像背景清晰地从返回键下穿过。透明度在绘制层读取，滚动不触发重组。
@@ -370,16 +370,11 @@ fun UserSpaceScreen(
                                 .weight(1f)
                                 .padding(horizontal = 12.dp)
                         ) {
-                            if (profile == null) {
-                                Text(
-                                    text = stringResource(R.string.forum_user_home_title),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            } else {
+                            // 加载中标题位留空：占位文本与身份行的先后出现太干扰，
+                            // 资料就绪后随收起进度淡入身份行即可
+                            profile?.let {
                                 CompactIdentity(
-                                    profile = profile,
+                                    profile = it,
                                     modifier = Modifier.graphicsLayer { alpha = identityProgress.value }
                                 )
                             }
@@ -598,7 +593,7 @@ private fun CompactIdentity(profile: ForumUserProfile, modifier: Modifier = Modi
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // 取大图（141px）：32dp 在高密度屏上用 48px 小图会发虚，与背景区大头像同源
-        Avatar(url = profile.avatarUrl?.toLargeAvatarUrl(), name = profile.username, size = 32.dp)
+        Avatar(url = profile.avatarUrl?.toLargeAvatarUrl(), size = 32.dp)
         Column {
             Text(
                 text = profile.username,
@@ -679,7 +674,6 @@ private fun ProfileBackdrop(
             Box(contentAlignment = Alignment.Center) {
                 Avatar(
                     url = profile?.avatarUrl?.toLargeAvatarUrl(),
-                    name = profile?.username.orEmpty(),
                     size = avatarSize,
                     ring = true
                 )
@@ -729,9 +723,10 @@ private fun ProfileBackdrop(
     }
 }
 
-/** 圆头像；无图/加载失败时露出首字占位。[ring] 为背景区大头像描的一圈表面色细边，把自己和模糊背景分开。 */
+/** 圆头像；加载中/无图只露出色底，不画首字或问号占位（太干扰）。
+ *  [ring] 为背景区大头像描的一圈表面色细边，把自己和模糊背景分开。 */
 @Composable
-private fun Avatar(url: String?, name: String, size: Dp, ring: Boolean = false) {
+private fun Avatar(url: String?, size: Dp, ring: Boolean = false) {
     val shape = CircleShape
     val placeholderColor = if (ring) {
         MaterialTheme.colorScheme.surfaceContainerHighest
@@ -746,15 +741,6 @@ private fun Avatar(url: String?, name: String, size: Dp, ring: Boolean = false) 
             .let { if (ring) it.border(2.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.6f), shape) else it },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = name.take(1).ifEmpty { "?" },
-            style = if (size > 48.dp) {
-                MaterialTheme.typography.headlineSmall
-            } else {
-                MaterialTheme.typography.labelMedium
-            },
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         if (!url.isNullOrBlank()) {
             AsyncImage(
                 model = rememberSiteImageRequest(url),
