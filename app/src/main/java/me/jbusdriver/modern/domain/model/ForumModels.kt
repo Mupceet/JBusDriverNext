@@ -98,7 +98,11 @@ data class ForumThreadDetail(
     val pid: Int = 0,
     val commentPageInfo: PageInfo = PageInfo(),
     /** 楼主等级/用户组；可空以兼容升级前磁盘缓存（Gson 缺字段会绕过构造函数置 null）。 */
-    val authorGroup: String? = null
+    val authorGroup: String? = null,
+    /** 首帖操作区（#p_btn）收藏计数（`收藏{N}` 自带计数，游客态也渲染；§2.5）。 */
+    val favoriteCount: Int = 0,
+    /** 收藏提交链接（#k_favorite href，含 formhash；相对路径由仓库层补 baseUrl）；可空以兼容升级前磁盘缓存（Gson 缺字段会绕过构造函数置 null），空 = 未渲染。 */
+    val favoriteActionUrl: String? = null
 )
 
 @Immutable

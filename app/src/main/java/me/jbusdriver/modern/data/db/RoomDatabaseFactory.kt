@@ -35,6 +35,24 @@ internal val COLLECT_MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+/** v4：新增论坛收藏镜像表（帖子已收藏状态本地判定，按账号隔离）。 */
+internal val COLLECT_MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `t_forum_favorite` (
+                `uid` INTEGER NOT NULL,
+                `tid` INTEGER NOT NULL,
+                `favId` INTEGER NOT NULL,
+                `title` TEXT NOT NULL,
+                `time` TEXT NOT NULL,
+                PRIMARY KEY(`uid`, `tid`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
 internal val LOCAL_VIDEO_MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE t_local_video ADD COLUMN title TEXT")
@@ -60,7 +78,7 @@ fun buildCollectDatabase(context: Context): CollectDatabase =
         context,
         CollectDatabase::class.java,
         COLLECT_DB_NAME
-    ).addMigrations(COLLECT_MIGRATION_1_2, COLLECT_MIGRATION_2_3).build()
+    ).addMigrations(COLLECT_MIGRATION_1_2, COLLECT_MIGRATION_2_3, COLLECT_MIGRATION_3_4).build()
 
 fun buildLocalVideoDatabase(context: Context): LocalVideoDatabase =
     Room.databaseBuilder(

@@ -55,6 +55,9 @@ import javax.inject.Singleton
 
 private const val TAG = "ForumRepo"
 
+/** 帖子页操作链接内嵌的 formhash（#k_favorite href query）。 */
+private val FORMHASH_PARAM = Regex("formhash=([a-zA-Z0-9]+)")
+
 private fun forumLogD(message: String) {
     runCatching { KLog.d(message, TAG) }
 }
@@ -86,6 +89,16 @@ interface ForumRepository {
 
     /** 登出：服务端 logout（尽力而为）+ 清除本地 auth cookie 与账号缓存。 */
     suspend fun logout()
+
+    /**
+     * 收藏帖子（POST spacecp favorite；formhash 取自帖子页 #k_favorite 链接，协议 §2.4-3）。
+     * [actionUrl] 为空/旧缓存缺字段时直接失败；成功与否以"我的收藏"首页重取到该 tid
+     * 服务端定值（重取结果同时镜像进本地收藏库）；失败 message 为站点文案。
+     */
+    suspend fun addFavoriteThread(tid: Int, actionUrl: String?): Result<Unit>
+
+    /** 本帖是否已在收藏库（Room 镜像，按当前登录账号；匿名恒 false，无网络请求）。 */
+    suspend fun isFavoritedThread(tid: Int): Boolean
 
     suspend fun loadUserProfile(uid: Int): ForumUserProfile
 
@@ -183,7 +196,8 @@ class DefaultForumRepository @Inject constructor(
     private val cacheStore: CacheStore,
     private val siteConfig: SiteConfig,
     private val authCookieCleaner: ForumAuthCookieCleaner,
-    private val accountCache: ForumAccountCache
+    private val accountCache: ForumAccountCache,
+    private val forumFavoriteDao: me.jbusdriver.modern.data.db.dao.ForumFavoriteDao
 ) : ForumRepository {
 
     private val cookiesPersistedForForum = AtomicBoolean(false)
@@ -303,14 +317,75 @@ class DefaultForumRepository @Inject constructor(
             // 服务端登出（logout 链接内嵌 formhash，GET 即生效）；尽力而为
             val doc = fetchForumDocument("$baseUrl/forum/forum.php")
             doc.selectFirst("a[href*='action=logout']")?.attr("href")?.let { href ->
-                val logoutUrl = if (href.startsWith("http")) href else "$baseUrl/forum/$href"
-                fetchForumDocument(logoutUrl)
+                fetchForumDocument(absolutizeForumUrl(baseUrl, href))
             }
         }.onFailure { forumLogE("[Forum] server logout failed (ignored): ${it.message}") }
         authCookieCleaner.clearAuthCookies(siteConfig.referer())
         accountCache.clear()
+        // 收藏镜像为账号私有数据，登出清空防换号串状态（下次登录后由收藏页同步重建）
+        runCatching { forumFavoriteDao.clearAll() }
+            .onFailure { forumLogE("[Forum] clear forum favorites failed (ignored): ${it.message}") }
         _loginState.value = ForumLoginState.Anonymous
     }
+
+    override suspend fun isFavoritedThread(tid: Int): Boolean {
+        val uid = (_loginState.value as? ForumLoginState.LoggedIn)?.uid ?: return false
+        return forumFavoriteDao.isFavorite(uid, tid)
+    }
+
+    /** 收藏页解析结果镜像进本地库（正向 upsert；匿名态跳过——游客解析不出收藏列表）。 */
+    private suspend fun syncFavoritesToDb(page: me.jbusdriver.modern.domain.model.ForumFavoritePageResult) {
+        val uid = (_loginState.value as? ForumLoginState.LoggedIn)?.uid ?: return
+        if (page.favorites.isEmpty()) return
+        forumFavoriteDao.upsertAll(
+            page.favorites.map {
+                me.jbusdriver.modern.data.db.entity.ForumFavorite(
+                    uid = uid, tid = it.tid, favId = it.favId, title = it.title, time = it.time
+                )
+            }
+        )
+    }
+
+    override suspend fun addFavoriteThread(tid: Int, actionUrl: String?): Result<Unit> {
+        if (actionUrl.isNullOrBlank()) {
+            return Result.failure(IllegalStateException("該帖子暫不支持收藏"))
+        }
+        siteConfig.awaitReady()
+        val baseUrl = siteConfig.baseUrl
+        val referer = "$baseUrl/forum/forum.php?mod=viewthread&tid=$tid"
+        // 提交字段同收藏确认窗（favorite_form）：formhash 同时存在于链接 query，兜底再取一次
+        val formhash = FORMHASH_PARAM.find(actionUrl)?.groupValues?.get(1).orEmpty()
+        val body = FormBody.Builder()
+            .add("formhash", formhash)
+            .add("favoritesubmit", "true")
+            .add("description", "")
+            .add("referer", "forum.php?mod=viewthread&tid=$tid")
+            .build()
+        val responseText = forumHttpPost(absolutizeForumUrl(baseUrl, actionUrl), referer, body)
+        forumLogD("[Forum] addFavoriteThread tid=$tid response head: ${responseText.take(120)}")
+        // 与登录同口径的服务端定值：重取"我的收藏"第一页（forceRefresh 跳缓存并回写），
+        // 新收藏按时间倒序必在页首；不在则提交失败，message 用站点文案。
+        // 重取结果无论成败都镜像进本地收藏库（已收藏场景同样落库，供下次进帖秒判）。
+        return runCatching {
+            val favorites = observeUserFavorites(1, forceRefresh = true).firstCachedOrFresh()
+            syncFavoritesToDb(favorites)
+            check(favorites.favorites.any { it.tid == tid }) {
+                parseDiscuzMessage(responseText) ?: "收藏失敗，請稍後重試"
+            }
+        }
+    }
+
+    /** 相对链接补全为绝对 URL（站点链接均相对 /forum/ 前缀；已是绝对则原样返回）。 */
+    private fun absolutizeForumUrl(baseUrl: String, href: String): String =
+        if (href.startsWith("http")) href else "$baseUrl/forum/$href"
+
+    /** 共享 CookieJar 的 OkHttp 表单 POST（与登录同通道：WebView 写、OkHttp 读）。 */
+    private suspend fun forumHttpPost(url: String, referer: String, body: FormBody): String =
+        withContext(Dispatchers.IO) {
+            NetClient.glideOkHttpClient.newCall(
+                Request.Builder().url(url).header("Referer", referer).post(body).build()
+            ).execute().use { it.body.string() }
+        }
 
     override suspend fun loadUserProfile(uid: Int): ForumUserProfile =
         observeUserProfile(uid).firstCachedOrFresh()
@@ -390,7 +465,10 @@ class DefaultForumRepository @Inject constructor(
                 revalidate = page == 1,
                 isCacheable = { it.favorites.isNotEmpty() }
             ) {
-                parseUserFavorites(fetchForumDocument(url))
+                val page = parseUserFavorites(fetchForumDocument(url))
+                // 服务端收藏页 → 本地镜像（正向 upsert，个人主页浏览即同步，不限首页）
+                syncFavoritesToDb(page)
+                page
             }
         )
     }

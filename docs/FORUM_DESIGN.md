@@ -96,7 +96,7 @@
 
 ### 2.6 用户组等级体系全量实测（第五轮，2026-11-27）
 
-数据源：`home.php?mod=spacecp&ac=usergroup&gid=N` ×8（fixtures `forum_usergroup_gid*.html`）+ 置顶帖 tid=15172。页面结构：标签表 + 两张值表（我的主用户组 / 晋级用户组），布尔权限 = `data_valid.gif`/`data_invalid.gif` 图标；无 gid 的本人页是运行时权限解析目标（`forum_usergroup_self.html`）。
+数据源：`home.php?mod=spacecp&ac=usergroup&gid=N` ×8（fixtures `forum_usergroup_gid*.html`）+ 置顶帖 tid=15172。页面结构：标签表 + 两张值表（我的主用户组 / 晋级用户组），布尔权限 = `data_valid.gif`/`data_invalid.gif` 图标；无 gid 的本人页样本同构（`forum_usergroup_self.html`，保留作协议存档，运行时不再解析——见下方门控定案）。
 
 **等级阶梯（8 个普通用户组，gid 与里程下限实测）**：
 
@@ -119,7 +119,7 @@
 
 **里程获取规则（站方积分策略）**：每天登錄 +1（1/天）；設置頭像 +1、郵箱認證 +1（各一次性）；發表回復 +1/+1（3/天）；發表主題 +10/+10（1/天）；加精華 +50/+50（不限）；發短消息 0/-30（不限）。满打满算日上限 +14（登錄1 + 回復3 + 主題10）。
 
-**对 App 的含义（等级门控，已定案：随 F2 写功能一并实现）**：入口按权限隐藏——回帖入口需駕校學員+、发帖入口需實習司機+、短消息需駕校學員+、加好友需實習司機+、点评需駕校學員+；收藏/点赞与等级无关（登录即可，已实测）。运行时权限取自本人 usergroup 页（解析标签/值表对齐），配合登录态刷新；权限未知时显示入口（服务端错误提示兜底）。不按里程推断等级（人工审核制）。
+**对 App 的含义（等级门控，已定案：随 F2 写功能一并实现）**：入口按权限隐藏——回帖入口需駕校學員+、发帖入口需實習司機+、短消息需駕校學員+、加好友需實習司機+、点评需駕校學員+；收藏/点赞与等级无关（登录即可，已实测）。**权限不解析 usergroup 页**（2026-11-27 定案：人工审核制下组权限恒定），按组名查内置映射表 `ForumUserPermissions.forGroupName`（路人乘客全禁 → 駕校學員可回帖/短消息/点评 → 實習司機起全开；禁言/限制类特殊组全禁），组名来自登录态（自空间页）；组名未知时全部放开入口（服务端错误提示兜底）。不按里程推断等级（人工审核制）。
 
 ---
 
@@ -168,8 +168,8 @@
 |---|---|---|
 | F2-1 | **回帖** | 协议已摸清（§2.1-7 / §2.3-4）：`POST forum.php?mod=post&action=reply&...&replysubmit=yes&infloat=yes&handlekey=fastpost`；`message` 编辑器为运行时注入，须走共享 WebView 会话提交（A3/D7）。**阻塞：站点等级制——路人乘客不可回帖（§2.4），当前账号待人工审核升级后才能开发实测** |
 | F2-2 | 引用回复 | 按目标站点实际要求生成 quote 标记/隐藏字段（参考文档 7.2：不要只在 UI 显示引用而未提交）。与 F2-1 同被等级制阻塞 |
-| F2-3 | **收藏** | 协议已验证（§2.4-3）：`POST spacecp&ac=favorite&type=thread&id={tid}`，字段 formhash/favoritesubmit/description/referer；"我的收藏"页 `space&do=favorite&view=me`（非空 fixture 已存）。**可直接开发** |
-| F2-4 | **点赞/推荐** | 协议已验证（§2.4-4）：`GET misc&action=recommend&do=add&tid={tid}&hash={令牌}`（GET 即生效）；帖子页按钮 `点贊{N}` 带计数。**可直接开发**（注意防重复触发） |
+| F2-3 | **收藏**（已实现） | 协议已验证（§2.4-3）：`POST spacecp&ac=favorite&type=thread&id={tid}`，字段 formhash/favoritesubmit/description/referer；"我的收藏"页 `space&do=favorite&view=me`（非空 fixture 已存）。已实现：帖子页底栏收藏按钮（乐观生效+动画，服务端收藏首页定值校验失败才回滚提示）；收藏页解析结果**镜像落本地库**（CollectDB `t_forum_favorite`，uid+tid 主键，正向 upsert，登出清表），进帖查本地库即时预标记已收藏——免网络查询、不限收藏首页分页 |
+| F2-4 | ~~点赞/推荐~~（已移除） | 协议已验证（§2.4-4）：`GET misc&action=recommend&do=add&tid={tid}&hash={令牌}`（GET 即生效）。曾实现后于 2026-11-27 移除：站点点赞**不可撤销**（无 subtract 入口），交互反直觉；协议记录保留备查 |
 
 未登录时点按写操作入口 → 引导登录（A2），不做静默失败。
 

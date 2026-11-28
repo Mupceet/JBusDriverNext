@@ -586,6 +586,8 @@ class ForumThreadDetailViewModelTest {
             seccode: String
         ): Result<me.jbusdriver.modern.domain.model.ForumLoginState> = error("unused")
         override suspend fun logout() = Unit
+        override suspend fun addFavoriteThread(tid: Int, actionUrl: String): Result<Unit> = error("unused")
+        override suspend fun recommendThread(tid: Int, actionUrl: String, previousCount: Int): Result<Int> = error("unused")
         override suspend fun loadUserProfile(uid: Int) : me.jbusdriver.modern.domain.model.ForumUserProfile = error("unused")
         override fun observeUserProfile(uid: Int, forceRefresh: Boolean, revalidate: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserProfile>>()
         override fun observeUserThreads(uid: Int, type: me.jbusdriver.modern.domain.model.ForumUserThreadType, page: Int, forceRefresh: Boolean) = kotlinx.coroutines.flow.emptyFlow<me.jbusdriver.modern.core.cache.CachedLoadEvent<me.jbusdriver.modern.domain.model.ForumUserThreadPageResult>>()

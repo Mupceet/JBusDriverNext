@@ -450,11 +450,18 @@ class ForumRepositoryCacheFlowTest {
         cacheStore = cacheStore,
         siteConfig = FakeSiteConfig(),
         authCookieCleaner = FakeAuthCookieCleaner,
-        accountCache = FakeAccountCache
+        accountCache = FakeAccountCache,
+        forumFavoriteDao = FakeForumFavoriteDao
     )
 
     private object FakeAuthCookieCleaner : me.jbusdriver.modern.core.http.ForumAuthCookieCleaner {
         override suspend fun clearAuthCookies(url: String) = Unit
+    }
+
+    private object FakeForumFavoriteDao : me.jbusdriver.modern.data.db.dao.ForumFavoriteDao {
+        override suspend fun upsertAll(favorites: List<me.jbusdriver.modern.data.db.entity.ForumFavorite>) = Unit
+        override suspend fun isFavorite(uid: Int, tid: Int): Boolean = false
+        override suspend fun clearAll() = Unit
     }
 
     private object FakeAccountCache : me.jbusdriver.modern.data.settings.ForumAccountCache {

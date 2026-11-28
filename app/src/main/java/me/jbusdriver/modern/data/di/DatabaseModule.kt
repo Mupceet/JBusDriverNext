@@ -13,6 +13,7 @@ import me.jbusdriver.modern.data.db.buildCollectDatabase
 import me.jbusdriver.modern.data.db.buildJBusDatabase
 import me.jbusdriver.modern.data.db.buildLocalVideoDatabase
 import me.jbusdriver.modern.data.db.dao.CategoryDao
+import me.jbusdriver.modern.data.db.dao.ForumFavoriteDao
 import me.jbusdriver.modern.data.db.dao.HistoryDao
 import me.jbusdriver.modern.data.db.dao.LinkItemDao
 import me.jbusdriver.modern.data.db.dao.LocalVideoDao
@@ -43,6 +44,9 @@ object DatabaseModule {
 
     @Provides
     fun provideLtxMovieDao(db: CollectDatabase): LtxMovieDao = db.ltxMovieDao()
+
+    @Provides
+    fun provideForumFavoriteDao(db: CollectDatabase): ForumFavoriteDao = db.forumFavoriteDao()
 
     @Provides
     @Singleton

@@ -225,6 +225,10 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         )
     }
 
+    // 首帖操作区（#p_btn）：收藏链接自带计数与提交令牌（游客态也渲染，操作需登录；§2.4-3/§2.5）。
+    // 点赞链接（#recommend_add）不再解析：站点点赞不可撤销，App 已移除该入口。
+    val favoriteLink = doc.selectFirst("#p_btn a#k_favorite")
+
     return ForumThreadDetail(
         tid = tidMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0,
         typeId = typeId,
@@ -243,7 +247,10 @@ fun parseForumThreadDetail(doc: Document, baseUrl: String): ForumThreadDetail {
         pageInfo = parseForumPageInfo(doc),
         pid = firstPostPid,
         commentPageInfo = firstPostCommentPageInfo,
-        authorGroup = authorGroup
+        authorGroup = authorGroup,
+        favoriteCount = favoriteLink?.selectFirst("#favoritenumber")?.text()?.trim()?.toIntOrNull() ?: 0,
+        // 相对链接原样保留（含 formhash 令牌），提交时由仓库层补 baseUrl/forum/ 前缀
+        favoriteActionUrl = favoriteLink?.attr("href")?.trim().orEmpty()
     )
 }
 

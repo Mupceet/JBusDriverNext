@@ -47,7 +47,7 @@
 | `guide_sofa_guest.html` | `forum.php?mod=guide&view=sofa` | 真游客 | 导读-搶沙發（F1-2） |
 | `wap_index_guest.html` | `api/mobile/index.php?version=4&module=forumindex` | 真游客 | 游客 WAP 触屏版 |
 | `forum_usergroup_gid{21,10,11,12,13,14,15,22}.html` | `home.php?mod=spacecp&ac=usergroup&gid=N` | 登录 | **八个普通用户组的权限页**（2026-11-27）：页面为「标签表 + 两张值表」（我的主用户组 / 晋级用户组）三表并排结构；布尔权限值单元格是 `data_valid.gif`/`data_invalid.gif` 图标，分区标题行（帖子相關/家園相關/附件相關）的值 = 组名。等级阶梯与权限矩阵见 docs/FORUM_DESIGN.md §2.6 |
-| `forum_usergroup_self.html` | `home.php?mod=spacecp&ac=usergroup`（无 gid） | 登录 | **本人用户组页**——运行时权限解析目标：首表含「我的主用戶組 - <组名>」标题行与「里程: N」行，值表即本人权限。**等级门控（按权限隐藏入口）的数据源** |
+| `forum_usergroup_self.html` | `home.php?mod=spacecp&ac=usergroup`（无 gid） | 登录 | **本人用户组页**：首表含「我的主用戶組 - <组名>」标题行与「里程: N」行，值表即本人权限。2026-11-27 定案等级门控**不解析此页**（人工审核制下组权限恒定），权限按组名查内置表 `ForumUserPermissions.forGroupName`；本 fixture 保留作协议存档 |
 
 > 游客态采集方式：同浏览器临时摘除 auth cookie（先过主站首页门禁），采毕恢复登录态并验证；"真游客"样本与 `*_nocookie_login_redirect`（无任何 Cookie）不同——后者是会话失效/门禁未过的形态。
 

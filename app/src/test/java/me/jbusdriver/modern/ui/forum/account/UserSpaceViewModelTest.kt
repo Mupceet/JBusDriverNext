@@ -414,6 +414,9 @@ class UserSpaceViewModelTest {
             logoutCalls++
         }
 
+        override suspend fun addFavoriteThread(tid: Int, actionUrl: String?): Result<Unit> = error("unused")
+        override suspend fun isFavoritedThread(tid: Int): Boolean = error("unused")
+
         override suspend fun loadUserProfile(uid: Int): ForumUserProfile = error("unused")
 
         override suspend fun loadUserThreads(
