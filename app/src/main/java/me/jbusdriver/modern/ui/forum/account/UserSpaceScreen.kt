@@ -55,7 +55,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +71,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -80,6 +83,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import me.jbusdriver.R
 import me.jbusdriver.modern.domain.model.ForumFavoriteThread
 import me.jbusdriver.modern.domain.model.ForumProfileField
@@ -88,18 +94,21 @@ import me.jbusdriver.modern.domain.model.ForumUserThread
 import me.jbusdriver.modern.ui.RouteUserSpace
 import me.jbusdriver.modern.ui.components.AppPullToRefreshBox
 import me.jbusdriver.modern.ui.components.BoxBlurTransformation
+import me.jbusdriver.modern.ui.components.ScrollToTopButton
 import me.jbusdriver.modern.ui.components.ThemedSnackbarHost
 import me.jbusdriver.modern.ui.components.dimColorFilter
 import me.jbusdriver.modern.ui.components.hazeSourceContent
 import me.jbusdriver.modern.ui.components.hazeTopBar
 import me.jbusdriver.modern.ui.components.rememberAppHazeState
+import me.jbusdriver.modern.ui.components.rememberScrollToTopVisibility
 import me.jbusdriver.modern.ui.components.rememberSiteImageRequest
+import me.jbusdriver.modern.ui.forum.forumViewReplyCountText
 
-/** 本人可见的页签；收藏为登录私有数据，他人视图不出现。 */
+/** 本人可见的页签（資料默认）；收藏为登录私有数据，他人视图不出现。 */
 private val SELF_TABS = listOf(
-    UserSpaceTab.THREADS, UserSpaceTab.REPLIES, UserSpaceTab.FAVORITES, UserSpaceTab.ABOUT
+    UserSpaceTab.ABOUT, UserSpaceTab.THREADS, UserSpaceTab.REPLIES, UserSpaceTab.FAVORITES
 )
-private val OTHER_TABS = listOf(UserSpaceTab.THREADS, UserSpaceTab.REPLIES, UserSpaceTab.ABOUT)
+private val OTHER_TABS = listOf(UserSpaceTab.ABOUT, UserSpaceTab.THREADS, UserSpaceTab.REPLIES)
 
 /** 标题栏行高（不含状态栏），与 Material 3 小型顶栏及论坛各页的玻璃标题栏一致。 */
 private val TITLE_BAR_HEIGHT = 64.dp
@@ -122,6 +131,15 @@ private val TAB_BAR_DEFAULT_HEIGHT = 54.dp
 
 /** 页面左右边距，与论坛各页一致（分割线因此内缩，不顶到屏幕边缘）。 */
 private val PAGE_HORIZONTAL_PADDING = 16.dp
+
+/** 回覆视图每帖展示的回帖摘要条数上限，超出显示「還有 N 條回覆」。 */
+private const val REPLY_EXCERPT_MAX = 3
+
+/** 列表底部 contentPadding；尾部垫高量计算与布局共用同值。 */
+private val LIST_BOTTOM_PADDING = 14.dp
+
+/** 尾部垫高层 key：短内容时补足列表滚动余量，让头像区始终可以上推完全收起。 */
+private const val TAIL_FILL_KEY = "tail_fill"
 
 private val UserSpaceTab.labelRes: Int
     get() = when (this) {
@@ -153,7 +171,10 @@ private fun String.toLargeAvatarUrl(): String = replace("_avatar_small.", "_avat
  *   列表内容从它与标题栏两层玻璃下穿过。
  * - 头像区上滑离开时，标题栏淡入「小头像 + 名字 + 等级」（度量同帖子详情标题栏）；
  *   标题栏的玻璃也随同一进度渐显——静止时透明，头像背景清晰地从返回键下穿过。
- * - 主題/回覆/收藏/資料 就地切换，整页下拉刷新，触底加载更多。
+ * - 内容不满屏（列表空、条目少、资料过短）时，列表末尾的垫高层补足滚动余量，
+ *   头像区照样可以上推到完全收起（见 [ProfileList]）。
+ * - 資料/主題/回覆/收藏 就地切换（資料为默认页签），整页下拉刷新，触底加载更多，
+ *   到底显示「沒有更多了」；滑过首屏出现快速回顶按钮（停手数秒自动隐没）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,6 +217,9 @@ fun UserSpaceScreen(
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val tabs = if (state.isSelf) SELF_TABS else OTHER_TABS
+    // 快速回顶：滑过首屏后出现、停手数秒自动隐没（同影片/演员列表）
+    val scope = rememberCoroutineScope()
+    val showScrollToTop = rememberScrollToTopVisibility(listState)
 
     Scaffold(
         snackbarHost = { ThemedSnackbarHost(hostState = snackbarHostState) }
@@ -216,6 +240,13 @@ fun UserSpaceScreen(
                 (titleBarHeight + (backdropHeight - titleBarHeight - avatarSize) / 2).roundToPx()
             }
             val avatarSizePx = with(density) { avatarSize.roundToPx() }
+            // 页签以下内容的最小总高（不含底部 padding）：达到它，列表滚动余量就恰好够把
+            // 头像背景区完全推走（页签吸顶到标题栏下缘）。短内容由尾部垫高层补足（见 ProfileList）。
+            val minContentBelowHeaderPx = with(density) {
+                maxHeight.roundToPx() - titleBarHeightPx - LIST_BOTTOM_PADDING.roundToPx()
+            }
+            // 完全收起时的滚动量（= 背景区高 − 标题栏高）：收尾吸附的两个边界之一
+            val pinnedScrollPx = with(density) { backdropHeight.roundToPx() } - titleBarHeightPx
             var tabBarHeightPx by remember { mutableIntStateOf(0) }
             val tabBarHeight = with(density) { tabBarHeightPx.toDp() }
                 .takeIf { it > 0.dp } ?: TAB_BAR_DEFAULT_HEIGHT
@@ -257,6 +288,8 @@ fun UserSpaceScreen(
                     titleBarHeight = titleBarHeight,
                     avatarSize = avatarSize,
                     tabBarHeight = tabBarHeight,
+                    minContentBelowHeaderPx = minContentBelowHeaderPx,
+                    pinnedScrollPx = pinnedScrollPx,
                     listState = listState,
                     onThreadClick = onThreadClick,
                     onRetry = viewModel::retry,
@@ -355,6 +388,16 @@ fun UserSpaceScreen(
                 }
             }
 
+            // 快速回顶：滑过头像背景区（首项）后出现，点击整列滚回顶部、头像区展开。
+            // 底部居中、距底 64dp，与帖子列表/详情一致（footer 的顶部留白也按此计算）
+            ScrollToTopButton(
+                visible = showScrollToTop,
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 64.dp)
+            )
+
             if (state.isLoggingOut) {
                 CircularProgressIndicator(
                     modifier = Modifier
@@ -375,7 +418,18 @@ private fun avatarDiameter(backdropHeight: Dp, titleBarHeight: Dp): Dp {
     return minOf(byBackdrop, visible - 24.dp).coerceAtLeast(48.dp)
 }
 
-/** 列表：头像背景区 → 页签占位 → 当前页签内容。页签栏是叠在上方的独立玻璃面。 */
+/**
+ * 列表：头像背景区 → 页签占位 → 当前页签内容 → 尾部垫高层。页签栏是叠在上方的独立玻璃面。
+ *
+ * 尾部垫高层：头像背景区靠列表自身滚动收起，内容不满屏（列表空、条目少、资料过短）时
+ * 滚动余量不够，头像区就推不走。垫高层把「页签以下内容」补足到 [minContentBelowHeaderPx]，
+ * 使滚动余量恒 ≥ 背景区高 − 标题栏高——空/短内容也能上推到页签吸顶、身份行完整淡入。
+ * 它只在列表末尾延伸、不移动已有项，补高发生在首帧布局之后也无跳动；内容能铺满视口时
+ * 高度为 0，长列表无尾部空白。
+ *
+ * 收尾吸附：滚动区间短（短内容恰好够收起头像区），弱惯性会衰减在半途——手势结束后
+ * 若停在收起中途，按最后滚动方向吸附到「展开 / 完全收起」，头部不停在半收半开。
+ */
 @Composable
 private fun ProfileList(
     state: UserSpaceUiState,
@@ -383,6 +437,8 @@ private fun ProfileList(
     titleBarHeight: Dp,
     avatarSize: Dp,
     tabBarHeight: Dp,
+    minContentBelowHeaderPx: Int,
+    pinnedScrollPx: Int,
     listState: LazyListState,
     onThreadClick: (Int) -> Unit,
     onRetry: () -> Unit,
@@ -391,6 +447,7 @@ private fun ProfileList(
 ) {
     val profile = state.profile
     val tab = state.selectedTab
+    val density = LocalDensity.current
     val nearEnd by remember {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -403,13 +460,74 @@ private fun ProfileList(
         if (nearEnd) onLoadMore()
     }
 
+    var tailFillPx by remember { mutableIntStateOf(0) }
+    LaunchedEffect(listState, minContentBelowHeaderPx) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            when {
+                info.totalItemsCount == 0 -> 0
+                // 有不可见项说明内容够长，滚动余量充足，不垫高
+                info.visibleItemsInfo.size < info.totalItemsCount -> 0
+                else -> {
+                    // 全部可见才能安全累加实测高度；排除首项（背景区）与垫高层自身
+                    val belowHeader = info.visibleItemsInfo
+                        .filter { it.index > 0 && it.key != TAIL_FILL_KEY }
+                        .sumOf { it.size }
+                    (minContentBelowHeaderPx - belowHeader).coerceAtLeast(0)
+                }
+            }
+        }.collect { tailFillPx = it }
+    }
+
+    // 手势收尾吸附：短内容页签的滚动区间只有「背景区高 − 标题栏高」，较弱的惯性常在
+    // 半途衰减殆尽，把头像区留在半收半开的位置。手势结束若停在中途，按最后的滚动方向
+    // 吸附到「展开（0）」或「完全收起（吸顶）」——任何一次甩动都干净地落到稳定态，
+    // 而不是死在半路（拖动松手同样受益：头部从不停在中间位置）。
+    // 吸附动画必须放进子协程：用户在吸附途中按下新手指会以 UserInput 优先级抢占滚动、
+    // 取消动画；若在监听本体里直接 await，取消异常会连带杀死整个监听，之后所有松手
+    // 都停在半途（他人主页资料加载慢、等待期间触摸更易踩中）。
+    LaunchedEffect(listState, pinnedScrollPx) {
+        var lastOffset = -1
+        var lastMotionUp = false
+        var settleJob: Job? = null
+        snapshotFlow {
+            Triple(
+                listState.isScrollInProgress,
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }.collect { (scrolling, index, offset) ->
+            when {
+                scrolling -> {
+                    if (lastOffset >= 0 && offset != lastOffset) lastMotionUp = offset > lastOffset
+                    lastOffset = offset
+                }
+
+                index == 0 && offset in 1 until pinnedScrollPx -> {
+                    settleJob?.cancel()
+                    settleJob = launch {
+                        try {
+                            listState.animateScrollToItem(
+                                0, if (lastMotionUp) pinnedScrollPx else 0
+                            )
+                        } catch (e: CancellationException) {
+                            // 新手势抢占吸附：正常中断，静默结束，监听继续存活
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 14.dp),
+        contentPadding = PaddingValues(bottom = LIST_BOTTOM_PADDING),
         // 关闭越界回弹（到边缘后的拉伸）。它只作用于列表自己绘制的内容、且是纯绘制阶段的
-        // 变形——布局坐标不变，而页签栏的位置取自布局坐标，于是背景被拉长、页签栏却停在原位，
-        // 看起来卡在背景中间。顶上是一整块头像背景图，被拉伸本身也不好看，所以直接去掉。
+        // 变形——布局坐标不变，而页签栏的位置取自布局坐标，于是内容被拉伸、页签栏却停在
+        // 原位，二者脱节（实测观感不佳）。顶上是一整块头像背景图，被拉伸本身也不好看。
+        // 共享位移的自绘过冲（列表与页签栏整体随动再弹回）也实现过并按用户要求回退，
+        // 勿再引入。
         overscrollEffect = null
     ) {
         // 首项 = 头像背景区。页签栏的纵坐标取本项的实测底边，页签占位紧随其后
@@ -460,6 +578,14 @@ private fun ProfileList(
                 UserSpaceTab.ABOUT -> aboutItems(profile, state.isSelf, onLogout)
             }
         }
+        // 尾部垫高层：高度见上方 tailFillPx 的计算说明
+        item(key = TAIL_FILL_KEY) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(with(density) { tailFillPx.toDp() })
+            )
+        }
     }
 }
 
@@ -471,7 +597,8 @@ private fun CompactIdentity(profile: ForumUserProfile, modifier: Modifier = Modi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Avatar(url = profile.avatarUrl, name = profile.username, size = 32.dp)
+        // 取大图（141px）：32dp 在高密度屏上用 48px 小图会发虚，与背景区大头像同源
+        Avatar(url = profile.avatarUrl?.toLargeAvatarUrl(), name = profile.username, size = 32.dp)
         Column {
             Text(
                 text = profile.username,
@@ -691,7 +818,14 @@ private fun MileageBlock(mileage: Int, toNextLevel: Int?) {
     }
 }
 
-/** 主题/回覆页签内容：占位（加载/失败/空），或「行 + 内缩分割线」与触底页脚。 */
+/**
+ * 主题/回覆页签内容：占位（加载/失败/空），或行布局与回帖摘要行。
+ *
+ * 行布局与帖子列表卡对齐：标题（整行，至多 2 行）→ 版块（primary 小字）→
+ * 最后回复人 + 时间（左）与 瀏覽·回覆 计数（右）。回覆视图（[ForumUserThread.replies]
+ * 非空）在标题正下方以缩进小列表展示该用户的回帖摘要（每条单行省略，至多
+ * [REPLY_EXCERPT_MAX] 条，超出提示余量）；整行仍点击进帖。
+ */
 private fun LazyListScope.threadItems(
     list: UserListState<ForumUserThread>,
     emptyRes: Int,
@@ -711,19 +845,70 @@ private fun LazyListScope.threadItems(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.boardName.isNotBlank()) {
-                    Text(
-                        text = item.boardName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Spacer(Modifier.width(10.dp))
+            // 回覆视图：该用户的回帖摘要紧跟标题（缩进小列表，每条单行省略）
+            val replies = item.replies.orEmpty()
+            if (replies.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.padding(start = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    replies.take(REPLY_EXCERPT_MAX).forEach { excerpt ->
+                        Text(
+                            text = "› $excerpt",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    val rest = replies.size - REPLY_EXCERPT_MAX
+                    if (rest > 0) {
+                        Text(
+                            text = pluralStringResource(R.plurals.forum_user_reply_more, rest, rest),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                if (item.time.isNotBlank()) {
+            }
+            if (item.boardName.isNotBlank()) {
+                Text(
+                    text = item.boardName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            // 第三行：同帖子列表卡——左=最后回复人+时间（人名收缩省略、时间完整），右=瀏覽·回覆
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val author = item.lastReplyAuthor.orEmpty()
+                if (author.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = author,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (item.time.isNotBlank()) {
+                            Text(
+                                text = item.time,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                } else if (item.time.isNotBlank()) {
                     Text(
                         text = item.time,
                         style = MaterialTheme.typography.labelSmall,
@@ -731,18 +916,16 @@ private fun LazyListScope.threadItems(
                         maxLines = 1,
                         modifier = Modifier.weight(1f, fill = false)
                     )
+                    Spacer(Modifier.weight(1f))
+                } else {
+                    Spacer(Modifier.weight(1f))
                 }
-                Spacer(Modifier.weight(1f))
-                if (item.replyCount > 0 || item.viewCount > 0) {
-                    Text(
-                        text = stringResource(
-                            R.string.forum_thread_counts, item.replyCount, item.viewCount
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
+                Text(
+                    text = forumViewReplyCountText(item.viewCount, item.replyCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
             }
         }
     }
@@ -812,7 +995,7 @@ private fun LazyListScope.placeholder(list: UserListState<*>, emptyRes: Int, onR
     }
 }
 
-/** 触底页脚：追加加载中转圈；追加失败给出行尾重试（已有内容不整页报错）。 */
+/** 触底页脚：追加加载中转圈；追加失败给出行尾重试（已有内容不整页报错）；到底给「沒有更多了」收尾。 */
 private fun LazyListScope.footer(list: UserListState<*>, onRetry: () -> Unit) {
     when {
         list.isLoadingMore -> item(key = "footer_loading") {
@@ -833,6 +1016,22 @@ private fun LazyListScope.footer(list: UserListState<*>, onRetry: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            }
+        }
+
+        // 顶部留白让出悬浮回顶按钮（bottom=16 高 40 → 按钮占据距底 16~56dp，同帖子详情做法），
+        // 完全滚到底时提示不被按钮遮挡
+        list.endReached && list.items.isNotEmpty() -> item(key = "footer_end") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 64.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.no_more),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

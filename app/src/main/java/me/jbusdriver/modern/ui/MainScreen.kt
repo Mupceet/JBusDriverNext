@@ -44,6 +44,7 @@ import me.jbusdriver.modern.ui.components.hazeTopBar
 import me.jbusdriver.modern.ui.components.rememberAppHazeState
 import me.jbusdriver.modern.ui.forum.ForumBoardsScreen
 import me.jbusdriver.modern.ui.forum.ForumBoardsViewModel
+import me.jbusdriver.modern.ui.forum.account.ForumAccountAvatar
 import me.jbusdriver.modern.ui.movielist.CollectCategoryScreen
 import me.jbusdriver.modern.ui.settings.SettingsViewModel
 import me.jbusdriver.modern.ui.settings.UiPrefsViewModel
@@ -243,7 +244,7 @@ fun MainScreen(
                     // （点击登录/用户中心，长按打开设置）；其余 tab 保持设置图标
                     trailingIcon = if (selectedCategory == BottomNavCategory.FORUM && forumAccountEnabled) {
                         {
-                            me.jbusdriver.modern.ui.forum.account.ForumAccountAvatar(
+                            ForumAccountAvatar(
                                 state = forumAccountState,
                                 onLoginClick = onForumLoginClick,
                                 onUserClick = onForumUserClick,

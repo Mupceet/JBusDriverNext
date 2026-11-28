@@ -172,13 +172,16 @@
     <string name="forum_user_threads_empty">No threads yet</string>
     <string name="forum_user_replies_empty">No replies yet</string>
     <string name="forum_user_favorites_empty">No favorites yet</string>
+    <plurals name="forum_user_reply_more">
+        <item quantity="one">%d more reply</item>
+        <item quantity="other">%d more replies</item>
+    </plurals>
     <string name="forum_logout">Log out</string>
     <string name="forum_logout_confirm">You will need to log in to the forum again.</string>
     <string name="forum_profile_section_basic">Basic Info</string>
     <string name="forum_profile_section_activity">Activity</string>
     <string name="forum_mileage_value">Mileage %1$d</string>
     <string name="forum_mileage_to_next_short">%1$d to next level</string>
-    <string name="forum_thread_counts">%1$d replies · %2$d views</string>
 
     <!-- Settings -->
     <string name="lab_experimental">Experimental features may be unstable</string>

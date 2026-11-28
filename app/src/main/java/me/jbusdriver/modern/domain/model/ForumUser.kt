@@ -68,6 +68,10 @@ data class ForumUserThread(
     val replyCount: Int = 0,
     /** 查看数（td.num 的 em）。 */
     val viewCount: Int = 0,
+    /** 最后回复人（td.by 的 cite）。旧缓存 JSON 无此字段，Gson 置 null，须可空。 */
+    val lastReplyAuthor: String? = null,
+    /** 回复视图（type=reply）下该用户在此帖的回帖摘要；主题视图无此结构为 null。旧缓存兼容须可空。 */
+    val replies: List<String>? = null,
 )
 
 @Immutable

@@ -169,11 +169,13 @@
     <string name="forum_user_threads_empty">暫無主題</string>
     <string name="forum_user_replies_empty">暫無回覆</string>
     <string name="forum_user_favorites_empty">暫無收藏</string>
+    <plurals name="forum_user_reply_more">
+        <item quantity="other">還有 %d 條回覆</item>
+    </plurals>
     <string name="forum_profile_section_basic">基本信息</string>
     <string name="forum_profile_section_activity">活躍狀態</string>
     <string name="forum_mileage_value">里程 %1$d</string>
     <string name="forum_mileage_to_next_short">距下一級 %1$d</string>
-    <string name="forum_thread_counts">回%1$d · 看%2$d</string>
     <string name="forum_logout">退出登錄</string>
     <string name="forum_logout_confirm">退出後需重新登錄論壇賬號</string>
 

@@ -64,14 +64,15 @@ data class UserSpaceUiState(
     val profileLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val isLoggingOut: Boolean = false,
-    val selectedTab: UserSpaceTab = UserSpaceTab.THREADS,
+    /** 当前页签；默认資料（首个页签），主題/回覆/收藏首次切换时才加载。 */
+    val selectedTab: UserSpaceTab = UserSpaceTab.ABOUT,
     val threads: UserListState<ForumUserThread> = UserListState(),
     val replies: UserListState<ForumUserThread> = UserListState(),
     val favorites: UserListState<ForumFavoriteThread> = UserListState(),
 )
 
 /**
- * 个人主页：资料 + 主題/回覆/收藏/資料 四个页签的内容都在本页就地切换。
+ * 个人主页：資料（默认）/主題/回覆/收藏 四个页签的内容都在本页就地切换。
  * 各页签首次进入时才加载，加载过的直接复用；整页下拉刷新会强制重拉资料与当前页签首页。
  */
 @HiltViewModel(assistedFactory = UserSpaceViewModel.Factory::class)
@@ -103,8 +104,8 @@ class UserSpaceViewModel @AssistedInject constructor(
 
     init {
         KLog.d("[UserSpace] init uid=$uid isSelf=${_uiState.value.isSelf}", TAG)
+        // 默认页签=資料，内容即资料本身（loadProfile）；列表页签首次切换时才加载
         loadProfile(forceRefresh = false)
-        loadTab(UserSpaceTab.THREADS)
     }
 
     fun selectTab(tab: UserSpaceTab) {
@@ -186,7 +187,7 @@ class UserSpaceViewModel @AssistedInject constructor(
                     isSelf = false,
                     favorites = UserListState(),
                     selectedTab = if (it.selectedTab == UserSpaceTab.FAVORITES) {
-                        UserSpaceTab.THREADS
+                        UserSpaceTab.ABOUT
                     } else {
                         it.selectedTab
                     }

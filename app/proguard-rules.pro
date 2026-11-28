@@ -125,6 +125,26 @@
 -keep class me.jbusdriver.modern.domain.model.ForumThreadPageResult {
     !static !transient <fields>;
 }
+# 用户空间三接口（资料/主題/回覆/收藏）走 CacheStore Gson，缺 keep 时字段被混淆改名、
+# 反序列化全为 null，資料页签 basics/activity 直接 NPE（R8 包实测崩溃）
+-keep class me.jbusdriver.modern.domain.model.ForumUserProfile {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.ForumProfileField {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.ForumUserThread {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.ForumUserThreadPageResult {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.ForumFavoriteThread {
+    !static !transient <fields>;
+}
+-keep class me.jbusdriver.modern.domain.model.ForumFavoritePageResult {
+    !static !transient <fields>;
+}
 -keep class me.jbusdriver.modern.domain.model.ContentBlock { *; }
 -keep class me.jbusdriver.modern.domain.model.ContentBlock$RichText { !static !transient <fields>; }
 -keep class me.jbusdriver.modern.domain.model.ContentBlock$ListBlock { !static !transient <fields>; }

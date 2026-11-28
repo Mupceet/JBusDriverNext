@@ -363,7 +363,12 @@ private fun parseForumCommentPageInfo(root: Element?): PageInfo {
 private fun isForumContentPageLink(href: String): Boolean =
     PAGE_PARAM.containsMatchIn(href) &&
             !href.contains("action=commentmore") &&
-            (href.contains("mod=viewthread") || href.contains("mod=forumdisplay"))
+            (href.contains("mod=viewthread") ||
+                    href.contains("mod=forumdisplay") ||
+                    // 个人主页 主題/回覆/收藏 列表的分页链接（home.php?mod=space&do=thread|favorite...&page=N）。
+                    // 论坛页面的 .pg 不含此类链接，放开后互不影响
+                    (href.contains("mod=space") &&
+                            (href.contains("do=thread") || href.contains("do=favorite"))))
 
 private fun String.cleanForumPostTime(): String =
     trim().replace(POST_TIME_PREFIX, "").trim()

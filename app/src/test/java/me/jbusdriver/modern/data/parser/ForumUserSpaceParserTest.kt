@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.data.parser
 
 import me.jbusdriver.modern.domain.model.ForumLoginState
+import me.jbusdriver.modern.domain.model.hasNext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -106,9 +107,62 @@ class ForumUserSpaceParserTest {
         val first = result.threads.first { it.tid == 179234 }
         assertEquals("reply count of 179234", 9, first.replyCount)
         assertEquals("view count of 179234", 1378, first.viewCount)
+        // td.by 的 cite = 最后回复人
+        assertEquals("last reply author of 179234", "Green2Grass", first.lastReplyAuthor)
         val second = result.threads.first { it.tid == 168984 }
         assertEquals("reply count of 168984", 34, second.replyCount)
         assertEquals("view count of 168984", 37489, second.viewCount)
+        assertEquals("last reply author of 168984", "karslb", second.lastReplyAuthor)
+        // 主题视图标题行彼此紧邻，无回帖摘要行
+        assertTrue("thread view must have no reply excerpts: ${first.replies}", first.replies == null)
+    }
+
+    @Test
+    fun `reply view collects excerpts from colspan rows below each title row`() {
+        // 回复视图（type=reply）：标题行之后、下一个标题行之前的 td[colspan] 行内是指向
+        // 具体帖子的回帖摘要链接（结构参照 JbForum，站点无实采 fixture，以内联样本锁定协议）
+        val html = """
+            <html><body><div class="tl"><table cellspacing="0" cellpadding="0">
+            <tr class="th"><td class="icn">&nbsp;</td><th>主題</th><td class="frm">版塊</td>
+              <td class="num">回復/查看</td><td class="by"><cite>最後發帖</cite></td></tr>
+            <tr>
+              <th><a href="forum.php?mod=viewthread&amp;tid=101" target="_blank">主题甲</a></th>
+              <td><a href="forum.php?mod=forumdisplay&amp;fid=2" class="xg1">老司機福利討論區</a></td>
+              <td class="num"><a class="xi2">3</a><em>40</em></td>
+              <td class="by"><cite><a href="home.php?mod=space&amp;username=someone">someone</a></cite>
+                <em><span title="2026-11-27 10:00">1&nbsp;天前</span></em></td>
+            </tr>
+            <tr><td colspan="4">&nbsp;›&nbsp;<a href="forum.php?mod=viewthread&amp;tid=101&amp;goto=findpost&amp;pid=5" target="_blank">第一条回帖摘要</a></td></tr>
+            <tr><td colspan="4">&nbsp;›&nbsp;<a href="forum.php?mod=viewthread&amp;tid=101&amp;goto=findpost&amp;pid=9" target="_blank">第二条回帖摘要</a></td></tr>
+            <tr>
+              <th><a href="forum.php?mod=viewthread&amp;tid=102" target="_blank">主题乙</a></th>
+              <td><a href="forum.php?mod=forumdisplay&amp;fid=36" class="xg1">求福利帶帶我</a></td>
+              <td class="num"><a class="xi2">1</a><em>7</em></td>
+              <td class="by"><cite><a href="home.php?mod=space&amp;username=other">other</a></cite>
+                <em>2026-11-26 09:00</em></td>
+            </tr>
+            <tr><td colspan="4">&nbsp;›&nbsp;<a href="forum.php?mod=viewthread&amp;tid=102&amp;goto=findpost&amp;pid=3" target="_blank">主题乙的回帖摘要</a></td></tr>
+            </table></div>
+            <div class="pgs"><div class="pg"><strong>1</strong>
+              <a href="home.php?mod=space&amp;uid=1&amp;do=thread&amp;view=me&amp;type=reply&amp;page=2">2</a>
+              <a class="nxt" href="home.php?mod=space&amp;uid=1&amp;do=thread&amp;view=me&amp;type=reply&amp;page=2">下一頁»</a>
+            </div></div></body></html>
+        """.trimIndent()
+        val result = parseUserThreadList(org.jsoup.Jsoup.parse(html))
+        assertEquals(2, result.threads.size)
+        val first = result.threads.first { it.tid == 101 }
+        assertEquals(listOf("第一条回帖摘要", "第二条回帖摘要"), first.replies)
+        assertEquals("someone", first.lastReplyAuthor)
+        // 摘要归属下一个标题行之前，不得串到相邻主题
+        val second = result.threads.first { it.tid == 102 }
+        assertEquals(listOf("主题乙的回帖摘要"), second.replies)
+        // td.by em 无 span[title] 时回退取 em 文本（绝对时间）
+        assertEquals("2026-11-26 09:00", second.time)
+        // 用户空间分页链接（home.php?mod=space&do=thread...&page=N）必须解析出下一页，
+        // 否则 endReached 立即为真、上划不会再拉
+        assertEquals(1, result.pageInfo.activePage)
+        assertEquals(2, result.pageInfo.nextPage)
+        assertTrue(result.pageInfo.hasNext)
     }
 
     @Test

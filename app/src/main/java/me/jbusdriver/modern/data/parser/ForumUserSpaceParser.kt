@@ -158,9 +158,29 @@ fun parseUserThreadList(doc: Document): ForumUserThreadPageResult {
             // td.num：<a>回復数</a> <em>查看数</em>；表头行无数字（title 缺失已跳过）
             replyCount = tr.selectFirst("td.num > a")?.text()?.trim()?.toIntOrNull() ?: 0,
             viewCount = tr.selectFirst("td.num > em")?.text()?.trim()?.toIntOrNull() ?: 0,
+            // td.by 的 cite = 最后回复人（链接文案）
+            lastReplyAuthor = tr.selectFirst("td.by cite a, td.by cite")?.text()?.trim()
+                ?.takeIf { it.isNotEmpty() },
+            replies = collectUserReplyExcerpts(tr).takeIf { it.isNotEmpty() },
         )
     }.distinctBy { it.tid }
     return ForumUserThreadPageResult(threads, parseForumPageInfo(doc))
+}
+
+/**
+ * 回复视图（type=reply）的回帖摘要：标题行之后、下一个标题行（th 内有链接）之前的
+ * 后续行里，td[colspan] 内指向帖子的链接文本即该用户各条回帖摘要（选择器参照 JbForum
+ * 的 parseUserThreadListPage）。主题视图标题行彼此紧邻，遍历立即终止返回空表。
+ */
+private fun collectUserReplyExcerpts(titleRow: Element): List<String> {
+    val excerpts = mutableListOf<String>()
+    var next = titleRow.nextElementSibling()
+    while (next != null && next.selectFirst("th a[href]") == null) {
+        next.select("td[colspan] a[href*=viewthread], td[colspan] a[href*='ptid=']")
+            .forEach { a -> a.text().trim().takeIf { it.isNotEmpty() }?.let(excerpts::add) }
+        next = next.nextElementSibling()
+    }
+    return excerpts.distinct()
 }
 
 /** 我的收藏列表（home.php?mod=space&do=favorite&view=me）。 */

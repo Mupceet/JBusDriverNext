@@ -79,7 +79,9 @@ class UserSpaceViewModelTest {
             }
         }
 
-        val state = UserSpaceViewModel(repository, RouteUserSpace(UID)).uiState.value
+        val viewModel = UserSpaceViewModel(repository, RouteUserSpace(UID))
+        viewModel.selectTab(UserSpaceTab.THREADS)
+        val state = viewModel.uiState.value
 
         assertEquals("fresh", state.profile?.username)
         assertFalse(state.profileLoading)
@@ -125,6 +127,7 @@ class UserSpaceViewModelTest {
             }
         }
         val viewModel = UserSpaceViewModel(repository, RouteUserSpace(UID))
+        viewModel.selectTab(UserSpaceTab.THREADS)
 
         viewModel.loadMore()
 
@@ -147,6 +150,7 @@ class UserSpaceViewModelTest {
             }
         }
         val viewModel = UserSpaceViewModel(repository, RouteUserSpace(UID))
+        viewModel.selectTab(UserSpaceTab.THREADS)
 
         viewModel.loadMore()
 
@@ -168,7 +172,7 @@ class UserSpaceViewModelTest {
     @Test
     fun `first page failure flags error only when there is no content to show`() {
         val failure = CachedLoadEvent.Failure(IllegalStateException("boom"), hadCachedValue = false)
-        val withContent = UserSpaceViewModel(
+        val withContentViewModel = UserSpaceViewModel(
             repository().apply {
                 threadsFlow = { _, _ ->
                     flow {
@@ -178,15 +182,19 @@ class UserSpaceViewModelTest {
                 }
             },
             RouteUserSpace(UID)
-        ).uiState.value.threads
+        )
+        withContentViewModel.selectTab(UserSpaceTab.THREADS)
+        val withContent = withContentViewModel.uiState.value.threads
         assertEquals(listOf(1), withContent.tids)
         assertFalse(withContent.error)
         assertFalse(withContent.isLoading)
 
-        val withoutContent = UserSpaceViewModel(
+        val withoutContentViewModel = UserSpaceViewModel(
             repository().apply { threadsFlow = { _, _ -> flowOf(failure) } },
             RouteUserSpace(UID)
-        ).uiState.value.threads
+        )
+        withoutContentViewModel.selectTab(UserSpaceTab.THREADS)
+        val withoutContent = withoutContentViewModel.uiState.value.threads
         assertTrue(withoutContent.items.isEmpty())
         assertTrue(withoutContent.error)
         assertFalse(withoutContent.isLoading)
@@ -216,7 +224,7 @@ class UserSpaceViewModelTest {
         viewModel.selectTab(UserSpaceTab.FAVORITES)
 
         assertFalse(viewModel.uiState.value.isSelf)
-        assertEquals(UserSpaceTab.THREADS, viewModel.uiState.value.selectedTab)
+        assertEquals(UserSpaceTab.ABOUT, viewModel.uiState.value.selectedTab)
         assertTrue(repository.observed.none { it.startsWith("favorites") })
     }
 
@@ -255,6 +263,7 @@ class UserSpaceViewModelTest {
             }
         }
         val viewModel = UserSpaceViewModel(repository, RouteUserSpace(UID))
+        viewModel.selectTab(UserSpaceTab.THREADS)
         viewModel.selectTab(UserSpaceTab.REPLIES)
 
         viewModel.refresh()
@@ -297,6 +306,7 @@ class UserSpaceViewModelTest {
             }
         }
         val viewModel = UserSpaceViewModel(repository, RouteUserSpace(UID))
+        viewModel.selectTab(UserSpaceTab.THREADS)
         val messages = mutableListOf<UserMessage>()
         backgroundScope.launch(dispatcher) {
             viewModel.messages.collect { messages += it }
@@ -338,7 +348,7 @@ class UserSpaceViewModelTest {
         assertFalse(state.isSelf)
         assertFalse(state.isLoggingOut)
         assertTrue("private favorites must not linger after logout", state.favorites.items.isEmpty())
-        assertEquals(UserSpaceTab.THREADS, state.selectedTab)
+        assertEquals(UserSpaceTab.ABOUT, state.selectedTab)
         assertEquals(1, closed)
     }
 
