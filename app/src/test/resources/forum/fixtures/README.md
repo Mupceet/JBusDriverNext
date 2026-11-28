@@ -46,6 +46,8 @@
 | `user_space_guest.html` | `home.php?mod=space&uid=662631` | 真游客 | 游客可见的公开用户空间 |
 | `guide_sofa_guest.html` | `forum.php?mod=guide&view=sofa` | 真游客 | 导读-搶沙發（F1-2） |
 | `wap_index_guest.html` | `api/mobile/index.php?version=4&module=forumindex` | 真游客 | 游客 WAP 触屏版 |
+| `forum_usergroup_gid{21,10,11,12,13,14,15,22}.html` | `home.php?mod=spacecp&ac=usergroup&gid=N` | 登录 | **八个普通用户组的权限页**（2026-11-27）：页面为「标签表 + 两张值表」（我的主用户组 / 晋级用户组）三表并排结构；布尔权限值单元格是 `data_valid.gif`/`data_invalid.gif` 图标，分区标题行（帖子相關/家園相關/附件相關）的值 = 组名。等级阶梯与权限矩阵见 docs/FORUM_DESIGN.md §2.6 |
+| `forum_usergroup_self.html` | `home.php?mod=spacecp&ac=usergroup`（无 gid） | 登录 | **本人用户组页**——运行时权限解析目标：首表含「我的主用戶組 - <组名>」标题行与「里程: N」行，值表即本人权限。**等级门控（按权限隐藏入口）的数据源** |
 
 > 游客态采集方式：同浏览器临时摘除 auth cookie（先过主站首页门禁），采毕恢复登录态并验证；"真游客"样本与 `*_nocookie_login_redirect`（无任何 Cookie）不同——后者是会话失效/门禁未过的形态。
 
@@ -59,6 +61,11 @@
 
 ## 结构覆盖与待补素材
 
-已覆盖：签名（`class="sign"`，版块/帖子样本）、附件图（`attachimg`，帖子样本）、引用/图片/列表/点评（帖子样本）、筛选与排序条（版块样本）、搜索结果结构、错误页、登录重定向页、空态页。
+已覆盖：签名（`class="sign"`，版块/帖子样本）、附件图（`attachimg`，帖子样本）、引用/图片/列表/点评（帖子样本）、筛选与排序条（版块样本）、搜索结果结构、错误页、登录重定向页、空态页、用户组权限页。
 
 **待补**（当前样本未出现，后续遇到对应帖时可增量采集）：代码块 `blockcode`、附件列表 `dl.tattl`、投票 `pollsm`、缩放图 `img.zoomfile`。
+
+## 采集脚本教训
+
+- 脱敏正则必须覆盖 **`&amp;formhash=`** 形态：退出链接等 `href` 属性里的 formhash 经 HTML 转义，`[?&]formhash=` 匹配不到（2026-11-27 用户组页批次曾泄漏 `6769da07`，已全量补脱敏并复查全部存量 fixtures）。稳妥做法是落盘前直接按值全局替换，或统一 `formhash=[a-f0-9]+`。
+- 用户组页三表并排（标签 47 行 + 值表 48 行）：值表比标签表多出的是首部附加行（我的主用户组 = 标题行 + 「里程: N」行；晋级用户组 = 「您升級到此用戶組還需里程 N」行），对齐时整体后移一行。

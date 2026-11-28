@@ -1,6 +1,7 @@
 package me.jbusdriver.modern.ui.forum
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,6 +96,7 @@ fun ForumThreadListScreen(
     title: String,
     typeId: Int? = null,
     onThreadClick: (Int) -> Unit,
+    onOpenUserSpace: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
     val viewModel: ForumThreadListViewModel =
@@ -252,7 +254,8 @@ fun ForumThreadListScreen(
                                 items(state.threads, key = { it.tid }) { thread ->
                                     ThreadCard(
                                         thread = thread,
-                                        onClick = { onThreadClick(thread.tid) })
+                                        onClick = { onThreadClick(thread.tid) },
+                                        onUserClick = { onOpenUserSpace(thread.authorUid) })
                                 }
                                 if (state.isLoadingMore) {
                                     item {
@@ -351,7 +354,11 @@ private fun threadOrderLabel(order: ForumThreadOrder): String = when (order) {
 }
 
 @Composable
-private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
+private fun ThreadCard(
+    thread: ForumThread,
+    onClick: () -> Unit,
+    onUserClick: () -> Unit = {}
+) {
     Card(
         onClick = onClick,
         modifier = Modifier
@@ -373,7 +380,11 @@ private fun ThreadCard(thread: ForumThread, onClick: () -> Unit) {
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        // uid 缺失(解析兜底 0)时不可点
+                        .let { m ->
+                            if (thread.authorUid > 0) m.clickable(onClick = onUserClick) else m
+                        },
                     contentScale = ContentScale.Crop
                 )
                 Column(modifier = Modifier.weight(1f)) {

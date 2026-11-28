@@ -1,0 +1,796 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>用戶組 - 老司機論壇</title>
+<meta name="keywords" content="" />
+<meta name="description" content=",老司機論壇" />
+	
+<base href="https://www.javbus.com/forum/" /><link rel="stylesheet" type="text/css" href="data/cache/style_2_common.css?uWI" /><link rel="stylesheet" type="text/css" href="data/cache/style_2_home_spacecp.css?uWI" /><script src="template/javbus/images/js/jquery-4.4.1.min.js" type="text/javascript"></script>
+    <script src="template/javbus/images/js/common.min.js" type="text/javascript"></script>
+        <script language="javascript" type="text/javascript">
+            function killErrors() {
+                return true;
+             }
+           window.onerror = killErrors;
+        </script>
+
+<link rel="stylesheet" href="template/javbus/images/iconfont/iconfont.css">
+<script type="text/javascript">var STYLEID = '2', STATICURL = 'static/', IMGDIR = 'template/javbus/images/common', VERHASH = 'uWI', charset = 'utf-8', discuz_uid = '999999', cookiepre = '4fJN_2132_', cookiedomain = '', cookiepath = '/', showusercard = '1', attackevasive = '0', disallowfloat = 'newthread|reply', creditnotice = '1|里程|,2|金錢|', defaultstyle = '', REPORTURL = 'aHR0cHM6Ly93d3cuamF2YnVzLmNvbS9mb3J1bS9ob21lLnBocD9tb2Q9c3BhY2VjcCZhYz11c2VyZ3JvdXAmZ2lkPTIx', SITEURL = 'https://www.javbus.com/forum/', JSPATH = 'static/js/', CSSPATH = 'data/cache/style_', DYNAMICURL = '';</script>
+<script src="static/js/common.js?uWI" type="text/javascript"></script>
+    <meta name="renderer" content="webkit">
+<meta name="application-name" content="老司機論壇" />
+<meta name="msapplication-tooltip" content="老司機論壇" />
+<meta name="msapplication-task" content="name=老司機論壇;action-uri=https://www.javbus.com/forum/forum.php;icon-uri=https://www.javbus.com/forum/template/javbus/images/common/bbs.ico" />
+    <link rel="preconnect" href="https://poweredby.jads.co" crossorigin>
+    <link rel="dns-prefetch" href="https://poweredby.jads.co">    
+<script src="static/js/home.js?uWI" type="text/javascript"></script>
+    	<link rel="stylesheet" type="text/css" href="template/javbus/common/custom.css?v=9.3" />
+        <link rel="stylesheet" type="text/css" href="/css/css-slider.css?v=3.10" />
+
+</head>
+
+<body id="nv_home" class="pg_spacecp" onkeydown="if(event.keyCode==27) return false;">
+<div id="append_parent"></div><div id="ajaxwaitid"></div>
+<ul id="myprompt_menu" class="p_pop" style="display: none;">
+<li><a href="home.php?mod=space&amp;do=pm" id="pm_ntc" style="background-repeat: no-repeat; background-position: 0 50%;"><em class="prompt_news_0"></em>消息</a></li>
+<li><a href="home.php?mod=follow&amp;do=follower"><em class="prompt_follower_0"></em>新聽眾</a></li>
+<li class="ignore_noticeli"><a href="javascript:;" onClick="setcookie('ignore_notice', 1);hideMenu('myprompt_menu')" title="暫不提醒"><em class="ignore_notice"></em></a></li>
+</ul>
+<ul id="myitem_menu" class="p_pop" style="display: none;">
+<li><a href="forum.php?mod=guide&amp;view=my">帖子</a></li>
+<li><a href="home.php?mod=space&amp;do=favorite&amp;view=me">收藏</a></li>
+<li><a href="home.php?mod=space&amp;do=friend">好友</a></li>
+</ul>
+<div id="qmenu_menu" class="p_pop " style="display: none;">
+<ul class="cl nav"><li><a href="forum.php?mod=guide&view=my" style="background-image:url(/forum/static/image/feed/thread_b.png) !important">帖子</a></li>
+<li><a href="home.php?mod=space&do=favorite&view=me" style="background-image:url(/forum/static/image/feed/favorite_b.png) !important">收藏</a></li>
+<li><a href="home.php?mod=magic" style="background-image:url(/forum/static/image/feed/magic_b.png) !important">道具</a></li>
+<li><a href="home.php?mod=medal" style="background-image:url(/forum/static/image/feed/medal_b.png) !important">勳章</a></li>
+<li><a href="home.php?mod=task" style="background-image:url(/forum/static/image/feed/task_b.png) !important">任務</a></li>
+</ul>
+<div id="fjump_menu" class="btda"></div></div>
+<div class="wp cl">
+      </div>
+
+<script type="text/javascript">
+function searchs(obj){
+var searchval = document.getElementById(obj).value;
+if(searchval=='')
+{
+   return false;
+}
+else
+{
+window.open("../search/"+encodeURIComponent(searchval.replace(/ /g,"+"))+"&parent=ce");
+}
+}
+
+document.onkeydown=function(event){
+var e = event || window.event;
+if(e && e.keyCode==13){
+searchs('search-input');
+}
+}
+</script>
+
+<div id="toptb" class="cl jav-nav">
+<div class="wp">
+<div class="z">
+                <ul>
+                	<li><a class="jav-logo" href="/"><img src="static/image/common/logo_javbus.png"></a></li>
+                    <div class="jav-form-group">
+                    <input id="search-input" class="jav-form" placeholder="搜尋 識別碼, 影片, 演員">
+                    <button class="jav-button" type="submit" onClick="searchs('search-input')">搜尋</button>
+                    </div>
+                	<li class="nav-title nav-inactive"><a href="/">有碼</a></li>
+                    <li class="nav-title nav-inactive"><a href="/uncensored">無碼</a></li>
+                    <li class="nav-title nav-inactive"><a href="https://javbus.hair">歐美</a></li>
+                    <li class="nav-title nav-active"><a href="/forum/" style="color:#555; background-color:#DBDBDB; height:20px; width:28px; margin:0; padding:15px;">論壇</a></li>
+                    <li class="nav-title nav-inactive"><a href="/genre">類別</a></li>
+                    <li class="nav-title nav-inactive"><a href="/actresses">女優</a></li>
+                </ul>                                        
+</div>
+</div><div class="login-wrap y">
+<div class="menu-heading">         
+   <span  class="avatar-pic"><a href="home.php?mod=space&amp;uid=999999"><img src="https://uc.javbus22.com/uc/data/avatar/000/72/01/10_avatar_small.jpg" onerror="this.onerror=null;this.src='https://uc.javbus22.com/uc/images/noavatar_small.gif'" /></a>
+      </span>  
+   <span class="member-name"><a href="home.php?mod=space&amp;uid=999999" target="_blank" title="訪問我的空間">fixture_user</a> </span>
+   <span class="angle"></span>
+</div>
+     
+<div class="menu-body">
+   <div class="menu-body-panel login-detail-wrap">
+      <i class="icon icon-arrow-t"></i>
+       <div class="item">
+         <a href="javascript:;" id="qmenu" onmouseover="delayShow(this, function () {showMenu({'ctrlid':'qmenu','pos':'34!','ctrlclass':'a','duration':2});showForummenu(0);})">快捷導航</a>
+      </div>
+  
+
+      <div class="item">
+      <a id="nte_menu" href="home.php?mod=space&amp;do=notice" class="notification">提醒</a></li>
+      </div>
+
+      <div class="item">
+      <a id="msg_menu" href="home.php?mod=space&amp;do=pm" class="msg">消息</a> 
+  </div>
+      
+      <div class="item">
+      <a id="msg_menu" href="search.php?mod=forum" class="msg">搜索</a> 
+  </div>      
+
+  
+   
+
+
+   
+    
+
+ 
+     
+      
+ 
+ <div class="item">
+   <a href="home.php?mod=spacecp">設置</a>
+     </div>
+
+<div class="item">
+<a href="member.php?mod=logging&amp;action=logout&amp;formhash=fixt4hash">退出</a>
+    </div>
+
+    </div>
+  </div>
+
+</div>
+
+        
+</div><div class="bcpic2">
+    <div class="ad-box">
+        <div id="kok" class="ad-item">
+            <div class='csslider1 autoplay'>
+            <input name="cs_anchor1" id='cs_play1' type="radio" class='cs_anchor' checked>
+            <ul>
+                <li class="cs_skeleton"><img src="/forum/data/attachment/forum/ads/zo_20261125_2.jpg" style="width: 100%;"></li>
+                <li class="num0 img slide"><a href="https://280163.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261125_2.jpg" /></a></li>
+                <li class="num1 img slide"><a href="https://280163.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261125_5.jpg" /></a></li>
+                <li class="num2 img slide"><a href="https://280163.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261125_1.jpg" /></a></li>
+                <li class="num3 img slide"><a href="https://280163.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261125_3.jpg" /></a></li>
+                <li class="num4 img slide"><a href="https://280163.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261125_4.jpg" /></a></li>
+            </ul>		
+            </div>
+        </div>
+        <div id="tb" class="ad-item">
+            <div class='csslider1 autoplay'>
+            <input name="cs_anchor2" id='cs_play2' type="radio" class='cs_anchor' checked>
+            <ul>
+                <li class="cs_skeleton"><img src="/forum/data/attachment/forum/ads/od_20261125_3.jpg" style="width: 100%;"></li>
+                <li class="num0 img slide"><a href="https://www.9t5wbc.vip:8443/?agent_code=2943" target="_blank"><img src="/forum/data/attachment/forum/ads/od_20261125_3.jpg" /></a></li>
+                <li class="num1 img slide"><a href="https://www.9t5wbc.vip:8443/?agent_code=2943" target="_blank"><img src="/forum/data/attachment/forum/ads/od_20261125_2.jpg" /></a></li>
+                <li class="num2 img slide"><a href="https://www.9t5wbc.vip:8443/?agent_code=2943" target="_blank"><img src="/forum/data/attachment/forum/ads/od_20261125_4.jpg" /></a></li>
+                <li class="num3 img slide"><a href="https://www.9t5wbc.vip:8443/?agent_code=2943" target="_blank"><img src="/forum/data/attachment/forum/ads/od_20261125_1.jpg" /></a></li>
+                <li class="num4 img slide"><a href="https://www.9t5wbc.vip:8443/?agent_code=2943" target="_blank"><img src="/forum/data/attachment/forum/ads/od_20261125_5.jpg" /></a></li>
+            </ul>
+            </div>    
+        </div>
+    </div>
+</div>
+
+		</div>
+<div id="wp" class="wp"><div id="pt" class="bm cl">
+<div class="z">
+<a href="./" class="nvhm" title="首頁">老司機論壇</a> <em>&rsaquo;</em>
+<a href="home.php?mod=spacecp">設置</a> <em>&rsaquo;</em>用戶組
+</div>
+</div>
+<div id="ct" class="ct2_a wp cl">
+<div class="mn">
+<div class="bm bw0">
+<h1 class="mt">用戶組
+</h1>
+<!--don't close the div here--><ul class="tb cl">
+<li class="y showmenu" id="gmy" onmouseover="showMenu(this.id)"><a href="home.php?mod=spacecp&amp;ac=usergroup">我的用戶組</a></li>
+<li class="y a showmenu" id="gupgrade" onmouseover="showMenu(this.id)"><a>晉級用戶組</a></li>
+<li class="y showmenu" id="guser" onmouseover="showMenu(this.id)"><a>普通用戶組</a></li>
+<li class="y showmenu"id="gadmin" onmouseover="showMenu(this.id)"><a>站點管理組</a></li>
+<li class="a"><a href="home.php?mod=spacecp&amp;ac=usergroup">我的用戶組</a></li>
+<li ><a href="home.php?mod=spacecp&amp;ac=usergroup&amp;do=list">購買用戶組</a></li>
+<li><a href="home.php?mod=spacecp&amp;ac=usergroup&amp;do=forum">我的老司機論壇權限</a></li>
+</ul><div class="tdats">
+<table cellpadding="0" cellspacing="0" class="tdat">
+<tr><th class="c0">&nbsp;</th></tr>
+<tr><th class="alt">&nbsp;</th></tr>
+<tbody class="ca">
+<tr><td>用戶級別</td></tr><tr class="alt">
+<td>訪問論壇</td>
+</tr>
+<tr >
+<td>閱讀權限</td>
+</tr>
+<tr class="alt">
+<td>隱身</td>
+</tr>
+<tr >
+<td>使用搜索</td>
+</tr>
+<tr class="alt">
+<td>自定義頭銜</td>
+</tr>
+<tr >
+<td>發帖不受限制</td>
+</tr>
+<tr class="alt">
+<td>允許發短消息</td>
+</tr>
+<tr >
+<td>允許加好友</td>
+</tr>
+<tr class="alt">
+<td>查看統計數據報表</td>
+</tr>
+<tr >
+<td>允許使用應用</td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>帖子相關</th>
+</tr>
+<tbody class="cb"><tr class="alt">
+<td>發新話題</td>
+</tr>
+<tr >
+<td>發表回復</td>
+</tr>
+<tr class="alt">
+<td>發起投票</td>
+</tr>
+<tr >
+<td>參與投票</td>
+</tr>
+<tr class="alt">
+<td>發表懸賞</td>
+</tr>
+<tr >
+<td>發表活動</td>
+</tr>
+<tr class="alt">
+<td>發表辯論</td>
+</tr>
+<tr >
+<td>發表交易</td>
+</tr>
+<tr class="alt">
+<td>允許 @ 的人數</td>
+</tr>
+<tr >
+<td>允許設置回帖獎勵</td>
+</tr>
+<tr class="alt">
+<td>允許使用標籤</td>
+</tr>
+<tr >
+<td>允許創建淘專輯的數量</td>
+</tr>
+<tr class="alt">
+<td>最大簽名長度</td>
+</tr>
+<tr >
+<td>簽名中使用編輯器代碼</td>
+</tr>
+<tr class="alt">
+<td>簽名中使用 [img] 代碼</td>
+</tr>
+<tr >
+<td>主題評價影響值</td>
+</tr>
+<tr class="alt">
+<td>允許參與評分</td>
+</tr>
+<tr >
+<td>允許參與點評</td>
+</tr>
+<tr class="alt">
+<td>允許使用多媒體代碼</td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>家園相關</th>
+</tr>
+<tbody class="cc"><tr class="alt">
+<td>允許打招呼</td>
+</tr>
+<tr >
+<td>允許表態</td>
+</tr>
+<tr class="alt">
+<td>發表留言/評論</td>
+</tr>
+<tr >
+<td>空間大小</td>
+</tr>
+<tr class="alt">
+<td>單張圖片最大尺寸</td>
+</tr>
+</tbody>
+
+
+<tr class="alt h">
+<th>附件相關</th>
+</tr>
+<tbody class="cd"><tr class="alt">
+<td>下載附件</td>
+</tr>
+<tr >
+<td>查看圖片</td>
+</tr>
+<tr class="alt">
+<td>上傳附件</td>
+</tr>
+<tr >
+<td>上傳圖片</td>
+</tr>
+<tr class="alt">
+<td>允許設置附件權限</td>
+</tr>
+<tr >
+<td>單個最大附件尺寸</td>
+</tr>
+<tr class="alt">
+<td>每天最大附件總尺寸</td>
+</tr>
+<tr >
+<td>每天最大附件數量</td>
+</tr>
+<tr class="alt">
+<td>附件類型</td>
+</tr>
+</tbody>
+</table>
+<table cellpadding="0" cellspacing="0" class="tdat tfx">
+<tr>
+<th class="c0"><h4>我的主用戶組 - 路人乘客</h4></th>
+</tr>
+<tr>
+<th class="alt"><span class="notice">里程: 6</span></th>
+</tr><tr><td></td></tr>
+<tbody class="ca"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+10</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+允許搜索帖子內容</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>路人乘客</th>
+</tr>
+<tbody class="cb"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+3</td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+5</td>
+</tr>
+<tr class="alt">
+<td>
+0 字節
+</td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
++1</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>路人乘客</th>
+</tr>
+<tbody class="cc"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+沒有限制</td>
+</tr>
+<tr class="alt">
+<td>
+沒有限制</td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>路人乘客</th>
+</tr>
+<tbody class="cd"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+1000 KB</td>
+</tr>
+<tr class="alt">
+<td>
+沒有限制</td>
+</tr>
+<tr >
+<td>
+沒有限制</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" /></td>
+</tr>
+</tbody></table>
+<ul id="tba" class="tb c2">
+<li id="c2">晉級用戶組 - 路人乘客</li>
+</ul>
+<div class="tscr">
+<table cellpadding="0" cellspacing="0" class="tdat">
+<tr>
+<th class="alt h">
+<span class="notice">里程下限 0</span>
+</th>
+</tr><tr><td></td></tr>
+<tbody class="ca"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+10</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+允許搜索帖子內容</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>路人乘客</th>
+</tr>
+<tbody class="cb"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+3</td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+5</td>
+</tr>
+<tr class="alt">
+<td>
+0 字節
+</td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
++1</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>路人乘客</th>
+</tr>
+<tbody class="cc"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+沒有限制</td>
+</tr>
+<tr class="alt">
+<td>
+沒有限制</td>
+</tr>
+</tbody>
+
+<tr class="alt h">
+<th>路人乘客</th>
+</tr>
+<tbody class="cd"><tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" /></td>
+</tr>
+<tr >
+<td>
+1000 KB</td>
+</tr>
+<tr class="alt">
+<td>
+沒有限制</td>
+</tr>
+<tr >
+<td>
+沒有限制</td>
+</tr>
+<tr class="alt">
+<td>
+<img src="template/javbus/images/common/data_invalid.gif" /></td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<img src="template/javbus/images/common/data_valid.gif" alt="data_valid" class="vm" /> 表示有權操作&nbsp;
+<img src="template/javbus/images/common/data_invalid.gif" alt="data_invalid" class="vm" /> 表示無權操作
+<div id="gmy_menu" class="p_pop" style="display:none"><a href="home.php?mod=spacecp&ac=usergroup">路人乘客</a></div>
+<div id="gupgrade_menu" class="p_pop" style="display:none"><a href="home.php?mod=spacecp&ac=usergroup&gid=9">限制會員</a><a href="home.php?mod=spacecp&ac=usergroup&gid=21" class="xi1">路人乘客</a><a href="home.php?mod=spacecp&ac=usergroup&gid=10">駕校學員</a><a href="home.php?mod=spacecp&ac=usergroup&gid=11">實習司機</a><a href="home.php?mod=spacecp&ac=usergroup&gid=12">新手上路</a><a href="home.php?mod=spacecp&ac=usergroup&gid=13">普通司機</a><a href="home.php?mod=spacecp&ac=usergroup&gid=14">老司機</a><a href="home.php?mod=spacecp&ac=usergroup&gid=15">飆車黨</a><a href="home.php?mod=spacecp&ac=usergroup&gid=22">車神</a></div>
+<div id="guser_menu" class="p_pop" style="display:none"><a href="home.php?mod=spacecp&ac=usergroup&gid=4">禁止發言</a><a href="home.php?mod=spacecp&ac=usergroup&gid=5">禁止訪問</a><a href="home.php?mod=spacecp&ac=usergroup&gid=6">禁止 IP</a><a href="home.php?mod=spacecp&ac=usergroup&gid=7">遊客</a><a href="home.php?mod=spacecp&ac=usergroup&gid=8">等待驗證會員</a><a href="home.php?mod=spacecp&ac=usergroup&gid=20">QQ遊客</a></div>
+<div id="gadmin_menu" class="p_pop" style="display:none"><a href="home.php?mod=spacecp&ac=usergroup&gid=1">管理員</a><a href="home.php?mod=spacecp&ac=usergroup&gid=2">超級版主</a><a href="home.php?mod=spacecp&ac=usergroup&gid=3">版主</a><a href="home.php?mod=spacecp&ac=usergroup&gid=16">實習版主</a><a href="home.php?mod=spacecp&ac=usergroup&gid=17">網站編輯</a><a href="home.php?mod=spacecp&ac=usergroup&gid=18">信息監察員</a><a href="home.php?mod=spacecp&ac=usergroup&gid=19">審核員</a></div>
+</div>
+</div>
+<div class="appl"><div class="tbn">
+<h2 class="mt bbda">設置</h2>
+<ul>
+<li><a href="home.php?mod=spacecp&amp;ac=avatar">修改頭像</a></li>
+<li><a href="home.php?mod=spacecp&amp;ac=profile">個人資料</a></li>
+<li><a href="home.php?mod=spacecp&amp;ac=credit">里程</a></li>
+<li class="a"><a href="home.php?mod=spacecp&amp;ac=usergroup">用戶組</a></li>
+<li><a href="home.php?mod=spacecp&amp;ac=privacy">隱私篩選</a></li>
+
+<li><a href="home.php?mod=spacecp&amp;ac=profile&amp;op=password">密碼安全</a></li>
+
+</ul>
+</div></div>
+</div>
+</div>
+
+
+<div class="jav-footer">
+<p>
+<a href="/doc/terms" target="_blank" title="">Terms</a> / 
+<a href="/doc/privacy" target="_blank" title="">Privacy</a> / 
+<a href="/doc/usc" target="_blank" title="">2257</a> / 
+<a href="http://www.rtalabel.org/" target="_blank" title="">RTA</a> / 
+<a href="/?cshow=1" target="_blank" title="">廣告投放</a> / 
+<a href="/?cshow=2" target="_blank" title="">聯絡我們</a>
+                <br>
+Copyright © 2013 JavBus. All Rights Reserved. All other trademarks and copyrights are the property of their respective holders. The reviews and comments expressed at or through this website are the opinions of the individual author and do not reflect the opinions or views of JavBus. JavBus is not responsible for the accuracy of any of the information supplied here.
+</p>
+</div> 
+
+<script src="home.php?mod=spacecp&ac=pm&op=checknewpm&rand=1795749643" type="text/javascript"></script>
+<div class="focus plugin" id="ip_notice"></div>
+<script type="text/javascript">ipNotice();</script>
+
+<div class="biaoqi-fix-area">
+<a id="moquu_top" href="javascript:void(0)" style="display: none;"></a>
+</div>
+
+</body>
+</html>

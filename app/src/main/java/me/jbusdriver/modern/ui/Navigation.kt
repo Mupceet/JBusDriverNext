@@ -312,6 +312,9 @@ fun JBusNavigation(
                         onThreadClick = { tid ->
                             backStack.add(RouteForumThreadDetail(tid))
                         },
+                        onOpenUserSpace = { uid ->
+                            backStack.add(RouteUserSpace(uid))
+                        },
                         onBack = { backStack.removeLastOrNull() }
                     )
                 }
