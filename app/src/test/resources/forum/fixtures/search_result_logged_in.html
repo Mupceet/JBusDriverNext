@@ -1,0 +1,666 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>搜索 - 老司機論壇</title>
+<meta name="keywords" content="" />
+<meta name="description" content=",老司機論壇" />
+	
+<base href="https://www.javbus.com/forum/" /><link rel="stylesheet" type="text/css" href="data/cache/style_2_common.css?uWI" /><link rel="stylesheet" type="text/css" href="data/cache/style_2_search_forum.css?uWI" /><script src="template/javbus/images/js/jquery-4.4.1.min.js" type="text/javascript"></script>
+    <script src="template/javbus/images/js/common.min.js" type="text/javascript"></script>
+        <script language="javascript" type="text/javascript">
+            function killErrors() {
+                return true;
+             }
+           window.onerror = killErrors;
+        </script>
+
+<link rel="stylesheet" href="template/javbus/images/iconfont/iconfont.css">
+<script type="text/javascript">var STYLEID = '2', STATICURL = 'static/', IMGDIR = 'template/javbus/images/common', VERHASH = 'uWI', charset = 'utf-8', discuz_uid = '999999', cookiepre = '4fJN_2132_', cookiedomain = '', cookiepath = '/', showusercard = '1', attackevasive = '0', disallowfloat = 'newthread|reply', creditnotice = '1|里程|,2|金錢|', defaultstyle = '', REPORTURL = 'aHR0cHM6Ly93d3cuamF2YnVzLmNvbS9mb3J1bS9zZWFyY2gucGhwP21vZD1mb3J1bSZzZWFyY2hpZD0yNDUyJm9yZGVyYnk9bGFzdHBvc3QmYXNjZGVzYz1kZXNjJnNlYXJjaHN1Ym1pdD15ZXMma3c9JUU1JTg4JTg2JUU0JUJBJUFC', SITEURL = 'https://www.javbus.com/forum/', JSPATH = 'static/js/', CSSPATH = 'data/cache/style_', DYNAMICURL = '';</script>
+<script src="static/js/common.js?uWI" type="text/javascript"></script>
+</head>
+
+<body id="nv_search" onkeydown="if(event.keyCode==27) return false;">
+<div id="append_parent"></div><div id="ajaxwaitid"></div>
+<div id="toptb" class="cl">
+<div class="z">
+<a href="./" id="navs" class="showmenu xi2" onmouseover="showMenu(this.id)">返回首頁</a>
+</div>
+<div class="y">
+<strong><a href="home.php?mod=space" target="_blank" title="訪問我的空間">nyoxwws</a></strong>
+<a href="javascript:;" id="myspace" class="showmenu xi2" onmouseover="showMenu(this.id);">快捷導航</a>
+<a href="home.php?mod=spacecp">設置</a>
+<a href="member.php?mod=logging&amp;action=logout&amp;formhash=fixt4hash">退出</a>
+</div>
+</div>
+<div class="p_pop h_pop" id="mn_userapp_menu" style="display: none"></div>
+<ul class="p_pop h_pop" id="navs_menu" style="display: none">            <li id="mn_forum" ><a href="forum.php" hidefocus="true" title="BBS"  >老司機論壇<span>BBS</span></a></li>                                    </ul>
+
+<ul id="myspace_menu" class="p_pop" style="display:none;"><li><a href="forum.php?mod=guide&view=my" style="background-image:url(/forum/static/image/feed/thread_b.png) !important">帖子</a></li>
+<li><a href="home.php?mod=space&do=favorite&view=me" style="background-image:url(/forum/static/image/feed/favorite_b.png) !important">收藏</a></li>
+<li><a href="home.php?mod=magic" style="background-image:url(/forum/static/image/feed/magic_b.png) !important">道具</a></li>
+<li><a href="home.php?mod=medal" style="background-image:url(/forum/static/image/feed/medal_b.png) !important">勳章</a></li>
+<li><a href="home.php?mod=task" style="background-image:url(/forum/static/image/feed/task_b.png) !important">任務</a></li>
+</ul><div id="ct" class="cl w">
+<div class="mw">
+<form class="searchform" method="post" autocomplete="off" action="search.php?mod=forum" onsubmit="if($('scform_srchtxt')) searchFocus($('scform_srchtxt'));">
+<input type="hidden" name="formhash" value="fixt4hash" /><table id="scform" class="mbm" cellspacing="0" cellpadding="0">
+<tr>
+<td><h1><a href="search.php" title="老司機論壇"><img src="template/javbus/images/common/logo_sc_s.png" alt="老司機論壇" /></a></h1></td>
+<td>
+<div id="scform_tb" class="cl">
+<span class="y">
+<a href="javascript:;" id="quick_sch" class="showmenu" onmouseover="delayShow(this);">快速</a>
+<a href="search.php?mod=forum&amp;adv=yes&amp;srchtxt=%E5%88%86%E4%BA%AB">高級</a>
+</span>
+<a href="search.php?mod=forum&amp;srchtxt=%E5%88%86%E4%BA%AB&amp;searchsubmit=yes" class="a">帖子</a><a href="search.php?mod=user&amp;srchtxt=%E5%88%86%E4%BA%AB&amp;searchsubmit=yes">用戶</a></div>
+<table id="scform_form" cellspacing="0" cellpadding="0">
+<tr>
+<td class="td_srchtxt"><input type="text" id="scform_srchtxt" name="srchtxt" size="45" maxlength="40" value="分享" tabindex="1" x-webkit-speech speech /><script type="text/javascript">initSearchmenu('scform_srchtxt');$('scform_srchtxt').focus();</script></td>
+<td class="td_srchbtn"><input type="hidden" name="searchsubmit" value="yes" /><button type="submit" id="scform_submit" class="schbtn"><strong>搜索</strong></button></td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+<ul id="quick_sch_menu" class="p_pop" style="display: none;">
+<li><a href="search.php?mod=forum&amp;srchfrom=3600&amp;searchsubmit=yes">1 小時以內的新帖</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=14400&amp;searchsubmit=yes">4 小時以內的新帖</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=28800&amp;searchsubmit=yes">8 小時以內的新帖</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=86400&amp;searchsubmit=yes">24 小時以內的新帖</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=604800&amp;searchsubmit=yes">1 周內帖子</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=2592000&amp;searchsubmit=yes">1 月內帖子</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=15552000&amp;searchsubmit=yes">6 月內帖子</a></li>
+<li><a href="search.php?mod=forum&amp;srchfrom=31536000&amp;searchsubmit=yes">1 年內帖子</a></li>
+</ul>
+</form>
+
+<div class="tl">
+<div class="sttl mbn">
+<h2>結果: <em>找到 「<span class="emfont">分享</span>」 相關內容 300 個</em> </h2>
+</div><div class="slst mtw" id="threadlist" >
+<ul><li class="pbw" id="179227">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179227&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>几个平时找片 找女优的工具 自己用还是能解决大半问...</a>
+</h3>
+<p class="xg1">22 個回復 - 7223 次查看</p>
+<p>1.avsan.av      这也站立大佬<strong><font color="#ff0000">分享</font></strong>的 比较好用（找影片的）
+
+2.pornfaceid  这是根据图片找女优的 日本 欧美都行 （找女优的）
+
+3.tineye          这个了找一些网图 ins 写真 好用（但是要挂魔法）
+
+不知道<strong><font color="#ff0000">分享</font></strong>这些 ...</p>
+<p>
+<span>2026-11-24 01:56</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=586952" target="_blank"><span class="__cf_email__" data-cfemail="8cbebbbdb9beb8b4bcb8bdccfdfda2ef">[email&#160;protected]</span></a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179174">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179174&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>几个骚妻的动图。等有新战袍再发。</a>
+</h3>
+<p class="xg1">49 個回復 - 19269 次查看</p>
+<p>好久没出现了更新一下。等有新战袍再发。
+
+
+让她抬个屁股她还要扭几下真的骚
+
+
+
+水是真的多，屁股是真的圆，紧也是真的紧
+
+
+
+最后站起蹲着蹬，带着肛塞给她灌满了
+
+
+
+
+
+下面是库存
+
+上次没看仔细的给你们掰开来看肛 ...</p>
+<p>
+<span>2026-11-23 20:08</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=680169" target="_blank">zsytsqdtl</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179122">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179122&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >给大家<strong><font color="#ff0000">分享</font></strong>一个最近看到的欧美新网黄博主，只能说白嫩。</a>
+</h3>
+<p class="xg1">92 個回復 - 70071 次查看</p>
+<p>给大家<strong><font color="#ff0000">分享</font></strong>个最近看到的欧美新网黄博主，只能说白嫩。颜值的话要看个人了，我觉得的还不错，只是感觉脸是真的这么白，还是化妆化的太白了。但胜在年轻，嫩是真的嫩。感觉现在的网黄博主，拍片都要带点剧情了，现在总 ...</p>
+<p>
+<span>2026-11-22 00:09</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=525001" target="_blank">zhnic12</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="177903">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=177903&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >在看短剧<strong><font color="#ff0000">分享</font></strong>交流11.16[少妇白洁][弱点][存在感][金牌经纪...</a>
+</h3>
+<p class="xg1">308 個回復 - 366275 次查看</p>
+<p>近期AI成人短剧合集推荐（家庭伦理 / 熟女 / 禁忌向为主）。
+提示：H剧的老毛病，很多剧的水印很多，已经尽力挑无三方水印，但自带水印没办法。
+更新太快，没做最新截图。有些剧不是不继续发，是原作者不更新了。短 ...</p>
+<p>
+<span>2026-10-25 17:06</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=58621" target="_blank">sq879dd</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179220">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179220&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >再<strong><font color="#ff0000">分享</font></strong>些自己收藏的片子</a>
+</h3>
+<p class="xg1">4 個回復 - 2774 次查看</p>
+<p>最近LTX很火 上千部都合集都出来了 于是搜了下硬盘里的存货结果几乎都没有  搜的时候顺便快速重温了下就发出来 万一有大佬看上了就有LTX版了
+324SRTD-0193 挺有气质的眼镜娘 乍一看文质彬彬实则骚的很 最可惜的是踩 ...</p>
+<p>
+<span>2026-11-23 23:44</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=545801" target="_blank">异次元de日常</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179044">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179044&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >求大佬<strong><font color="#ff0000">分享</font></strong>LTX破解版的人妖伪娘作品</a>
+</h3>
+<p class="xg1">35 個回復 - 9064 次查看</p>
+<p>求大佬<strong><font color="#ff0000">分享</font></strong>一下LTX版本的人妖伪娘作品，最喜欢妖干女的，站内有TCD系列，但找不到LTX破解版，求大佬指点迷津</p>
+<p>
+<span>2026-11-20 13:34</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=277547" target="_blank">Nightwish</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=36" target="_blank" class="xi1">求福利帶帶我</a></span>
+</p>
+</li>
+<li class="pbw" id="179158">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179158&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >求大佬们<strong><font color="#ff0000">分享</font></strong>一些这类的剧情片</a>
+</h3>
+<p class="xg1">46 個回復 - 28585 次查看</p>
+<p><strong><font color="#ff0000">分享</font></strong>一下今天突然发现水娃的这个剧情片：水娃暗恋办公室的同事童帝很久了，童帝女朋友也是同事，她就主动接近童帝骑坐在他身上，然后掀开裙子拨开内裤让鸡巴插进逼逼里，有了裙子的遮挡大庭广众下当着童帝女友偷偷做 ...</p>
+<p>
+<span>2026-11-22 19:49</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=296141" target="_blank">wsxstzz</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=36" target="_blank" class="xi1">求福利帶帶我</a></span>
+</p>
+</li>
+<li class="pbw" id="178930">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178930&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>粉嫩女友</a>
+</h3>
+<p class="xg1">222 個回復 - 132291 次查看</p>
+<p>女友99年 比较瘦 168 85斤 性欲不是很强 但是下面很紧 
+每次都得慢慢往里面塞 不然进不去 说实话太紧的并不舒服
+图片来自于自拍视频截图
+
+
+
+
+
+
+
+
+
+
+ ...</p>
+<p>
+<span>2026-11-18 11:41</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=335407" target="_blank">hailangppp1</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178830">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178830&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >【LTX作品<strong><font color="#ff0000">分享</font></strong>】-彩月七緒-8部-纯磁力-不用115网盘</a>
+</h3>
+<p class="xg1">38 個回復 - 59637 次查看</p>
+<p>以下资源全部来自比特彗星种子市场的检索功能
+
+彩月七緒本期包含8部作品
+
+彩月七緒 START-315 在职场上也毫不顾忌、被发现就糟了的场所里含泪深喉 让年下部下沉沦的能干女主任
+
+
+彩月七緒 CJOD-535 自拍温泉 淫乱的 ...</p>
+<p>
+<span>2026-11-15 21:37</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=363864" target="_blank">jzy0412</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178999">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178999&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >请教群里的老司机:怎么能找个靠谱的固炮？诚邀讨论<strong><font color="#ff0000">分享</font></strong></a>
+</h3>
+<p class="xg1">68 個回復 - 13373 次查看</p>
+<p>如题。起因是自己老大不小了，三十郎当岁，唯一谈了个对象处了4个月，开始挺上头，床也上了，但后来觉得两个人最终走不到一起，而且感觉处对象是个很浪费时间浪费精力的事，所以散了。最近觉得这个年纪小老弟再不用 ...</p>
+<p>
+<span>2026-11-19 15:35</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=554252" target="_blank">Knight0527</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178924">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178924&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >我来<strong><font color="#ff0000">分享</font></strong>一下我的虾片半自动化流程吧</a>
+</h3>
+<p class="xg1">5 個回復 - 3426 次查看</p>
+<p>▍前言─────────────────────────
+写这个帖子之前，我还在犹豫要不要把偷懒搞片的方法<strong><font color="#ff0000">分享</font></strong>出来。千头万绪，不知道从哪儿说起，请大家轻喷，权当抛砖引玉。
+现在只能感叹一句：AI 真的太好 ...</p>
+<p>
+<span>2026-11-17 23:50</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=423728" target="_blank">azhuzong</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179073">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179073&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >给大家<strong><font color="#ff0000">分享</font></strong>一个可以抓取网页视频的插件</a>
+</h3>
+<p class="xg1">24 個回復 - 13333 次查看</p>
+<p>看在线视频的时候肯定被那缓冲一秒一卡的搞崩溃很多年了，今天自己在网上下了给插件，这样看在线视频的时候就可以提取视频链接，把视频下载下来看，这样就不用一直看着它在那转圈圈了
+搜索浏览器插件“猫抓”Cat Cat ...</p>
+<p>
+<span>2026-11-20 22:18</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=141558" target="_blank">cncy948</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179037">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179037&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>骚妻丝腿丝足</a>
+</h3>
+<p class="xg1">45 個回復 - 20429 次查看</p>
+<p><strong><font color="#ff0000">分享</font></strong>结束，谢谢，请 @管理员 删帖</p>
+<p>
+<span>2026-11-20 21:55</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=661801" target="_blank">魔人啾啾</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179128">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179128&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >新片JUR-887字幕（+<strong><font color="#ff0000">分享</font></strong>字幕提取）</a>
+</h3>
+<p class="xg1">22 個回復 - 22895 次查看</p>
+<p>专门提取了隔壁出的硬字幕，一并食用
+
+
+
+https://gofile.io/d/5a95d59b-9425-4bf6-bd52-e1557e781351
+-----------------------------------------------
+推荐个硬字幕提取软件，免费而且傻瓜式提取，准确率 ...</p>
+<p>
+<span>2026-11-22 10:46</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=38419" target="_blank">aaa1300</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178400">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178400&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >花钱买的，免费<strong><font color="#ff0000">分享</font></strong>，本地Ai无限生成文生图，图生视频。</a>
+</h3>
+<p class="xg1">160 個回復 - 83132 次查看</p>
+<p>一直都非常羡慕论坛里面那些会用AI作图做视频的兄弟们，可惜本人自己菜鸟一枚，自己就是想用最简单的方法，就可以生成自己想要的视频。苦苦学了很久comfyui，但是太难了。我相信论坛里面有很多和我一样的兄弟们。我 ...</p>
+<p>
+<span>2026-11-6 00:21</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=213252" target="_blank">thethe0</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179026">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179026&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>一个极品绿衣战神</a>
+</h3>
+<p class="xg1">88 個回復 - 93649 次查看</p>
+<p>这次没之前那么bbw了，没有找到是谁 看半个面相有点和之前八字奶 kimheezkk有点像 但是又没八的那么厉害
+有没有大神识别下
+ 视频不长 2分多钟 女上
+链接: https://pan.baidu.com/s/1JGDihJODf03AruVPDpvirw?pwd=f28h ...</p>
+<p>
+<span>2026-11-20 00:37</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=500853" target="_blank">kkhist</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="177886">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=177886&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >给大家<strong><font color="#ff0000">分享</font></strong>个近期看到的欧美女优，感觉还有像印度那边的</a>
+</h3>
+<p class="xg1">68 個回復 - 64625 次查看</p>
+<p>给大家<strong><font color="#ff0000">分享</font></strong>个近期看到的欧美女优，感觉还有像印度那边的，长相不是很惊艳，但表情和剧情感觉还是不错的，然后就继续找了看还有没有其他的片，发现好多还是要收费才有全片，不然都有时长减少，但是不影响观看。最后找 ...</p>
+<p>
+<span>2026-10-25 02:18</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=525001" target="_blank">zhnic12</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179029">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179029&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >【LTX作品<strong><font color="#ff0000">分享</font></strong>】野々宮みさと</a>
+</h3>
+<p class="xg1">12 個回復 - 15967 次查看</p>
+<p>自己第一次做种
+使用比特彗星
+
+
+
+
+本人臀控，非常喜欢这类作品，自己用LTX跑了一下 效果很好 跑了6个小时，还可以接受，影片大小2GB（不是用高清片源跑的）
+
+magnet:?xt=urn:btih:d85a5eb72d83d7a194c305f69e361ee94 ...</p>
+<p>
+<span>2026-11-20 21:53</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=56690" target="_blank">miosser</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179071">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179071&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>结束</a>
+</h3>
+<p class="xg1">31 個回復 - 18689 次查看</p>
+<p><strong><font color="#ff0000">分享</font></strong>结束</p>
+<p>
+<span>2026-11-20 21:59</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=310262" target="_blank">280260</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178698">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178698&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >目前最全，2000+LTX资源汇总，<strong><font color="#ff0000">分享</font></strong>比赛到此宣布结束！！！</a>
+</h3>
+<p class="xg1">262 個回復 - 191424 次查看</p>
+<p>太强了，我只是让AI试试能能爬别人的数据，没想到直接偷家了！！
+
+
+
+
+顺口问了一句，直接直接给我干完了，我擦！太给力了！
+
+
+
+
+
+加了3个传送门，javbus要梯子，另外两个镜像网址能直接开
+
+
+
+解压密码：javbus
+https ...</p>
+<p>
+<span>2026-11-12 13:47</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=363864" target="_blank">jzy0412</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178927">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178927&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>两个新游戏游戏《不良婚姻惩罚师》《尘埃帝国》</a>
+</h3>
+<p class="xg1">49 個回復 - 44359 次查看</p>
+<p>《不良婚姻惩罚师》最近在刚把Steam最近新作《不良婚姻惩罚师》玩完，这游戏本来吸引我的是因为它的画风，自带官方中文，还是无码作品，没想到玩下来还是挺有意思的。你表面上是接婚姻调查的正经侦探，背地里 ...</p>
+<p>
+<span>2026-11-18 00:20</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=66256" target="_blank">wanghao991</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178840">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178840&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>一个自己录制的VAM 180VR视频 + DLSS5</a>
+</h3>
+<p class="xg1">15 個回復 - 17616 次查看</p>
+<p>之前发过一篇关于VAM的帖子，看很多老哥很有兴趣，今天花了几个小时录制了一个场景视频，由于我的时间和电脑配置有限，所以只录制了5K清晰度，和正常在头显里看vam的清晰度没法比，开了DLSS5，不知道是不是因为帧生 ...</p>
+<p>
+<span>2026-11-16 03:12</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=114803" target="_blank">bbdrd</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178843">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178843&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>一波GPT做出来的图片，已经是尽全力绕开GPT的合求了</a>
+</h3>
+<p class="xg1">66 個回復 - 48089 次查看</p>
+<p>已经用GPT做了一段时间图片了，本来是一时兴起想给小说做点插图的，但是GPT的合规还是比较严格的，专业的AI工具又用不好，只能尽量试着尝试绕开GPT的合规，到后来小说没咋写，图片倒是做了不少，现在挑一些个人觉得 ...</p>
+<p>
+<span>2026-11-16 04:17</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=323812" target="_blank">apachegogo</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178031">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178031&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >三胎骚妻平日服装做爱<strong><font color="#ff0000">分享</font></strong>（素）</a>
+</h3>
+<p class="xg1">111 個回復 - 80138 次查看</p>
+<p>户外突然想看看骚妻穿什么内衣，结果这么素的内衣，没意思~和骚妻在一起十一二年了才敢这么弄，前几年可不敢在外面这么操作会被打的哈哈哈哈，不过前几年骚妻也不会穿这么低胸的衣服
+镇楼图～
+
+
+这期就是平常和骚妻 ...</p>
+<p>
+<span>2026-11-18 14:43</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=324952" target="_blank">XIaOHuIcai</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178678">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178678&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >这几天展了点老婆照片<strong><font color="#ff0000">分享</font></strong>给大家（绝对偷拍）</a>
+</h3>
+<p class="xg1">93 個回復 - 75678 次查看</p>
+<p>各种视角都是偷拍的，干她的时候和她商量拍一下胸，立马让我滚，再说就生气了，只能偷拍，刚干完还让我来第二次，说刚爽我就射了，无奈啊，真是力不从心呐，想找几个兄弟群P她，商量过多少次，也让她看过好多群P的片 ...</p>
+<p>
+<span>2026-11-12 00:57</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=289035" target="_blank">zhang4888</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="179041">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=179041&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >求大佬们<strong><font color="#ff0000">分享</font></strong>下Rio（柚木ティナ）LTX版本</a>
+</h3>
+<p class="xg1">7 個回復 - 8671 次查看</p>
+<p>谢谢论坛大佬<strong><font color="#ff0000">分享</font></strong>了 不管是啥番号 都行 论坛那合集我也下过</p>
+<p>
+<span>2026-11-20 12:15</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=332575" target="_blank">sd21080503</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=36" target="_blank" class="xi1">求福利帶帶我</a></span>
+</p>
+</li>
+<li class="pbw" id="178601">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178601&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>用AI做的免费视频压缩软件！</a>
+</h3>
+<p class="xg1">56 個回復 - 50023 次查看</p>
+<p>现在论坛上好多优秀的ltx影片，但是动不动就八九个G，硬盘实在扛不住。之前使用格式工厂和小丸工具压缩，但速度太慢了，而且压缩的时候电脑巨卡。无奈用AI自制了一个，虽然界面简单，但速度快，画面质量也尚可，现在 ...</p>
+<p>
+<span>2026-11-10 14:52</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=660931" target="_blank">guadalang</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178788">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178788&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>淫荡老婆丝袜包臀裙，来玩截图射屏意淫</a>
+</h3>
+<p class="xg1">83 個回復 - 62015 次查看</p>
+<p></p>
+<p>
+<span>2026-11-14 19:24</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=104291" target="_blank">qw9898ss</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="177953">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=177953&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" ><strong><font color="#ff0000">分享</font></strong>一下这半年的看得过去的探花</a>
+</h3>
+<p class="xg1">380 個回復 - 256048 次查看</p>
+<p>距离上次发帖，也是过去快半年了，上期说国庆发新帖的，结果国庆直接摆了，最近也是把这半年的片子整理了一下，希望各位能get到吧，这期还是以从夯到拉来锐评一下（纯个人见解，大佬轻喷），那废话不多说，开始这次 ...</p>
+<p>
+<span>2026-10-26 23:20</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=458149" target="_blank">沉默DE小金鱼</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+<li class="pbw" id="178681">
+<h3 class="xs3">
+<a href="forum.php?mod=viewthread&amp;tid=178681&amp;highlight=%E5%88%86%E4%BA%AB" target="_blank" >【LTX作品<strong><font color="#ff0000">分享</font></strong>】 10部神木丽作品<strong><font color="#ff0000">分享</font></strong> 可用连杰无云盘</a>
+</h3>
+<p class="xg1">82 個回復 - 148009 次查看</p>
+<p>资源为本人全网收集 画质不一 且无指定资源 
+本人自几个月前看了START-255 ，对神木丽这种类型的老师完全无法抵抗 LTX出来之前就全收集出一部便收集一部 LTX出现之后也是在慢慢收集 到了好几部 但START-255始终没 ...</p>
+<p>
+<span>2026-11-12 11:25</span>
+ -
+<span>
+<a href="home.php?mod=space&amp;uid=589888" target="_blank">htqL793</a>
+</span>
+ -
+<span><a href="forum.php?mod=forumdisplay&amp;fid=2" target="_blank" class="xi1">老司機福利討論區</a></span>
+</p>
+</li>
+</ul>
+</div>
+<div class="pgs cl mbm"><div class="pg"><strong>1</strong><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=2">2</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=3">3</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=4">4</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=5">5</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=6">6</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=7">7</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=8">8</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=9">9</a><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=10">10</a><label><input type="text" name="custompage" class="px" size="2" title="輸入頁碼，按回車快速跳轉" value="1" onkeydown="if(event.keyCode==13) {window.location='search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page='+this.value;; doane(event);}" /><span title="共 10 頁"> / 10 頁</span></label><a href="search.php?mod=forum&searchid=2452&orderby=lastpost&ascdesc=desc&searchsubmit=yes&amp;page=2" class="nxt">下一頁</a></div></div></div>
+</div>
+</div>
+
+<div id="ft" class="w cl">
+<em>Powered by <strong><a href="http://www.discuz.net" target="_blank">Discuz!</a></strong> <em>X3.4</em></em> &nbsp;
+<em>Copyright &copy; 2001-2021, Tencent Cloud.</em>
+<span class="pipe">|</span><a href="javascript:;"  onclick="showWindow('miscreport', 'misc.php?mod=report&url='+REPORTURL);return false;">舉報</a><span class="pipe">|</span><strong><a href="forum.php" target="_blank">老司機論壇</a></strong>
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="home.php?mod=spacecp&ac=pm&op=checknewpm&rand=1795485362" type="text/javascript"></script>
+</body>
+</html>

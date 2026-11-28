@@ -1,0 +1,690 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>老司機論壇</title>
+<meta name="keywords" content="老司機論壇" />
+<meta name="description" content="老司機論壇 " />
+	
+<base href="https://www.javbus.com/forum/" /><link rel="stylesheet" type="text/css" href="data/cache/style_2_common.css?uWI" /><link rel="stylesheet" type="text/css" href="data/cache/style_2_forum_index.css?uWI" /><script src="template/javbus/images/js/jquery-4.4.1.min.js" type="text/javascript"></script>
+    <script src="template/javbus/images/js/common.min.js" type="text/javascript"></script>
+        <script language="javascript" type="text/javascript">
+            function killErrors() {
+                return true;
+             }
+           window.onerror = killErrors;
+        </script>
+
+<link rel="stylesheet" href="template/javbus/images/iconfont/iconfont.css">
+<script type="text/javascript">var STYLEID = '2', STATICURL = 'static/', IMGDIR = 'template/javbus/images/common', VERHASH = 'uWI', charset = 'utf-8', discuz_uid = '999999', cookiepre = '4fJN_2132_', cookiedomain = '', cookiepath = '/', showusercard = '1', attackevasive = '0', disallowfloat = 'newthread|reply', creditnotice = '1|里程|,2|金錢|', defaultstyle = '', REPORTURL = 'aHR0cHM6Ly93d3cuamF2YnVzLmNvbS9mb3J1bS9mb3J1bS5waHA=', SITEURL = 'https://www.javbus.com/forum/', JSPATH = 'static/js/', CSSPATH = 'data/cache/style_', DYNAMICURL = '';</script>
+<script src="static/js/common.js?uWI" type="text/javascript"></script>
+    <meta name="renderer" content="webkit">
+<meta name="application-name" content="老司機論壇" />
+<meta name="msapplication-tooltip" content="老司機論壇" />
+<meta name="msapplication-task" content="name=老司機論壇;action-uri=https://www.javbus.com/forum/forum.php;icon-uri=https://www.javbus.com/forum/template/javbus/images/common/bbs.ico" />
+    <link rel="preconnect" href="https://poweredby.jads.co" crossorigin>
+    <link rel="dns-prefetch" href="https://poweredby.jads.co">    
+<script src="static/js/forum.js?uWI" type="text/javascript"></script>
+    	<link rel="stylesheet" type="text/css" href="template/javbus/common/custom.css?v=9.3" />
+        <link rel="stylesheet" type="text/css" href="/css/css-slider.css?v=3.10" />
+
+</head>
+
+<body id="nv_forum" class="pg_index" onkeydown="if(event.keyCode==27) return false;">
+<div id="append_parent"></div><div id="ajaxwaitid"></div>
+<ul id="myprompt_menu" class="p_pop" style="display: none;">
+<li><a href="home.php?mod=space&amp;do=pm" id="pm_ntc" style="background-repeat: no-repeat; background-position: 0 50%;"><em class="prompt_news_0"></em>消息</a></li>
+<li><a href="home.php?mod=follow&amp;do=follower"><em class="prompt_follower_0"></em>新聽眾</a></li>
+<li class="ignore_noticeli"><a href="javascript:;" onClick="setcookie('ignore_notice', 1);hideMenu('myprompt_menu')" title="暫不提醒"><em class="ignore_notice"></em></a></li>
+</ul>
+<ul id="myitem_menu" class="p_pop" style="display: none;">
+<li><a href="forum.php?mod=guide&amp;view=my">帖子</a></li>
+<li><a href="home.php?mod=space&amp;do=favorite&amp;view=me">收藏</a></li>
+<li><a href="home.php?mod=space&amp;do=friend">好友</a></li>
+</ul>
+<div id="qmenu_menu" class="p_pop " style="display: none;">
+<ul class="cl nav"><li><a href="forum.php?mod=guide&view=my" style="background-image:url(/forum/static/image/feed/thread_b.png) !important">帖子</a></li>
+<li><a href="home.php?mod=space&do=favorite&view=me" style="background-image:url(/forum/static/image/feed/favorite_b.png) !important">收藏</a></li>
+<li><a href="home.php?mod=magic" style="background-image:url(/forum/static/image/feed/magic_b.png) !important">道具</a></li>
+<li><a href="home.php?mod=medal" style="background-image:url(/forum/static/image/feed/medal_b.png) !important">勳章</a></li>
+<li><a href="home.php?mod=task" style="background-image:url(/forum/static/image/feed/task_b.png) !important">任務</a></li>
+</ul>
+<div id="fjump_menu" class="btda"></div></div>
+<div class="wp cl">
+      </div>
+
+<script type="text/javascript">
+function searchs(obj){
+var searchval = document.getElementById(obj).value;
+if(searchval=='')
+{
+   return false;
+}
+else
+{
+window.open("../search/"+encodeURIComponent(searchval.replace(/ /g,"+"))+"&parent=ce");
+}
+}
+
+document.onkeydown=function(event){
+var e = event || window.event;
+if(e && e.keyCode==13){
+searchs('search-input');
+}
+}
+</script>
+
+<div id="toptb" class="cl jav-nav">
+<div class="wp">
+<div class="z">
+                <ul>
+                	<li><a class="jav-logo" href="/"><img src="static/image/common/logo_javbus.png"></a></li>
+                    <div class="jav-form-group">
+                    <input id="search-input" class="jav-form" placeholder="搜尋 識別碼, 影片, 演員">
+                    <button class="jav-button" type="submit" onClick="searchs('search-input')">搜尋</button>
+                    </div>
+                	<li class="nav-title nav-inactive"><a href="/">有碼</a></li>
+                    <li class="nav-title nav-inactive"><a href="/uncensored">無碼</a></li>
+                    <li class="nav-title nav-inactive"><a href="https://javbus.hair">歐美</a></li>
+                    <li class="nav-title nav-active"><a href="/forum/" style="color:#555; background-color:#DBDBDB; height:20px; width:28px; margin:0; padding:15px;">論壇</a></li>
+                    <li class="nav-title nav-inactive"><a href="/genre">類別</a></li>
+                    <li class="nav-title nav-inactive"><a href="/actresses">女優</a></li>
+                </ul>                                        
+</div>
+</div><div class="login-wrap y">
+<div class="menu-heading">         
+   <span  class="avatar-pic"><a href="home.php?mod=space&amp;uid=999999"><img src="https://uc.javbus22.com/uc/data/avatar/000/72/01/10_avatar_small.jpg" onerror="this.onerror=null;this.src='https://uc.javbus22.com/uc/images/noavatar_small.gif'" /></a>
+      </span>  
+   <span class="member-name"><a href="home.php?mod=space&amp;uid=999999" target="_blank" title="訪問我的空間">nyoxwws</a> </span>
+   <span class="angle"></span>
+</div>
+     
+<div class="menu-body">
+   <div class="menu-body-panel login-detail-wrap">
+      <i class="icon icon-arrow-t"></i>
+       <div class="item">
+         <a href="javascript:;" id="qmenu" onmouseover="delayShow(this, function () {showMenu({'ctrlid':'qmenu','pos':'34!','ctrlclass':'a','duration':2});showForummenu();})">快捷導航</a>
+      </div>
+  
+
+      <div class="item">
+      <a id="nte_menu" href="home.php?mod=space&amp;do=notice" class="notification">提醒</a></li>
+      </div>
+
+      <div class="item">
+      <a id="msg_menu" href="home.php?mod=space&amp;do=pm" class="msg">消息</a> 
+  </div>
+      
+      <div class="item">
+      <a id="msg_menu" href="search.php?mod=forum" class="msg">搜索</a> 
+  </div>      
+
+  
+   
+
+
+   
+    
+
+ 
+     
+      
+ 
+ <div class="item">
+   <a href="home.php?mod=spacecp">設置</a>
+     </div>
+
+<div class="item">
+<a href="member.php?mod=logging&amp;action=logout&amp;formhash=fixt4hash">退出</a>
+    </div>
+
+    </div>
+  </div>
+
+</div>
+
+        
+</div><div class="bcpic2">
+    <div class="ad-box">
+        <div id="kok" class="ad-item">
+            <div class='csslider1 autoplay'>
+            <input name="cs_anchor1" id='cs_play1' type="radio" class='cs_anchor' checked>
+            <ul>
+                <li class="cs_skeleton"><img src="/forum/data/attachment/forum/ads/zo_20261121_4.jpg" style="width: 100%;"></li>
+                <li class="num0 img slide"><a href="https://263518.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261121_4.jpg" /></a></li>
+                <li class="num1 img slide"><a href="https://263518.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261121_5.jpg" /></a></li>
+                <li class="num2 img slide"><a href="https://263518.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261121_2.jpg" /></a></li>
+                <li class="num3 img slide"><a href="https://263518.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261121_1.jpg" /></a></li>
+                <li class="num4 img slide"><a href="https://263518.zoty2531.com:35559/?i_code=3354655" target="_blank"><img src="/forum/data/attachment/forum/ads/zo_20261121_3.jpg" /></a></li>
+            </ul>		
+            </div>
+        </div>
+        <div id="bob" class="ad-item">
+            <div class='csslider1 autoplay'>
+            <input name="cs_anchor2" id='cs_play2' type="radio" class='cs_anchor' checked>
+            <ul>
+                <li class="cs_skeleton"><img src="/forum/data/attachment/forum/ads/xk_20261121_4.jpg" style="width: 100%;"></li>
+                <li class="num0 img slide"><a href="https://www.k6edf6.vip:6022/?agent_code=50291851" target="_blank"><img src="/forum/data/attachment/forum/ads/xk_20261121_4.jpg" /></a></li>
+                <li class="num1 img slide"><a href="https://www.k6edf6.vip:6022/?agent_code=50291851" target="_blank"><img src="/forum/data/attachment/forum/ads/xk_20261121_5.jpg" /></a></li>
+                <li class="num2 img slide"><a href="https://www.k6edf6.vip:6022/?agent_code=50291851" target="_blank"><img src="/forum/data/attachment/forum/ads/xk_20261121_3.jpg" /></a></li>
+                <li class="num3 img slide"><a href="https://www.k6edf6.vip:6022/?agent_code=50291851" target="_blank"><img src="/forum/data/attachment/forum/ads/xk_20261121_2.jpg" /></a></li>
+                <li class="num4 img slide"><a href="https://www.k6edf6.vip:6022/?agent_code=50291851" target="_blank"><img src="/forum/data/attachment/forum/ads/xk_20261121_1.jpg" /></a></li>
+            </ul>
+            </div>    
+        </div>
+    </div>
+</div>
+
+		</div>
+<div id="wp" class="wp"><div id="pt" class="bm cl">
+<div class="y" style=" position:relative; top:3px;">
+<div id="an">
+<dl class="cl">
+<dt class="z xw1">公告:&nbsp;</dt>
+<dd>
+<div id="anc"><ul id="ancl"><li><span><a href="forum.php?mod=announcement&id=6" target="_blank" class="xi2">請勿無中生友，幫別人求福利</a></span><em>(2020-7-27)</em></li><li><span><a href="forum.php?mod=announcement&id=4" target="_blank" class="xi2">請勿在回帖中搭車求福利，如有需要請自行發帖</a></span><em>(2017-9-17)</em></li><li><span><a href="forum.php?mod=announcement&id=2" target="_blank" class="xi2">禁止復讀機行爲，請勿複製粘貼回帖！</a></span><em>(2017-8-30)</em></li><li><span><a href="forum.php?mod=announcement&id=1" target="_blank" class="xi2">禁止兒童色情、人獸交的圖片和影片發佈！</a></span><em>(2017-8-30)</em></li><li><span><a href="forum.php?mod=announcement&id=5" target="_blank" class="xi2">簽名檔圖片 請厚道附上番號</a></span><em>(2017-12-22)</em></li></ul></div>
+</dd>
+</dl>
+</div>
+<script type="text/javascript">announcement();</script>
+</div>
+<div class="z" style="width:1180px; margin-top:-27px;">
+<a href="./" class="nvhm" title="首頁">老司機論壇</a><em>&raquo;</em><a href="forum.php">老司機論壇</a></div>
+<div class="z"></div>
+</div>
+
+
+<style id="diy_style" type="text/css"></style>
+
+<div class="wp">
+<!--[diy=diy1]--><div id="diy1" class="area"></div><!--[/diy]-->
+</div>
+
+<script type="text/javascript">
+function modFoat(v) {
+ var _max = parseInt(v) + 1;
+ if( _max - v < 1 ) {
+  return _max;
+ }
+ return v;
+} 
+
+
+function setTab1(name,cursel,n){
+ for(i=1;i<=n;i++){
+  var menu=$(name+i);
+  if(!menu)break;
+  var con=$("con_"+name+"_"+i);
+  if(i==cursel){
+  menu.className="dspanonhover";
+  con.style.display="";
+  }else{
+  menu.className="dspan";
+  con.style.display="none";
+  }
+ }
+}
+
+</script>
+
+<div id="ct" class="wp cl ct2">
+
+<div id="chart" class="bm bw0 cl">
+<p class="chart z">今日: <em>395</em><span class="pipe">|</span>昨日: <em>1505</em><span class="pipe">|</span>帖子: <em>4518290</em><span class="pipe">|</span>會員: <em>633136</em><span class="pipe">|</span>歡迎新會員: <em><a href="home.php?mod=space&amp;username=564" target="_blank" class="xi2">564</a></em></p>
+<div class="y">
+                <a href="search.php?mod=forum" title="搜索" class="xi2"><img src="static/image/common/icon_search.png" style=" position:relative; top:2px;"> 搜索</a>
+                <span class="pipe">|</span>
+               	<a href="home.php?mod=space&amp;do=favorite&amp;view=me" title="我的收藏" class="xi2"><img src="static/image/feed/favorite.gif" style=" position:relative; top:2px;"> 我的收藏</a>
+                <span class="pipe">|</span>
+<a href="forum.php?mod=guide&amp;view=my" title="我的帖子" class="xi2"><img src="static/image/feed/article.gif" style=" position:relative; top:3px;"> 我的帖子</a><span class="pipe">|</span><a href="forum.php?mod=guide&amp;view=sofa" title="搶沙發" class="xi2"><img src="static/image/feed/comment.gif" style=" position:relative; top:4px;"> 搶沙發</a></div>
+</div>
+
+<div class="mn">
+
+
+<div style="height: 290px;padding:15px; margin-bottom: 15px;background:#fff;">
+<div style=" float:left; text-align:center; width: 365px; height:290px;">
+<!--[diy=biaoqicn2]--><div id="biaoqicn2" class="area"><div id="frameWBhWu7" class="cl_frame_bm frame move-span cl frame-1"><div id="frameWBhWu7_left" class="column frame-1-c"><div id="frameWBhWu7_left_temp" class="move-span temp"></div><div id="portal_block_5" class="cl_block_bm block move-span"><div id="portal_block_5_content" class="dxb_bc"><ul class="biaoqicn_player slidebox">
+<div class="biaoqicn_show slidebar"><a>1</a><a>2</a><a>3</a><a>4</a><a>5</a><a>6</a><a>7</a><a>8</a><a>9</a><a>10</a></div>
+<div class="biaoqicn_slide">
+<ul  class="slideshow"><li>
+<a href="forum.php?mod=viewthread&tid=179235" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/cf/cfa2caea704308af32ad552253032294.jpg" width="365" height="290" alt="极品98后小情侣，【南先生&amp;婷小姐】" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">极品98后小情侣，【南先生&amp;婷小姐】</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179228" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/10/10b3d26f885451bab871d1787b33253b.jpg" width="365" height="290" alt="哪位伯乐认识这匹漂亮的洋马" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">哪位伯乐认识这匹漂亮的洋马</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179227" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/f1/f15c49f8a578081125cd9253a901e378.jpg" width="365" height="290" alt="分享几个平时找片 找女优的工具 自己用还是能解决大半问..." /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">分享几个平时找片 找女优的工具 自己用还是</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179226" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/28/28eb023987c58dec6639240a3ec02e86.jpg" width="365" height="290" alt="看大神推荐突发发现少时的喜好，彦祖们来推荐" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">看大神推荐突发发现少时的喜好，彦祖们来推</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179222" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/ad/ad58f300150f9a576cdffb0447420155.jpg" width="365" height="290" alt="大神们进来看一下这是车牌号多少？" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">大神们进来看一下这是车牌号多少？</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179219" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/bf/bfa1fd7b3fcfa19d0d3f8e28a5a89fa0.jpg" width="365" height="290" alt="求这个情侣酒店开房偷拍" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">求这个情侣酒店开房偷拍</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179213" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/6a/6ab29e2e6e7926d80f185aedee64eeaa.jpg" width="365" height="290" alt="攒够金币又来给各位车神上难度咯" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">攒够金币又来给各位车神上难度咯</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179212" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/7f/7fe480dcb49efd0b8ad9ab3bed2a1801.jpg" width="365" height="290" alt="几年了第一次发贴，求此女主其它视频或后续，对话太真..." /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">几年了第一次发贴，求此女主其它视频或后续</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179210" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/41/414599a75dbe54c620bd6d202e721ee7.jpg" width="365" height="290" alt="东莞往事（四十一） 九十年代" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">东莞往事（四十一） 九十年代</P>
+</li><li>
+<a href="forum.php?mod=viewthread&tid=179177" target="_blank" class="biaoqicn_imga"><img src="data/attachment/block/3a/3a029894ad8ce11826a3d89f50567c6f.jpg" width="365" height="290" alt="《我的20年看片编年史》二、" /></a>
+<P class="kmbg"></P>
+<P class="biaoqicn_title">《我的20年看片编年史》二、</P>
+</li></ul>
+</div>
+</ul>
+<script type="text/javascript">
+runslideshow();
+</script></div></div></div></div></div><!--[/diy]-->
+</div>
+
+<div style="margin:0 0 0 380px; border: 1px solid #ddd;">
+<div class="new4_list_top">
+<ul>
+<li id="NewOne1"  class="dspanonhover" onmousemove="setTab1('NewOne',1,4)"><a name="1" style="cursor:pointer">最新主題</a></li>
+<li id="NewOne2"  class="dspan" onmousemove="setTab1('NewOne',2,4)"><a name="2" style="cursor:pointer">最新回復</a></li>
+<li id="NewOne3" class="dspan" onmousemove="setTab1('NewOne',3,4)"><a name="3" style="cursor:pointer">熱點話題</a></li>
+</ul>
+<div style="clear:both;"></div>
+</div>
+<div id="con_NewOne_1" >
+<div class="new4_con_list">
+<!--[diy=biaoqicn3]--><div id="biaoqicn3" class="area"><div id="frameH9wkK9" class="cl_frame_bm frame move-span cl frame-1"><div id="frameH9wkK9_left" class="column frame-1-c"><div id="frameH9wkK9_left_temp" class="move-span temp"></div><div id="portal_block_6" class="cl_block_bm block move-span"><div id="portal_block_6_content" class="dxb_bc"><div class="sideMenu"><h3 class="biaoqicn_list1"><em><a href="home.php?mod=space&uid=590139" target="_blank">zxra</a></em><a href="forum.php?mod=viewthread&tid=179235" title="极品98后小情侣，【南先生&amp;婷小姐】" target="_blank">极品98后小情侣，【南先生&amp;婷小姐】</a></h3><h3 class="biaoqicn_list2"><em><a href="home.php?mod=space&uid=662631" target="_blank">甜你的苞</a></em><a href="forum.php?mod=viewthread&tid=179234" title="大家现在用什么下载磁力？" target="_blank">大家现在用什么下载磁力？</a></h3><h3 class="biaoqicn_list3"><em><a href="home.php?mod=space&uid=276301" target="_blank">fallangle</a></em><a href="forum.php?mod=viewthread&tid=179228" title="哪位伯乐认识这匹漂亮的洋马" target="_blank">哪位伯乐认识这匹漂亮的洋马</a></h3><h3 class="biaoqicn_list4"><em><a href="home.php?mod=space&uid=586952" target="_blank"><span class="__cf_email__" data-cfemail="c5f7f2f4f0f7f1fdf5f1f485b4b4eba6">[email&#160;protected]</span></a></em><a href="forum.php?mod=viewthread&tid=179227" title="分享几个平时找片 找女优的工具 自己用还是能解决大半问..." target="_blank">分享几个平时找片 找女优的工具 自己用还是</a></h3><h3 class="biaoqicn_list5"><em><a href="home.php?mod=space&uid=594291" target="_blank">蔡风华</a></em><a href="forum.php?mod=viewthread&tid=179226" title="看大神推荐突发发现少时的喜好，彦祖们来推荐" target="_blank">看大神推荐突发发现少时的喜好，彦祖们来推</a></h3><h3 class="biaoqicn_list6"><em><a href="home.php?mod=space&uid=698412" target="_blank">涩君子</a></em><a href="forum.php?mod=viewthread&tid=179224" title="今年的GTA6真的是太顶了" target="_blank">今年的GTA6真的是太顶了</a></h3><h3 class="biaoqicn_list7"><em><a href="home.php?mod=space&uid=189092" target="_blank">xihaEdison</a></em><a href="forum.php?mod=viewthread&tid=179223" title="求やのあいり 矢野爱理的作品磁力链接" target="_blank">求やのあいり 矢野爱理的作品磁力链接</a></h3></div></div></div></div></div></div><!--[/diy]-->
+</div>
+</div>
+
+<div id="con_NewOne_2" style="display:none"> 
+<div class="new4_con_list">
+<!--[diy=biaoqicn4]--><div id="biaoqicn4" class="area"><div id="framerBu9Hf" class="cl_frame_bm frame move-span cl frame-1"><div id="framerBu9Hf_left" class="column frame-1-c"><div id="framerBu9Hf_left_temp" class="move-span temp"></div><div id="portal_block_7" class="cl_block_bm block move-span"><div id="portal_block_7_content" class="dxb_bc"><div class="sideMenu"><h3 class="biaoqicn_list1"><em><a href="home.php?mod=space&uid=590139" target="_blank">zxra</a></em><a href="forum.php?mod=viewthread&tid=179235" title="极品98后小情侣，【南先生&amp;婷小姐】" target="_blank">极品98后小情侣，【南先生&amp;婷小姐】</a></h3><h3 class="biaoqicn_list2"><em><a href="home.php?mod=space&uid=645031" target="_blank">依然丶Yui</a></em><a href="forum.php?mod=viewthread&tid=179205" title="AI存在感 零【11集】陈都灵" target="_blank">AI存在感 零【11集】陈都灵</a></h3><h3 class="biaoqicn_list3"><em><a href="home.php?mod=space&uid=501146" target="_blank">dachazi</a></em><a href="forum.php?mod=viewthread&tid=179219" title="求这个情侣酒店开房偷拍" target="_blank">求这个情侣酒店开房偷拍</a></h3><h3 class="biaoqicn_list4"><em><a href="home.php?mod=space&uid=276301" target="_blank">fallangle</a></em><a href="forum.php?mod=viewthread&tid=179228" title="哪位伯乐认识这匹漂亮的洋马" target="_blank">哪位伯乐认识这匹漂亮的洋马</a></h3><h3 class="biaoqicn_list5"><em><a href="home.php?mod=space&uid=589391" target="_blank">cddjj</a></em><a href="forum.php?mod=viewthread&tid=179212" title="几年了第一次发贴，求此女主其它视频或后续，对话太真..." target="_blank">几年了第一次发贴，求此女主其它视频或后续</a></h3><h3 class="biaoqicn_list6"><em><a href="home.php?mod=space&uid=458927" target="_blank">等等楼主</a></em><a href="forum.php?mod=viewthread&tid=179201" title="LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上悠亚 松下紗栄..." target="_blank">LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上</a></h3><h3 class="biaoqicn_list7"><em><a href="home.php?mod=space&uid=131642" target="_blank">15196169341</a></em><a href="forum.php?mod=viewthread&tid=179213" title="攒够金币又来给各位车神上难度咯" target="_blank">攒够金币又来给各位车神上难度咯</a></h3></div></div></div></div></div></div><!--[/diy]-->
+</div>
+</div>
+
+<div id="con_NewOne_3" style="display:none">
+<div class="new4_con_list">
+<!--[diy=biaoqicn5]--><div id="biaoqicn5" class="area"><div id="framektPtRI" class="cl_frame_bm frame move-span cl frame-1"><div id="framektPtRI_left" class="column frame-1-c"><div id="framektPtRI_left_temp" class="move-span temp"></div><div id="portal_block_8" class="cl_block_bm block move-span"><div id="portal_block_8_content" class="dxb_bc"><div class="sideMenu"><h3 class="biaoqicn_list1"><em><a href="home.php?mod=space&uid=128416" target="_blank">khlcc</a></em><a href="forum.php?mod=viewthread&tid=179112" title="连续4天和老婆做了5次之后，突然感觉没有性趣了" target="_blank">连续4天和老婆做了5次之后，突然感觉没有性</a></h3><h3 class="biaoqicn_list2"><em><a href="home.php?mod=space&uid=335407" target="_blank">hailangppp1</a></em><a href="forum.php?mod=viewthread&tid=178930" title="分享粉嫩女友" target="_blank">分享粉嫩女友</a></h3><h3 class="biaoqicn_list3"><em><a href="home.php?mod=space&uid=438312" target="_blank">ahai123</a></em><a href="forum.php?mod=viewthread&tid=178963" title="阳痿了应该看中医还是西医" target="_blank">阳痿了应该看中医还是西医</a></h3><h3 class="biaoqicn_list4"><em><a href="home.php?mod=space&uid=380924" target="_blank">jj139299123</a></em><a href="forum.php?mod=viewthread&tid=179125" title="[动图加载较久]出击深圳之跟大奶老师处成了朋友" target="_blank">[动图加载较久]出击深圳之跟大奶老师处成了</a></h3><h3 class="biaoqicn_list5"><em><a href="home.php?mod=space&uid=645031" target="_blank">依然丶Yui</a></em><a href="forum.php?mod=viewthread&tid=179097" title="笑死我了~【郭德纲和邓紫棋】！！" target="_blank">笑死我了~【郭德纲和邓紫棋】！！</a></h3><h3 class="biaoqicn_list6"><em><a href="home.php?mod=space&uid=479109" target="_blank">举杯亦无悔</a></em><a href="forum.php?mod=viewthread&tid=179072" title="干翻女人的神器" target="_blank">干翻女人的神器</a></h3><h3 class="biaoqicn_list7"><em><a href="home.php?mod=space&uid=172943" target="_blank">high_king</a></em><a href="forum.php?mod=viewthread&tid=178985" title="算还可以的车灯" target="_blank">算还可以的车灯</a></h3></div></div></div></div></div></div><!--[/diy]-->
+</div>
+</div>
+
+</div>
+</div>
+
+
+<!--[diy=diy_chart]--><div id="diy_chart" class="area"></div><!--[/diy]-->
+
+
+<div class="fl bm">
+<div class="bm bmw cl">
+<div class="bm_h cl">
+<span class="o">
+<img id="category_1_img" src="template/javbus/images/common/collapsed_no.gif" title="收起/展開" alt="收起/展開" onclick="toggle_collapse('category_1');" />
+</span>
+<h2><a href="forum.php?gid=1" style="">綜合交流區</a></h2>
+</div>
+<div id="category_1" style="">
+<table cellspacing="0" cellpadding="0" class="fl_tb">
+<tr><td class="fl_icn"  style="width: 50px;">
+<a href="forum.php?mod=forumdisplay&fid=2"><img src="data/attachment/common/c8/common_2_icon.png" align="left" alt="老司機福利討論區" /></a></td>
+<td>
+<h2><a href="forum.php?mod=forumdisplay&fid=2">老司機福利討論區</a><em class="xw0 xi1" title="今日"> (269)</em></h2>
+<p class="xg2">分享交流各種福利，年輕人一言不合就開車。</p></td>
+<td class="fl_i">
+<span class="xi2"><span title="40791">4萬</span></span><span class="xg1"> / <span title="2549060">254萬</span></span></td>
+<td class="fl_by">
+<div class="forumlist">
+<a href="forum.php?mod=redirect&amp;tid=179235&amp;goto=lastpost#lastpost" class="xi2">极品98后小情侣，【南先生&amp;婷小 ...</a> <cite><span title="2026-11-24 09:53">22&nbsp;秒前</span> <a href="home.php?mod=space&username=bzwujun">bzwujun</a></cite>
+</div>
+</td>
+</tr>
+<tr class="fl_row">
+<td class="fl_icn"  style="width: 50px;">
+<a href="forum.php?mod=forumdisplay&fid=36"><img src="data/attachment/common/19/common_36_icon.png" align="left" alt="求福利帶帶我" /></a></td>
+<td>
+<h2><a href="forum.php?mod=forumdisplay&fid=36">求福利帶帶我</a><em class="xw0 xi1" title="今日"> (124)</em></h2>
+<p class="xg2">求番號、求磁力、求女優、求圖片、求福利專區。上車刷卡，滴滴穴深卡！</p></td>
+<td class="fl_i">
+<span class="xi2"><span title="95227">9萬</span></span><span class="xg1"> / <span title="1939264">193萬</span></span></td>
+<td class="fl_by">
+<div class="forumlist">
+<a href="forum.php?mod=redirect&amp;tid=179219&amp;goto=lastpost#lastpost" class="xi2">求这个情侣酒店开房偷拍 ...</a> <cite><span title="2026-11-24 09:38">14&nbsp;分鐘前</span> <a href="home.php?mod=space&username=choudidi788">choudidi788</a></cite>
+</div>
+</td>
+</tr>
+<tr class="fl_row">
+<td class="fl_icn"  style="width: 50px;">
+<a href="forum.php?mod=forumdisplay&fid=37"><img src="data/attachment/common/a5/common_37_icon.png" align="left" alt="網站建議阿哩哩" /></a></td>
+<td>
+<h2><a href="forum.php?mod=forumdisplay&fid=37">網站建議阿哩哩</a><em class="xw0 xi1" title="今日"> (2)</em></h2>
+<p class="xg2">任何關於網站的建議都可在此發表，文明禮貌多學學</p></td>
+<td class="fl_i">
+<span class="xi2">2078</span><span class="xg1"> / <span title="29966">2萬</span></span></td>
+<td class="fl_by">
+<div class="forumlist">
+<a href="forum.php?mod=redirect&amp;tid=179215&amp;goto=lastpost#lastpost" class="xi2">沖田杏梨的样品图像都打不开了 ...</a> <cite><span title="2026-11-24 08:22">1&nbsp;小時前</span> <a href="home.php?mod=space&username=lancong369">lancong369</a></cite>
+</div>
+</td>
+</tr>
+<tr class="fl_row">
+</tr>
+</table>
+</div>
+</div>
+</div>
+
+<div class="fl bm">
+    <div class="bm bmw cl">
+        <div class="bm_h cl">
+        <h2><a href="forum.php?gid=1" style="">福利討論分類</a></h2>
+        </div>
+        <div id="category_1" style="">
+        <table cellspacing="0" cellpadding="0" class="fl_tb">
+        <tbody>
+
+        <tr><td class="fl_icn" style="width: 50px;">
+        <a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=8"><img src="template/javbus/images/icon/indexforum1.png" align="left" alt=""></a></td>
+        <td>
+        <h2><a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=8">日本AV</a></h2>
+        <p class="xg2">討論交流日本AV影片、日本女優、寫真女星。</p></td>
+        <td class="fl_i">
+       	</td>
+<td class="fl_by">
+        <!--[diy=indexforum1]--><div id="indexforum1" class="area"><div id="framet3Kv4L" class="frame move-span cl frame-1"><div id="framet3Kv4L_left" class="column frame-1-c"><div id="framet3Kv4L_left_temp" class="move-span temp"></div><div id="portal_block_17" class="block move-span"><div id="portal_block_17_content" class="dxb_bc"><div class="forumlist">
+<a href="forum.php?mod=viewthread&tid=179201" title="LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上悠亚 松下紗栄..." target="_self">LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上</a>
+<cite><span>	<span title="2026-11-24">1&nbsp;分鐘前</span></span> <a href="forum.php?mod=viewthread&tid=179201">等等楼主</a></cite>
+</div></div></div></div></div></div><!--[/diy]-->
+        </td>
+        </tr>
+
+        <tr><td class="fl_icn" style="width: 50px;">
+        <a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=9"><img src="template/javbus/images/icon/indexforum2.png" align="left" alt=""></a></td>
+        <td>
+        <h2><a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=9">韓國成人</a></h2>
+        <p class="xg2">分享交流韓國三級片、女團福利、韓國女明星、女主播。</p></td>
+        <td class="fl_i">
+       	</td>
+<td class="fl_by">
+        <!--[diy=indexforum2]--><div id="indexforum2" class="area"><div id="framelU5dIX" class="frame move-span cl frame-1"><div id="framelU5dIX_left" class="column frame-1-c"><div id="framelU5dIX_left_temp" class="move-span temp"></div><div id="portal_block_18" class="block move-span"><div id="portal_block_18_content" class="dxb_bc"><div class="forumlist">
+<a href="forum.php?mod=viewthread&tid=177927" title="韩国露脸甜妹" target="_self">韩国露脸甜妹</a>
+<cite><span>	<span title="2026-11-23">昨天&nbsp;23:31</span></span> <a href="forum.php?mod=viewthread&tid=177927">altisdavidho</a></cite>
+</div></div></div></div></div></div><!--[/diy]-->
+        </td>
+        </tr>
+
+        <tr><td class="fl_icn" style="width: 50px;">
+        <a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=10"><img src="template/javbus/images/icon/indexforum3.png" align="left" alt=""></a></td>
+        <td>
+        <h2><a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=10">歐美色情</a></h2>
+        <p class="xg2">分享交流歐美成人影片、寫真女星、歐美情色三級片</p></td>
+        <td class="fl_i">
+       	</td>
+<td class="fl_by">
+        <!--[diy=indexforum3]--><div id="indexforum3" class="area"><div id="frameCfM3Jx" class="frame move-span cl frame-1"><div id="frameCfM3Jx_left" class="column frame-1-c"><div id="frameCfM3Jx_left_temp" class="move-span temp"></div><div id="portal_block_20" class="block move-span"><div id="portal_block_20_content" class="dxb_bc"><div class="forumlist">
+<a href="forum.php?mod=viewthread&tid=179122" title="给大家分享一个最近看到的欧美新网黄博主，只能说白嫩。" target="_self">给大家分享一个最近看到的欧美新网黄博主，</a>
+<cite><span>	<span title="2026-11-24">半小時前</span></span> <a href="forum.php?mod=viewthread&tid=179122">zhnic12</a></cite>
+</div></div></div></div></div></div><!--[/diy]-->
+        </td>
+        </tr>        
+
+        <tr><td class="fl_icn" style="width: 50px;">
+        <a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=11"><img src="template/javbus/images/icon/indexforum4.png" align="left" alt=""></a></td>
+        <td>
+        <h2><a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=11">國產福利</a></h2>
+        <p class="xg2">国产自拍、各種門事件、福利姬、國模寫真、國產三級片。</p></td>
+        <td class="fl_i">
+       	</td>
+<td class="fl_by">
+        <!--[diy=indexforum4]--><div id="indexforum4" class="area"><div id="frameOV4g29" class="frame move-span cl frame-1"><div id="frameOV4g29_left" class="column frame-1-c"><div id="frameOV4g29_left_temp" class="move-span temp"></div><div id="portal_block_23" class="block move-span"><div id="portal_block_23_content" class="dxb_bc"><div class="forumlist">
+<a href="forum.php?mod=viewthread&tid=179175" title="高颜值女销售视频里面，这个男的不就是胡子吗！" target="_blank">高颜值女销售视频里面，这个男的不就是胡子</a>
+<cite><span>	<span title="2026-11-24">3&nbsp;小時前</span></span> <a href="forum.php?mod=viewthread&tid=179175">facebook2020</a></cite>
+</div></div></div></div></div></div><!--[/diy]-->
+        </td>
+        </tr>
+
+        <tr><td class="fl_icn" style="width: 50px;">
+        <a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=12"><img src="template/javbus/images/icon/indexforum5.png" align="left" alt=""></a></td>
+        <td>
+        <h2><a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=12">動漫遊戲</a></h2>
+        <p class="xg2">3D同人、新番、CG動畫、漫畫、成人遊戲HGame分享交流</p></td>
+        <td class="fl_i">
+       	</td>
+<td class="fl_by">
+        <!--[diy=indexforum5]--><div id="indexforum5" class="area"><div id="frame7pBB41" class="frame move-span cl frame-1"><div id="frame7pBB41_left" class="column frame-1-c"><div id="frame7pBB41_left_temp" class="move-span temp"></div><div id="portal_block_26" class="block move-span"><div id="portal_block_26_content" class="dxb_bc"><div class="forumlist">
+<a href="forum.php?mod=viewthread&tid=177903" title="在看短剧分享交流11.16[少妇白洁][弱点][存在感][金牌经纪..." target="_self">在看短剧分享交流11.16[少妇白洁][弱点][存</a>
+<cite><span>	<span title="2026-11-24">1&nbsp;小時前</span></span> <a href="forum.php?mod=viewthread&tid=177903">sq879dd</a></cite>
+</div></div></div></div></div></div><!--[/diy]-->
+        </td>
+        </tr>
+
+        <tr><td class="fl_icn" style="width: 50px;">
+        <a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=13"><img src="template/javbus/images/icon/indexforum6.png" align="left" alt=""></a></td>
+        <td>
+        <h2><a href="forum.php?mod=forumdisplay&amp;fid=2&amp;filter=typeid&amp;typeid=13">性息尋歡分享</a></h2>
+        <p class="xg2">全國狼友，樓鳳、桑拿、洗浴、兼職、尋歡性息交流分享</p></td>
+        <td class="fl_i">
+       	</td>
+<td class="fl_by">
+        <!--[diy=indexforum6]--><div id="indexforum6" class="area"><div id="frameiW7DJD" class="frame move-span cl frame-1"><div id="frameiW7DJD_left" class="column frame-1-c"><div id="frameiW7DJD_left_temp" class="move-span temp"></div><div id="portal_block_29" class="block move-span"><div id="portal_block_29_content" class="dxb_bc"><div class="forumlist">
+<a href="forum.php?mod=viewthread&tid=178166" title="修车防骗指南（二）老司机" target="_self">修车防骗指南（二）老司机</a>
+<cite><span>	<span title="2026-11-24">半小時前</span></span> <a href="forum.php?mod=viewthread&tid=178166">前程似锦老司机</a></cite>
+</div></div></div></div></div></div><!--[/diy]-->
+        </td>
+        </tr>        
+             
+        </tbody></table>
+        </div>
+    </div>
+</div>        
+
+<div class="wp mtn">
+<!--[diy=diy3]--><div id="diy3" class="area"></div><!--[/diy]-->
+</div>
+
+<div id="online" class="bm oll" style="border: 0;">
+<div class="bm_h" style="background: url(template/javbus/images/icon.png) no-repeat 0 -379px;height: 40px;line-height: 45px;padding: 0 0 5px 15px;margin: 0 24px;border: solid #F0F0F0;border-width: 0 0 1px;">
+<span class="o"><a href="forum.php?showoldetails=yes#online" title="收起/展開"><img src="template/javbus/images/common/collapsed_yes.gif" alt="收起/展開" /></a></span>
+<h3>
+<strong>
+在線會員
+</strong>
+<span class="xs1">- 總計 <strong>5506</strong> 人在線
+- 最高記錄是 <strong>74314</strong> 於 <strong>2026-11-17</strong>.</span>
+</h3>
+</div>
+</div>
+<div class="banner728">
+ 
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript" data-cfasync="false" async src="https://poweredby.jads.co/js/jads.js"></script><ins id="1024561" data-width="728" data-height="90"></ins><script type="text/javascript" data-cfasync="false" async>(adsbyjuicy = window.adsbyjuicy || []).push({"adzone":1024561});</script>
+
+
+
+
+
+
+</div>    </div>
+
+<div id="sd" class="sd sd_allbox">
+
+<div class="main-right-box cl"> 
+<!--[diy=biaoqicn_b_diy9]--><div id="biaoqicn_b_diy9" class="area"><div id="framee5JM74" class="cl_frame_bm frame move-span cl frame-1"><div id="framee5JM74_left" class="column frame-1-c"><div id="framee5JM74_left_temp" class="move-span temp"></div><div id="portal_block_4" class="cl_block_bm block move-span"><div id="portal_block_4_content" class="dxb_bc"><div class="main-right-p15">
+<h2 class="main-right-tit"><span>熱門主題</span></h2> 
+<div class="main-right-zuixin"><li class="bt1">
+  <div class="comment-info">
+        <table width="264" border="0">
+          <tr>
+          <td><div class="comment-info"><a href="home.php?mod=space&uid=590139" target="_blank"> <img src="https://uc.javbus22.com/uc/data/avatar/000/59/01/39_avatar_middle.jpg" alt="zxra"> </a> <a href="home.php?mod=space&uid=590139" target="_blank" class="comment-author">zxra</a></div></td>
+          <td rowspan="2" align="right">
+          <div class="diy-image-outer">
+		  	<a href="forum.php?mod=viewthread&tid=179183" target="_blank"><img src="data/attachment/block/cd/cde9ede16af36c0a0511b4d1f1201372.jpg" width="120" height="95" /></a>
+          </div>
+          </td>
+        </tr>
+        <tr>
+          <td><div class="comment-info">2026-11-23</div></td>
+          </tr>
+    </table>
+  </div>
+  <p class="comment-post"><a href="forum.php?mod=viewthread&tid=179183" target="_blank" title="退役模特娇妻【闪闪的邻妻无情后妈】">退役模特娇妻【闪闪的邻妻无情后妈】</a></p>
+  <div class="comment-excerpt">
+      <p><a href="forum.php?mod=viewthread&tid=179183" target="_blank" title="退役模特娇妻【闪闪的邻妻无情后妈】">
+本期关键词：退役模特娇妻『闪闪的邻妻无情后妈』
+
+
+这个是今年刚刚出来的，网上的视
+</a></p>
+  </div>  
+</li><li class="bt2">
+  <div class="comment-info">
+        <table width="264" border="0">
+          <tr>
+          <td><div class="comment-info"><a href="home.php?mod=space&uid=458927" target="_blank"> <img src="https://uc.javbus22.com/uc/data/avatar/000/45/89/27_avatar_middle.jpg" alt="等等楼主"> </a> <a href="home.php?mod=space&uid=458927" target="_blank" class="comment-author">等等楼主</a></div></td>
+          <td rowspan="2" align="right">
+          <div class="diy-image-outer">
+		  	<a href="forum.php?mod=viewthread&tid=179201" target="_blank"><img src="data/attachment/block/d3/d37dc2310a193076c36da3d0fdeea54e.jpg" width="120" height="95" /></a>
+          </div>
+          </td>
+        </tr>
+        <tr>
+          <td><div class="comment-info">2026-11-23</div></td>
+          </tr>
+    </table>
+  </div>
+  <p class="comment-post"><a href="forum.php?mod=viewthread&tid=179201" target="_blank" title="LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上悠亚 松下紗栄...">LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上</a></p>
+  <div class="comment-excerpt">
+      <p><a href="forum.php?mod=viewthread&tid=179201" target="_blank" title="LTX模型破解第十八弹 泷泽萝拉 美乃雀 三上悠亚 松下紗栄...">
+本期女优有 泷泽萝拉 美乃雀 三上悠亚 松下紗栄子 五日市芽依 宫下玲奈 彩月七緒 橘玛
+</a></p>
+  </div>  
+</li><li class="bt3">
+  <div class="comment-info">
+        <table width="264" border="0">
+          <tr>
+          <td><div class="comment-info"><a href="home.php?mod=space&uid=283252" target="_blank"> <img src="https://uc.javbus22.com/uc/data/avatar/000/28/32/52_avatar_middle.jpg" alt="佳灵通"> </a> <a href="home.php?mod=space&uid=283252" target="_blank" class="comment-author">佳灵通</a></div></td>
+          <td rowspan="2" align="right">
+          <div class="diy-image-outer">
+		  	<a href="forum.php?mod=viewthread&tid=179177" target="_blank"><img src="data/attachment/block/44/4494726818501d11d9b47b90ffcee505.jpg" width="120" height="95" /></a>
+          </div>
+          </td>
+        </tr>
+        <tr>
+          <td><div class="comment-info">2026-11-23</div></td>
+          </tr>
+    </table>
+  </div>
+  <p class="comment-post"><a href="forum.php?mod=viewthread&tid=179177" target="_blank" title="《我的20年看片编年史》二、">《我的20年看片编年史》二、</a></p>
+  <div class="comment-excerpt">
+      <p><a href="forum.php?mod=viewthread&tid=179177" target="_blank" title="《我的20年看片编年史》二、">
+书接前提
+《我的20年看片编年史》一、
+上一篇写了为什么要开始这个系列，也迎来了大家
+</a></p>
+  </div>  
+</li><li class="bt4">
+  <div class="comment-info">
+        <table width="264" border="0">
+          <tr>
+          <td><div class="comment-info"><a href="home.php?mod=space&uid=466251" target="_blank"> <img src="https://uc.javbus22.com/uc/data/avatar/000/46/62/51_avatar_middle.jpg" alt="大帅哥就是我"> </a> <a href="home.php?mod=space&uid=466251" target="_blank" class="comment-author">大帅哥就是我</a></div></td>
+          <td rowspan="2" align="right">
+          <div class="diy-image-outer">
+		  	<a href="forum.php?mod=viewthread&tid=179189" target="_blank"><img src="data/attachment/block/47/47df98d3b1e07547ad5b8bd23b049248.jpg" width="120" height="95" /></a>
+          </div>
+          </td>
+        </tr>
+        <tr>
+          <td><div class="comment-info">2026-11-23</div></td>
+          </tr>
+    </table>
+  </div>
+  <p class="comment-post"><a href="forum.php?mod=viewthread&tid=179189" target="_blank" title="求这部Myfans 雄 -YUU- 彼氏持ち的片子">求这部Myfans 雄 -YUU- 彼氏持ち的片子</a></p>
+  <div class="comment-excerpt">
+      <p><a href="forum.php?mod=viewthread&tid=179189" target="_blank" title="求这部Myfans 雄 -YUU- 彼氏持ち的片子">
+
+</a></p>
+  </div>  
+</li></div>
+</div></div></div></div></div></div><!--[/diy]-->
+</div>
+
+
+<div class="main-right-box cl">
+   <!--[diy=biaoqicn_b_diy7]--><div id="biaoqicn_b_diy7" class="area"><div id="frameqXAtl1" class="cl_frame_bm frame move-span cl frame-1"><div id="frameqXAtl1_left" class="column frame-1-c"><div id="frameqXAtl1_left_temp" class="move-span temp"></div><div id="portal_block_3" class="cl_block_bm block move-span"><div id="portal_block_3_content" class="dxb_bc"><div class="main-right-p15">
+<h2 class="main-right-tit"><span>精選內容</span></h2>  
+<div class="main-right-tw"><dl class="cl">
+	<dd><a href="forum.php?mod=viewthread&tid=179074" target="_blank"><img src="data/attachment/block/ad/adf1920c7406d5af3db8152bfc0ec0e9.jpg" width="280" height="180" alt="如果你喜欢丝袜片，那你一定要了解这位导演" /></a></dd>
+	<dt><a href="forum.php?mod=viewthread&tid=179074" target="_blank" title="如果你喜欢丝袜片，那你一定要了解这位导演">如果你喜欢丝袜片，那你一定要</a></dt>
+	<dd class="main-right-tw-txt">
+丝袜应该是很多人的性癖爱好了，而有位导演被称为“丝袜片”的标杆，相信我，他的
+</dd>
+</dl></div>
+</div></div></div></div></div></div><!--[/diy]-->
+</div>
+
+<div class="drag">
+   <!--[diy=diy2]--><div id="diy2" class="area"></div><!--[/diy]-->
+</div><div class="frame move-span cl frame-1">
+	<div class="banner300">
+				<script type="text/javascript" data-cfasync="false" async src="https://poweredby.jads.co/js/jads.js"></script><ins id="820405" data-width="300" data-height="250"></ins><script type="text/javascript" data-cfasync="false" async>(adsbyjuicy = window.adsbyjuicy || []).push({"adzone":820405});</script>
+        
+
+	<!--
+	<a href="#" target="_blank" rel="nofollow"><img src="/ads/ted_300x250_27.jpg" width="300" height="250"></a>
+	-->
+
+
+ 
+
+	</div>
+</div>
+</div>
+
+</div>
+
+<script type="text/javascript">
+jQuery(".fl_icn_g, .biaoqi-shoucang").each(function(){
+jQuery(this).hover(function(){jQuery(this).addClass("animated swing")},function(){jQuery(this).removeClass("animated swing")})
+})
+</script></div>
+
+
+<div class="jav-footer">
+<p>
+<a href="/doc/terms" target="_blank" title="">Terms</a> / 
+<a href="/doc/privacy" target="_blank" title="">Privacy</a> / 
+<a href="/doc/usc" target="_blank" title="">2257</a> / 
+<a href="http://www.rtalabel.org/" target="_blank" title="">RTA</a> / 
+<a href="/?cshow=1" target="_blank" title="">廣告投放</a> / 
+<a href="/?cshow=2" target="_blank" title="">聯絡我們</a>
+                <br>
+Copyright © 2013 JavBus. All Rights Reserved. All other trademarks and copyrights are the property of their respective holders. The reviews and comments expressed at or through this website are the opinions of the individual author and do not reflect the opinions or views of JavBus. JavBus is not responsible for the accuracy of any of the information supplied here.
+</p>
+</div> 
+
+<script src="home.php?mod=spacecp&ac=pm&op=checknewpm&rand=1795485213" type="text/javascript"></script>
+<div class="focus plugin" id="ip_notice"></div>
+<script type="text/javascript">ipNotice();</script>
+
+<div class="biaoqi-fix-area">
+<a id="moquu_top" href="javascript:void(0)" style="display: none;"></a>
+</div>
+
+</body>
+</html>
